@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:name1",
+ "creation": "2025-04-09 22:45:26.808368",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_jvax",
+  "name1",
+  "image",
+  "text",
+  "image_preview",
+  "column_break_pdwx",
+  "type",
+  "identity_for"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_jvax",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name",
+   "unique": 1
+  },
+  {
+   "depends_on": "eval:doc.type == 'image'",
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Attach image"
+  },
+  {
+   "depends_on": "eval:doc.type == 'Text'",
+   "fieldname": "text",
+   "fieldtype": "Data",
+   "label": "Text"
+  },
+  {
+   "fieldname": "identity_for",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Identity For",
+   "options": "\nAccountant\nManager\nReceiver\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "\nimage\nText",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.type == 'image'",
+   "fieldname": "image_preview",
+   "fieldtype": "Image",
+   "label": "Image Preview",
+   "options": "image"
+  },
+  {
+   "fieldname": "column_break_pdwx",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-09 22:59:56.810827",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "visual Identity",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,89 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-03-12 02:17:58.369116",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "employee",
+  "name1",
+  "day",
+  "requested_hours",
+  "shift_hours",
+  "working_hours",
+  "difference",
+  "deduction",
+  "branch"
+ ],
+ "fields": [
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name"
+  },
+  {
+   "fieldname": "day",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Day"
+  },
+  {
+   "fieldname": "working_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Working Hours"
+  },
+  {
+   "fieldname": "deduction",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Deduction"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "requested_hours",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Requested Hours"
+  },
+  {
+   "fieldname": "shift_hours",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Shift Hours"
+  },
+  {
+   "fieldname": "difference",
+   "fieldtype": "Float",
+   "in_list_view": 1,
+   "label": "Difference"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-03-12 02:29:41.127908",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Excuses Log",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

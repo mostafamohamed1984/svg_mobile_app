@@ -1,0 +1,306 @@
+{
+ "actions": [
+  {
+   "action": "project",
+   "action_type": "Route",
+   "group": "Create",
+   "label": "Project"
+  },
+  {
+   "action": "customer",
+   "action_type": "Route",
+   "group": "Create",
+   "label": "Customer"
+  },
+  {
+   "action": "quotation",
+   "action_type": "Route",
+   "group": "Create",
+   "label": "Quotation"
+  }
+ ],
+ "allow_rename": 1,
+ "autoname": "naming_series:[naming_series]",
+ "creation": "2025-03-10 01:16:19.251089",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_tab",
+  "lead_details_section",
+  "naming_series",
+  "date",
+  "deal_type",
+  "column_break_mg8t",
+  "lead_source",
+  "sub_lead_source",
+  "stage",
+  "client_details_section",
+  "name1",
+  "email",
+  "whatsapp",
+  "mobile",
+  "nationality",
+  "responsible_employee",
+  "column_break_pbrw",
+  "language",
+  "district",
+  "regions",
+  "client_category",
+  "client",
+  "project_details_tab",
+  "project_category",
+  "project_type",
+  "column_break_hzzr",
+  "project_status",
+  "priority",
+  "items_tab",
+  "items",
+  "follow_up_tab",
+  "follow_up_html",
+  "sketch_follow_up",
+  "comments_tab",
+  "notes_html",
+  "notes",
+  "connections_tab"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_tab",
+   "fieldtype": "Tab Break",
+   "label": "Main"
+  },
+  {
+   "fieldname": "lead_details_section",
+   "fieldtype": "Section Break",
+   "label": "Lead Details"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Serial",
+   "options": "SK-"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "deal_type",
+   "fieldtype": "Select",
+   "label": "Deal Type",
+   "options": "\nDiscount\ncommission"
+  },
+  {
+   "fieldname": "client_details_section",
+   "fieldtype": "Section Break",
+   "label": "Client Details"
+  },
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "label": "Name"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "whatsapp",
+   "fieldtype": "Data",
+   "label": "WhatsApp"
+  },
+  {
+   "fieldname": "mobile",
+   "fieldtype": "Data",
+   "label": "Mobile"
+  },
+  {
+   "fieldname": "column_break_pbrw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Link",
+   "label": "Language",
+   "options": "Language"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "District"
+  },
+  {
+   "fieldname": "regions",
+   "fieldtype": "Link",
+   "label": "Regions",
+   "options": "Regions"
+  },
+  {
+   "fieldname": "nationality",
+   "fieldtype": "Data",
+   "label": "Nationality"
+  },
+  {
+   "fieldname": "responsible_employee",
+   "fieldtype": "Link",
+   "label": "Responsible Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "lead_source",
+   "fieldtype": "Link",
+   "label": "Lead Source",
+   "options": "Lead Source"
+  },
+  {
+   "fieldname": "sub_lead_source",
+   "fieldtype": "Data",
+   "label": "Sub Lead Source"
+  },
+  {
+   "fieldname": "client_category",
+   "fieldtype": "Link",
+   "label": "Client Category",
+   "options": "Client Categories"
+  },
+  {
+   "fieldname": "client",
+   "fieldtype": "Link",
+   "label": "Client",
+   "options": "Client"
+  },
+  {
+   "fieldname": "project_details_tab",
+   "fieldtype": "Tab Break",
+   "label": "Project Details"
+  },
+  {
+   "fieldname": "project_category",
+   "fieldtype": "Select",
+   "label": "Project Category",
+   "options": "\nResidential\nIndustrical\nResidential &Commercial\nCommercial\nInstitutional"
+  },
+  {
+   "fieldname": "project_type",
+   "fieldtype": "Select",
+   "label": "Project Type",
+   "options": "\nBuilding\nvilla\ntwin villa\nFactories\nWarehouses\nFarm\nHotels\nStores\nOffice Buildings\nSchools\nHospitals\nGovernment Buildings\nMosque\nExtension"
+  },
+  {
+   "fieldname": "project_status",
+   "fieldtype": "Select",
+   "label": "Project Status",
+   "options": "\nConsultation\nDemolition & Construction\nAdding a building\nMaintenance\nCorrecting violations\nModifications\nInterior design\nProject Management\nDesign\nTender\nApprovals"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "\nLow\nMedium\nHight"
+  },
+  {
+   "fieldname": "items_tab",
+   "fieldtype": "Tab Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Opportunity Item"
+  },
+  {
+   "fieldname": "column_break_mg8t",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_hzzr",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "follow_up_tab",
+   "fieldtype": "Tab Break",
+   "label": "Follow Up"
+  },
+  {
+   "fieldname": "comments_tab",
+   "fieldtype": "Tab Break",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "notes_html",
+   "fieldtype": "HTML",
+   "label": "Notes HTML"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Notes",
+   "options": "CRM Note"
+  },
+  {
+   "fieldname": "follow_up_html",
+   "fieldtype": "HTML",
+   "label": "Follow Up HTML"
+  },
+  {
+   "fieldname": "sketch_follow_up",
+   "fieldtype": "Table",
+   "hidden": 1,
+   "label": "Sketch Follow Up",
+   "options": "Sketch Follow Up"
+  },
+  {
+   "fieldname": "connections_tab",
+   "fieldtype": "Tab Break",
+   "label": "Connections",
+   "show_dashboard": 1
+  },
+  {
+   "fieldname": "stage",
+   "fieldtype": "Select",
+   "label": "Stage",
+   "options": "Lead\nProspect\nOpportunity"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Quotation",
+   "link_fieldname": "party_name"
+  },
+  {
+   "link_doctype": "ToDo",
+   "link_fieldname": "reference_name"
+  }
+ ],
+ "modified": "2025-04-15 02:55:13.397998",
+ "modified_by": "Administrator",
+ "module": "SVG CRM",
+ "name": "Sketch",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "SVG CRM",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

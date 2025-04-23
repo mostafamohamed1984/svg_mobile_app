@@ -1,0 +1,250 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{subject}-{###}",
+ "creation": "2025-01-07 23:42:39.442506",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_details_section",
+  "subject",
+  "department",
+  "status",
+  "requested_by",
+  "column_break_jpiy",
+  "meeting_templet",
+  "meeting_type",
+  "meeting_link",
+  "venue",
+  "meeting_times_section",
+  "date",
+  "time_fromeg",
+  "time_toeg",
+  "column_break_lqfx",
+  "duration",
+  "time_fromuae",
+  "time_touae",
+  "meeting_agenda_section",
+  "agenda",
+  "meeting_participants_section",
+  "send_invitations",
+  "invitations_sent",
+  "participants",
+  "external_participants",
+  "notes",
+  "purpose_section",
+  "meeting_purpose",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_details_section",
+   "fieldtype": "Section Break",
+   "label": "Main Details"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Subject",
+   "reqd": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Table MultiSelect",
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Departments",
+   "reqd": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nPlanned\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Requested By",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_jpiy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meeting_templet",
+   "fieldtype": "Link",
+   "label": "Meeting Templet",
+   "options": "Meeting Templets"
+  },
+  {
+   "fieldname": "meeting_type",
+   "fieldtype": "Select",
+   "label": "Meeting Type",
+   "options": "\nZoom\nGoogle Meet"
+  },
+  {
+   "depends_on": "eval:doc.venue == 'Online'",
+   "fieldname": "meeting_link",
+   "fieldtype": "Data",
+   "label": "Meeting Link"
+  },
+  {
+   "fieldname": "venue",
+   "fieldtype": "Select",
+   "label": "Venue",
+   "options": "\nOnline\nPhysical"
+  },
+  {
+   "fieldname": "meeting_times_section",
+   "fieldtype": "Section Break",
+   "label": "meeting Times"
+  },
+  {
+   "fieldname": "time_fromeg",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Time From(EG)"
+  },
+  {
+   "fieldname": "time_fromuae",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Time From(UAE)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lqfx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Date"
+  },
+  {
+   "fieldname": "time_toeg",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Time To(EG)"
+  },
+  {
+   "fieldname": "time_touae",
+   "fieldtype": "Time",
+   "in_list_view": 1,
+   "label": "Time To(UAE)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Duration",
+   "hide_days": 1,
+   "hide_seconds": 1,
+   "in_list_view": 1,
+   "label": "Duration"
+  },
+  {
+   "fieldname": "meeting_agenda_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Agenda"
+  },
+  {
+   "fieldname": "agenda",
+   "fieldtype": "Table",
+   "label": "Agenda",
+   "options": "Agenda"
+  },
+  {
+   "fieldname": "meeting_participants_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Participants"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "send_invitations",
+   "fieldtype": "Button",
+   "label": "Send Invitations"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "0",
+   "fieldname": "invitations_sent",
+   "fieldtype": "Check",
+   "hidden": 1,
+   "label": "Invitations Sent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "participants",
+   "fieldtype": "Table",
+   "label": "Participants",
+   "options": "Participants"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "purpose_section",
+   "fieldtype": "Section Break",
+   "label": "Purpose"
+  },
+  {
+   "fieldname": "meeting_purpose",
+   "fieldtype": "Text Editor",
+   "label": "Meeting Purpose"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Meeting",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "external_participants",
+   "fieldtype": "Table",
+   "label": "External Participants",
+   "options": "External Participants"
+  }
+ ],
+ "is_calendar_and_gantt": 1,
+ "links": [],
+ "modified": "2025-03-13 02:32:53.639107",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Meeting",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Operation",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

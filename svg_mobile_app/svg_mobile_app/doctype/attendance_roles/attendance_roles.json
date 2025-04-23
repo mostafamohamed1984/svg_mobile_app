@@ -1,0 +1,159 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-16 21:23:07.899377",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "date_from",
+  "column_break_qrtz",
+  "date_to",
+  "section_break_x0pb",
+  "get_attendance",
+  "attendance_log",
+  "section_break_ms2n",
+  "get_excuses",
+  "excuses_log",
+  "section_break_inna",
+  "calculate_deductions",
+  "apply_on_date",
+  "total_deduction",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "date_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_qrtz",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date_to",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date To",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_x0pb",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "get_attendance",
+   "fieldtype": "Button",
+   "label": "Get Attendance"
+  },
+  {
+   "fieldname": "attendance_log",
+   "fieldtype": "Table",
+   "label": "Attendance Log",
+   "options": "Attendance Log"
+  },
+  {
+   "fieldname": "section_break_inna",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "calculate_deductions",
+   "fieldtype": "Button",
+   "label": "Calculate Deductions"
+  },
+  {
+   "fieldname": "apply_on_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Apply On Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_deduction",
+   "fieldtype": "Table",
+   "label": "Total Deduction",
+   "options": "Total Deduction"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Attendance Roles",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "section_break_ms2n",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "get_excuses",
+   "fieldtype": "Button",
+   "label": "Get Excuses"
+  },
+  {
+   "fieldname": "excuses_log",
+   "fieldtype": "Table",
+   "label": "Excuses Log",
+   "options": "Excuses Log"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-12 02:33:14.013314",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Attendance Roles",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR User",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

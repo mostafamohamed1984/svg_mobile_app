@@ -1,0 +1,225 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{subject}-{request_date}-{###}",
+ "creation": "2025-02-26 23:27:07.027256",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_details_section",
+  "subject",
+  "branch",
+  "department",
+  "type",
+  "priority",
+  "column_break_svyu",
+  "request_date",
+  "status",
+  "responsibility",
+  "closing_date",
+  "section_break_l79s",
+  "create_team_tasks",
+  "assigned_tasks",
+  "section_break_8bsy",
+  "task_description",
+  "more_info_section",
+  "lft",
+  "rgt",
+  "is_group",
+  "old_parent",
+  "parent_project_tasks"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_details_section",
+   "fieldtype": "Section Break",
+   "label": "Main Details"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "default": "Today",
+   "fieldname": "request_date",
+   "fieldtype": "Date",
+   "in_standard_filter": 1,
+   "label": "Request Date",
+   "reqd": 1
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Subject",
+   "reqd": 1
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Type",
+   "options": "Project Task Type"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Priority",
+   "options": "\nLow\nMedium\nHigh\nUrgent"
+  },
+  {
+   "fieldname": "column_break_svyu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "Open\nWorking\nPending Review\nOverdue\nCompleted\nCancelled"
+  },
+  {
+   "default": "__user",
+   "fieldname": "responsibility",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_standard_filter": 1,
+   "label": "Responsibility",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "task_description",
+   "fieldtype": "Text Editor",
+   "label": "Task Description"
+  },
+  {
+   "fieldname": "more_info_section",
+   "fieldtype": "Section Break",
+   "label": "More Info"
+  },
+  {
+   "fieldname": "closing_date",
+   "fieldtype": "Date",
+   "label": "Closing Date"
+  },
+  {
+   "fieldname": "assigned_tasks",
+   "fieldtype": "Table",
+   "label": "Assigned Tasks",
+   "options": "Assigned Tasks"
+  },
+  {
+   "fieldname": "section_break_l79s",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "create_team_tasks",
+   "fieldtype": "Button",
+   "hidden": 1,
+   "label": "Create Team Tasks"
+  },
+  {
+   "fieldname": "section_break_8bsy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Left",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Right",
+   "no_copy": 1,
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Is Group"
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Link",
+   "label": "Old Parent",
+   "options": "Project Tasks"
+  },
+  {
+   "fieldname": "parent_project_tasks",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "in_filter": 1,
+   "in_standard_filter": 1,
+   "label": "Parent Project Tasks",
+   "options": "Project Tasks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_calendar_and_gantt": 1,
+ "is_tree": 1,
+ "links": [
+  {
+   "link_doctype": "Team Tasks",
+   "link_fieldname": "from_project_task"
+  }
+ ],
+ "modified": "2025-03-09 04:00:43.996653",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Project Tasks",
+ "naming_rule": "Expression",
+ "nsm_parent_field": "parent_project_tasks",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Tasks Leaders",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

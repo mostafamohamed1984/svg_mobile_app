@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-12-20 23:51:46.156455",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "name1",
+  "age",
+  "relation",
+  "date_of_birth",
+  "insurance_provider",
+  "insurance_number"
+ ],
+ "fields": [
+  {
+   "fieldname": "name1",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Name"
+  },
+  {
+   "fieldname": "age",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Age"
+  },
+  {
+   "fieldname": "relation",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Relation",
+   "options": "\nson\nDaughter\nWife"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "insurance_provider",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Insurance Provider",
+   "options": "Employee Health Insurance"
+  },
+  {
+   "fieldname": "insurance_number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Insurance Number"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-01-28 22:11:21.809230",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Dependences",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

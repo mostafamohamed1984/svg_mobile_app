@@ -1,0 +1,46 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:supervising_engineer_wts",
+ "creation": "2025-03-03 02:37:44.204664",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "supervising_engineer_wts"
+ ],
+ "fields": [
+  {
+   "fieldname": "supervising_engineer_wts",
+   "fieldtype": "Data",
+   "label": "Supervising Engineer WTS",
+   "unique": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-03 02:38:21.837437",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Project Supervising Engineer WTS",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Data Collectoion",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

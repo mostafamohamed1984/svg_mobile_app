@@ -1,0 +1,191 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:subject",
+ "creation": "2024-11-30 22:42:13.389158",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_cxiz",
+  "date",
+  "announcement_reason",
+  "send_app_notification",
+  "filters_section",
+  "apply_filters",
+  "section_break_wgmp",
+  "branch",
+  "column_break_rjhc",
+  "department",
+  "column_break_9teg",
+  "designation",
+  "column_break_rziy",
+  "employee_group",
+  "employee_emails_section",
+  "employee_emails",
+  "email_details_section",
+  "sender_email",
+  "subject",
+  "body_mail",
+  "attachment",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_cxiz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "announcement_reason",
+   "fieldtype": "Small Text",
+   "in_list_view": 1,
+   "label": "Announcement Reason",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "send_app_notification",
+   "fieldtype": "Check",
+   "label": "Send App Notification"
+  },
+  {
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "hide_border": 1,
+   "label": "Filters"
+  },
+  {
+   "fieldname": "apply_filters",
+   "fieldtype": "Button",
+   "label": "Apply Filters"
+  },
+  {
+   "fieldname": "section_break_wgmp",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "column_break_rjhc",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "column_break_9teg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Link",
+   "label": "Designation",
+   "options": "Designation"
+  },
+  {
+   "fieldname": "column_break_rziy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "employee_group",
+   "fieldtype": "Link",
+   "label": "Employee Group",
+   "options": "Employment Type"
+  },
+  {
+   "fieldname": "employee_emails_section",
+   "fieldtype": "Section Break",
+   "label": "Employee Emails"
+  },
+  {
+   "fieldname": "employee_emails",
+   "fieldtype": "Table",
+   "label": "Employee Emails",
+   "options": "Employee Emails",
+   "reqd": 1
+  },
+  {
+   "fieldname": "email_details_section",
+   "fieldtype": "Section Break",
+   "label": "Email Details"
+  },
+  {
+   "fieldname": "sender_email",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "Sender Email"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Subject",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "body_mail",
+   "fieldtype": "Text Editor",
+   "in_list_view": 1,
+   "label": "Body Mail",
+   "reqd": 1
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Table",
+   "label": "Attachment",
+   "options": "Newsletter Attachment"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Announcement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-02-18 11:33:46.617884",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Announcement",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

@@ -1,0 +1,129 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:template_name",
+ "creation": "2025-01-27 22:56:54.571700",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_details_section",
+  "template_name",
+  "subject",
+  "department",
+  "column_break_jpiy",
+  "meeting_type",
+  "venue",
+  "meeting_link",
+  "meeting_agenda_section",
+  "agenda",
+  "meeting_participants_section",
+  "participants"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_details_section",
+   "fieldtype": "Section Break",
+   "label": "Main Details"
+  },
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Template Name",
+   "unique": 1
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Table MultiSelect",
+   "label": "Department",
+   "options": "Departments"
+  },
+  {
+   "fieldname": "column_break_jpiy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meeting_type",
+   "fieldtype": "Select",
+   "label": "Meeting Type",
+   "options": "\nZoom\nGoogle Meet"
+  },
+  {
+   "fieldname": "venue",
+   "fieldtype": "Select",
+   "label": "Venue",
+   "options": "\nOnline\nPhysical"
+  },
+  {
+   "depends_on": "eval:doc.venue =='Online'",
+   "fieldname": "meeting_link",
+   "fieldtype": "Data",
+   "label": "Meeting Link"
+  },
+  {
+   "fieldname": "meeting_agenda_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Agenda"
+  },
+  {
+   "fieldname": "agenda",
+   "fieldtype": "Table",
+   "label": "Agenda",
+   "options": "Agenda"
+  },
+  {
+   "fieldname": "meeting_participants_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Participants"
+  },
+  {
+   "fieldname": "participants",
+   "fieldtype": "Table",
+   "label": "Participants",
+   "options": "Participants"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-04 09:47:47.576055",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Meeting Templets",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Operation",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

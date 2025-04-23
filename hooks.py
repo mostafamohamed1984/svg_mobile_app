@@ -1,0 +1,8 @@
+app_name = "svg_mobile_app"
+app_title = "SVG Mobile App"
+app_publisher = "SVG"
+app_description = "SVG Mobile Application"
+app_icon = "octicon octicon-file-directory"
+app_color = "grey"
+app_email = "svg@svg.com"
+app_license = "MIT"

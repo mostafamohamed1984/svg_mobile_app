@@ -1,0 +1,534 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:project_name",
+ "creation": "2025-02-27 15:21:18.992971",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "project_filter_section",
+  "project_name",
+  "client_name",
+  "new_type",
+  "type",
+  "client_from",
+  "start_date",
+  "add_to_data",
+  "column_break_ncuk",
+  "commercial_type",
+  "description",
+  "old_region",
+  "region",
+  "district",
+  "language",
+  "project_status_section",
+  "column_break_sylw",
+  "planning_status",
+  "3d_style",
+  "project_status",
+  "tender_status",
+  "column_break_wzoy",
+  "design_status",
+  "3d_video",
+  "running_status",
+  "project_image_source",
+  "project_media_section",
+  "3d_score",
+  "site_image_score",
+  "offers_model",
+  "videos_drone",
+  "location",
+  "graphics_team_score",
+  "column_break_guxl",
+  "3d_image",
+  "site_image",
+  "videos_filming_site_engineers",
+  "required_drone",
+  "2_d_plan_link",
+  "dron_used_at_monthe",
+  "project_information_tab",
+  "project_update_section",
+  "last_update",
+  "percentage_of_completion",
+  "construction_permit_date",
+  "column_break_cszq",
+  "last_update_date",
+  "date_of_receipt_of_completion_certificate",
+  "revision_date",
+  "engineers_section",
+  "supervising_engineer",
+  "engineering_data_section",
+  "villa_dimensions",
+  "basement",
+  "first_floor",
+  "roof",
+  "total_villa_area_sqft",
+  "bed_room",
+  "family_living",
+  "dinning",
+  "maid_room",
+  "gurad_room",
+  "shops",
+  "no_of_office",
+  "column_break_aqts",
+  "plot_no",
+  "ground_floor",
+  "second_floor",
+  "total_villa_area_sqm",
+  "estimate_cost_230_aedsqft",
+  "majlis",
+  "bathroom",
+  "kitchen",
+  "laundry",
+  "store",
+  "car_parking",
+  "no_of_labour",
+  "no_of_studio",
+  "comments_section",
+  "comment"
+ ],
+ "fields": [
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project Number",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "column_break_ncuk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_image_source",
+   "fieldtype": "Attach Image",
+   "label": "Project Image Source"
+  },
+  {
+   "fieldname": "client_name",
+   "fieldtype": "Data",
+   "label": "Client Name"
+  },
+  {
+   "fieldname": "client_from",
+   "fieldtype": "Link",
+   "label": "Client From",
+   "options": "Client From"
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Data",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "project_filter_section",
+   "fieldtype": "Section Break",
+   "label": "Main Data"
+  },
+  {
+   "fieldname": "column_break_sylw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_wzoy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "commercial_type",
+   "fieldtype": "Link",
+   "label": "Commercial Type",
+   "options": "Commercial Type"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Link",
+   "label": "Description",
+   "options": "Building Description"
+  },
+  {
+   "fieldname": "old_region",
+   "fieldtype": "Link",
+   "label": "Old Region",
+   "options": "Project Old Region"
+  },
+  {
+   "fieldname": "region",
+   "fieldtype": "Link",
+   "label": "Region",
+   "options": "Project Region"
+  },
+  {
+   "fieldname": "district",
+   "fieldtype": "Link",
+   "label": "District",
+   "options": "Project Districts"
+  },
+  {
+   "fieldname": "add_to_data",
+   "fieldtype": "Link",
+   "label": "Add To Data",
+   "options": "Project Add to Data"
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Link",
+   "label": "Language",
+   "options": "Project Language"
+  },
+  {
+   "fieldname": "planning_status",
+   "fieldtype": "Link",
+   "label": "Planning Status",
+   "options": "Project Planning Status"
+  },
+  {
+   "fieldname": "design_status",
+   "fieldtype": "Link",
+   "label": "Design Status",
+   "options": "Project Design Status"
+  },
+  {
+   "fieldname": "3d_style",
+   "fieldtype": "Link",
+   "label": "3D Style",
+   "options": "Project 3D Style Status"
+  },
+  {
+   "fieldname": "3d_video",
+   "fieldtype": "Link",
+   "label": "3D Video",
+   "options": "Video Status"
+  },
+  {
+   "fieldname": "project_media_section",
+   "fieldtype": "Section Break",
+   "label": "Project Media "
+  },
+  {
+   "fieldname": "3d_score",
+   "fieldtype": "Rating",
+   "label": "3D Score"
+  },
+  {
+   "fieldname": "column_break_guxl",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "3d_image",
+   "fieldtype": "Attach Image",
+   "label": "3D Image"
+  },
+  {
+   "fieldname": "site_image_score",
+   "fieldtype": "Rating",
+   "label": "Site Image Score"
+  },
+  {
+   "fieldname": "site_image",
+   "fieldtype": "Attach Image",
+   "label": "Site Image"
+  },
+  {
+   "fieldname": "project_status_section",
+   "fieldtype": "Section Break",
+   "label": "Project Status"
+  },
+  {
+   "fieldname": "project_information_tab",
+   "fieldtype": "Tab Break",
+   "label": "Project Information"
+  },
+  {
+   "fieldname": "last_update",
+   "fieldtype": "Data",
+   "label": "Last Update"
+  },
+  {
+   "fieldname": "column_break_cszq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_update_date",
+   "fieldtype": "Data",
+   "label": "Last Update Date"
+  },
+  {
+   "fieldname": "project_update_section",
+   "fieldtype": "Section Break",
+   "label": "Project Update"
+  },
+  {
+   "fieldname": "engineers_section",
+   "fieldtype": "Section Break",
+   "label": "Engineers"
+  },
+  {
+   "fieldname": "supervising_engineer",
+   "fieldtype": "Link",
+   "label": "Supervising Engineer",
+   "options": "Project Supervising Engineers"
+  },
+  {
+   "fieldname": "project_status",
+   "fieldtype": "Link",
+   "label": "Project Status",
+   "options": "Project Status"
+  },
+  {
+   "fieldname": "running_status",
+   "fieldtype": "Link",
+   "label": "Running Status",
+   "options": "Project Running Status"
+  },
+  {
+   "fieldname": "tender_status",
+   "fieldtype": "Link",
+   "label": "Tender Status",
+   "options": "Project Tender Status"
+  },
+  {
+   "fieldname": "percentage_of_completion",
+   "fieldtype": "Percent",
+   "label": "Percentage of Completion"
+  },
+  {
+   "fieldname": "offers_model",
+   "fieldtype": "Data",
+   "label": "Offers Model"
+  },
+  {
+   "fieldname": "videos_filming_site_engineers",
+   "fieldtype": "Data",
+   "label": "Videos Filming Site Engineers"
+  },
+  {
+   "fieldname": "videos_drone",
+   "fieldtype": "Data",
+   "label": "Videos Drone"
+  },
+  {
+   "fieldname": "required_drone",
+   "fieldtype": "Data",
+   "label": "Required Drone"
+  },
+  {
+   "fieldname": "date_of_receipt_of_completion_certificate",
+   "fieldtype": "Data",
+   "label": "Date of receipt of completion certificate"
+  },
+  {
+   "fieldname": "construction_permit_date",
+   "fieldtype": "Data",
+   "label": "Construction permit date"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fieldname": "2_d_plan_link",
+   "fieldtype": "Data",
+   "label": "2D Plan link"
+  },
+  {
+   "fieldname": "revision_date",
+   "fieldtype": "Data",
+   "label": "Revision date"
+  },
+  {
+   "fieldname": "graphics_team_score",
+   "fieldtype": "Rating",
+   "label": "Graphics Team Score"
+  },
+  {
+   "fieldname": "dron_used_at_monthe",
+   "fieldtype": "Data",
+   "label": "Dron Used at monthe"
+  },
+  {
+   "fieldname": "engineering_data_section",
+   "fieldtype": "Section Break",
+   "label": "Engineering Data"
+  },
+  {
+   "fieldname": "villa_dimensions",
+   "fieldtype": "Data",
+   "label": "Villa Dimensions"
+  },
+  {
+   "fieldname": "column_break_aqts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "plot_no",
+   "fieldtype": "Data",
+   "label": "Plot No"
+  },
+  {
+   "fieldname": "basement",
+   "fieldtype": "Data",
+   "label": "Basement"
+  },
+  {
+   "fieldname": "ground_floor",
+   "fieldtype": "Data",
+   "label": "Ground Floor"
+  },
+  {
+   "fieldname": "first_floor",
+   "fieldtype": "Data",
+   "label": "First Floor"
+  },
+  {
+   "fieldname": "second_floor",
+   "fieldtype": "Data",
+   "label": "Second Floor"
+  },
+  {
+   "fieldname": "roof",
+   "fieldtype": "Data",
+   "label": "Roof"
+  },
+  {
+   "fieldname": "total_villa_area_sqm",
+   "fieldtype": "Data",
+   "label": "Total Villa Area SQM"
+  },
+  {
+   "fieldname": "total_villa_area_sqft",
+   "fieldtype": "Data",
+   "label": "Total VILLA AREA SQFT"
+  },
+  {
+   "fieldname": "estimate_cost_230_aedsqft",
+   "fieldtype": "Data",
+   "label": "Estimate Cost 230 AED/SQ.FT"
+  },
+  {
+   "fieldname": "bed_room",
+   "fieldtype": "Data",
+   "label": "BED ROOM"
+  },
+  {
+   "fieldname": "majlis",
+   "fieldtype": "Data",
+   "label": "MAJLIS"
+  },
+  {
+   "fieldname": "family_living",
+   "fieldtype": "Data",
+   "label": "FAMILY LIVING"
+  },
+  {
+   "fieldname": "dinning",
+   "fieldtype": "Data",
+   "label": "DINNING"
+  },
+  {
+   "fieldname": "maid_room",
+   "fieldtype": "Data",
+   "label": "MAID ROOM"
+  },
+  {
+   "fieldname": "gurad_room",
+   "fieldtype": "Data",
+   "label": "GURAD ROOM"
+  },
+  {
+   "fieldname": "bathroom",
+   "fieldtype": "Data",
+   "label": "BATHROOM"
+  },
+  {
+   "fieldname": "kitchen",
+   "fieldtype": "Data",
+   "label": "KITCHEN"
+  },
+  {
+   "fieldname": "laundry",
+   "fieldtype": "Data",
+   "label": "LAUNDRY"
+  },
+  {
+   "fieldname": "store",
+   "fieldtype": "Data",
+   "label": "STORE"
+  },
+  {
+   "fieldname": "comments_section",
+   "fieldtype": "Section Break",
+   "label": "Comments"
+  },
+  {
+   "fieldname": "comment",
+   "fieldtype": "Long Text",
+   "label": "Comment"
+  },
+  {
+   "fieldname": "new_type",
+   "fieldtype": "Link",
+   "label": "New Type",
+   "options": "Client Type"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Data",
+   "label": "Type"
+  },
+  {
+   "fieldname": "shops",
+   "fieldtype": "Data",
+   "label": "SHOPS"
+  },
+  {
+   "fieldname": "no_of_office",
+   "fieldtype": "Data",
+   "label": "No. of Office"
+  },
+  {
+   "fieldname": "car_parking",
+   "fieldtype": "Data",
+   "label": "CAR PARKING"
+  },
+  {
+   "fieldname": "no_of_labour",
+   "fieldtype": "Data",
+   "label": "No. of labour"
+  },
+  {
+   "fieldname": "no_of_studio",
+   "fieldtype": "Data",
+   "label": "no. of studio"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-04-17 14:08:24.935225",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Projects Collection",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Data Collectoion",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

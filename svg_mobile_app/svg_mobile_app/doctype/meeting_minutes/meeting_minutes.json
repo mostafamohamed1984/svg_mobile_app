@@ -1,0 +1,262 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MOM-{subject}-{date}",
+ "creation": "2025-01-09 00:58:21.599192",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_details_section",
+  "subject",
+  "department",
+  "status",
+  "requested_by",
+  "meeting_purpose",
+  "column_break_jpiy",
+  "meeting_type",
+  "meeting_link",
+  "venue",
+  "meeting_times_section",
+  "date",
+  "time_fromeg",
+  "time_fromuae",
+  "column_break_lqfx",
+  "time_toeg",
+  "time_touae",
+  "duration",
+  "meeting_agenda_section",
+  "agenda",
+  "meeting_participants_section",
+  "participants",
+  "external_participants",
+  "minutes_of_meeting_section",
+  "meeting_minutes",
+  "action_items",
+  "meeting_issues_and_risks",
+  "attachments",
+  "meeting_refrance",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "collapsible": 1,
+   "fieldname": "main_details_section",
+   "fieldtype": "Section Break",
+   "label": "Main Details"
+  },
+  {
+   "fetch_from": "meeting_refrance.subject",
+   "fieldname": "subject",
+   "fieldtype": "Data",
+   "label": "Subject"
+  },
+  {
+   "fetch_from": "meeting_refrance.department",
+   "fieldname": "department",
+   "fieldtype": "Table MultiSelect",
+   "label": "Department",
+   "options": "Departments"
+  },
+  {
+   "fetch_from": "meeting_refrance.status",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nPlanned\nCompleted\nCancelled"
+  },
+  {
+   "fieldname": "requested_by",
+   "fieldtype": "Link",
+   "label": "Requested By",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "meeting_purpose",
+   "fieldtype": "Text Editor",
+   "label": "Meeting Purpose"
+  },
+  {
+   "fieldname": "column_break_jpiy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "meeting_refrance.meeting_type",
+   "fieldname": "meeting_type",
+   "fieldtype": "Select",
+   "label": "Meeting Type",
+   "options": "\nZoom\nGoogle Meet"
+  },
+  {
+   "fetch_from": "meeting_refrance.meeting_link",
+   "fieldname": "meeting_link",
+   "fieldtype": "Data",
+   "label": "Meeting Link"
+  },
+  {
+   "fieldname": "venue",
+   "fieldtype": "Select",
+   "label": "Venue",
+   "options": "\nOnline\nPhysical"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "meeting_times_section",
+   "fieldtype": "Section Break",
+   "label": "meeting Times"
+  },
+  {
+   "fetch_from": "meeting_refrance.date",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fetch_from": "meeting_refrance.time_fromeg",
+   "fieldname": "time_fromeg",
+   "fieldtype": "Time",
+   "label": "Time From(EG)"
+  },
+  {
+   "fetch_from": "meeting_refrance.time_fromuae",
+   "fieldname": "time_fromuae",
+   "fieldtype": "Time",
+   "label": "Time From(UAE)"
+  },
+  {
+   "fieldname": "column_break_lqfx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "meeting_refrance.time_toeg",
+   "fieldname": "time_toeg",
+   "fieldtype": "Time",
+   "label": "Time To(EG)"
+  },
+  {
+   "fetch_from": "meeting_refrance.time_touae",
+   "fieldname": "time_touae",
+   "fieldtype": "Time",
+   "label": "Time To(UAE)"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Duration",
+   "hide_days": 1,
+   "hide_seconds": 1,
+   "label": "Duration"
+  },
+  {
+   "fieldname": "meeting_agenda_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Agenda"
+  },
+  {
+   "fieldname": "agenda",
+   "fieldtype": "Table",
+   "label": "Agenda Status",
+   "options": "Agenda Status"
+  },
+  {
+   "fieldname": "meeting_participants_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Participants"
+  },
+  {
+   "fieldname": "participants",
+   "fieldtype": "Table",
+   "label": "Participants Attendance",
+   "options": "Participants Attendance"
+  },
+  {
+   "fieldname": "minutes_of_meeting_section",
+   "fieldtype": "Section Break",
+   "label": "Meeting Conclusion"
+  },
+  {
+   "fieldname": "meeting_minutes",
+   "fieldtype": "Text Editor",
+   "label": "Meeting Minutes"
+  },
+  {
+   "fieldname": "action_items",
+   "fieldtype": "Table",
+   "label": "Action Items",
+   "options": "Objectives"
+  },
+  {
+   "fieldname": "meeting_issues_and_risks",
+   "fieldtype": "Table",
+   "label": "Meeting Issues and Risks",
+   "options": "Meeting Issues and Risks"
+  },
+  {
+   "fieldname": "attachments",
+   "fieldtype": "Table",
+   "label": "Attachments",
+   "options": "Attachments"
+  },
+  {
+   "fieldname": "meeting_refrance",
+   "fieldtype": "Link",
+   "label": "Meeting Refrance",
+   "options": "Meeting"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Meeting Minutes",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "external_participants",
+   "fieldtype": "Table",
+   "label": "External Participants Attendance",
+   "options": "External Participants Attendance"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-04 09:47:15.149186",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Meeting Minutes",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Operation",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

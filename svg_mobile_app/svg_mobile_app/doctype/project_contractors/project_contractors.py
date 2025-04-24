@@ -17,18 +17,24 @@ def get_items_by_company(doctype, txt, searchfield, start, page_len, filters):
     """
     company = filters.get('company')
     
-    return frappe.db.sql("""
+    # Debug log to verify the company value
+    frappe.logger().debug(f"Filtering items for company: {company}")
+    
+    # Get items that have an Item Default entry for this company
+    items = frappe.db.sql("""
         SELECT 
-            item.name, item.item_name, item.item_group
+            i.name, i.item_name, i.description
         FROM 
-            `tabItem` item
+            `tabItem` i
         INNER JOIN 
-            `tabItem Default` item_default ON item.name = item_default.parent
+            `tabItem Default` id ON i.name = id.parent
         WHERE 
-            item_default.company = %s
-            AND (item.name LIKE %s OR item.item_name LIKE %s)
+            id.company = %s
+            AND (i.name LIKE %s OR i.item_name LIKE %s)
+        GROUP BY
+            i.name
         ORDER BY 
-            item.name
+            i.name
         LIMIT %s, %s
     """, (
         company, 
@@ -37,3 +43,8 @@ def get_items_by_company(doctype, txt, searchfield, start, page_len, filters):
         start, 
         page_len
     ))
+    
+    # Log the result count
+    frappe.logger().debug(f"Found {len(items)} items for company {company}")
+    
+    return items

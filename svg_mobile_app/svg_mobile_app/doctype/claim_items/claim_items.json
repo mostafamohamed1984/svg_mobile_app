@@ -9,6 +9,7 @@
   "item",
   "amount",
   "ratio",
+  "current_balance",
   "unearned_account",
   "revenue_account"
  ],
@@ -31,6 +32,13 @@
    "fieldtype": "Percent",
    "in_list_view": 1,
    "label": "ratio"
+  },
+  {
+   "fieldname": "current_balance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Current Balance",
+   "read_only": 1
   },
   {
    "fieldname": "unearned_account",

@@ -8,6 +8,26 @@ frappe.ui.form.on('Project Claim', {
                 }
             };
         });
+        
+        // Filter Customer based on custom_company field
+        frm.set_query("customer", function() {
+            return {
+                filters: {
+                    custom_company: frappe.defaults.get_user_default('company')
+                }
+            };
+        });
+        
+        // Filter Tax Account based on company
+        frm.set_query("tax_account", function() {
+            return {
+                filters: {
+                    company: frappe.defaults.get_user_default('company'),
+                    is_group: 0,
+                    account_type: "Tax"
+                }
+            };
+        });
     },
     
     mode_of_payment: function(frm) {
@@ -86,8 +106,18 @@ frappe.ui.form.on('Project Claim', {
         }
     },
     
+    before_save: function(frm) {
+        // This is stronger than validate and will prevent saving completely
+        if (!validate_claim_totals(frm)) {
+            frappe.throw(__('Please correct the validation errors before saving.'));
+            return false;
+        }
+    },
+    
     validate: function(frm) {
-        validate_claim_totals(frm);
+        if (!validate_claim_totals(frm)) {
+            frappe.validated = false;
+        }
     }
 });
 
@@ -128,30 +158,49 @@ frappe.ui.form.on('Claim Items', {
             frappe.model.set_value(cdt, cdn, 'amount', amount);
             validate_claim_totals(frm);
         }
+    },
+    
+    claim_items_remove: function(frm, cdt, cdn) {
+        validate_claim_totals(frm);
     }
 });
 
 // Helper function to validate claim totals
 function validate_claim_totals(frm) {
-    if (!frm.doc.claim_items || !frm.doc.claim_amount) return;
+    if (!frm.doc.claim_items || !frm.doc.claim_amount) return true;
     
     let total_amount = 0;
     let total_ratio = 0;
+    let valid = true;
     
     frm.doc.claim_items.forEach(item => {
         total_amount += flt(item.amount);
         total_ratio += flt(item.ratio);
     });
     
-    // Check if total amount exceeds claim amount
-    if (total_amount > flt(frm.doc.claim_amount)) {
-        frappe.msgprint(__(`Total allocated amount (${total_amount}) exceeds claim amount (${frm.doc.claim_amount})`));
+    // Check if total amount equals claim amount (allow small rounding difference)
+    const difference = Math.abs(total_amount - flt(frm.doc.claim_amount));
+    if (difference > 0.01 && frm.doc.docstatus !== 1) {
+        frappe.msgprint({
+            title: __('Validation Error'),
+            indicator: 'red',
+            message: __(`Total allocated amount (${format_currency(total_amount)}) doesn't match claim amount (${format_currency(frm.doc.claim_amount)}). Difference: ${format_currency(difference)}`)
+        });
+        valid = false;
     }
     
-    // Check if total ratio exceeds 100%
-    if (total_ratio > 100) {
-        frappe.msgprint(__(`Total ratio (${total_ratio.toFixed(2)}%) exceeds 100%`));
+    // Check if total ratio equals 100% (allow small rounding difference)
+    const ratio_difference = Math.abs(total_ratio - 100);
+    if (ratio_difference > 0.01 && frm.doc.docstatus !== 1) {
+        frappe.msgprint({
+            title: __('Validation Error'),
+            indicator: 'red',
+            message: __(`Total ratio (${total_ratio.toFixed(2)}%) doesn't equal 100%. Difference: ${ratio_difference.toFixed(2)}%`)
+        });
+        valid = false;
     }
+    
+    return valid;
 }
 
 // Helper function to refresh claim items based on claim amount

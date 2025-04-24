@@ -42,6 +42,9 @@ class ProjectClaim(Document):
 	@frappe.whitelist()
 	def update_claim_items_balance(self):
 		"""Update the current balance for each item in the claim items table"""
+		if not self.reference_invoice:
+			return
+			
 		for item in self.claim_items:
 			# Get the original amount and any previously claimed amounts for this item
 			original_amount, claimed_amount = self.get_item_balance(item.item)

@@ -77,22 +77,34 @@ function create_claim_with_fresh_data(frm, outstanding_amount, paid_amount) {
         cur_frm.refresh_field('outstanding_amount');
         cur_frm.refresh_field('claim_items');
         
-        // Call the server method to update balances
-        cur_frm.call({
-            method: "update_claim_items_balance",
-            doc: cur_frm.doc,
-            callback: function(r) {
-                cur_frm.refresh_field('claim_items');
-                
-                // Add a delay and refresh again to ensure all values are displayed
-                setTimeout(() => {
-                    cur_frm.refresh();
-                    frappe.show_alert({
-                        message: __('Project Claim created successfully'),
-                        indicator: 'green'
-                    }, 3);
-                }, 500);
+        // Make sure the reference_invoice is set correctly before updating balance
+        setTimeout(() => {
+            // Call the server method to update balances only if reference_invoice is set
+            if (cur_frm.doc.reference_invoice) {
+                cur_frm.call({
+                    method: "update_claim_items_balance",
+                    doc: cur_frm.doc,
+                    callback: function(r) {
+                        cur_frm.refresh_field('claim_items');
+                        
+                        // Add a delay and refresh again to ensure all values are displayed
+                        setTimeout(() => {
+                            cur_frm.refresh();
+                            frappe.show_alert({
+                                message: __('Project Claim created successfully'),
+                                indicator: 'green'
+                            }, 3);
+                        }, 500);
+                    }
+                });
+            } else {
+                // Just show success message if reference_invoice is not yet set
+                cur_frm.refresh();
+                frappe.show_alert({
+                    message: __('Project Claim created successfully'),
+                    indicator: 'green'
+                }, 3);
             }
-        });
+        }, 500); // Short delay to ensure form is properly rendered
     });
 }

@@ -1,0 +1,330 @@
+/*--------------------------------------------------------------
+>> TABLE OF CONTENTS:
+----------------------------------------------------------------
+1. Normalize
+2. Typography
+3. Invoice General Style
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+1. Normalize
+----------------------------------------------------------------*/
+*,
+::after,
+::before {
+  box-sizing: border-box;
+}
+
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+  width: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6em;
+  color: #666;
+  background-color: #f5f6fa;
+  width: 100%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0 0 20px;
+  font-weight: 500;
+  line-height: 1.2em;
+  color: #111;
+}
+
+h1 { font-size: 60px; }
+h2 { font-size: 48px; }
+h3 { font-size: 30px; }
+h4 { font-size: 24px; }
+h5 { font-size: 18px; }
+h6 { font-size: 16px; }
+
+p, div { margin-top: 0; line-height: 1.5em; }
+p { margin-bottom: 15px; }
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+a:hover { color: #007aff; }
+
+img { max-width: 100%; height: auto; vertical-align: middle; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 15px; line-height: 1.55em; }
+th { text-align: left; }
+td { border-top: 1px solid #dbdfea; }
+
+/*--------------------------------------------------------------
+2. Typography
+----------------------------------------------------------------*/
+.tm_f10 { font-size: 10px; }
+.tm_f11 { font-size: 11px; }
+.tm_f12 { font-size: 12px; }
+.tm_f13 { font-size: 13px; }
+.tm_f14 { font-size: 14px; }
+.tm_f15 { font-size: 15px; }
+.tm_f16 { font-size: 16px; }
+.tm_f17 { font-size: 17px; }
+.tm_f18 { font-size: 18px; }
+.tm_f19 { font-size: 19px; }
+.tm_f20 { font-size: 20px; }
+.tm_f21 { font-size: 21px; }
+.tm_f22 { font-size: 22px; }
+.tm_f23 { font-size: 23px; }
+.tm_f24 { font-size: 24px; }
+.tm_f25 { font-size: 25px; }
+.tm_f26 { font-size: 26px; }
+.tm_f27 { font-size: 27px; }
+.tm_f28 { font-size: 28px; }
+.tm_f29 { font-size: 29px; }
+.tm_f30 { font-size: 30px; }
+.tm_f40 { font-size: 40px; }
+.tm_f50 { font-size: 50px; }
+
+.tm_light { font-weight: 300; }
+.tm_normal { font-weight: 400; }
+.tm_medium { font-weight: 500; }
+.tm_semi_bold { font-weight: 600; }
+.tm_bold { font-weight: 700; }
+
+/*--------------------------------------------------------------
+3. Invoice General Style
+----------------------------------------------------------------*/
+.tm_container {
+  max-width: 100%;
+  padding: 0px 0px;
+  margin: 0 auto;
+}
+
+.tm_invoice {
+  background: #fff;
+  border-radius: 10px;
+  padding: 0px;
+}
+
+.tm_invoice_head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  width: 100%;
+}
+
+.tm_invoice_info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.tm_invoice_info_list {
+  display: flex;
+}
+
+.tm_invoice_info_list > *:not(:last-child) {
+  margin-right: 20px;
+}
+
+.tm_invoice_seperator {
+  flex: 1;
+  margin-right: 20px;
+  min-height: 18px;
+  border-radius: 1.6em;
+}
+
+.tm_invoice_footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.tm_left_footer {
+  width: 58%;
+  padding: 10px 15px;
+}
+
+.tm_right_footer {
+  width: 42%;
+}
+
+.tm_table_responsive {
+  overflow-x: auto;
+}
+
+.tm_table_responsive > table {
+  min-width: 100%;
+}
+
+.tm_accent_bg {
+  background-color: #007aff;
+}
+
+.tm_primary_color {
+  color: #111;
+}
+
+.tm_white_color {
+  color: #fff;
+}
+
+.tm_gray_bg {
+  background: #f5f6fa;
+}
+
+.tm_border {
+  border: 1px solid #dbdfea;
+}
+
+.tm_border_top {
+  border-top: 1px solid #dbdfea;
+}
+
+.tm_border_bottom {
+  border-bottom: 1px solid #dbdfea;
+}
+
+.tm_text_center {
+  text-align: center;
+}
+
+.tm_text_right {
+  text-align: right;
+}
+
+.tm_text_uppercase {
+  text-transform: uppercase;
+}
+
+.tm_mb15 {
+  margin-bottom: 15px;
+}
+
+.tm_mb25 {
+  margin-bottom: 25px;
+}
+
+.tm_mb10 {
+  margin-bottom: 10px;
+}
+
+.tm_mb20 {
+  margin-bottom: 20px;
+}
+
+.tm_mb30 {
+  margin-bottom: 30px;
+}
+
+.tm_mb40 {
+  margin-bottom: 40px;
+}
+
+.tm_m0 {
+  margin: 0;
+}
+
+.tm_padd_15 {
+  padding: 15px;
+}
+
+.tm_padd_20 {
+  padding: 20px;
+}
+
+.tm_padd_10 {
+  padding: 10px;
+}
+
+.tm_padd_5 {
+  padding: 5px;
+}
+.tm_red_bg {
+  background-color: #d10000;
+}
+
+.tm_blue_color {
+  color: #0056b3;
+}
+
+
+.tm_width_1 { width: 8.33333333%; }
+.tm_width_2 { width: 16.66666667%; }
+.tm_width_3 { width: 25%; }
+.tm_width_4 { width: 33.33333333%; }
+.tm_width_5 { width: 41.66666667%; }
+.tm_width_6 { width: 50%; }
+.tm_width_7 { width: 58.33333333%; }
+.tm_width_8 { width: 66.66666667%; }
+.tm_width_9 { width: 75%; }
+.tm_width_10 { width: 83.33333333%; }
+.tm_width_11 { width: 91.66666667%; }
+.tm_width_12 { width: 100%; }
+
+.tm_invoice_label {
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+
+              .signature-container {
+                  display: flex;
+                  justify-content: space-between;
+                  margin-top: 20px;
+              }
+
+              .signature-item {
+                  text-align: center;
+                  flex: 1;
+              }
+
+              .signature-text {
+                  font-weight: bold;
+                  margin-bottom: 5px;
+              }
+
+              .signature-line {
+                  border-bottom: 1px dashed #000;
+                  width: 80%;
+                  margin: 0 auto;
+              }
+
+              .footer-image {
+                  width: 100%;
+                  margin-top: 0px;
+              }
+
+/*--------------------------------------------------------------
+  Will apply only print window
+----------------------------------------------------------------*/
+@media print {
+  .tm_gray_bg { background-color: #f5f6fa !important; }
+  .tm_ternary_bg { background-color: #b5b5b5 !important; }
+  .tm_primary_bg { background-color: #111 !important; }
+  .tm_secondary_bg { background-color: #666 !important; }
+  .tm_accent_bg { background-color: #007aff; }
+  .tm_white_color { color: #fff !important; }
+  .tm_accent_color { color: #007aff !important; }
+  .tm_ternary_color { color: #000000 !important; }
+  .tm_hide_print { display: none !important; }
+  .tm_dark_invoice .tm_gray_bg { background-color: #111 !important; }
+  .tm_dark_invoice { background: #111 !important; color: rgba(255, 255, 255, 0.65) !important; }
+  .tm_dark_invoice .tm_gray_bg { background: rgba(255, 255, 255, 0.05) !important; }
+  hr { background: #dbdfea !important; }
+
+
+    @page {
+        size: A4;
+    }
+ 
+}

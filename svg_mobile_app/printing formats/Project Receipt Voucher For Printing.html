@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Voucher</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .custom-space{
+            margin-top:15px;
+            margin-bottom:15px;
+        }
+        .stamp-container {
+            position: relative;
+            display: inline-block;
+            width: 250px;
+            height: auto;
+        }
+        .stamp-image {
+            width: 100%;
+            height: auto;
+        }
+        .signature-image-container {
+            width: 150px; /* عرض ثابت لجميع صور التوقيع */
+            height: 55px; /* ارتفاع ثابت لجميع صور التوقيع */
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .signature-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* للحفاظ على نسبة العرض إلى الارتفاع */
+        }
+        .stamp-serial {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: black;
+            font-weight: bold;
+            font-size: 15px;
+            pointer-events: none;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .header-container {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .header-text {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .line {
+            width: 30%;
+            height: 1px;
+            background-color: black;
+            margin: 10px auto;
+        }
+        .header-right {
+            position: absolute;
+            top: 0;
+            right: 0;
+            text-align: right;
+            font-size: 14px;
+        }
+        .header-image {
+            width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        .bold-text {
+            font-weight: bold;
+            font-size: 20px;
+            display: inline;
+        }
+        .inline-text {
+            display: inline;
+            font-size: 18px;
+        }
+        .spaced-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .center-text {
+            text-align: center;
+            font-weight: bold;
+            font-size: 22px;
+        }
+        .footer-image {
+            width: 100%;
+            height: auto;
+            margin-top: 40px;
+        }
+        .signature-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .signature-item {
+            text-align: center;
+            flex: 1;
+        }
+        .signature-text {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .signature-line {
+            border-bottom: 1px dashed #000;
+            width: 80%;
+            margin: 0 auto;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        @media print {
+            @page { size: A4; }
+            .bold-text, .inline-text {
+                font-size: 14px;
+            }
+            .spaced-line {
+                margin-bottom: 15px;
+            }
+            .header-image, .footer-image {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% macro body_content() %}
+        <!-- Header Image -->
+        <img class="header-image" src="/files/Asset 10.png" alt="Header Image">
+         {% set sales = doc.reference_invoice %}
+          {% set invoice = frappe.get_doc('Sales Invoice', sales) %}
+        <!-- Header Container -->
+        <div class="header-container">
+            <!-- Centered Header Text with Horizontal Line -->
+            <div>
+                <div class="header-text">سند قبض</div>
+                <div class="line"></div>
+                <div class="header-text">Receipt Voucher</div>
+            </div>
+
+            <!-- No. and Date on the Right -->
+            <div class="header-right">
+                <p>No. {{ doc.name }}</p>
+                <p>Date: {{ doc.date }}</p>
+            </div>
+        </div>
+
+        <div class="spaced-line">
+            <p class="bold-text">Received From</p>
+            <p class="inline-text">{{ doc.customer_name }}</p>
+            <p class="bold-text">استلمنا من السيد\السيدة</p>
+        </div>
+
+        <div class="spaced-line">
+            <p class="bold-text">Amount</p>
+            <p class="inline-text">({{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }})&nbsp;&nbsp;</p>
+            <p class="bold-text">المبلغ</p>
+            
+           <p class="bold-text">Payment Type</p>
+            {% set payment_doc = frappe.get_doc("Mode of Payment", doc.mode_of_payment) %}
+            {% if doc.mode_of_payment == "Cheque" %}
+                <p class="inline-text">(Cheque)&nbsp;&nbsp;</p>
+            {% elif doc.mode_of_payment == "Visa" %}
+                <p class="inline-text">(Visa)&nbsp;&nbsp;</p>
+            {% else %}
+                <p class="inline-text">({{payment_doc.type}})&nbsp;&nbsp;</p>
+            {% endif %}
+            <p class="bold-text">طريقة الدفع</p>
+        </div>
+        
+        {% if doc.mode_of_payment == "Cheque" %}
+            <div class="spaced-line">
+                <p class="bold-text">Due Date</p>
+                <p class="inline-text">{{ doc.due_date }}&nbsp;&nbsp;</p>
+                <p class="bold-text">معاد الاستحقاق</p>
+            </div>
+            
+            <div class="spaced-line">
+                <p class="bold-text">Cheque Number</p>
+                <p class="inline-text">{{ doc.cheque_number }}&nbsp;&nbsp;</p>
+                <p class="bold-text">رقم الشيك</p>
+            </div>
+            
+            <div class="spaced-line">
+                <p class="bold-text">Bank Name</p>
+                <p class="inline-text">{{ doc.bank_name }}&nbsp;&nbsp;</p>
+                <p class="bold-text">اسم البنك</p>
+            </div>
+        {% endif %}
+        
+            <div class="spaced-line">
+             <p class="bold-text">Amount in Letters</p>
+            {% set amount_with_currency = frappe.utils.money_in_words(doc.claim_amount) %}
+            {% set amount1 = amount_with_currency.split(' ', 1)[1] %}
+            <p class="inline-text">{{ amount1 }}{{ invoice.currency }}</p>
+            <p class="bold-text">المبلغ بالحروف </p>
+        </div>
+
+        <div class="spaced-line custom-space">
+            <p class="bold-text">Being&nbsp;&nbsp;&nbsp;&nbsp;</p>
+            <p class="inline-text">{{doc.being}}</p>
+            <p class="bold-text">وذلك نظير &nbsp;&nbsp;&nbsp;&nbsp;</p>
+        </div>
+        
+        <div class="signature-container custom-space">
+            <!-- Receiver Signature -->
+            <div class="signature-item">
+                <div class="signature-text">Receiver's Signature</div>
+
+                        {% set name = doc.name %}
+                        {% set result = name.split('-') %}
+                        {% set third = result[2] %}
+                        {% set year = result[1] %}
+                <div class="stamp-container">
+                    {% set receiver_signature = frappe.get_doc("visual Identity", doc.receiver) %}
+                    <img src="{{ receiver_signature.image }}" alt="Stamp" class="stamp-image" />
+                    <div class="stamp-serial">OR{{year}}{{third}}</div>
+                </div>
+            </div>
+            
+            <!-- Accountant Signature -->
+            <div class="signature-item">
+                <div class="signature-text">Accountant</div>
+                <div class="signature-image-container">
+                    {% if doc.accountant %}
+                    {% set accountant_signature = frappe.get_doc("visual Identity", doc.accountant) %}
+                    <img src="{{ accountant_signature.image }}" alt="Accountant Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Manager Signature -->
+            <div class="signature-item">
+                <div class="signature-text">Manager</div>
+                <div class="signature-image-container">
+                    {% if doc.manager %}
+                    {% set manager_signature = frappe.get_doc("visual Identity", doc.manager) %}
+                    <img src="{{ manager_signature.image }}" alt="Manager Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Image -->
+        <img class="footer-image" src="/files/Asset 11.png" alt="Footer Image">
+    {% endmacro %}
+
+    <!-- First Copy -->
+    <div class="page-break">
+        {{ body_content() }}
+    </div>
+
+    <!-- Second Copy -->
+    <div class="page-break">
+        {{ body_content() }}
+    </div>
+
+    <!-- Third Page -->
+    <div>
+        <div class="tm_container">
+  <div class="tm_invoice_wrap">
+    <div class="tm_invoice tm_style1 tm_type1" id="tm_download_section">
+      <div class="tm_invoice_in">
+        <!-- Header Section -->
+        <div class="tm_invoice_head tm_top_head tm_mb15 tm_align_center">
+          <div class="tm_invoice_left">
+            <div class="tm_logo" ><img src="/files/Asset 10.png" alt="Logo"></div>
+            <div class="tm_invoice_label">INVOICE</div>
+          </div>
+        </div>
+        {% set sales = doc.reference_invoice %}
+        {% set invoice = frappe.get_doc('Sales Invoice', sales) %}
+        {% set items = invoice.items %}
+        {% set taxes = invoice.taxes %}
+        <!-- Invoice Info -->
+        <div class="tm_invoice_info tm_mb25">
+          <!--<div class="tm_invoice_info_list">-->
+          <!--  <p class="tm_invoice_number tm_m0">Invoice No: <b>{{doc.name}}</b></p>-->
+          <!--  <p class="tm_invoice_date tm_m0">Date: <b>{{doc.posting_date}}</b></p>-->
+          <!--</div>-->
+        </div>
+
+        <!-- Invoice To / Pay To Sections -->
+        <div class="tm_invoice_head tm_mb10">
+          <div class="tm_invoice_left">
+            <p class="tm_mb2"><b class="tm_primary_color">Invoice To:</b></p>
+            <p>
+              S.No./رقم الحركه : {{ doc.name }}<br>
+              Client Name/اسم العميل : {{ doc.customer_name}}<br>
+            </p>
+          </div>
+          <div class="tm_invoice_right tm_text_right">
+            <p class="tm_mb2"><b class="tm_primary_color"></b></p>
+            <p>
+              Date التاريخ ({{ doc.date }})<br>
+              Project NO./رقم المشروع : {{doc.for_project}}<br>
+              Project Name./اسم المشروع : {{doc.project_name}}<br>
+            </p>
+          </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="tm_table tm_style1">
+          <div class="">
+            <div class="tm_table_responsive">
+              <table>
+                <thead>
+                  <tr class="tm_accent_bg">
+                    <th class="tm_width_3 tm_semi_bold tm_white_color">Item</th>
+                    <th class="tm_width_4 tm_semi_bold tm_white_color">Description</th>
+                    <th class="tm_width_2 tm_semi_bold tm_white_color">Price</th>
+                    <th class="tm_width_1 tm_semi_bold tm_white_color">Qty</th>
+                    <th class="tm_width_2 tm_semi_bold tm_white_color tm_text_right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if invoice and invoice.items %}
+                    {% for item in invoice.items %}
+                      <tr>
+                        <td class="tm_width_3">{{ item.item_code or "" }}</td>
+                        <td class="tm_width_4">{{ item.description or "" }}</td>
+                        <td class="tm_width_2">{{ frappe.format(item.rate, { fieldtype: "Currency" }) }}</td>
+                        <td class="tm_width_1">{{ item.qty or 0 }}</td>
+                        <td class="tm_width_2 tm_text_right">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
+                      </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr>
+                      <td colspan="5" class="tm_text_center">
+                        {% if not invoice %}No Sales Invoice reference found{% endif %}
+                        {% if invoice and not invoice.items %}No items in Sales Invoice{% endif %}
+                      </td>
+                    </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Payment Summary -->
+          <div class="tm_invoice_footer tm_border_top tm_mb15 tm_m0_md">
+            <div class="tm_left_footer">
+                 <p class="tm_mb2"><b class="tm_primary_color" style="color: #ffffff;  font-size: 20px;">Payment info:</b></p>
+<p class="tm_m0" style="font-family: 'Arial', sans-serif; font-size: 14px; line-height: 1.8;">
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Due Amount:</strong> 
+    <span style="color: #2c3e50;">
+        {% set net_amount = (frappe.utils.flt(doc.claim_amount) - frappe.utils.flt(doc.tax_amount)) %}
+        {{ frappe.format(net_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Tax Amount:</strong> 
+    <span style="color: #2c3e50;">
+        {{ frappe.format(doc.tax_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 25px;">Total Due:</strong> 
+    <span style="color: #ffffff; font-weight: bold; font-size: 20px;">
+        {{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Outstanding Amount:</strong> 
+    <span style="color: #2c3e50; font-weight: bold;">
+        {{ frappe.format(doc.outstanding_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Paid Amount:</strong> 
+    <span style="color: #2c3e50; font-weight: bold;">
+        {{ frappe.format(doc.paid_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br> 
+    
+</p>          
+</div>
+
+
+            <div class="tm_right_footer">
+              <table class="tm_mb15">
+                <tbody>
+                <tr class="tm_gray_bg">
+                  <td class="tm_width_3 tm_primary_color tm_bold">Subtotal</td>
+                  <td class="tm_width_3 tm_primary_color tm_bold tm_text_right">
+                    {{ invoice.currency }} {{ frappe.format(invoice.total, { fieldtype: "Currency" }) }}
+                  </td>
+                </tr>
+                  </td>
+                </tr>
+                 {% for taxes in invoice.taxes %}
+                  <tr class="tm_gray_bg">
+                    <td class="tm_width_3 tm_primary_color">Tax & Charges<span class="tm_ternary_color">({{taxes.rate}})%</span></td>
+                    <td class="tm_width_3 tm_primary_color tm_text_right">{{taxes.tax_amount}}</td>
+                    {% endfor %}
+                  </tr>
+                  <tr class="tm_accent_bg">
+                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color">Grand Total</td>
+                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color tm_text_right">
+                        {{ invoice.currency }} {{ frappe.format(invoice.grand_total, { fieldtype: "Currency" }) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+<div class="tm_invoice_footer tm_border_top tm_mb15 tm_m0_md">
+            
+<div>
+    <p>
+        <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 18px; ">Being/نظير :</strong> 
+    <span style="color: #000130; font-weight: bold; font-size: 14px;">{{ doc.being}}
+    </span>
+    </p>
+</div>
+          </div>
+        <div class="signature-container custom-space">
+            <!-- Receiver Signature -->
+            <div class="signature-item">
+                <div class="signature-text">Receiver's Signature</div>
+              
+                        {% set name = doc.name %}
+                        {% set result = name.split('-') %}
+                        {% set third = result[2] %}
+                        {% set year = result[1] %}
+                <div class="stamp-container">
+                    {% set receiver_signature = frappe.get_doc("visual Identity", doc.receiver) %}
+                    <img src="{{ receiver_signature.image }}" alt="Stamp" class="stamp-image" />
+                    <div class="stamp-serial">IN{{year}}{{third}}</div>
+                </div>
+            </div>
+            
+            <!-- Accountant Signature -->
+            <div class="signature-item">
+                <div class="signature-text">Accountant</div>
+                <div class="signature-image-container">
+                    {% if doc.accountant %}
+                    {% set accountant_signature = frappe.get_doc("visual Identity", doc.accountant) %}
+                    <img src="{{ accountant_signature.image }}" alt="Accountant Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Manager Signature -->
+            <div class="signature-item">
+                <div class="signature-text">Manager</div>
+                <div class="signature-image-container">
+                    {% if doc.manager %}
+                    {% set manager_signature = frappe.get_doc("visual Identity", doc.manager) %}
+                    <img src="{{ manager_signature.image }}" alt="Manager Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+
+          <!-- Footer Image -->
+          <img class="footer-image" src="/files/Asset 11.png" alt="Footer Image">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    </div>
+</body>
+</html>

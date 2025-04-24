@@ -39,6 +39,7 @@ class ProjectClaim(Document):
 		if flt(total_ratio, 2) > 100:
 			frappe.throw(f"Total ratio ({total_ratio:.2f}%) exceeds 100%")
 	
+	@frappe.whitelist()
 	def update_claim_items_balance(self):
 		"""Update the current balance for each item in the claim items table"""
 		for item in self.claim_items:

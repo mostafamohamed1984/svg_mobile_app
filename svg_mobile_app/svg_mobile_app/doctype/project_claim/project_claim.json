@@ -289,7 +289,6 @@
    "fieldtype": "Section Break"
   },
   {
-   "collapsible": 1,
    "fieldname": "invoiced_items_section",
    "fieldtype": "Section Break",
    "label": "Invoiced items"

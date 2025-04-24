@@ -44,8 +44,8 @@ function create_project_claim(frm) {
                 
                 return {
                     'item': item.item_code,
-                    'amount': item_amount,
-                    'ratio': ratio,
+                    'amount': 0,
+                    'ratio': 0,
                     'unearned_account': item.income_account,
                     'revenue_account': item.custom_default_earning_account
                 };

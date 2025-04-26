@@ -887,9 +887,11 @@ function create_bulk_project_claim(frm, dialog) {
 				// Hide for_project field and show project_references field if multiple projects
 				if (unique_projects.size > 1) {
 					frm.set_df_property('for_project', 'hidden', 1);
+					frm.set_df_property('project_name', 'hidden', 1);
 					frm.set_df_property('project_references', 'hidden', 0);
 				} else {
 					frm.set_df_property('for_project', 'hidden', 0);
+					frm.set_df_property('project_name', 'hidden', 0);
 					frm.set_df_property('project_references', 'hidden', 1);
 				}
 				

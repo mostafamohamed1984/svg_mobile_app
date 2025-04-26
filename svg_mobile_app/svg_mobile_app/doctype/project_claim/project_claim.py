@@ -113,13 +113,49 @@ class ProjectClaim(Document):
 		"""Update the current balance for each item in the claim items table"""
 		if not self.reference_invoice:
 			return
-			
+		
+		# Check if we have multiple invoice references
+		invoices = [self.reference_invoice]
+		if self.invoice_references:
+			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+			invoices.extend(additional_invoices)
+		
+		# Get available balances for all invoices
+		all_balances = get_available_invoice_balances(invoices)
+		
 		for item in self.claim_items:
-			# Get the original amount and any previously claimed amounts for this item
-			original_amount, claimed_amount = self.get_item_balance(item.item)
+			# Find which invoice this item came from - default to the main reference invoice
+			item_invoice = self.reference_invoice
+			original_amount = 0
+			claimed_amount = 0
 			
-			# Set the current balance
-			item.current_balance = flt(original_amount) - flt(claimed_amount)
+			# Try to find the item in all invoices to get the correct balance
+			for invoice in invoices:
+				if invoice in all_balances and item.item in all_balances[invoice]:
+					# Found the item in this invoice
+					balance_data = all_balances[invoice][item.item]
+					original_amount = balance_data['original_amount']
+					claimed_amount = balance_data['claimed_amount']
+					
+					# For current document items, don't count them as claimed yet
+					if self.docstatus < 1:  # Not submitted yet
+						current_doc_claim = frappe.db.sql("""
+							SELECT SUM(amount) as amount 
+							FROM `tabClaim Items` 
+							WHERE parent=%s AND item=%s
+						""", (self.name, item.item), as_dict=True)
+						
+						if current_doc_claim and current_doc_claim[0].amount:
+							# Don't count this document's claim amount in the claimed total
+							claimed_amount -= flt(current_doc_claim[0].amount)
+					
+					# We found a match, use this invoice's data
+					item_invoice = invoice
+					break
+			
+			# Set the current balance based on the best match found
+			available_balance = flt(original_amount) - flt(claimed_amount)
+			item.current_balance = max(0, available_balance)
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""

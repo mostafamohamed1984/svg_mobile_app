@@ -60,111 +60,16 @@ function show_bulk_invoice_dialog(frm) {
 				}
 			},
 			{
-				fieldname: 'invoice_buttons',
-				fieldtype: 'HTML',
-				label: __('Actions')
-			},
-			{
-				fieldname: 'invoices_section',
-				fieldtype: 'Section Break',
-				label: __('Outstanding Invoices')
-			},
-			{
-				fieldname: 'status_html',
+				fieldname: 'action_buttons',
 				fieldtype: 'HTML'
 			},
 			{
-				fieldname: 'invoices',
-				label: __('Sales Invoices'),
-				fieldtype: 'Table',
-				cannot_add_rows: true,
-				fields: [
-					{
-						fieldname: 'invoice',
-						label: __('Invoice'),
-						fieldtype: 'Link',
-						options: 'Sales Invoice',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'invoice_date',
-						label: __('Date'),
-						fieldtype: 'Date',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'project',
-						label: __('Project'),
-						fieldtype: 'Data',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'status',
-						label: __('Status'),
-						fieldtype: 'Data',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'due_date',
-						label: __('Due Date'),
-						fieldtype: 'Date',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'total',
-						label: __('Total'),
-						fieldtype: 'Currency',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'outstanding',
-						label: __('Outstanding'),
-						fieldtype: 'Currency',
-						in_list_view: 1,
-						read_only: 1
-					},
-					{
-						fieldname: 'claim_amount',
-						label: __('Claim Amount'),
-						fieldtype: 'Currency',
-						in_list_view: 1,
-						reqd: 1,
-						onchange: function(e) {
-							update_total_claim_amount(dialog);
-						}
-					},
-					{
-						fieldname: 'select',
-						label: __('Select'),
-						fieldtype: 'Check',
-						in_list_view: 1,
-						default: 0,
-						onchange: function(e) {
-							update_total_claim_amount(dialog);
-						}
-					}
-				]
-			},
-			{
-				fieldname: 'allocation_section',
-				fieldtype: 'Section Break',
-				label: __('Invoice Items Allocation'),
-				depends_on: "eval:doc.invoices && doc.invoices.length > 0"
+				fieldname: 'invoices_html',
+				fieldtype: 'HTML'
 			},
 			{
 				fieldname: 'items_preview_html',
 				fieldtype: 'HTML'
-			},
-			{
-				fieldname: 'summary_section',
-				fieldtype: 'Section Break',
-				label: __('Summary')
 			},
 			{
 				fieldname: 'total_claim_amount',
@@ -179,9 +84,9 @@ function show_bulk_invoice_dialog(frm) {
 		}
 	});
 	
-	// Create the action buttons directly
-	dialog.fields_dict.invoice_buttons.html(`
-		<div class="row">
+	// Create buttons for actions
+	dialog.fields_dict.action_buttons.html(`
+		<div class="row" style="margin-top: 20px; margin-bottom: 10px;">
 			<div class="col">
 				<button id="select_all_btn" class="btn btn-sm btn-default form-control">
 					${__('Select All')}
@@ -200,76 +105,62 @@ function show_bulk_invoice_dialog(frm) {
 		</div>
 	`);
 	
-	// Attach the event handlers directly to document
-	$(document).on('click', '#select_all_btn', function() {
+	// Initialize the invoices data
+	dialog.invoices_data = [];
+	
+	// Initialize the invoices HTML container
+	dialog.fields_dict.invoices_html.html(`
+		<div id="invoices_container" class="margin-top">
+			<div class="text-muted">${__('Select a customer to view invoices')}</div>
+		</div>
+	`);
+	
+	// Attach button click handlers
+	dialog.$wrapper.on('click', '#select_all_btn', function() {
 		console.log("Select All clicked");
-		let dialog = cur_dialog; // Get the current dialog from frappe
-		
-		// Get data directly from the table
-		let rows = dialog.fields_dict.invoices.df.data || [];
-		console.log("Rows before:", rows);
-		
-		// Update the data
-		rows.forEach(row => {
-			row.select = 1;
-		});
-		
-		console.log("Rows after:", rows);
-		
-		// Update the table
-		dialog.fields_dict.invoices.df.data = rows;
-		dialog.fields_dict.invoices.refresh();
-		
-		// Update totals
+		dialog.invoices_data.forEach(inv => inv.select = 1);
+		render_invoices_table(dialog);
 		update_total_claim_amount(dialog);
-		
 		return false;
 	});
 	
-	$(document).on('click', '#deselect_all_btn', function() {
+	dialog.$wrapper.on('click', '#deselect_all_btn', function() {
 		console.log("Deselect All clicked");
-		let dialog = cur_dialog; // Get the current dialog from frappe
-		
-		// Get data directly from the table
-		let rows = dialog.fields_dict.invoices.df.data || [];
-		
-		// Update the data
-		rows.forEach(row => {
-			row.select = 0;
-		});
-		
-		// Update the table
-		dialog.fields_dict.invoices.df.data = rows;
-		dialog.fields_dict.invoices.refresh();
-		
-		// Update totals
+		dialog.invoices_data.forEach(inv => inv.select = 0);
+		render_invoices_table(dialog);
 		update_total_claim_amount(dialog);
-		
 		return false;
 	});
 	
-	$(document).on('click', '#set_full_amount_btn', function() {
+	dialog.$wrapper.on('click', '#set_full_amount_btn', function() {
 		console.log("Set Full Amount clicked");
-		let dialog = cur_dialog; // Get the current dialog from frappe
-		
-		// Get data directly from the table
-		let rows = dialog.fields_dict.invoices.df.data || [];
-		
-		// Update the data
-		rows.forEach(row => {
-			if (row.select) {
-				row.claim_amount = row.outstanding;
+		dialog.invoices_data.forEach(inv => {
+			if (inv.select) {
+				inv.claim_amount = inv.outstanding;
 			}
 		});
-		
-		// Update the table
-		dialog.fields_dict.invoices.df.data = rows;
-		dialog.fields_dict.invoices.refresh();
-		
-		// Update totals
+		render_invoices_table(dialog);
 		update_total_claim_amount(dialog);
-		
 		return false;
+	});
+	
+	// Checkbox change handler (will be delegated)
+	dialog.$wrapper.on('change', '.invoice-select', function() {
+		const index = $(this).data('index');
+		console.log(`Checkbox ${index} changed to ${this.checked}`);
+		
+		dialog.invoices_data[index].select = this.checked ? 1 : 0;
+		update_total_claim_amount(dialog);
+	});
+	
+	// Amount input change handler (will be delegated)
+	dialog.$wrapper.on('change', '.claim-amount-input', function() {
+		const index = $(this).data('index');
+		const value = parseFloat($(this).val()) || 0;
+		console.log(`Amount ${index} changed to ${value}`);
+		
+		dialog.invoices_data[index].claim_amount = value;
+		update_total_claim_amount(dialog);
 	});
 	
 	dialog.show();
@@ -279,12 +170,12 @@ function fetch_customer_invoices(dialog, customer) {
 	console.log("Fetching invoices for customer:", customer);
 	
 	// Show loading indicator
-	dialog.fields_dict.status_html.html(
-		`<div class="text-center my-4">
+	dialog.fields_dict.invoices_html.html(`
+		<div class="text-center my-4">
 			<i class="fa fa-spinner fa-spin fa-2x"></i>
 			<p>${__('Fetching invoices...')}</p>
-		</div>`
-	);
+		</div>
+	`);
 	
 	// Get customer's outstanding invoices
 	frappe.call({
@@ -306,7 +197,7 @@ function fetch_customer_invoices(dialog, customer) {
 			if (response.message && response.message.length > 0) {
 				console.log("Found invoices:", response.message.length);
 				
-				let invoices = response.message.map(inv => {
+				dialog.invoices_data = response.message.map(inv => {
 					return {
 						'invoice': inv.name,
 						'invoice_date': inv.posting_date,
@@ -320,70 +211,120 @@ function fetch_customer_invoices(dialog, customer) {
 					};
 				});
 				
-				console.log("Processed invoices:", invoices);
+				console.log("Processed invoices:", dialog.invoices_data);
 				
-				// Clear any existing rows in the table first
-				dialog.fields_dict.invoices.df.data = [];
-				dialog.fields_dict.invoices.refresh();
+				// Render the invoices table
+				render_invoices_table(dialog);
 				
-				// Now set the new value
-				dialog.set_value('invoices', invoices);
-				
-				// Force refresh the table display
-				dialog.fields_dict.invoices.refresh();
-				
-				// Manual intervention to make sure data is visible
-				setTimeout(() => {
-					console.log("Current table data:", dialog.fields_dict.invoices.df.data);
-					if (!dialog.fields_dict.invoices.df.data || dialog.fields_dict.invoices.df.data.length === 0) {
-						console.log("Data not showing in table, trying direct assignment");
-						dialog.fields_dict.invoices.df.data = invoices;
-						dialog.fields_dict.invoices.refresh();
-					}
-				}, 100);
-				
-				// Show a message about the number of invoices found
-				dialog.fields_dict.status_html.html(
-					`<div class="alert alert-info my-2">
-						${__('Found')} ${invoices.length} ${__('outstanding invoices')}
-					</div>`
-				);
-				
-				// Trigger update to show the preview
+				// Update the total claim amount
 				update_total_claim_amount(dialog);
 			} else {
 				console.log("No invoices found");
 				
+				dialog.invoices_data = [];
+				
 				// Show message if no invoices found
-				dialog.fields_dict.status_html.html(
-					`<div class="alert alert-warning my-4">
+				dialog.fields_dict.invoices_html.html(`
+					<div class="alert alert-warning my-4">
 						${__('No outstanding invoices found for this customer')}
-					</div>`
-				);
-				dialog.set_value('invoices', []);
+					</div>
+				`);
+				
+				// Clear the totals
+				dialog.set_value('total_claim_amount', 0);
 			}
 		},
 		error: function(err) {
 			console.error("Error fetching invoices:", err);
-			dialog.fields_dict.status_html.html(
-				`<div class="alert alert-danger my-4">
+			dialog.fields_dict.invoices_html.html(`
+				<div class="alert alert-danger my-4">
 					${__('Error fetching invoices. Please check console for details.')}
-				</div>`
-			);
+				</div>
+			`);
 		}
 	});
 }
 
+function render_invoices_table(dialog) {
+	if (!dialog.invoices_data || dialog.invoices_data.length === 0) {
+		console.log("No invoices to render");
+		return;
+	}
+	
+	console.log("Rendering invoices table with data:", dialog.invoices_data);
+	
+	let html = `
+		<div class="margin-top">
+			<div class="alert alert-info my-2">
+				${__('Found')} ${dialog.invoices_data.length} ${__('outstanding invoices')}
+			</div>
+			<div class="table-responsive">
+				<table class="table table-bordered">
+					<thead>
+						<tr>
+							<th>${__('Select')}</th>
+							<th>${__('Invoice')}</th>
+							<th>${__('Date')}</th>
+							<th>${__('Project')}</th>
+							<th>${__('Status')}</th>
+							<th>${__('Due Date')}</th>
+							<th>${__('Total')}</th>
+							<th>${__('Outstanding')}</th>
+							<th>${__('Claim Amount')}</th>
+						</tr>
+					</thead>
+					<tbody>
+	`;
+	
+	dialog.invoices_data.forEach((inv, index) => {
+		html += `
+			<tr>
+				<td>
+					<input 
+						type="checkbox" 
+						class="invoice-select" 
+						data-index="${index}" 
+						${inv.select ? 'checked' : ''}
+					>
+				</td>
+				<td>${inv.invoice}</td>
+				<td>${inv.invoice_date}</td>
+				<td>${inv.project || ''}</td>
+				<td>${inv.status}</td>
+				<td>${inv.due_date || ''}</td>
+				<td class="text-right">${format_currency(inv.total)}</td>
+				<td class="text-right">${format_currency(inv.outstanding)}</td>
+				<td>
+					<input 
+						type="number" 
+						class="form-control claim-amount-input" 
+						data-index="${index}" 
+						value="${inv.claim_amount}" 
+						max="${inv.outstanding}"
+						step="0.01"
+						${!inv.select ? 'disabled' : ''}
+					>
+				</td>
+			</tr>
+		`;
+	});
+	
+	html += `
+					</tbody>
+				</table>
+			</div>
+		</div>
+	`;
+	
+	dialog.fields_dict.invoices_html.html(html);
+}
+
 function update_total_claim_amount(dialog) {
 	console.log("Updating total claim amount");
-	// Get data directly from the table
-	let invoices = dialog.fields_dict.invoices.df.data || [];
-	console.log("Table data when updating total:", invoices);
-	
 	let total = 0;
 	
 	// Sum up claim amounts for selected invoices
-	invoices.forEach(inv => {
+	dialog.invoices_data.forEach(inv => {
 		if (inv.select) {
 			total += flt(inv.claim_amount);
 		}
@@ -398,8 +339,7 @@ function update_total_claim_amount(dialog) {
 
 function update_items_preview(dialog) {
 	console.log("Updating items preview");
-	let invoices = dialog.get_value('invoices') || [];
-	let selected_invoices = invoices.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
 	
 	if (selected_invoices.length === 0) {
 		dialog.fields_dict.items_preview_html.html('');
@@ -407,12 +347,12 @@ function update_items_preview(dialog) {
 	}
 	
 	// Show loading indicator
-	dialog.fields_dict.items_preview_html.html(
-		`<div class="text-center my-4">
+	dialog.fields_dict.items_preview_html.html(`
+		<div class="text-center my-4">
 			<i class="fa fa-spinner fa-spin"></i>
 			<p>${__('Loading invoice items...')}</p>
-		</div>`
-	);
+		</div>
+	`);
 	
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
@@ -444,7 +384,7 @@ function update_items_preview(dialog) {
 			console.log("Grouped items:", items_by_invoice);
 			
 			// Create HTML for item allocation tables
-			let html = '';
+			let html = '<div class="margin-top">';
 			
 			selected_invoices.forEach(inv => {
 				let invoice_items = items_by_invoice[inv.invoice] || [];
@@ -495,15 +435,17 @@ function update_items_preview(dialog) {
 				`;
 			});
 			
+			html += '</div>';
+			
 			dialog.fields_dict.items_preview_html.html(html);
 		},
 		error: function(err) {
 			console.error("Error fetching invoice items:", err);
-			dialog.fields_dict.items_preview_html.html(
-				`<div class="alert alert-danger my-4">
+			dialog.fields_dict.items_preview_html.html(`
+				<div class="alert alert-danger my-4">
 					${__('Error loading invoice items. Please check console for details.')}
-				</div>`
-			);
+				</div>
+			`);
 		}
 	});
 }
@@ -512,8 +454,7 @@ function create_bulk_project_claim(frm, dialog) {
 	console.log("Creating bulk project claim");
 	
 	// Get selected invoices and validate
-	let invoices = dialog.get_value('invoices') || [];
-	let selected_invoices = invoices.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
 	
 	console.log("Selected invoices:", selected_invoices);
 	

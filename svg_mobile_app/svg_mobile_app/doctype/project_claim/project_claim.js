@@ -215,49 +215,56 @@ function fetch_customer_invoices(dialog, customer) {
 				
 				dialog.set_value('invoices', invoices);
 				
-				// Show a message about the number of invoices found
-				dialog.fields_dict.status_html.html(
-					`<div class="alert alert-info my-2">
+				// Create buttons in HTML
+				const html = `
+					<div class="alert alert-info my-2">
 						${__('Found')} ${invoices.length} ${__('outstanding invoices')}
 					</div>
-					<div class="my-2">
-						<button class="btn btn-sm btn-default select-all-invoices">
+					<div class="my-2" id="invoice-action-buttons">
+						<button type="button" class="btn btn-sm btn-default select-all-btn">
 							${__('Select All')}
 						</button>
-						<button class="btn btn-sm btn-default ml-2 deselect-all-invoices">
+						<button type="button" class="btn btn-sm btn-default ml-2 deselect-all-btn">
 							${__('Deselect All')}
 						</button>
-						<button class="btn btn-sm btn-default ml-2 set-full-amount">
+						<button type="button" class="btn btn-sm btn-default ml-2 set-full-amount-btn">
 							${__('Set Full Amount')}
 						</button>
-					</div>`
-				);
+					</div>
+				`;
 				
-				// Add event listeners for buttons
-				dialog.fields_dict.status_html.$wrapper.find('.select-all-invoices').on('click', function() {
-					let rows = dialog.get_value('invoices') || [];
-					rows.forEach(row => row.select = 1);
-					dialog.set_value('invoices', rows);
-					update_total_claim_amount(dialog);
-				});
+				dialog.fields_dict.status_html.html(html);
 				
-				dialog.fields_dict.status_html.$wrapper.find('.deselect-all-invoices').on('click', function() {
-					let rows = dialog.get_value('invoices') || [];
-					rows.forEach(row => row.select = 0);
-					dialog.set_value('invoices', rows);
-					update_total_claim_amount(dialog);
-				});
-				
-				dialog.fields_dict.status_html.$wrapper.find('.set-full-amount').on('click', function() {
-					let rows = dialog.get_value('invoices') || [];
-					rows.forEach(row => {
-						if (row.select) {
-							row.claim_amount = row.outstanding;
-						}
+				// Directly attach event handlers after DOM has been updated
+				setTimeout(() => {
+					// Select All button
+					$('.select-all-btn').click(function() {
+						let rows = dialog.get_value('invoices') || [];
+						rows.forEach(row => row.select = 1);
+						dialog.set_value('invoices', rows);
+						update_total_claim_amount(dialog);
 					});
-					dialog.set_value('invoices', rows);
-					update_total_claim_amount(dialog);
-				});
+					
+					// Deselect All button
+					$('.deselect-all-btn').click(function() {
+						let rows = dialog.get_value('invoices') || [];
+						rows.forEach(row => row.select = 0);
+						dialog.set_value('invoices', rows);
+						update_total_claim_amount(dialog);
+					});
+					
+					// Set Full Amount button
+					$('.set-full-amount-btn').click(function() {
+						let rows = dialog.get_value('invoices') || [];
+						rows.forEach(row => {
+							if (row.select) {
+								row.claim_amount = row.outstanding;
+							}
+						});
+						dialog.set_value('invoices', rows);
+						update_total_claim_amount(dialog);
+					});
+				}, 200);
 				
 				// Trigger update to show the preview
 				update_total_claim_amount(dialog);

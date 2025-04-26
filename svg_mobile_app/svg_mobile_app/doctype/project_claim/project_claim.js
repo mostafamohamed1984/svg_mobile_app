@@ -634,40 +634,72 @@ function update_items_preview(dialog) {
 			if (processed_count === invoice_names.length) {
 				// Get all previous claims for the invoices to calculate balances
 				frappe.call({
-					method: 'frappe.db.sql',
+					method: 'frappe.client.get_list',
 					args: {
-						query: `
-							SELECT 
-								pc.reference_invoice, 
-								ci.item, 
-								SUM(ci.amount) as claimed_amount
-							FROM 
-								\`tabClaim Items\` ci
-								JOIN \`tabProject Claim\` pc ON ci.parent = pc.name
-							WHERE 
-								pc.reference_invoice IN (${invoice_names.map(inv => "'" + inv + "'").join(',')})
-								AND pc.docstatus = 1
-							GROUP BY 
-								pc.reference_invoice, ci.item
-						`,
-						as_dict: 1
+						doctype: 'Project Claim',
+						filters: {
+							'reference_invoice': ['in', invoice_names],
+							'docstatus': 1
+						},
+						fields: ['name', 'reference_invoice']
 					},
 					callback: function(r) {
-						if (r.message) {
-							// Update available balance for each item
-							r.message.forEach(claim => {
-								// Find all items in this invoice with this item code
-								all_items.forEach(item => {
-									if (item.invoice === claim.reference_invoice && item.item_code === claim.item) {
-										// Subtract previously claimed amount from available balance
-										item.available_balance = flt(item.amount) - flt(claim.claimed_amount);
+						if (r.message && r.message.length > 0) {
+							// Get all claim items for these claims
+							let claim_names = r.message.map(claim => claim.name);
+							
+							frappe.call({
+								method: 'frappe.client.get_list',
+								args: {
+									doctype: 'Claim Items',
+									filters: {
+										'parent': ['in', claim_names]
+									},
+									fields: ['parent', 'item', 'amount']
+								},
+								callback: function(result) {
+									if (result.message) {
+										// Create a mapping of invoice -> item -> claimed amount
+										let claim_map = {};
+										
+										// Initialize with invoice names
+										invoice_names.forEach(inv => {
+											claim_map[inv] = {};
+										});
+										
+										// Map from claim to invoice
+										let claim_to_invoice = {};
+										r.message.forEach(claim => {
+											claim_to_invoice[claim.name] = claim.reference_invoice;
+										});
+										
+										// Sum up claimed amounts
+										result.message.forEach(item => {
+											let invoice = claim_to_invoice[item.parent];
+											if (invoice && claim_map[invoice]) {
+												if (!claim_map[invoice][item.item]) {
+													claim_map[invoice][item.item] = 0;
+												}
+												claim_map[invoice][item.item] += flt(item.amount);
+											}
+										});
+										
+										// Update available balances
+										all_items.forEach(item => {
+											if (claim_map[item.invoice] && claim_map[item.invoice][item.item_code]) {
+												item.available_balance = flt(item.amount) - flt(claim_map[item.invoice][item.item_code]);
+											}
+										});
 									}
-								});
+									
+									// Now process the results with updated balances
+									process_results();
+								}
 							});
+						} else {
+							// No previous claims, just show results
+							process_results();
 						}
-						
-						// Now process the results with updated balances
-						process_results();
 					}
 				});
 			}

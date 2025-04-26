@@ -434,7 +434,7 @@ function update_items_preview(dialog) {
 					<tr data-item="${item.item_code}" data-invoice="${inv.invoice}">
 						<td>${item.item_name || item.item_code}</td>
 						<td class="text-right">${format_currency(item.amount)}</td>
-						<td class="text-right">${format_number(item.ratio, 2)}%</td>
+						<td class="text-right">${item.ratio.toFixed(2)}%</td>
 						<td class="text-right">${format_currency(allocated_amount)}</td>
 						<td>${item.income_account || ''}</td>
 						<td>${item.custom_default_earning_account || ''}</td>
@@ -506,7 +506,7 @@ function create_bulk_project_claim(frm, dialog) {
 	}
 	
 	// Show loading indicator
-	frappe.ui.form.set_loading(frm);
+	frm.disable_save();
 	
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
@@ -518,7 +518,7 @@ function create_bulk_project_claim(frm, dialog) {
 	// Function to process results after all invoices are loaded
 	function process_results() {
 		if (all_items.length === 0) {
-			frappe.ui.form.set_loading(frm, false);
+			frm.enable_save();
 			frappe.msgprint(__('Could not fetch invoice items'));
 			return;
 		}
@@ -619,7 +619,7 @@ function create_bulk_project_claim(frm, dialog) {
 				console.log("Invoice details response:", data);
 				
 				if (!data.message) {
-					frappe.ui.form.set_loading(frm, false);
+					frm.enable_save();
 					frappe.msgprint(__('Could not fetch account information'));
 					return;
 				}
@@ -643,7 +643,7 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Update form and close dialog
 				frm.refresh_fields();
-				frappe.ui.form.set_loading(frm, false);
+				frm.enable_save();
 				dialog.hide();
 				
 				frappe.show_alert({
@@ -653,7 +653,7 @@ function create_bulk_project_claim(frm, dialog) {
 			},
 			error: function(err) {
 				console.error("Error getting invoice details:", err);
-				frappe.ui.form.set_loading(frm, false);
+				frm.enable_save();
 				frappe.msgprint(__('Error creating claim'));
 			}
 		});

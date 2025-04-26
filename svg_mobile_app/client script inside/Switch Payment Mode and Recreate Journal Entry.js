@@ -22,6 +22,12 @@ frappe.ui.form.on('Project Claim', {
                 }).addClass('btn-warning');
             }
         }
+        
+        // Ensure mode_of_payment is read-only when status is Unreconciled
+        // This happens after we've switched payment modes but haven't created the new journal entry yet
+        if (frm.doc.docstatus === 1 && frm.doc.status === 'Unreconciled') {
+            frm.set_df_property('mode_of_payment', 'read_only', 1);
+        }
     }
 });
 
@@ -49,8 +55,8 @@ function switch_payment_mode(frm, target_mode) {
                             message: __("Processing payment mode switch..."),
                             indicator: 'blue'
                         });
-
-                        // Create a server-side method to handle the cancellation
+                        
+                        // Cancel the journal entry using server-side method
                         frappe.call({
                             method: "frappe.client.cancel",
                             args: {
@@ -99,10 +105,17 @@ function update_project_claim(frm, target_mode) {
             
             // Reload the document to show updated values
             frm.reload_doc();
-            frappe.show_alert({
-                message: __(`Payment mode switched to ${target_mode}. Please click "Make Journal Entry" to create a new entry.`),
-                indicator: 'green'
-            });
+            
+            // Make sure mode_of_payment is read-only
+            setTimeout(function() {
+                frm.set_df_property('mode_of_payment', 'read_only', 1);
+                frm.refresh_field('mode_of_payment');
+                
+                frappe.show_alert({
+                    message: __(`Payment mode switched to ${target_mode} and is now read-only. Please click "Make Journal Entry" to create a new entry.`),
+                    indicator: 'green'
+                });
+            }, 1000);
         }
     });
 } 

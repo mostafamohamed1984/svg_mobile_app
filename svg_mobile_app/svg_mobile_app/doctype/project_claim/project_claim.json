@@ -12,6 +12,7 @@
   "customer_name",
   "party_account",
   "reference_invoice",
+  "invoice_references",
   "status",
   "column_break_udiq",
   "date",
@@ -94,6 +95,13 @@
    "options": "Sales Invoice",
    "read_only": 1,
    "reqd": 1
+  },
+  {
+   "fieldname": "invoice_references",
+   "fieldtype": "Small Text",
+   "label": "Additional Invoice References",
+   "read_only": 1,
+   "description": "Additional invoices included in this bulk claim"
   },
   {
    "allow_on_submit": 1,

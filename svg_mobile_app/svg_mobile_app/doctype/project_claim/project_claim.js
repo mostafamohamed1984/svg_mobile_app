@@ -37,6 +37,8 @@ frappe.ui.form.on("Project Claim", {
 });
 
 function show_bulk_invoice_dialog(frm) {
+	console.log("Opening bulk invoice dialog");
+	
 	// Create a dialog to select multiple invoices
 	let dialog = new frappe.ui.Dialog({
 		title: __('Select Sales Invoices for Bulk Claim'),
@@ -51,10 +53,16 @@ function show_bulk_invoice_dialog(frm) {
 				onchange: function() {
 					// When customer changes, fetch invoices automatically
 					let customer = dialog.get_value('customer');
+					console.log("Customer selected:", customer);
 					if (customer) {
 						fetch_customer_invoices(dialog, customer);
 					}
 				}
+			},
+			{
+				fieldname: 'invoice_buttons',
+				fieldtype: 'HTML',
+				label: __('Actions')
 			},
 			{
 				fieldname: 'invoices_section',
@@ -171,10 +179,80 @@ function show_bulk_invoice_dialog(frm) {
 		}
 	});
 	
+	// Create the action buttons directly
+	dialog.fields_dict.invoice_buttons.html(`
+		<div class="row">
+			<div class="col">
+				<button id="select_all_btn" class="btn btn-sm btn-default form-control">
+					${__('Select All')}
+				</button>
+			</div>
+			<div class="col">
+				<button id="deselect_all_btn" class="btn btn-sm btn-default form-control">
+					${__('Deselect All')}
+				</button>
+			</div>
+			<div class="col">
+				<button id="set_full_amount_btn" class="btn btn-sm btn-default form-control">
+					${__('Set Full Amount')}
+				</button>
+			</div>
+		</div>
+	`);
+	
+	// Attach the event handlers directly to document
+	$(document).on('click', '#select_all_btn', function() {
+		console.log("Select All clicked");
+		let rows = dialog.get_value('invoices') || [];
+		console.log("Rows before:", rows);
+		
+		rows.forEach(row => {
+			row.select = 1;
+		});
+		
+		console.log("Rows after:", rows);
+		dialog.set_value('invoices', rows);
+		update_total_claim_amount(dialog);
+		
+		return false;
+	});
+	
+	$(document).on('click', '#deselect_all_btn', function() {
+		console.log("Deselect All clicked");
+		let rows = dialog.get_value('invoices') || [];
+		
+		rows.forEach(row => {
+			row.select = 0;
+		});
+		
+		dialog.set_value('invoices', rows);
+		update_total_claim_amount(dialog);
+		
+		return false;
+	});
+	
+	$(document).on('click', '#set_full_amount_btn', function() {
+		console.log("Set Full Amount clicked");
+		let rows = dialog.get_value('invoices') || [];
+		
+		rows.forEach(row => {
+			if (row.select) {
+				row.claim_amount = row.outstanding;
+			}
+		});
+		
+		dialog.set_value('invoices', rows);
+		update_total_claim_amount(dialog);
+		
+		return false;
+	});
+	
 	dialog.show();
 }
 
 function fetch_customer_invoices(dialog, customer) {
+	console.log("Fetching invoices for customer:", customer);
+	
 	// Show loading indicator
 	dialog.fields_dict.status_html.html(
 		`<div class="text-center my-4">
@@ -198,7 +276,11 @@ function fetch_customer_invoices(dialog, customer) {
 			order_by: 'posting_date desc'
 		},
 		callback: function(response) {
+			console.log("API response:", response);
+			
 			if (response.message && response.message.length > 0) {
+				console.log("Found invoices:", response.message.length);
+				
 				let invoices = response.message.map(inv => {
 					return {
 						'invoice': inv.name,
@@ -213,62 +295,21 @@ function fetch_customer_invoices(dialog, customer) {
 					};
 				});
 				
+				console.log("Processed invoices:", invoices);
 				dialog.set_value('invoices', invoices);
 				
-				// Create buttons in HTML
-				const html = `
-					<div class="alert alert-info my-2">
+				// Show a message about the number of invoices found
+				dialog.fields_dict.status_html.html(
+					`<div class="alert alert-info my-2">
 						${__('Found')} ${invoices.length} ${__('outstanding invoices')}
-					</div>
-					<div class="my-2" id="invoice-action-buttons">
-						<button type="button" class="btn btn-sm btn-default select-all-btn">
-							${__('Select All')}
-						</button>
-						<button type="button" class="btn btn-sm btn-default ml-2 deselect-all-btn">
-							${__('Deselect All')}
-						</button>
-						<button type="button" class="btn btn-sm btn-default ml-2 set-full-amount-btn">
-							${__('Set Full Amount')}
-						</button>
-					</div>
-				`;
-				
-				dialog.fields_dict.status_html.html(html);
-				
-				// Directly attach event handlers after DOM has been updated
-				setTimeout(() => {
-					// Select All button
-					$('.select-all-btn').click(function() {
-						let rows = dialog.get_value('invoices') || [];
-						rows.forEach(row => row.select = 1);
-						dialog.set_value('invoices', rows);
-						update_total_claim_amount(dialog);
-					});
-					
-					// Deselect All button
-					$('.deselect-all-btn').click(function() {
-						let rows = dialog.get_value('invoices') || [];
-						rows.forEach(row => row.select = 0);
-						dialog.set_value('invoices', rows);
-						update_total_claim_amount(dialog);
-					});
-					
-					// Set Full Amount button
-					$('.set-full-amount-btn').click(function() {
-						let rows = dialog.get_value('invoices') || [];
-						rows.forEach(row => {
-							if (row.select) {
-								row.claim_amount = row.outstanding;
-							}
-						});
-						dialog.set_value('invoices', rows);
-						update_total_claim_amount(dialog);
-					});
-				}, 200);
+					</div>`
+				);
 				
 				// Trigger update to show the preview
 				update_total_claim_amount(dialog);
 			} else {
+				console.log("No invoices found");
+				
 				// Show message if no invoices found
 				dialog.fields_dict.status_html.html(
 					`<div class="alert alert-warning my-4">
@@ -277,11 +318,20 @@ function fetch_customer_invoices(dialog, customer) {
 				);
 				dialog.set_value('invoices', []);
 			}
+		},
+		error: function(err) {
+			console.error("Error fetching invoices:", err);
+			dialog.fields_dict.status_html.html(
+				`<div class="alert alert-danger my-4">
+					${__('Error fetching invoices. Please check console for details.')}
+				</div>`
+			);
 		}
 	});
 }
 
 function update_total_claim_amount(dialog) {
+	console.log("Updating total claim amount");
 	let invoices = dialog.get_value('invoices') || [];
 	let total = 0;
 	
@@ -292,6 +342,7 @@ function update_total_claim_amount(dialog) {
 		}
 	});
 	
+	console.log("Total claim amount:", total);
 	dialog.set_value('total_claim_amount', total);
 	
 	// Update items preview for selected invoices
@@ -299,6 +350,7 @@ function update_total_claim_amount(dialog) {
 }
 
 function update_items_preview(dialog) {
+	console.log("Updating items preview");
 	let invoices = dialog.get_value('invoices') || [];
 	let selected_invoices = invoices.filter(inv => inv.select && flt(inv.claim_amount) > 0);
 	
@@ -317,6 +369,7 @@ function update_items_preview(dialog) {
 	
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
+	console.log("Selected invoice names:", invoice_names);
 	
 	// Use the server-side method to fetch and calculate items data
 	frappe.call({
@@ -325,6 +378,8 @@ function update_items_preview(dialog) {
 			invoices: invoice_names
 		},
 		callback: function(response) {
+			console.log("Items API response:", response);
+			
 			if (!response.message) {
 				dialog.fields_dict.items_preview_html.html('');
 				return;
@@ -338,6 +393,8 @@ function update_items_preview(dialog) {
 				}
 				items_by_invoice[item.invoice].push(item);
 			});
+			
+			console.log("Grouped items:", items_by_invoice);
 			
 			// Create HTML for item allocation tables
 			let html = '';
@@ -392,14 +449,26 @@ function update_items_preview(dialog) {
 			});
 			
 			dialog.fields_dict.items_preview_html.html(html);
+		},
+		error: function(err) {
+			console.error("Error fetching invoice items:", err);
+			dialog.fields_dict.items_preview_html.html(
+				`<div class="alert alert-danger my-4">
+					${__('Error loading invoice items. Please check console for details.')}
+				</div>`
+			);
 		}
 	});
 }
 
 function create_bulk_project_claim(frm, dialog) {
+	console.log("Creating bulk project claim");
+	
 	// Get selected invoices and validate
 	let invoices = dialog.get_value('invoices') || [];
 	let selected_invoices = invoices.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	
+	console.log("Selected invoices:", selected_invoices);
 	
 	if (selected_invoices.length === 0) {
 		frappe.msgprint(__('Please select at least one invoice and set claim amount'));
@@ -427,6 +496,8 @@ function create_bulk_project_claim(frm, dialog) {
 			invoices: invoice_names
 		},
 		callback: function(response) {
+			console.log("Create claim items response:", response);
+			
 			if (!response.message) {
 				frappe.ui.form.set_loading(frm, false);
 				frappe.msgprint(__('Could not fetch invoice items'));
@@ -489,6 +560,8 @@ function create_bulk_project_claim(frm, dialog) {
 				});
 			});
 			
+			console.log("Claim items created:", claim_items);
+			
 			// Create "Being" text with reference to all invoices
 			let being_text = __('Being claim for invoices: ') + 
 				references.map(ref => 
@@ -510,6 +583,8 @@ function create_bulk_project_claim(frm, dialog) {
 					fieldname: ['debit_to', 'custom_for_project']
 				},
 				callback: function(data) {
+					console.log("Invoice details response:", data);
+					
 					if (!data.message) {
 						frappe.ui.form.set_loading(frm, false);
 						frappe.msgprint(__('Could not fetch account information'));
@@ -542,8 +617,18 @@ function create_bulk_project_claim(frm, dialog) {
 						message: __('Claim items created from multiple invoices'),
 						indicator: 'green'
 					}, 5);
+				},
+				error: function(err) {
+					console.error("Error getting invoice details:", err);
+					frappe.ui.form.set_loading(frm, false);
+					frappe.msgprint(__('Error creating claim'));
 				}
 			});
+		},
+		error: function(err) {
+			console.error("Error processing invoice items:", err);
+			frappe.ui.form.set_loading(frm, false);
+			frappe.msgprint(__('Error processing invoice items'));
 		}
 	});
 }

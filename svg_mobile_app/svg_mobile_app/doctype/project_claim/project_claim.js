@@ -785,7 +785,7 @@ function create_bulk_project_claim(frm, dialog) {
 			args: {
 				doctype: 'Sales Invoice',
 				filters: { name: primary_invoice },
-				fieldname: ['debit_to', 'custom_for_project', 'custom_project_contractor']
+				fieldname: ['debit_to', 'custom_for_project']
 			},
 			callback: function(data) {
 				console.log("Invoice details response:", data);
@@ -796,11 +796,15 @@ function create_bulk_project_claim(frm, dialog) {
 					return;
 				}
 				
+				// Get the project contractor from the selected invoices data
+				let primary_invoice_data = selected_invoices.find(inv => inv.invoice === primary_invoice);
+				let project_contractor = primary_invoice_data ? primary_invoice_data.project_contractor : null;
+				
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
 					'for_project': data.message.custom_for_project || null,
-					'project_contractor': data.message.custom_project_contractor || null,
+					'project_contractor': project_contractor,
 					'party_account': data.message.debit_to,
 					'claim_amount': total_claim_amount,
 					'outstanding_amount': total_outstanding_amount,

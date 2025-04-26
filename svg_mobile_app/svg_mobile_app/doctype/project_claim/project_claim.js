@@ -634,7 +634,7 @@ function update_items_preview(dialog) {
 			if (processed_count === invoice_names.length) {
 				// Get all previous claims for the invoices to calculate balances
 				frappe.call({
-					method: 'svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+					method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 					args: {
 						invoices: invoice_names
 					},

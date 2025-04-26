@@ -358,133 +358,129 @@ function update_items_preview(dialog) {
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	console.log("Selected invoice names:", invoice_names);
 	
-	// Use the standard Frappe API to get invoice items directly
-	frappe.call({
-		method: 'frappe.client.get_list',
-		args: {
-			doctype: 'Sales Invoice Item',
-			filters: {
-				'parent': ['in', invoice_names]
-			},
-			fields: [
-				'parent as invoice', 
-				'item_code', 
-				'item_name', 
-				'amount', 
-				'income_account', 
-				'custom_default_earning_account'
-			],
-			limit_page_length: 500
-		},
-		callback: function(response) {
-			console.log("Items API response:", response);
-			
-			if (!response.message || response.message.length === 0) {
-				dialog.fields_dict.items_preview_html.html(`
-					<div class="alert alert-warning my-4">
-						${__('No items found for selected invoices')}
-					</div>
-				`);
-				return;
-			}
-			
-			let items_data = response.message;
-			
-			// Calculate the ratio for each item
-			let invoice_totals = {};
-			
-			// First, calculate invoice totals
-			items_data.forEach(item => {
-				if (!invoice_totals[item.invoice]) {
-					invoice_totals[item.invoice] = 0;
-				}
-				invoice_totals[item.invoice] += flt(item.amount);
-			});
-			
-			// Then, calculate ratio for each item
-			items_data.forEach(item => {
-				if (invoice_totals[item.invoice] > 0) {
-					item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
-				} else {
-					item.ratio = 0;
-				}
-			});
-			
-			// Group items by invoice
-			let items_by_invoice = {};
-			items_data.forEach(item => {
-				if (!items_by_invoice[item.invoice]) {
-					items_by_invoice[item.invoice] = [];
-				}
-				items_by_invoice[item.invoice].push(item);
-			});
-			
-			console.log("Grouped items:", items_by_invoice);
-			
-			// Create HTML for item allocation tables
-			let html = '<div class="margin-top">';
-			
-			selected_invoices.forEach(inv => {
-				let invoice_items = items_by_invoice[inv.invoice] || [];
-				if (invoice_items.length === 0) return;
-				
-				// Get claim amount for this invoice
-				let claim_amount = flt(inv.claim_amount);
-				
-				html += `
-					<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
-						<h5>${__('Invoice')}: ${inv.invoice}</h5>
-						<div class="table-responsive">
-							<table class="table table-bordered item-allocation-table">
-								<thead>
-									<tr>
-										<th>${__('Item')}</th>
-										<th>${__('Original Amount')}</th>
-										<th>${__('Ratio %')}</th>
-										<th>${__('Claim Amount')}</th>
-										<th>${__('Unearned Account')}</th>
-										<th>${__('Revenue Account')}</th>
-									</tr>
-								</thead>
-								<tbody>
-				`;
-				
-				invoice_items.forEach(item => {
-					// Calculate allocated amount based on ratio
-					let allocated_amount = item.ratio * claim_amount / 100;
-					
-					html += `
-						<tr data-item="${item.item_code}" data-invoice="${inv.invoice}">
-							<td>${item.item_name || item.item_code}</td>
-							<td class="text-right">${format_currency(item.amount)}</td>
-							<td class="text-right">${format_number(item.ratio, 2)}%</td>
-							<td class="text-right">${format_currency(allocated_amount)}</td>
-							<td>${item.income_account || ''}</td>
-							<td>${item.custom_default_earning_account || ''}</td>
-						</tr>
-					`;
-				});
-				
-				html += `
-								</tbody>
-							</table>
-						</div>
-					</div>
-				`;
-			});
-			
-			html += '</div>';
-			
-			dialog.fields_dict.items_preview_html.html(html);
-		},
-		error: function(err) {
-			console.error("Error fetching invoice items:", err);
+	// Process each invoice separately to avoid permission issues
+	let all_items = [];
+	let processed_count = 0;
+	
+	// Function to process results after all invoices are loaded
+	function process_results() {
+		if (all_items.length === 0) {
 			dialog.fields_dict.items_preview_html.html(`
-				<div class="alert alert-danger my-4">
-					${__('Error loading invoice items. Please check console for details.')}
+				<div class="alert alert-warning my-4">
+					${__('No items found for selected invoices')}
 				</div>
 			`);
+			return;
 		}
+		
+		// Group items by invoice
+		let items_by_invoice = {};
+		let invoice_totals = {};
+		
+		// First group and calculate totals
+		all_items.forEach(item => {
+			if (!items_by_invoice[item.invoice]) {
+				items_by_invoice[item.invoice] = [];
+				invoice_totals[item.invoice] = 0;
+			}
+			items_by_invoice[item.invoice].push(item);
+			invoice_totals[item.invoice] += flt(item.amount);
+		});
+		
+		// Then calculate ratios
+		all_items.forEach(item => {
+			if (invoice_totals[item.invoice] > 0) {
+				item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
+			} else {
+				item.ratio = 0;
+			}
+		});
+		
+		console.log("Grouped items:", items_by_invoice);
+		
+		// Create HTML for item allocation tables
+		let html = '<div class="margin-top">';
+		
+		selected_invoices.forEach(inv => {
+			let invoice_items = items_by_invoice[inv.invoice] || [];
+			if (invoice_items.length === 0) return;
+			
+			// Get claim amount for this invoice
+			let claim_amount = flt(inv.claim_amount);
+			
+			html += `
+				<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
+					<h5>${__('Invoice')}: ${inv.invoice}</h5>
+					<div class="table-responsive">
+						<table class="table table-bordered item-allocation-table">
+							<thead>
+								<tr>
+									<th>${__('Item')}</th>
+									<th>${__('Original Amount')}</th>
+									<th>${__('Ratio %')}</th>
+									<th>${__('Claim Amount')}</th>
+									<th>${__('Unearned Account')}</th>
+									<th>${__('Revenue Account')}</th>
+								</tr>
+							</thead>
+							<tbody>
+			`;
+			
+			invoice_items.forEach(item => {
+				// Calculate allocated amount based on ratio
+				let allocated_amount = item.ratio * claim_amount / 100;
+				
+				html += `
+					<tr data-item="${item.item_code}" data-invoice="${inv.invoice}">
+						<td>${item.item_name || item.item_code}</td>
+						<td class="text-right">${format_currency(item.amount)}</td>
+						<td class="text-right">${format_number(item.ratio, 2)}%</td>
+						<td class="text-right">${format_currency(allocated_amount)}</td>
+						<td>${item.income_account || ''}</td>
+						<td>${item.custom_default_earning_account || ''}</td>
+					</tr>
+				`;
+			});
+			
+			html += `
+							</tbody>
+						</table>
+					</div>
+				</div>
+			`;
+		});
+		
+		html += '</div>';
+		
+		dialog.fields_dict.items_preview_html.html(html);
+	}
+	
+	// Process each invoice to get its items
+	invoice_names.forEach(invoice_name => {
+		frappe.model.with_doc('Sales Invoice', invoice_name, function() {
+			let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
+			
+			if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
+				// Process each item in the invoice
+				invoice_doc.items.forEach(item => {
+					all_items.push({
+						invoice: invoice_name,
+						item_code: item.item_code,
+						item_name: item.item_name,
+						amount: item.amount,
+						income_account: item.income_account,
+						custom_default_earning_account: item.custom_default_earning_account
+					});
+				});
+			}
+			
+			processed_count++;
+			
+			// If all invoices have been processed, show the results
+			if (processed_count === invoice_names.length) {
+				process_results();
+			}
+		});
 	});
 }
 
@@ -515,180 +511,179 @@ function create_bulk_project_claim(frm, dialog) {
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	
-	// Use the standard Frappe API to fetch items data
-	frappe.call({
-		method: 'frappe.client.get_list',
-		args: {
-			doctype: 'Sales Invoice Item',
-			filters: {
-				'parent': ['in', invoice_names]
-			},
-			fields: [
-				'parent as invoice', 
-				'item_code', 
-				'item_name', 
-				'amount', 
-				'income_account', 
-				'custom_default_earning_account'
-			],
-			limit_page_length: 500
-		},
-		callback: function(response) {
-			console.log("Create claim items response:", response);
+	// Process each invoice separately to avoid permission issues
+	let all_items = [];
+	let processed_count = 0;
+	
+	// Function to process results after all invoices are loaded
+	function process_results() {
+		if (all_items.length === 0) {
+			frappe.ui.form.set_loading(frm, false);
+			frappe.msgprint(__('Could not fetch invoice items'));
+			return;
+		}
+		
+		// Group items by invoice
+		let items_by_invoice = {};
+		let invoice_totals = {};
+		
+		// First group and calculate totals
+		all_items.forEach(item => {
+			if (!items_by_invoice[item.invoice]) {
+				items_by_invoice[item.invoice] = [];
+				invoice_totals[item.invoice] = 0;
+			}
+			items_by_invoice[item.invoice].push(item);
+			invoice_totals[item.invoice] += flt(item.amount);
+		});
+		
+		// Then calculate ratios
+		all_items.forEach(item => {
+			if (invoice_totals[item.invoice] > 0) {
+				item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
+			} else {
+				item.ratio = 0;
+			}
+		});
+		
+		// Calculate claim amounts for each item
+		let claim_items = [];
+		let references = [];
+		let total_claim_amount = 0;
+		
+		selected_invoices.forEach(inv => {
+			let invoice_items = items_by_invoice[inv.invoice] || [];
+			if (invoice_items.length === 0) return;
 			
-			if (!response.message || response.message.length === 0) {
+			let claim_amount = flt(inv.claim_amount);
+			total_claim_amount += claim_amount;
+			
+			// Store reference for description
+			references.push({
+				invoice: inv.invoice,
+				amount: claim_amount,
+				date: inv.invoice_date,
+				due_date: inv.due_date,
+				project: inv.project,
+				status: inv.status
+			});
+			
+			// Calculate claim items for this invoice
+			invoice_items.forEach(item => {
+				// Calculate allocated amount based on ratio
+				let allocated_amount = item.ratio * claim_amount / 100;
+				
+				// Check if item already exists in claim_items
+				let existing_item = claim_items.find(ci => ci.item === item.item_code);
+				
+				if (existing_item) {
+					// Update existing item
+					existing_item.amount += allocated_amount;
+					existing_item.ratio += item.ratio;
+				} else {
+					// Add new item
+					claim_items.push({
+						item: item.item_code,
+						amount: allocated_amount,
+						ratio: item.ratio,
+						unearned_account: item.income_account || '',
+						revenue_account: item.custom_default_earning_account || ''
+					});
+				}
+			});
+		});
+		
+		console.log("Claim items created:", claim_items);
+		
+		// Create "Being" text with reference to all invoices
+		let being_text = __('Being claim for invoices: ') + 
+			references.map(ref => 
+				`${ref.invoice} (${format_currency(ref.amount)}, ${ref.status}, ${ref.project || 'No Project'}, Due: ${ref.due_date || 'N/A'})`
+			).join(', ');
+		
+		// Determine which invoice to use as the main reference
+		// We'll use the first selected invoice with the highest claim amount
+		let primary_invoice = selected_invoices.sort((a, b) => 
+			flt(b.claim_amount) - flt(a.claim_amount)
+		)[0].invoice;
+		
+		// Get party account and project from the primary invoice
+		frappe.call({
+			method: 'frappe.client.get_value',
+			args: {
+				doctype: 'Sales Invoice',
+				filters: { name: primary_invoice },
+				fieldname: ['debit_to', 'custom_for_project']
+			},
+			callback: function(data) {
+				console.log("Invoice details response:", data);
+				
+				if (!data.message) {
+					frappe.ui.form.set_loading(frm, false);
+					frappe.msgprint(__('Could not fetch account information'));
+					return;
+				}
+				
+				// Set values in the form
+				frm.set_value({
+					'customer': dialog.get_value('customer'),
+					'for_project': data.message.custom_for_project || null,
+					'party_account': data.message.debit_to,
+					'claim_amount': total_claim_amount,
+					'being': being_text,
+					'reference_invoice': primary_invoice, // Set the primary invoice as reference
+					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
+				});
+				
+				// Clear existing items and add new ones
+				frm.clear_table('claim_items');
+				claim_items.forEach(item => {
+					let row = frm.add_child('claim_items', item);
+				});
+				
+				// Update form and close dialog
+				frm.refresh_fields();
 				frappe.ui.form.set_loading(frm, false);
-				frappe.msgprint(__('Could not fetch invoice items'));
-				return;
+				dialog.hide();
+				
+				frappe.show_alert({
+					message: __('Claim items created from multiple invoices'),
+					indicator: 'green'
+				}, 5);
+			},
+			error: function(err) {
+				console.error("Error getting invoice details:", err);
+				frappe.ui.form.set_loading(frm, false);
+				frappe.msgprint(__('Error creating claim'));
+			}
+		});
+	}
+	
+	// Process each invoice to get its items
+	invoice_names.forEach(invoice_name => {
+		frappe.model.with_doc('Sales Invoice', invoice_name, function() {
+			let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
+			
+			if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
+				// Process each item in the invoice
+				invoice_doc.items.forEach(item => {
+					all_items.push({
+						invoice: invoice_name,
+						item_code: item.item_code,
+						item_name: item.item_name,
+						amount: item.amount,
+						income_account: item.income_account,
+						custom_default_earning_account: item.custom_default_earning_account
+					});
+				});
 			}
 			
-			let items_data = response.message;
+			processed_count++;
 			
-			// Calculate the ratio for each item
-			let invoice_totals = {};
-			
-			// First, calculate invoice totals
-			items_data.forEach(item => {
-				if (!invoice_totals[item.invoice]) {
-					invoice_totals[item.invoice] = 0;
-				}
-				invoice_totals[item.invoice] += flt(item.amount);
-			});
-			
-			// Then, calculate ratio for each item
-			items_data.forEach(item => {
-				if (invoice_totals[item.invoice] > 0) {
-					item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
-				} else {
-					item.ratio = 0;
-				}
-			});
-			
-			// Group items by invoice
-			let items_by_invoice = {};
-			items_data.forEach(item => {
-				if (!items_by_invoice[item.invoice]) {
-					items_by_invoice[item.invoice] = [];
-				}
-				items_by_invoice[item.invoice].push(item);
-			});
-			
-			// Calculate claim amounts for each item
-			let claim_items = [];
-			let references = [];
-			let total_claim_amount = 0;
-			
-			selected_invoices.forEach(inv => {
-				let invoice_items = items_by_invoice[inv.invoice] || [];
-				if (invoice_items.length === 0) return;
-				
-				let claim_amount = flt(inv.claim_amount);
-				total_claim_amount += claim_amount;
-				
-				// Store reference for description
-				references.push({
-					invoice: inv.invoice,
-					amount: claim_amount,
-					date: inv.invoice_date,
-					due_date: inv.due_date,
-					project: inv.project,
-					status: inv.status
-				});
-				
-				// Calculate claim items for this invoice
-				invoice_items.forEach(item => {
-					// Calculate allocated amount based on ratio
-					let allocated_amount = item.ratio * claim_amount / 100;
-					
-					// Check if item already exists in claim_items
-					let existing_item = claim_items.find(ci => ci.item === item.item_code);
-					
-					if (existing_item) {
-						// Update existing item
-						existing_item.amount += allocated_amount;
-						existing_item.ratio += item.ratio;
-					} else {
-						// Add new item
-						claim_items.push({
-							item: item.item_code,
-							amount: allocated_amount,
-							ratio: item.ratio,
-							unearned_account: item.income_account || '',
-							revenue_account: item.custom_default_earning_account || ''
-						});
-					}
-				});
-			});
-			
-			console.log("Claim items created:", claim_items);
-			
-			// Create "Being" text with reference to all invoices
-			let being_text = __('Being claim for invoices: ') + 
-				references.map(ref => 
-					`${ref.invoice} (${format_currency(ref.amount)}, ${ref.status}, ${ref.project || 'No Project'}, Due: ${ref.due_date || 'N/A'})`
-				).join(', ');
-			
-			// Determine which invoice to use as the main reference
-			// We'll use the first selected invoice with the highest claim amount
-			let primary_invoice = selected_invoices.sort((a, b) => 
-				flt(b.claim_amount) - flt(a.claim_amount)
-			)[0].invoice;
-			
-			// Get party account and project from the primary invoice
-			frappe.call({
-				method: 'frappe.client.get_value',
-				args: {
-					doctype: 'Sales Invoice',
-					filters: { name: primary_invoice },
-					fieldname: ['debit_to', 'custom_for_project']
-				},
-				callback: function(data) {
-					console.log("Invoice details response:", data);
-					
-					if (!data.message) {
-						frappe.ui.form.set_loading(frm, false);
-						frappe.msgprint(__('Could not fetch account information'));
-						return;
-					}
-					
-					// Set values in the form
-					frm.set_value({
-						'customer': dialog.get_value('customer'),
-						'for_project': data.message.custom_for_project || null,
-						'party_account': data.message.debit_to,
-						'claim_amount': total_claim_amount,
-						'being': being_text,
-						'reference_invoice': primary_invoice, // Set the primary invoice as reference
-						'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
-					});
-					
-					// Clear existing items and add new ones
-					frm.clear_table('claim_items');
-					claim_items.forEach(item => {
-						let row = frm.add_child('claim_items', item);
-					});
-					
-					// Update form and close dialog
-					frm.refresh_fields();
-					frappe.ui.form.set_loading(frm, false);
-					dialog.hide();
-					
-					frappe.show_alert({
-						message: __('Claim items created from multiple invoices'),
-						indicator: 'green'
-					}, 5);
-				},
-				error: function(err) {
-					console.error("Error getting invoice details:", err);
-					frappe.ui.form.set_loading(frm, false);
-					frappe.msgprint(__('Error creating claim'));
-				}
-			});
-		},
-		error: function(err) {
-			console.error("Error processing invoice items:", err);
-			frappe.ui.form.set_loading(frm, false);
-			frappe.msgprint(__('Error processing invoice items'));
-		}
+			// If all invoices have been processed, show the results
+			if (processed_count === invoice_names.length) {
+				process_results();
+			}
+		});
 	});
 }

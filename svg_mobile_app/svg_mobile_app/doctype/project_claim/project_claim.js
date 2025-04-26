@@ -194,7 +194,7 @@ function fetch_customer_invoices(dialog, customer) {
 				'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
 				'outstanding_amount': ['>', 0]
 			},
-			fields: ['name', 'posting_date', 'custom_for_project', 'project_name', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
+			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 			order_by: 'posting_date desc'
 		},
 		callback: function(response) {
@@ -203,7 +203,7 @@ function fetch_customer_invoices(dialog, customer) {
 					return {
 						'invoice': inv.name,
 						'invoice_date': inv.posting_date,
-						'project': inv.project_name || inv.custom_for_project || '',
+						'project': inv.custom_for_project || '',
 						'status': inv.status,
 						'due_date': inv.due_date,
 						'total': inv.grand_total,

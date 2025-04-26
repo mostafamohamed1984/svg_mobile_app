@@ -149,7 +149,6 @@ class ProjectClaim(Document):
 		
 		return original_amount, claimed_amount
 
-	@frappe.whitelist()
 	def get_items_from_invoices(self, invoices):
 		"""Get items from multiple invoices for bulk claim creation"""
 		if not invoices:
@@ -188,3 +187,44 @@ class ProjectClaim(Document):
 			item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100 if invoice_totals[item.invoice] else 0
 			
 		return items_data
+
+# Add a static method to be called from JavaScript
+@frappe.whitelist()
+def get_items_from_invoices(invoices):
+	"""Static method to get items from multiple invoices for bulk claim creation"""
+	if not invoices:
+		return []
+		
+	# Convert string to list if needed
+	if isinstance(invoices, str):
+		import json
+		try:
+			invoices = json.loads(invoices)
+		except:
+			invoices = invoices.split(",")
+			
+	# Get items from all invoices
+	items_data = frappe.db.sql("""
+		SELECT 
+			parent as invoice,
+			item_code,
+			item_name,
+			amount,
+			income_account,
+			custom_default_earning_account
+		FROM `tabSales Invoice Item`
+		WHERE parent IN %s
+	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+	
+	# Get invoice totals for ratio calculation
+	invoice_totals = {}
+	for item in items_data:
+		if item.invoice not in invoice_totals:
+			invoice_totals[item.invoice] = 0
+		invoice_totals[item.invoice] += flt(item.amount)
+	
+	# Add ratio to each item
+	for item in items_data:
+		item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100 if invoice_totals[item.invoice] else 0
+		
+	return items_data

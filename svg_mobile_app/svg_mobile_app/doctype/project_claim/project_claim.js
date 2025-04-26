@@ -721,11 +721,23 @@ function create_bulk_project_claim(frm, dialog) {
 		let claim_items = [];
 		let references = [];
 		let total_claim_amount = 0;
+		let unique_projects = new Set();
+		let primary_project = null;
 		
 		// First calculate total claim amount
 		selected_invoices.forEach(inv => {
 			total_claim_amount += flt(inv.claim_amount);
+			if (inv.project) {
+				unique_projects.add(inv.project);
+				// Set the first project as primary if not already set
+				if (!primary_project) {
+					primary_project = inv.project;
+				}
+			}
 		});
+		
+		// Convert unique_projects to array
+		let project_list = Array.from(unique_projects);
 		
 		// Now process each invoice
 		selected_invoices.forEach(inv => {
@@ -793,6 +805,14 @@ function create_bulk_project_claim(frm, dialog) {
 				`${ref.invoice} (${format_currency(ref.amount)}, ${ref.status}, ${ref.project || 'No Project'}${ref.project_contractor ? ', ' + ref.project_contractor : ''}, Due: ${ref.due_date || 'N/A'})`
 			).join(', ');
 		
+		// Create a combined project description if there are multiple projects
+		let project_description = '';
+		if (project_list.length > 1) {
+			project_description = __('Multiple Projects: ') + project_list.join(', ');
+		} else if (project_list.length === 1) {
+			project_description = project_list[0];
+		}
+		
 		// Determine which invoice to use as the main reference
 		// We'll use the first selected invoice with the highest claim amount
 		let primary_invoice = selected_invoices.sort((a, b) => 
@@ -823,15 +843,34 @@ function create_bulk_project_claim(frm, dialog) {
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
-					'for_project': data.message.custom_for_project || null,
+					'for_project': primary_project, // Use the first project found as the main project
 					'project_contractor': project_contractor,
 					'party_account': data.message.debit_to,
 					'claim_amount': total_claim_amount,
 					'outstanding_amount': total_outstanding_amount,
-					'being': being_text,
+					'being': project_list.length > 1 ? 
+						being_text + '\n' + __('Projects: ') + project_description : 
+						being_text,
 					'reference_invoice': primary_invoice, // Set the primary invoice as reference
 					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
 				});
+				
+				// If we have multiple projects, add custom field or note
+				if (project_list.length > 1) {
+					// Check if we have a custom field for additional projects
+					if (frm.fields_dict.project_list) {
+						frm.set_value('project_list', project_description);
+					} else {
+						// Otherwise add a comment to the form
+						frm.add_custom_button(__('View All Projects'), function() {
+							frappe.msgprint({
+								title: __('Projects in this Claim'),
+								message: project_description,
+								indicator: 'blue'
+							});
+						}).addClass('btn-default');
+					}
+				}
 				
 				// Clear existing items and add new ones
 				frm.clear_table('claim_items');

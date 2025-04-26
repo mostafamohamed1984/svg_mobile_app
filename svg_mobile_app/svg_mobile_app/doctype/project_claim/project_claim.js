@@ -439,7 +439,6 @@ function create_bulk_project_claim(frm, dialog) {
 			let claim_items = [];
 			let references = [];
 			let total_claim_amount = 0;
-			let project_contractor = null;
 			
 			selected_invoices.forEach(inv => {
 				let invoice_items = items_by_invoice[inv.invoice] || [];
@@ -513,7 +512,7 @@ function create_bulk_project_claim(frm, dialog) {
 					// Set values in the form
 					frm.set_value({
 						'customer': dialog.get_value('customer'),
-						'for_project': data.message.custom_for_project,
+						'for_project': data.message.custom_for_project || null,
 						'party_account': data.message.debit_to,
 						'claim_amount': total_claim_amount,
 						'being': being_text,

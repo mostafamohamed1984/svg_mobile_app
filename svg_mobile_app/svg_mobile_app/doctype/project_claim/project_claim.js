@@ -88,21 +88,32 @@ function show_bulk_invoice_dialog(frm) {
 	dialog.fields_dict.action_buttons.html(`
 		<div class="row" style="margin-top: 20px; margin-bottom: 10px;">
 			<div class="col">
-				<button id="select_all_btn" class="btn btn-sm btn-default form-control">
+				<button id="select_all_btn" type="button" class="btn btn-sm btn-default form-control">
 					${__('Select All')}
 				</button>
 			</div>
 			<div class="col">
-				<button id="deselect_all_btn" class="btn btn-sm btn-default form-control">
+				<button id="deselect_all_btn" type="button" class="btn btn-sm btn-default form-control">
 					${__('Deselect All')}
 				</button>
 			</div>
 			<div class="col">
-				<button id="set_full_amount_btn" class="btn btn-sm btn-default form-control">
+				<button id="set_full_amount_btn" type="button" class="btn btn-sm btn-default form-control">
 					${__('Set Full Amount')}
 				</button>
 			</div>
 		</div>
+		<style>
+			/* Remove spinners from number inputs */
+			input.no-spinner::-webkit-outer-spin-button,
+			input.no-spinner::-webkit-inner-spin-button {
+				-webkit-appearance: none;
+				margin: 0;
+			}
+			input.no-spinner[type=number] {
+				-moz-appearance: textfield;
+			}
+		</style>
 	`);
 	
 	// Initialize the invoices data
@@ -296,13 +307,14 @@ function render_invoices_table(dialog) {
 				<td class="text-right">${format_currency(inv.outstanding)}</td>
 				<td>
 					<input 
-						type="number" 
-						class="form-control claim-amount-input" 
+						type="text" 
+						class="form-control claim-amount-input no-spinner" 
 						data-index="${index}" 
 						value="${inv.claim_amount}" 
 						max="${inv.outstanding}"
-						step="0.01"
 						${!inv.select ? 'disabled' : ''}
+						style="text-align: right;"
+						onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 					>
 				</td>
 			</tr>
@@ -420,8 +432,6 @@ function update_items_preview(dialog) {
 									<th>${__('Original Amount')}</th>
 									<th>${__('Ratio %')}</th>
 									<th>${__('Claim Amount')}</th>
-									<th>${__('Unearned Account')}</th>
-									<th>${__('Revenue Account')}</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -444,32 +454,32 @@ function update_items_preview(dialog) {
 						<td class="text-right">${format_currency(item.amount)}</td>
 						<td>
 							<input 
-								type="number" 
-								class="form-control item-ratio-input" 
+								type="text" 
+								class="form-control item-ratio-input no-spinner" 
 								data-invoice="${inv.invoice}"
 								data-item="${item.item_code}"
 								data-idx="${idx}"
 								value="${item.ratio.toFixed(2)}" 
 								min="0"
 								max="100"
-								step="0.01"
+								style="text-align: right;"
+								onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 							>
 						</td>
 						<td>
 							<input 
-								type="number" 
-								class="form-control item-amount-input" 
+								type="text" 
+								class="form-control item-amount-input no-spinner" 
 								data-invoice="${inv.invoice}"
 								data-item="${item.item_code}"
 								data-idx="${idx}"
 								value="${allocated_amount.toFixed(2)}" 
 								min="0"
-								max="${inv.claim_amount}"
-								step="0.01"
+								max="${Math.min(inv.claim_amount, item.available_balance || inv.claim_amount)}"
+								style="text-align: right;"
+								onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 							>
 						</td>
-						<td>${item.income_account || ''}</td>
-						<td>${item.custom_default_earning_account || ''}</td>
 					</tr>
 				`;
 			});
@@ -480,7 +490,6 @@ function update_items_preview(dialog) {
 					<td colspan="2" class="text-right"><strong>${__('Total')}:</strong></td>
 					<td class="ratio-total" data-invoice="${inv.invoice}">${total_shown_ratio.toFixed(2)}%</td>
 					<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_shown_amount)}</td>
-					<td colspan="2"></td>
 				</tr>
 			`;
 			
@@ -598,24 +607,69 @@ function update_items_preview(dialog) {
 				
 				// Process items
 				if (invoice_doc.items && invoice_doc.items.length > 0) {
+					// Process each item to get current balance
 					invoice_doc.items.forEach(item => {
-						all_items.push({
+						// First collect basic item data
+						let item_data = {
 							invoice: invoice_name,
 							item_code: item.item_code,
 							item_name: item.item_name,
-							amount: item.amount,
+							amount: item.amount, // Original amount 
+							available_balance: item.amount, // Will be updated if there are previous claims
 							income_account: item.income_account,
 							custom_default_earning_account: item.custom_default_earning_account
-						});
+						};
+						
+						// Get previous claims for this item from this invoice to calculate available balance
+						// This will be done in a separate step to avoid too many queries
+						
+						all_items.push(item_data);
 					});
 				}
 			}
 			
 			processed_count++;
 			
-			// If all invoices have been processed, show the results
+			// If all invoices have been processed, update balances and show results
 			if (processed_count === invoice_names.length) {
-				process_results();
+				// Get all previous claims for the invoices to calculate balances
+				frappe.call({
+					method: 'frappe.db.sql',
+					args: {
+						query: `
+							SELECT 
+								pc.reference_invoice, 
+								ci.item, 
+								SUM(ci.amount) as claimed_amount
+							FROM 
+								\`tabClaim Items\` ci
+								JOIN \`tabProject Claim\` pc ON ci.parent = pc.name
+							WHERE 
+								pc.reference_invoice IN (${invoice_names.map(inv => "'" + inv + "'").join(',')})
+								AND pc.docstatus = 1
+							GROUP BY 
+								pc.reference_invoice, ci.item
+						`,
+						as_dict: 1
+					},
+					callback: function(r) {
+						if (r.message) {
+							// Update available balance for each item
+							r.message.forEach(claim => {
+								// Find all items in this invoice with this item code
+								all_items.forEach(item => {
+									if (item.invoice === claim.reference_invoice && item.item_code === claim.item) {
+										// Subtract previously claimed amount from available balance
+										item.available_balance = flt(item.amount) - flt(claim.claimed_amount);
+									}
+								});
+							});
+						}
+						
+						// Now process the results with updated balances
+						process_results();
+					}
+				});
 			}
 		});
 	});
@@ -722,22 +776,16 @@ function create_bulk_project_claim(frm, dialog) {
 		let references = [];
 		let total_claim_amount = 0;
 		let unique_projects = new Set();
-		let primary_project = null;
 		
 		// First calculate total claim amount
 		selected_invoices.forEach(inv => {
 			total_claim_amount += flt(inv.claim_amount);
+			
+			// Collect unique projects
 			if (inv.project) {
 				unique_projects.add(inv.project);
-				// Set the first project as primary if not already set
-				if (!primary_project) {
-					primary_project = inv.project;
-				}
 			}
 		});
-		
-		// Convert unique_projects to array
-		let project_list = Array.from(unique_projects);
 		
 		// Now process each invoice
 		selected_invoices.forEach(inv => {
@@ -805,19 +853,19 @@ function create_bulk_project_claim(frm, dialog) {
 				`${ref.invoice} (${format_currency(ref.amount)}, ${ref.status}, ${ref.project || 'No Project'}${ref.project_contractor ? ', ' + ref.project_contractor : ''}, Due: ${ref.due_date || 'N/A'})`
 			).join(', ');
 		
-		// Create a combined project description if there are multiple projects
-		let project_description = '';
-		if (project_list.length > 1) {
-			project_description = __('Multiple Projects: ') + project_list.join(', ');
-		} else if (project_list.length === 1) {
-			project_description = project_list[0];
-		}
-		
 		// Determine which invoice to use as the main reference
 		// We'll use the first selected invoice with the highest claim amount
 		let primary_invoice = selected_invoices.sort((a, b) => 
 			flt(b.claim_amount) - flt(a.claim_amount)
 		)[0].invoice;
+		
+		// Get primary project as the one with the highest claim amount
+		let primary_project = selected_invoices.sort((a, b) => 
+			flt(b.claim_amount) - flt(a.claim_amount)
+		)[0].project;
+		
+		// Format all projects for display
+		let all_projects = Array.from(unique_projects).join(", ");
 		
 		// Get party account and project from the primary invoice
 		frappe.call({
@@ -843,33 +891,24 @@ function create_bulk_project_claim(frm, dialog) {
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
-					'for_project': primary_project, // Use the first project found as the main project
+					'for_project': data.message.custom_for_project || null,
+					'project_references': all_projects,
 					'project_contractor': project_contractor,
 					'party_account': data.message.debit_to,
 					'claim_amount': total_claim_amount,
 					'outstanding_amount': total_outstanding_amount,
-					'being': project_list.length > 1 ? 
-						being_text + '\n' + __('Projects: ') + project_description : 
-						being_text,
+					'being': being_text,
 					'reference_invoice': primary_invoice, // Set the primary invoice as reference
 					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
 				});
 				
-				// If we have multiple projects, add custom field or note
-				if (project_list.length > 1) {
-					// Check if we have a custom field for additional projects
-					if (frm.fields_dict.project_list) {
-						frm.set_value('project_list', project_description);
-					} else {
-						// Otherwise add a comment to the form
-						frm.add_custom_button(__('View All Projects'), function() {
-							frappe.msgprint({
-								title: __('Projects in this Claim'),
-								message: project_description,
-								indicator: 'blue'
-							});
-						}).addClass('btn-default');
-					}
+				// Hide for_project field and show project_references field if multiple projects
+				if (unique_projects.size > 1) {
+					frm.set_df_property('for_project', 'hidden', 1);
+					frm.set_df_property('project_references', 'hidden', 0);
+				} else {
+					frm.set_df_property('for_project', 'hidden', 0);
+					frm.set_df_property('project_references', 'hidden', 1);
 				}
 				
 				// Clear existing items and add new ones

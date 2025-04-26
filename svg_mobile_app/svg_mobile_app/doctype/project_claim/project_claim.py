@@ -228,3 +228,68 @@ def get_items_from_invoices(invoices):
 		item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100 if invoice_totals[item.invoice] else 0
 		
 	return items_data
+
+@frappe.whitelist()
+def get_available_invoice_balances(invoices):
+	"""Get available balance for items in multiple invoices"""
+	if not invoices:
+		return {}
+		
+	# Convert string to list if needed
+	if isinstance(invoices, str):
+		import json
+		try:
+			invoices = json.loads(invoices)
+		except:
+			invoices = invoices.split(",")
+	
+	# Get all items from these invoices
+	items_data = frappe.db.sql("""
+		SELECT 
+			parent as invoice,
+			item_code,
+			amount
+		FROM `tabSales Invoice Item`
+		WHERE parent IN %s
+	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+	
+	# Get all previous claims for these invoices
+	previous_claims = frappe.db.sql("""
+		SELECT 
+			pc.reference_invoice, 
+			ci.item, 
+			SUM(ci.amount) as claimed_amount
+		FROM 
+			`tabClaim Items` ci
+			JOIN `tabProject Claim` pc ON ci.parent = pc.name
+		WHERE 
+			pc.reference_invoice IN %s
+			AND pc.docstatus = 1
+		GROUP BY 
+			pc.reference_invoice, ci.item
+	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+	
+	# Create a map for easier lookup
+	claim_map = {}
+	for claim in previous_claims:
+		if claim.reference_invoice not in claim_map:
+			claim_map[claim.reference_invoice] = {}
+		claim_map[claim.reference_invoice][claim.item] = claim.claimed_amount
+	
+	# Calculate available balances
+	result = {}
+	for item in items_data:
+		if item.invoice not in result:
+			result[item.invoice] = {}
+		
+		claimed = 0
+		if item.invoice in claim_map and item.item_code in claim_map[item.invoice]:
+			claimed = flt(claim_map[item.invoice][item.item_code])
+		
+		result[item.invoice][item.item_code] = {
+			'original_amount': item.amount,
+			'claimed_amount': claimed,
+			'available_balance': item.amount - claimed
+		}
+	
+	return result

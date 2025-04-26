@@ -722,12 +722,17 @@ function create_bulk_project_claim(frm, dialog) {
 		let references = [];
 		let total_claim_amount = 0;
 		
+		// First calculate total claim amount
+		selected_invoices.forEach(inv => {
+			total_claim_amount += flt(inv.claim_amount);
+		});
+		
+		// Now process each invoice
 		selected_invoices.forEach(inv => {
 			let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
 			if (invoice_items.length === 0) return;
 			
 			let claim_amount = flt(inv.claim_amount);
-			total_claim_amount += claim_amount;
 			
 			// Store reference for description
 			references.push({
@@ -745,25 +750,40 @@ function create_bulk_project_claim(frm, dialog) {
 				// Calculate allocated amount based on ratio (which might have been edited)
 				let allocated_amount = flt(item.ratio) * claim_amount / 100;
 				
+				// Calculate global ratio (relative to total claim amount)
+				let global_ratio = flt(allocated_amount) / total_claim_amount * 100;
+				
 				// Check if item already exists in claim_items
 				let existing_item = claim_items.find(ci => ci.item === item.item_code);
 				
 				if (existing_item) {
 					// Update existing item
 					existing_item.amount += allocated_amount;
-					// Don't add ratios for duplicate items - they're only meaningful per invoice
+					existing_item.ratio += global_ratio; // Add to the global ratio
 				} else {
 					// Add new item
 					claim_items.push({
 						item: item.item_code,
 						amount: allocated_amount,
-						ratio: item.ratio, // Use the ratio as is for the first instance
+						ratio: global_ratio, // Use global ratio instead of per-invoice ratio
 						unearned_account: item.income_account || '',
 						revenue_account: item.custom_default_earning_account || ''
 					});
 				}
 			});
 		});
+		
+		// Round ratios to ensure they total exactly 100%
+		let total_ratio = 0;
+		claim_items.forEach(item => {
+			item.ratio = Math.round(item.ratio * 100) / 100; // Round to 2 decimal places
+			total_ratio += item.ratio;
+		});
+		
+		// Adjust the last item to make sure total is exactly 100%
+		if (claim_items.length > 0 && Math.abs(total_ratio - 100) > 0.01) {
+			claim_items[claim_items.length - 1].ratio += (100 - total_ratio);
+		}
 		
 		console.log("Claim items created:", claim_items);
 		

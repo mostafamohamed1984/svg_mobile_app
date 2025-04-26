@@ -358,23 +358,61 @@ function update_items_preview(dialog) {
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	console.log("Selected invoice names:", invoice_names);
 	
-	// Use the server-side method to fetch and calculate items data
+	// Use the standard Frappe API to get invoice items directly
 	frappe.call({
-		method: 'svg_mobile_app.doctype.project_claim.project_claim.get_items_from_invoices',
+		method: 'frappe.client.get_list',
 		args: {
-			invoices: invoice_names
+			doctype: 'Sales Invoice Item',
+			filters: {
+				'parent': ['in', invoice_names]
+			},
+			fields: [
+				'parent as invoice', 
+				'item_code', 
+				'item_name', 
+				'amount', 
+				'income_account', 
+				'custom_default_earning_account'
+			],
+			limit_page_length: 500
 		},
 		callback: function(response) {
 			console.log("Items API response:", response);
 			
-			if (!response.message) {
-				dialog.fields_dict.items_preview_html.html('');
+			if (!response.message || response.message.length === 0) {
+				dialog.fields_dict.items_preview_html.html(`
+					<div class="alert alert-warning my-4">
+						${__('No items found for selected invoices')}
+					</div>
+				`);
 				return;
 			}
 			
+			let items_data = response.message;
+			
+			// Calculate the ratio for each item
+			let invoice_totals = {};
+			
+			// First, calculate invoice totals
+			items_data.forEach(item => {
+				if (!invoice_totals[item.invoice]) {
+					invoice_totals[item.invoice] = 0;
+				}
+				invoice_totals[item.invoice] += flt(item.amount);
+			});
+			
+			// Then, calculate ratio for each item
+			items_data.forEach(item => {
+				if (invoice_totals[item.invoice] > 0) {
+					item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
+				} else {
+					item.ratio = 0;
+				}
+			});
+			
 			// Group items by invoice
 			let items_by_invoice = {};
-			response.message.forEach(item => {
+			items_data.forEach(item => {
 				if (!items_by_invoice[item.invoice]) {
 					items_by_invoice[item.invoice] = [];
 				}
@@ -477,24 +515,58 @@ function create_bulk_project_claim(frm, dialog) {
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	
-	// Use the server-side method to fetch items data
+	// Use the standard Frappe API to fetch items data
 	frappe.call({
-		method: 'svg_mobile_app.doctype.project_claim.project_claim.get_items_from_invoices',
+		method: 'frappe.client.get_list',
 		args: {
-			invoices: invoice_names
+			doctype: 'Sales Invoice Item',
+			filters: {
+				'parent': ['in', invoice_names]
+			},
+			fields: [
+				'parent as invoice', 
+				'item_code', 
+				'item_name', 
+				'amount', 
+				'income_account', 
+				'custom_default_earning_account'
+			],
+			limit_page_length: 500
 		},
 		callback: function(response) {
 			console.log("Create claim items response:", response);
 			
-			if (!response.message) {
+			if (!response.message || response.message.length === 0) {
 				frappe.ui.form.set_loading(frm, false);
 				frappe.msgprint(__('Could not fetch invoice items'));
 				return;
 			}
 			
+			let items_data = response.message;
+			
+			// Calculate the ratio for each item
+			let invoice_totals = {};
+			
+			// First, calculate invoice totals
+			items_data.forEach(item => {
+				if (!invoice_totals[item.invoice]) {
+					invoice_totals[item.invoice] = 0;
+				}
+				invoice_totals[item.invoice] += flt(item.amount);
+			});
+			
+			// Then, calculate ratio for each item
+			items_data.forEach(item => {
+				if (invoice_totals[item.invoice] > 0) {
+					item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
+				} else {
+					item.ratio = 0;
+				}
+			});
+			
 			// Group items by invoice
 			let items_by_invoice = {};
-			response.message.forEach(item => {
+			items_data.forEach(item => {
 				if (!items_by_invoice[item.invoice]) {
 					items_by_invoice[item.invoice] = [];
 				}

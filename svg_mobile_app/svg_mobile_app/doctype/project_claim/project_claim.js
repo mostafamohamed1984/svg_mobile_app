@@ -203,15 +203,24 @@ function show_bulk_invoice_dialog(frm) {
 	// Attach the event handlers directly to document
 	$(document).on('click', '#select_all_btn', function() {
 		console.log("Select All clicked");
-		let rows = dialog.get_value('invoices') || [];
+		let dialog = cur_dialog; // Get the current dialog from frappe
+		
+		// Get data directly from the table
+		let rows = dialog.fields_dict.invoices.df.data || [];
 		console.log("Rows before:", rows);
 		
+		// Update the data
 		rows.forEach(row => {
 			row.select = 1;
 		});
 		
 		console.log("Rows after:", rows);
-		dialog.set_value('invoices', rows);
+		
+		// Update the table
+		dialog.fields_dict.invoices.df.data = rows;
+		dialog.fields_dict.invoices.refresh();
+		
+		// Update totals
 		update_total_claim_amount(dialog);
 		
 		return false;
@@ -219,13 +228,21 @@ function show_bulk_invoice_dialog(frm) {
 	
 	$(document).on('click', '#deselect_all_btn', function() {
 		console.log("Deselect All clicked");
-		let rows = dialog.get_value('invoices') || [];
+		let dialog = cur_dialog; // Get the current dialog from frappe
 		
+		// Get data directly from the table
+		let rows = dialog.fields_dict.invoices.df.data || [];
+		
+		// Update the data
 		rows.forEach(row => {
 			row.select = 0;
 		});
 		
-		dialog.set_value('invoices', rows);
+		// Update the table
+		dialog.fields_dict.invoices.df.data = rows;
+		dialog.fields_dict.invoices.refresh();
+		
+		// Update totals
 		update_total_claim_amount(dialog);
 		
 		return false;
@@ -233,15 +250,23 @@ function show_bulk_invoice_dialog(frm) {
 	
 	$(document).on('click', '#set_full_amount_btn', function() {
 		console.log("Set Full Amount clicked");
-		let rows = dialog.get_value('invoices') || [];
+		let dialog = cur_dialog; // Get the current dialog from frappe
 		
+		// Get data directly from the table
+		let rows = dialog.fields_dict.invoices.df.data || [];
+		
+		// Update the data
 		rows.forEach(row => {
 			if (row.select) {
 				row.claim_amount = row.outstanding;
 			}
 		});
 		
-		dialog.set_value('invoices', rows);
+		// Update the table
+		dialog.fields_dict.invoices.df.data = rows;
+		dialog.fields_dict.invoices.refresh();
+		
+		// Update totals
 		update_total_claim_amount(dialog);
 		
 		return false;
@@ -296,7 +321,26 @@ function fetch_customer_invoices(dialog, customer) {
 				});
 				
 				console.log("Processed invoices:", invoices);
+				
+				// Clear any existing rows in the table first
+				dialog.fields_dict.invoices.df.data = [];
+				dialog.fields_dict.invoices.refresh();
+				
+				// Now set the new value
 				dialog.set_value('invoices', invoices);
+				
+				// Force refresh the table display
+				dialog.fields_dict.invoices.refresh();
+				
+				// Manual intervention to make sure data is visible
+				setTimeout(() => {
+					console.log("Current table data:", dialog.fields_dict.invoices.df.data);
+					if (!dialog.fields_dict.invoices.df.data || dialog.fields_dict.invoices.df.data.length === 0) {
+						console.log("Data not showing in table, trying direct assignment");
+						dialog.fields_dict.invoices.df.data = invoices;
+						dialog.fields_dict.invoices.refresh();
+					}
+				}, 100);
 				
 				// Show a message about the number of invoices found
 				dialog.fields_dict.status_html.html(
@@ -332,7 +376,10 @@ function fetch_customer_invoices(dialog, customer) {
 
 function update_total_claim_amount(dialog) {
 	console.log("Updating total claim amount");
-	let invoices = dialog.get_value('invoices') || [];
+	// Get data directly from the table
+	let invoices = dialog.fields_dict.invoices.df.data || [];
+	console.log("Table data when updating total:", invoices);
+	
 	let total = 0;
 	
 	// Sum up claim amounts for selected invoices

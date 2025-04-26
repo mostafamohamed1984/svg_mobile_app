@@ -3,7 +3,8 @@
 
 frappe.listview_settings['Project Claim'] = {
     onload: function(listview) {
-        listview.page.add_inner_button(__('Create Bulk Claim'), function() {
+        // Add bulk claim button to the primary actions
+        listview.page.add_action_item(__('Create Bulk Claim'), function() {
             // Create a new Project Claim doc
             frappe.new_doc('Project Claim', {})
                 .then(function() {
@@ -12,6 +13,6 @@ frappe.listview_settings['Project Claim'] = {
                         $('.btn-primary:contains("Create from Multiple Invoices")').click();
                     }, 300);
                 });
-        }, __('Actions'));
+        });
     }
 }; 

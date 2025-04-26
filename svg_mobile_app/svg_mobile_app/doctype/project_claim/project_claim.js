@@ -49,34 +49,21 @@ function show_bulk_invoice_dialog(frm) {
 				reqd: 1,
 				default: frm.doc.customer || '',
 				onchange: function() {
-					// When customer changes, update the invoice table
+					// When customer changes, fetch invoices automatically
 					let customer = dialog.get_value('customer');
 					if (customer) {
-						dialog.set_value('invoices', []);
-						dialog.fields_dict.invoice_fetch_section.disp_area.innerHTML = 
-							`<div class="text-center">
-								<button class="btn btn-sm btn-primary fetch-invoices">
-									${__('Fetch Invoices')}
-								</button>
-							</div>`;
-						
-						dialog.fields_dict.invoice_fetch_section.$wrapper.find('.fetch-invoices').on('click', function() {
-							fetch_customer_invoices(dialog, customer);
-						});
+						fetch_customer_invoices(dialog, customer);
 					}
 				}
 			},
 			{
-				fieldname: 'for_project',
-				label: __('Project'),
-				fieldtype: 'Link',
-				options: 'Project Contractors',
-				default: frm.doc.for_project || ''
+				fieldname: 'invoices_section',
+				fieldtype: 'Section Break',
+				label: __('Outstanding Invoices')
 			},
 			{
-				fieldname: 'invoice_fetch_section',
-				fieldtype: 'Section Break',
-				label: __('Fetch Invoices')
+				fieldname: 'status_html',
+				fieldtype: 'HTML'
 			},
 			{
 				fieldname: 'invoices',
@@ -189,11 +176,12 @@ function show_bulk_invoice_dialog(frm) {
 
 function fetch_customer_invoices(dialog, customer) {
 	// Show loading indicator
-	dialog.fields_dict.invoice_fetch_section.disp_area.innerHTML = 
-		`<div class="text-center">
+	dialog.fields_dict.status_html.html(
+		`<div class="text-center my-4">
 			<i class="fa fa-spinner fa-spin fa-2x"></i>
 			<p>${__('Fetching invoices...')}</p>
-		</div>`;
+		</div>`
+	);
 	
 	// Get customer's outstanding invoices
 	frappe.call({
@@ -210,9 +198,6 @@ function fetch_customer_invoices(dialog, customer) {
 			order_by: 'posting_date desc'
 		},
 		callback: function(response) {
-			// Hide loading indicator
-			dialog.fields_dict.invoice_fetch_section.disp_area.innerHTML = '';
-			
 			if (response.message && response.message.length > 0) {
 				let invoices = response.message.map(inv => {
 					return {
@@ -223,23 +208,67 @@ function fetch_customer_invoices(dialog, customer) {
 						'due_date': inv.due_date,
 						'total': inv.grand_total,
 						'outstanding': inv.outstanding_amount,
-						'claim_amount': 0,
-						'select': 0
+						'claim_amount': inv.outstanding_amount, // Default to full amount
+						'select': 1 // Pre-select all
 					};
 				});
 				
 				dialog.set_value('invoices', invoices);
+				
 				// Show a message about the number of invoices found
-				dialog.fields_dict.invoice_fetch_section.disp_area.innerHTML = 
-					`<div class="alert alert-info">
+				dialog.fields_dict.status_html.html(
+					`<div class="alert alert-info my-2">
 						${__('Found')} ${invoices.length} ${__('outstanding invoices')}
-					</div>`;
+					</div>
+					<div class="my-2">
+						<button class="btn btn-sm btn-default select-all-invoices">
+							${__('Select All')}
+						</button>
+						<button class="btn btn-sm btn-default ml-2 deselect-all-invoices">
+							${__('Deselect All')}
+						</button>
+						<button class="btn btn-sm btn-default ml-2 set-full-amount">
+							${__('Set Full Amount')}
+						</button>
+					</div>`
+				);
+				
+				// Add event listeners for buttons
+				dialog.fields_dict.status_html.$wrapper.find('.select-all-invoices').on('click', function() {
+					let rows = dialog.get_value('invoices') || [];
+					rows.forEach(row => row.select = 1);
+					dialog.set_value('invoices', rows);
+					update_total_claim_amount(dialog);
+				});
+				
+				dialog.fields_dict.status_html.$wrapper.find('.deselect-all-invoices').on('click', function() {
+					let rows = dialog.get_value('invoices') || [];
+					rows.forEach(row => row.select = 0);
+					dialog.set_value('invoices', rows);
+					update_total_claim_amount(dialog);
+				});
+				
+				dialog.fields_dict.status_html.$wrapper.find('.set-full-amount').on('click', function() {
+					let rows = dialog.get_value('invoices') || [];
+					rows.forEach(row => {
+						if (row.select) {
+							row.claim_amount = row.outstanding;
+						}
+					});
+					dialog.set_value('invoices', rows);
+					update_total_claim_amount(dialog);
+				});
+				
+				// Trigger update to show the preview
+				update_total_claim_amount(dialog);
 			} else {
 				// Show message if no invoices found
-				dialog.fields_dict.invoice_fetch_section.disp_area.innerHTML = 
-					`<div class="alert alert-warning">
+				dialog.fields_dict.status_html.html(
+					`<div class="alert alert-warning my-4">
 						${__('No outstanding invoices found for this customer')}
-					</div>`;
+					</div>`
+				);
+				dialog.set_value('invoices', []);
 			}
 		}
 	});
@@ -273,7 +302,7 @@ function update_items_preview(dialog) {
 	
 	// Show loading indicator
 	dialog.fields_dict.items_preview_html.html(
-		`<div class="text-center">
+		`<div class="text-center my-4">
 			<i class="fa fa-spinner fa-spin"></i>
 			<p>${__('Loading invoice items...')}</p>
 		</div>`
@@ -314,7 +343,7 @@ function update_items_preview(dialog) {
 				let claim_amount = flt(inv.claim_amount);
 				
 				html += `
-					<div class="invoice-items-section" data-invoice="${inv.invoice}">
+					<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
 						<h5>${__('Invoice')}: ${inv.invoice}</h5>
 						<div class="table-responsive">
 							<table class="table table-bordered item-allocation-table">
@@ -352,7 +381,6 @@ function update_items_preview(dialog) {
 							</table>
 						</div>
 					</div>
-					<hr>
 				`;
 			});
 			
@@ -411,6 +439,7 @@ function create_bulk_project_claim(frm, dialog) {
 			let claim_items = [];
 			let references = [];
 			let total_claim_amount = 0;
+			let project_contractor = null;
 			
 			selected_invoices.forEach(inv => {
 				let invoice_items = items_by_invoice[inv.invoice] || [];
@@ -466,7 +495,7 @@ function create_bulk_project_claim(frm, dialog) {
 				flt(b.claim_amount) - flt(a.claim_amount)
 			)[0].invoice;
 			
-			// Get party account from the primary invoice
+			// Get party account and project from the primary invoice
 			frappe.call({
 				method: 'frappe.client.get_value',
 				args: {
@@ -484,7 +513,7 @@ function create_bulk_project_claim(frm, dialog) {
 					// Set values in the form
 					frm.set_value({
 						'customer': dialog.get_value('customer'),
-						'for_project': dialog.get_value('for_project') || data.message.custom_for_project,
+						'for_project': data.message.custom_for_project,
 						'party_account': data.message.debit_to,
 						'claim_amount': total_claim_amount,
 						'being': being_text,

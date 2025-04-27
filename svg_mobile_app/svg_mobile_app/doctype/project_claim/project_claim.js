@@ -352,7 +352,6 @@ function update_total_claim_amount(dialog) {
 function update_items_preview(dialog) {
 	console.log("Updating items preview");
 	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
-	
 	if (selected_invoices.length === 0) {
 		dialog.fields_dict.items_preview_html.html('');
 		return;
@@ -530,6 +529,26 @@ function update_items_preview(dialog) {
 				
 				html += '</div>';
 				
+				// Calculate the true total claimable amount (sum of allocated amounts per item, capped by available balance)
+				let total_claimable = 0;
+				all_items.forEach(item => {
+					let invoice = selected_invoices.find(inv => inv.invoice === item.invoice);
+					if (invoice) {
+						let claim_amount = flt(invoice.claim_amount);
+						let max_claimable = Math.min(item.available_balance, claim_amount);
+						let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
+						total_claimable += allocated_amount;
+					}
+				});
+				dialog.set_value('total_claim_amount', total_claimable);
+				
+				// Add user info note below the total claim amount
+				dialog.fields_dict.items_preview_html.$wrapper.append(`
+					<div class="alert alert-info mt-2">
+						Note: The total claim amount shown is the sum of what can actually be claimed per item, after applying available balances.
+					</div>
+				`);
+				
 				dialog.fields_dict.items_preview_html.html(html);
 				
 				// Attach event handlers to inputs
@@ -613,7 +632,7 @@ function update_items_preview(dialog) {
 						}
 						
 						// Update totals
-						updateTotalsForInvoice(dialog, invoice, invoice_items);
+						updateTotalsForInvoice(dialog, invoice, invoice_items, selected_invoices);
 					}
 				});
 				
@@ -639,7 +658,7 @@ function update_items_preview(dialog) {
 						dialog.$wrapper.find(`.item-ratio-input[data-invoice="${invoice}"][data-idx="${idx}"]`).val(ratio.toFixed(2));
 						
 						// Update totals
-						updateTotalsForInvoice(dialog, invoice, items_by_invoice[invoice]);
+						updateTotalsForInvoice(dialog, invoice, items_by_invoice[invoice], selected_invoices);
 					}
 				});
 				
@@ -850,7 +869,6 @@ function create_bulk_project_claim(frm, dialog) {
 					// Only add the available balance if we haven't processed this invoice for this item yet
 					if (!existing_item.processed_invoices.includes(inv.invoice)) {
 						existing_item.processed_invoices.push(inv.invoice);
-						existing_item.current_balance += flt(item.available_balance || 0);
 						console.log(`Adding available_balance for ${item.item_code} from invoice ${inv.invoice}: ${item.available_balance}`);
 					}
 				} else {
@@ -861,7 +879,6 @@ function create_bulk_project_claim(frm, dialog) {
 						ratio: 0, // Placeholder, will be calculated later
 						unearned_account: item.income_account || '',
 						revenue_account: item.custom_default_earning_account || '',
-						current_balance: flt(item.available_balance || 0), // Add current_balance field
 						processed_invoices: [inv.invoice] // Track which invoices we've processed
 					});
 				}
@@ -1035,6 +1052,15 @@ function create_bulk_project_claim(frm, dialog) {
 					message: __('Claim items created from multiple invoices'),
 					indicator: 'green'
 				}, 5);
+				
+				// After claim creation, refresh claim_items from backend
+				frappe.call({
+					method: 'update_claim_items_balance',
+					doc: frm.doc,
+					callback: function(r) {
+						frm.refresh_field('claim_items');
+					}
+				});
 			},
 			error: function(err) {
 				console.error("Error getting invoice details:", err);
@@ -1045,7 +1071,7 @@ function create_bulk_project_claim(frm, dialog) {
 	}
 }
 
-function updateTotalsForInvoice(dialog, invoice, invoice_items) {
+function updateTotalsForInvoice(dialog, invoice, invoice_items, selected_invoices) {
 	let total_ratio = 0;
 	let total_amount = 0;
 	

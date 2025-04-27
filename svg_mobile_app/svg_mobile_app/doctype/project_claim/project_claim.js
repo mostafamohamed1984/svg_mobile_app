@@ -1074,26 +1074,25 @@ function create_bulk_project_claim(frm, dialog) {
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
-						// Force a complete refresh of the form to ensure all data is loaded
-						frm.refresh();
-						frm.refresh_field('claim_items');
-						frm.refresh_field('claim_amount');
+						// Store the current items for safekeeping
+						let current_items = [...frm.doc.claim_items || []];
 						
-						// As a fallback, try loading the document directly to ensure all data is properly loaded
-						frappe.model.with_doc(frm.doctype, frm.docname, function() {
-							let reloaded_doc = frappe.get_doc(frm.doctype, frm.docname);
-							if (reloaded_doc) {
-								// Directly update the items from the reloaded doc
-								frm.doc.claim_items = reloaded_doc.claim_items;
-								frm.refresh_field('claim_items');
+						// Close dialog before any reloads to prevent data loss
+						dialog.hide();
+						
+						// Use timeout to avoid any race conditions
+						setTimeout(function() {
+							// Make sure we still have our items
+							if (!frm.doc.claim_items || frm.doc.claim_items.length === 0) {
+								// If items were lost, restore them
+								frm.doc.claim_items = current_items;
 							}
 							
-							// Use timeout to ensure UI has time to update before closing
-							setTimeout(function() {
-								frm.reload_doc();
-								dialog.hide(); // Close dialog only after data is loaded
-							}, 500); // Increase timeout for better reliability
-						});
+							// Refresh just the fields we need without reloading the whole doc
+							frm.refresh_field('claim_items');
+							frm.refresh_field('claim_amount');
+							frm.refresh();
+						}, 500);
 					}
 				});
 			},

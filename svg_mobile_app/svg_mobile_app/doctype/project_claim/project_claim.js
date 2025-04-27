@@ -80,12 +80,26 @@ function show_bulk_invoice_dialog(frm) {
 		],
 		primary_action_label: __('Create Project Claim'),
 		primary_action: function() {
+			// Store original state
+			let was_local = frm.doc.__islocal;
+			let had_unsaved = frm.doc.__unsaved;
+			
+			// Completely bypass validation by making the form appear saved and not new
+			frm.doc.__islocal = false;
+			frm.doc.__unsaved = 0;
+			
 			// Disable save before creating the project claim
 			frm.disable_save();
 			
 			// Prevent auto-save by just calling the function and closing the dialog
 			create_bulk_project_claim(frm, dialog);
 			dialog.hide();
+			
+			// Restore original state after a delay
+			setTimeout(() => {
+				frm.doc.__islocal = was_local;
+				frm.doc.__unsaved = had_unsaved;
+			}, 100);
 		}
 	});
 	
@@ -736,6 +750,13 @@ function create_bulk_project_claim(frm, dialog) {
 	// Disable save to prevent auto-save
 	frm.disable_save();
 	
+	// Temporarily disable validation
+	frm.skip_validation = true;
+	
+	// Override validate method temporarily
+	let old_validate = frm.validate;
+	frm.validate = function() { return true; };
+	
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	
@@ -1030,19 +1051,22 @@ function create_bulk_project_claim(frm, dialog) {
 					item.current_balance = item.available_balance;
 				});
 				
-				// Set values in the form
-				frm.set_value({
-					'customer': dialog.get_value('customer'),
-					'for_project': data.message.custom_for_project || null,
-					'project_references': all_projects,
-					'project_contractor': project_contractor,
-					'party_account': data.message.debit_to,
-					'claim_amount': total_claim_amount, // Use actual sum of item claim amounts
-					'outstanding_amount': total_outstanding_amount,
-					'being': being_text,
-					'reference_invoice': primary_invoice, // Set the primary invoice as reference
-					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
-				});
+				// Use a quieter version of set_value that doesn't trigger validation
+				function set_value_quietly(field, value) {
+					frm.doc[field] = value;
+				}
+				
+				// Set values in the form without triggering validation
+				set_value_quietly('customer', dialog.get_value('customer'));
+				set_value_quietly('for_project', data.message.custom_for_project || null);
+				set_value_quietly('project_references', all_projects);
+				set_value_quietly('project_contractor', project_contractor);
+				set_value_quietly('party_account', data.message.debit_to);
+				set_value_quietly('claim_amount', total_claim_amount);
+				set_value_quietly('outstanding_amount', total_outstanding_amount);
+				set_value_quietly('being', being_text);
+				set_value_quietly('reference_invoice', primary_invoice);
+				set_value_quietly('invoice_references', invoice_names.join(", "));
 				
 				// Store key values to ensure they aren't lost
 				let saved_values = {
@@ -1096,6 +1120,10 @@ function create_bulk_project_claim(frm, dialog) {
 						
 						// Use timeout to avoid any race conditions
 						setTimeout(function() {
+							// Restore original validate method
+							frm.validate = old_validate;
+							frm.skip_validation = false;
+							
 							// Make sure we still have our items
 							if (!frm.doc.claim_items || frm.doc.claim_items.length === 0) {
 								// If items were lost, restore them
@@ -1104,16 +1132,16 @@ function create_bulk_project_claim(frm, dialog) {
 							
 							// Restore important fields if they were cleared
 							if (!frm.doc.claim_amount || frm.doc.claim_amount !== saved_values.claim_amount) {
-								frm.set_value('claim_amount', saved_values.claim_amount);
+								set_value_quietly('claim_amount', saved_values.claim_amount);
 							}
 							if (!frm.doc.customer || frm.doc.customer !== saved_values.customer) {
-								frm.set_value('customer', saved_values.customer);
+								set_value_quietly('customer', saved_values.customer);
 							}
 							if (!frm.doc.party_account || frm.doc.party_account !== saved_values.party_account) {
-								frm.set_value('party_account', saved_values.party_account);
+								set_value_quietly('party_account', saved_values.party_account);
 							}
 							if (!frm.doc.outstanding_amount || frm.doc.outstanding_amount !== saved_values.outstanding_amount) {
-								frm.set_value('outstanding_amount', saved_values.outstanding_amount);
+								set_value_quietly('outstanding_amount', saved_values.outstanding_amount);
 							}
 							
 							// Refresh just the fields we need without reloading the whole doc
@@ -1132,6 +1160,9 @@ function create_bulk_project_claim(frm, dialog) {
 			},
 			error: function(err) {
 				console.error("Error getting invoice details:", err);
+				// Restore original validate method
+				frm.validate = old_validate;
+				frm.skip_validation = false;
 				frappe.msgprint(__('Error creating claim'));
 			}
 		});

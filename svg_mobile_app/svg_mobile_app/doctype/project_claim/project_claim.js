@@ -1020,6 +1020,12 @@ function create_bulk_project_claim(frm, dialog) {
 				// Filter out items with zero or negative available balance before creating claim items
 				let filtered_claim_items = claim_items.filter(item => item.amount > 0);
 				
+				// Explicitly set current_balance for each item
+				filtered_claim_items.forEach(item => {
+					// Set current_balance equal to available_balance without fallback
+					item.current_balance = item.available_balance;
+				});
+				
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
@@ -1055,6 +1061,9 @@ function create_bulk_project_claim(frm, dialog) {
 				frm.refresh_fields();
 				frm.enable_save();
 				
+				// Force a complete refresh before showing alert
+				frm.refresh();
+				
 				frappe.show_alert({
 					message: __('Claim items created from multiple invoices'),
 					indicator: 'green'
@@ -1070,11 +1079,21 @@ function create_bulk_project_claim(frm, dialog) {
 						frm.refresh_field('claim_items');
 						frm.refresh_field('claim_amount');
 						
-						// Use timeout to ensure UI has time to update before closing
-						setTimeout(function() {
-							frm.reload_doc();
-							dialog.hide(); // Close dialog only after data is loaded
-						}, 300);
+						// As a fallback, try loading the document directly to ensure all data is properly loaded
+						frappe.model.with_doc(frm.doctype, frm.docname, function() {
+							let reloaded_doc = frappe.get_doc(frm.doctype, frm.docname);
+							if (reloaded_doc) {
+								// Directly update the items from the reloaded doc
+								frm.doc.claim_items = reloaded_doc.claim_items;
+								frm.refresh_field('claim_items');
+							}
+							
+							// Use timeout to ensure UI has time to update before closing
+							setTimeout(function() {
+								frm.reload_doc();
+								dialog.hide(); // Close dialog only after data is loaded
+							}, 500); // Increase timeout for better reliability
+						});
 					}
 				});
 			},

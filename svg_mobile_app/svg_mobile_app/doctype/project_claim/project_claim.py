@@ -413,7 +413,7 @@ def get_available_invoice_balances(invoices):
 	for claim in previous_claims:
 		if claim.reference_invoice not in claim_map:
 			claim_map[claim.reference_invoice] = {}
-		claim_map[claim.reference_invoice][claim.item] = claim.claimed_amount
+		claim_map[claim.reference_invoice][claim.item] = flt(claim.claimed_amount)
 	
 	# Calculate available balances
 	result = {}
@@ -421,17 +421,32 @@ def get_available_invoice_balances(invoices):
 	# First group items by invoice and calculate total original amounts
 	invoice_items = {}
 	invoice_total_original = {}
+	invoice_total_claimed = {}
 	
 	for item in items_data:
 		inv = item.invoice
 		if inv not in invoice_items:
 			invoice_items[inv] = []
 			invoice_total_original[inv] = 0
+			invoice_total_claimed[inv] = 0
 		
 		invoice_items[inv].append(item)
-		invoice_total_original[inv] += float(item.amount)
+		invoice_total_original[inv] += flt(item.amount)
+		
+		# Add up total claimed for this invoice
+		claimed = 0
+		if inv in claim_map and item.item_code in claim_map[inv]:
+			claimed = flt(claim_map[inv][item.item_code])
+		invoice_total_claimed[inv] += claimed
 	
-	# Now calculate available balances with proportion to outstanding
+	# Debug log total claimed vs outstanding
+	for inv in invoice_items:
+		outstanding = invoice_outstanding.get(inv, 0)
+		original = invoice_total_original.get(inv, 0)
+		claimed = invoice_total_claimed.get(inv, 0)
+		frappe.logger().debug(f"Invoice {inv}: original={original}, claimed={claimed}, outstanding={outstanding}")
+	
+	# Now calculate available balances for each item
 	for inv, items in invoice_items.items():
 		if inv not in result:
 			result[inv] = {}
@@ -442,32 +457,38 @@ def get_available_invoice_balances(invoices):
 		# Skip if no original amount
 		if original_total <= 0:
 			continue
-			
-		# Calculate available proportion (how much of the original is still available)
-		available_proportion = outstanding / original_total if original_total > 0 else 0
-		frappe.logger().debug(f"Invoice {inv}: outstanding={outstanding}, original_total={original_total}, proportion={available_proportion}")
 		
 		for item in items:
-			original_amount = float(item.amount)
-			# First, calculate available amount based on outstanding proportion
-			available_by_outstanding = original_amount * available_proportion
+			original_amount = flt(item.amount)
 			
-			# Then check for previous claims
+			# Get claimed amount for this specific item
 			claimed = 0
 			if inv in claim_map and item.item_code in claim_map[inv]:
-				claimed = float(claim_map[inv][item.item_code])
+				claimed = flt(claim_map[inv][item.item_code])
 			
-			# The item's available balance should be proportional to outstanding
-			# and reduced by any specific claims against this item
-			available_balance = max(0, available_by_outstanding)
+			# Calculate item's proportion of the invoice
+			item_proportion = original_amount / original_total if original_total > 0 else 0
+			
+			# Calculate available amount based on outstanding and item's proportion
+			# The available balance should not exceed the original amount minus claimed
+			available_by_ratio = item_proportion * outstanding
+			available_by_claimed = original_amount - claimed
+			
+			# The available balance is the minimum of:
+			# 1. Available by proportion of outstanding
+			# 2. Original amount minus claimed amount
+			available_balance = min(available_by_ratio, available_by_claimed)
+			available_balance = max(0, available_balance)
 			
 			result[inv][item.item_code] = {
 				'original_amount': original_amount,
 				'claimed_amount': claimed,
 				'available_balance': available_balance,
-				'available_proportion': available_proportion
+				'available_proportion': outstanding / original_total if original_total > 0 else 0,
+				'item_proportion': item_proportion
 			}
 			
-			frappe.logger().debug(f"Item {item.item_code}: original={original_amount}, claimed={claimed}, available={available_balance}")
+			frappe.logger().debug(f"Item {item.item_code}: original={original_amount}, claimed={claimed}, " +
+				f"avail_by_ratio={available_by_ratio}, avail_by_claimed={available_by_claimed}, final={available_balance}")
 	
 	return result

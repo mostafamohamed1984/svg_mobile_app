@@ -825,8 +825,18 @@ function create_bulk_project_claim(frm, dialog) {
 				if (existing_item) {
 					// Update existing item
 					existing_item.amount += allocated_amount;
-					// Also sum up the current_balance
-					existing_item.current_balance += flt(item.available_balance || 0);
+					// Also sum up the current_balance - but avoid double counting
+					// We only want to add each item's available_balance once
+					if (!existing_item.processed_invoices) {
+						existing_item.processed_invoices = [];
+					}
+					
+					// Only add the available balance if we haven't processed this invoice for this item yet
+					if (!existing_item.processed_invoices.includes(inv.invoice)) {
+						existing_item.processed_invoices.push(inv.invoice);
+						existing_item.current_balance += flt(item.available_balance || 0);
+						console.log(`Adding available_balance for ${item.item_code} from invoice ${inv.invoice}: ${item.available_balance}`);
+					}
 				} else {
 					// Add new item - we'll calculate the global ratio after summing all items
 					claim_items.push({
@@ -835,7 +845,8 @@ function create_bulk_project_claim(frm, dialog) {
 						ratio: 0, // Placeholder, will be calculated later
 						unearned_account: item.income_account || '',
 						revenue_account: item.custom_default_earning_account || '',
-						current_balance: flt(item.available_balance || 0) // Add current_balance field
+						current_balance: flt(item.available_balance || 0), // Add current_balance field
+						processed_invoices: [inv.invoice] // Track which invoices we've processed
 					});
 				}
 			});

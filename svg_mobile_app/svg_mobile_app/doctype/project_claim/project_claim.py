@@ -213,56 +213,66 @@ class ProjectClaim(Document):
 			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
 			invoices.extend(additional_invoices)
 		
-		# Get available balances for all invoices (this includes data from invoice_references)
-		all_balances = get_available_invoice_balances(invoices)
+		frappe.logger().debug(f"Updating claim items balance for {self.name}, invoices: {invoices}")
 		
-		# Add debug logs
-		frappe.logger().debug(f"Updating balance for claim: {self.name}, invoices: {invoices}")
-		frappe.logger().debug(f"Current claim items: {[{'item': item.item, 'amount': item.amount, 'current_balance': item.current_balance} for item in self.claim_items]}")
+		# Get all items from the referenced invoices
+		items_data = frappe.db.sql("""
+			SELECT 
+				parent as invoice,
+				item_code,
+				amount
+			FROM `tabSales Invoice Item`
+			WHERE parent IN %s
+		""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
 		
-		# For debugging, log the available balances from each invoice
-		for inv in invoices:
-			if inv in all_balances:
-				for item_code, data in all_balances[inv].items():
-					frappe.logger().debug(f"Available balance from {inv} for {item_code}: {data['available_balance']}")
+		# Create a map of item totals across all invoices
+		item_total_map = {}
+		for item in items_data:
+			if item.item_code not in item_total_map:
+				item_total_map[item.item_code] = 0
+			item_total_map[item.item_code] += flt(item.amount)
 		
+		# Get all claims that have been submitted for these items, except this one
+		previous_claims = frappe.db.sql("""
+			SELECT 
+				ci.item, 
+				SUM(ci.amount) as claimed_amount
+			FROM 
+				`tabClaim Items` ci
+				JOIN `tabProject Claim` pc ON ci.parent = pc.name
+			WHERE 
+				(pc.reference_invoice IN %s OR pc.invoice_references LIKE %s)
+				AND pc.docstatus = 1
+				AND pc.name != %s
+			GROUP BY 
+				ci.item
+		""", [
+			tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
+			'%' + '%'.join(invoices) + '%',
+			self.name or ""
+		], as_dict=True)
+		
+		# Create a map of claimed amounts
+		claimed_map = {}
+		for claim in previous_claims:
+			claimed_map[claim.item] = flt(claim.claimed_amount)
+		
+		# Calculate available balance for each item in our claim
 		for item in self.claim_items:
-			# For each claim item, find the available balance across all invoices
-			total_available_balance = 0
+			# Get total original amount for this item across all referenced invoices
+			total_original = item_total_map.get(item.item, 0)
 			
-			# Only sum available balances for invoices that contain this item
-			for invoice in invoices:
-				if invoice in all_balances and item.item in all_balances[invoice]:
-					# Found the item in this invoice - add its available balance
-					balance_data = all_balances[invoice][item.item]
-					
-					# For current document items, don't count them as claimed yet if not submitted
-					if self.docstatus < 1:
-						# Get the claimed amount in this document for this item
-						current_doc_claim = frappe.db.sql("""
-							SELECT SUM(amount) as amount 
-							FROM `tabClaim Items` 
-							WHERE parent=%s AND item=%s
-						""", (self.name, item.item), as_dict=True)
-						
-						# If there's a claim amount for this item in the current document,
-						# add it back to the available balance since we don't want to count
-						# our own claims as reducing the available balance
-						if current_doc_claim and current_doc_claim[0].amount:
-							available_balance = balance_data['available_balance'] + flt(current_doc_claim[0].amount)
-						else:
-							available_balance = balance_data['available_balance']
-					else:
-						available_balance = balance_data['available_balance']
-					
-					total_available_balance += flt(available_balance)
+			# Get total claimed amount for this item
+			total_claimed = claimed_map.get(item.item, 0)
 			
-			# Set the current balance to the total available balance
-			item.current_balance = total_available_balance
-			frappe.logger().debug(f"Updated current_balance for {item.item} to {item.current_balance}")
-		
-		# Log final result
-		frappe.logger().debug(f"Updated claim items: {[{'item': item.item, 'amount': item.amount, 'current_balance': item.current_balance} for item in self.claim_items]}")
+			# Calculate available balance
+			available_balance = max(0, total_original - total_claimed)
+			
+			# Debug logs
+			frappe.logger().debug(f"Item {item.item}: original={total_original}, claimed={total_claimed}, available={available_balance}")
+			
+			# Set the current balance to the available balance
+			item.current_balance = available_balance
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""
@@ -386,15 +396,7 @@ def get_available_invoice_balances(invoices):
 		except:
 			invoices = invoices.split(",")
 			
-	# Debug log
 	frappe.logger().debug(f"Getting balances for invoices: {invoices}")
-	
-	# Get invoice outstanding amounts
-	invoice_outstanding = {}
-	for invoice in invoices:
-		outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount")
-		invoice_outstanding[invoice] = float(outstanding) if outstanding is not None else 0
-		frappe.logger().debug(f"Invoice {invoice} outstanding: {invoice_outstanding[invoice]}")
 	
 	# Get all items from these invoices
 	items_data = frappe.db.sql("""
@@ -406,139 +408,105 @@ def get_available_invoice_balances(invoices):
 		WHERE parent IN %s
 	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
 	
-	# Get all previous claims for these invoices - look at both reference_invoice and invoice_references
-	previous_claims = frappe.db.sql("""
-		SELECT 
-			pc.reference_invoice, 
-			ci.item, 
-			SUM(ci.amount) as claimed_amount
-		FROM 
-			`tabClaim Items` ci
-			JOIN `tabProject Claim` pc ON ci.parent = pc.name
-		WHERE 
-			pc.reference_invoice IN %s
-			AND pc.docstatus = 1
-		GROUP BY 
-			pc.reference_invoice, ci.item
-	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+	# Group items by invoice
+	result = {}
+	invoice_items = {}
 	
-	# Also get claims from invoice_references
-	additional_claims = frappe.db.sql("""
+	# First, initialize the result structure and group items by invoice
+	for item in items_data:
+		invoice = item.invoice
+		item_code = item.item_code
+		amount = flt(item.amount)
+		
+		if invoice not in result:
+			result[invoice] = {}
+		
+		if invoice not in invoice_items:
+			invoice_items[invoice] = []
+			
+		invoice_items[invoice].append(item)
+		
+		# Initialize the item data in the result
+		if item_code not in result[invoice]:
+			result[invoice][item_code] = {
+				'original_amount': amount,
+				'claimed_amount': 0,
+				'available_balance': amount,
+				'item_proportion': 0
+			}
+	
+	# Get all previous claims for these invoices
+	previous_claims_sql = """
 		SELECT 
+			pc.reference_invoice,
 			ci.item, 
 			SUM(ci.amount) as claimed_amount
 		FROM 
 			`tabClaim Items` ci
 			JOIN `tabProject Claim` pc ON ci.parent = pc.name
 		WHERE 
-			pc.invoice_references IS NOT NULL
-			AND pc.docstatus = 1
+			pc.docstatus = 1
 			AND (
-				{invoice_conditions}
+				pc.reference_invoice IN %s 
+				OR pc.invoice_references LIKE %s
 			)
 		GROUP BY 
 			ci.item
-	""".format(
-		invoice_conditions = " OR ".join([f"pc.invoice_references LIKE '%{inv}%'" for inv in invoices])
-	), as_dict=True)
+	"""
 	
-	# Create a map for easier lookup
-	claim_map = {}
-	for claim in previous_claims:
-		if claim.reference_invoice not in claim_map:
-			claim_map[claim.reference_invoice] = {}
-		claim_map[claim.reference_invoice][claim.item] = flt(claim.claimed_amount)
+	previous_claims = frappe.db.sql(previous_claims_sql, [
+		tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
+		'%' + '%'.join(invoices) + '%'
+	], as_dict=True)
 	
-	# Add additional claims from invoice_references to each invoice that contains the item
-	for add_claim in additional_claims:
-		item_code = add_claim.item
-		claimed_amount = flt(add_claim.claimed_amount)
-		
-		# Find all invoices that contain this item
-		for item in items_data:
-			if item.item_code == item_code:
-				inv = item.invoice
-				if inv not in claim_map:
-					claim_map[inv] = {}
-				if item_code not in claim_map[inv]:
-					claim_map[inv][item_code] = 0
-				# Add proportional claimed amount
-				claim_map[inv][item_code] += claimed_amount
+	# Process claims to get a consolidated view of what's been claimed for each item
+	item_total_amounts = {}
+	item_claimed_amounts = {}
 	
-	# Calculate available balances
-	result = {}
-	
-	# First group items by invoice and calculate total original amounts
-	invoice_items = {}
-	invoice_total_original = {}
-	invoice_total_claimed = {}
-	
+	# First calculate total original amounts for each item across all invoices
 	for item in items_data:
-		inv = item.invoice
-		if inv not in invoice_items:
-			invoice_items[inv] = []
-			invoice_total_original[inv] = 0
-			invoice_total_claimed[inv] = 0
-		
-		invoice_items[inv].append(item)
-		invoice_total_original[inv] += flt(item.amount)
-		
-		# Add up total claimed for this invoice
-		claimed = 0
-		if inv in claim_map and item.item_code in claim_map[inv]:
-			claimed = flt(claim_map[inv][item.item_code])
-		invoice_total_claimed[inv] += claimed
+		if item.item_code not in item_total_amounts:
+			item_total_amounts[item.item_code] = 0
+		item_total_amounts[item.item_code] += flt(item.amount)
 	
-	# Debug log total claimed vs outstanding
-	for inv in invoice_items:
-		outstanding = invoice_outstanding.get(inv, 0)
-		original = invoice_total_original.get(inv, 0)
-		claimed = invoice_total_claimed.get(inv, 0)
-		frappe.logger().debug(f"Invoice {inv}: original={original}, claimed={claimed}, outstanding={outstanding}")
+	# Then process claims to get total claimed for each item
+	for claim in previous_claims:
+		if claim.item not in item_claimed_amounts:
+			item_claimed_amounts[claim.item] = 0
+		item_claimed_amounts[claim.item] += flt(claim.claimed_amount)
 	
-	# Now calculate available balances for each item
-	for inv, items in invoice_items.items():
-		if inv not in result:
-			result[inv] = {}
-		
-		outstanding = invoice_outstanding.get(inv, 0)
-		original_total = invoice_total_original.get(inv, 0)
-		
-		# Skip if no original amount
-		if original_total <= 0:
-			continue
-		
+	# Now calculate available balance and update the result
+	# We need to calculate the proportion first
+	for invoice, items in invoice_items.items():
+		invoice_total = 0
 		for item in items:
+			invoice_total += flt(item.amount)
+		
+		# Now we can calculate proportion and available balance
+		for item in items:
+			item_code = item.item_code
 			original_amount = flt(item.amount)
+			proportion = original_amount / invoice_total if invoice_total > 0 else 0
 			
-			# Get claimed amount for this specific item
-			claimed = 0
-			if inv in claim_map and item.item_code in claim_map[inv]:
-				claimed = flt(claim_map[inv][item.item_code])
+			# Get the claimed amount for this item type
+			total_claimed = item_claimed_amounts.get(item_code, 0)
 			
-			# Calculate item's proportion of the invoice
-			item_proportion = original_amount / original_total if original_total > 0 else 0
+			# Calculate proportion of claims to allocate to this invoice item
+			# This is based on this item's proportion of the total for that item type
+			claimed_proportion = original_amount / item_total_amounts.get(item_code, 1)
+			claimed_for_this_item = total_claimed * claimed_proportion
 			
-			# Calculate available amount based on outstanding and item's proportion
-			# The available balance should not exceed the original amount minus claimed
-			available_by_ratio = item_proportion * outstanding
-			available_by_claimed = original_amount - claimed
+			# Available balance is the original minus what's claimed for this item
+			available_balance = max(0, original_amount - claimed_for_this_item)
 			
-			# The available balance is the minimum of:
-			# 1. Available by proportion of outstanding
-			# 2. Original amount minus claimed amount
-			available_balance = min(available_by_ratio, available_by_claimed)
-			available_balance = max(0, available_balance)
-			
-			result[inv][item.item_code] = {
+			# Update the result
+			result[invoice][item_code] = {
 				'original_amount': original_amount,
-				'claimed_amount': claimed,
+				'claimed_amount': claimed_for_this_item,
 				'available_balance': available_balance,
-				'available_proportion': outstanding / original_total if original_total > 0 else 0,
-				'item_proportion': item_proportion
+				'item_proportion': proportion
 			}
 			
-			frappe.logger().debug(f"Item {item.item_code}: original={original_amount}, claimed={claimed}, " +
-				f"avail_by_ratio={available_by_ratio}, avail_by_claimed={available_by_claimed}, final={available_balance}")
+			frappe.logger().debug(f"Invoice {invoice}, Item {item_code}: original={original_amount}, claimed={claimed_for_this_item}, available={available_balance}")
 	
 	return result

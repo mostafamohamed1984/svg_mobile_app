@@ -547,6 +547,17 @@ function update_items_preview(dialog) {
 						// Update this item's ratio
 						invoice_items[idx].ratio = ratio;
 						
+						// Recalculate this item's amount based on new ratio
+						let inv = selected_invoices.find(i => i.invoice === invoice);
+						if (inv) {
+							let claim_amount = flt(inv.claim_amount);
+							let allocated_amount = Math.min(ratio * claim_amount / 100, invoice_items[idx].available_balance);
+							
+							// Update the amount input for THIS item first
+							dialog.$wrapper.find(`.item-amount-input[data-invoice="${invoice}"][data-idx="${idx}"]`)
+								.val(allocated_amount.toFixed(2));
+						}
+						
 						// Auto-adjust other items' ratios to maintain 100% total
 						if (invoice_items.length > 1 && Math.abs(ratio_change) > 0.01) {
 							// Calculate current total (excluding the updated item)
@@ -598,19 +609,8 @@ function update_items_preview(dialog) {
 							}
 						}
 						
-						// Recalculate amount based on new ratio
-						let inv = selected_invoices.find(i => i.invoice === invoice);
-						if (inv) {
-							let claim_amount = flt(inv.claim_amount);
-							let allocated_amount = Math.min(ratio * claim_amount / 100, invoice_items[idx].available_balance);
-							
-							// Update the amount input
-							dialog.$wrapper.find(`.item-amount-input[data-invoice="${invoice}"][data-idx="${idx}"]`)
-								.val(allocated_amount.toFixed(2));
-							
-							// Update totals
-							updateTotalsForInvoice(dialog, invoice, invoice_items);
-						}
+						// Update totals
+						updateTotalsForInvoice(dialog, invoice, invoice_items);
 					}
 				});
 				

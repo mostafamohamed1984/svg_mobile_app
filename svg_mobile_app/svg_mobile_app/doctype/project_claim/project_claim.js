@@ -1066,8 +1066,14 @@ function create_bulk_project_claim(frm, dialog) {
 					doc: frm.doc,
 					callback: function(r) {
 						frm.refresh_field('claim_items');
+						
+						// Reload doc and wait for it to complete before hiding dialog
 						frm.reload_doc();
-						dialog.hide(); // Close dialog only after data is loaded
+						
+						// Give time for the UI to fully update before hiding dialog
+						setTimeout(function() {
+							dialog.hide(); // Close dialog only after data is fully loaded
+						}, 300);
 					}
 				});
 			},

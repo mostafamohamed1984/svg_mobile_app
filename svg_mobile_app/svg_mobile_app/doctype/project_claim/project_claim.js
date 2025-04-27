@@ -860,9 +860,6 @@ function create_bulk_project_claim(frm, dialog) {
 			
 			// Calculate claim items for this invoice using the edited values
 			invoice_items.forEach(item => {
-				// Skip items with zero or negative available balance, but only if available_balance property exists
-				if (item.available_balance !== undefined && item.available_balance <= 0) return;
-				
 				// Calculate allocated amount based on ratio (which might have been edited)
 				let allocated_amount = Math.min(flt(item.ratio) * claim_amount / 100, item.available_balance || claim_amount);
 				
@@ -1065,9 +1062,7 @@ function create_bulk_project_claim(frm, dialog) {
 				// Update form and close dialog
 				frm.refresh_fields();
 				frm.enable_save();
-				
-				// Don't hide the dialog yet
-				// dialog.hide();
+				dialog.hide();
 				
 				frappe.show_alert({
 					message: __('Claim items created from multiple invoices'),
@@ -1081,8 +1076,6 @@ function create_bulk_project_claim(frm, dialog) {
 					callback: function(r) {
 						frm.refresh_field('claim_items');
 						frm.reload_doc();
-						// Close dialog only after data is loaded
-						dialog.hide();
 					}
 				});
 			},

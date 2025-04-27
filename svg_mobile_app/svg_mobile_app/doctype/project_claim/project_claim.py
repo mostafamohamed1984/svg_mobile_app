@@ -213,47 +213,64 @@ class ProjectClaim(Document):
 			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
 			invoices.extend(additional_invoices)
 		
-		# Get available balances for all invoices
+		# Get available balances for all invoices (this includes data from invoice_references)
 		all_balances = get_available_invoice_balances(invoices)
 		
+		# Add debug logs
+		frappe.logger().debug(f"Updating balance for claim: {self.name}, invoices: {invoices}")
+		frappe.logger().debug(f"Current claim items: {[{
+			'item': item.item, 
+			'amount': item.amount,
+			'current_balance': item.current_balance
+		} for item in self.claim_items]}")
+		
+		# For debugging, log the available balances from each invoice
+		for inv in invoices:
+			if inv in all_balances:
+				for item_code, data in all_balances[inv].items():
+					frappe.logger().debug(f"Available balance from {inv} for {item_code}: {data['available_balance']}")
+		
 		for item in self.claim_items:
-			# Track totals across all invoices for this item
-			total_original_amount = 0
-			total_claimed_amount = 0
-			matches_found = False
+			# For each claim item, find the available balance across all invoices
+			total_available_balance = 0
 			
-			# Find ALL invoices containing this item and sum the balances
+			# Only sum available balances for invoices that contain this item
 			for invoice in invoices:
 				if invoice in all_balances and item.item in all_balances[invoice]:
-					# Found the item in this invoice
+					# Found the item in this invoice - add its available balance
 					balance_data = all_balances[invoice][item.item]
-					original_amount = balance_data['original_amount']
-					claimed_amount = balance_data['claimed_amount']
 					
-					# For current document items, don't count them as claimed yet
-					if self.docstatus < 1:  # Not submitted yet
+					# For current document items, don't count them as claimed yet if not submitted
+					if self.docstatus < 1:
+						# Get the claimed amount in this document for this item
 						current_doc_claim = frappe.db.sql("""
 							SELECT SUM(amount) as amount 
 							FROM `tabClaim Items` 
 							WHERE parent=%s AND item=%s
 						""", (self.name, item.item), as_dict=True)
 						
+						# If there's a claim amount for this item in the current document,
+						# add it back to the available balance since we don't want to count
+						# our own claims as reducing the available balance
 						if current_doc_claim and current_doc_claim[0].amount:
-							# Don't count this document's claim amount in the claimed total for this invoice
-							claimed_amount -= flt(current_doc_claim[0].amount)
+							available_balance = balance_data['available_balance'] + flt(current_doc_claim[0].amount)
+						else:
+							available_balance = balance_data['available_balance']
+					else:
+						available_balance = balance_data['available_balance']
 					
-					# Add to running totals
-					total_original_amount += flt(original_amount)
-					total_claimed_amount += flt(claimed_amount)
-					matches_found = True
+					total_available_balance += flt(available_balance)
 			
-			# Set the current balance based on all matches found across all invoices
-			if matches_found:
-				available_balance = flt(total_original_amount) - flt(total_claimed_amount)
-				item.current_balance = max(0, available_balance)
-			else:
-				# No matches found, set to zero
-				item.current_balance = 0
+			# Set the current balance to the total available balance
+			item.current_balance = total_available_balance
+			frappe.logger().debug(f"Updated current_balance for {item.item} to {item.current_balance}")
+		
+		# Log final result
+		frappe.logger().debug(f"Updated claim items: {[{
+			'item': item.item, 
+			'amount': item.amount,
+			'current_balance': item.current_balance
+		} for item in self.claim_items]}")
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""

@@ -1020,25 +1020,6 @@ function create_bulk_project_claim(frm, dialog) {
 				// Filter out items with zero or negative available balance before creating claim items
 				let filtered_claim_items = claim_items.filter(item => item.amount > 0);
 				
-				// Set current_balance directly from available_balance for each claim item
-				filtered_claim_items.forEach(item => {
-					// Find this item type across all invoices and sum the available balance
-					let total_available = 0;
-					for (let inv_name in dialog.items_by_invoice) {
-						let items = dialog.items_by_invoice[inv_name];
-						let matching_items = items.filter(i => i.item_code === item.item);
-						
-						matching_items.forEach(match => {
-							if (match.available_balance) {
-								total_available += parseFloat(match.available_balance);
-							}
-						});
-					}
-					
-					// Set the current_balance directly
-					item.current_balance = total_available;
-				});
-				
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
@@ -1079,40 +1060,17 @@ function create_bulk_project_claim(frm, dialog) {
 					indicator: 'green'
 				}, 5);
 				
-				// First hide the dialog before any async operations
-				dialog.hide();
-				
-				// Double check that current_balance is set for all items
-				frm.doc.claim_items.forEach((item_row, idx) => {
-					if (!item_row.current_balance || item_row.current_balance <= 0) {
-						// Find the matching item in our filtered items
-						let match = filtered_claim_items.find(fi => fi.item === item_row.item);
-						if (match && match.current_balance > 0) {
-							// Update current_balance directly in the form's item row
-							frappe.model.set_value(item_row.doctype, item_row.name, 'current_balance', match.current_balance);
-						}
-					}
-				});
-				
-				// Refresh claim_items field again to ensure current_balance is shown
-				frm.refresh_field('claim_items');
-				
-				// Then save the form to ensure all data is committed
+				// Save the form before updating claim items balance
 				frm.save().then(() => {
-					// After save completes, reload the doc to get the latest data
-					frm.reload_doc();
-					
-					// After reload, update claim items balance
-					setTimeout(() => {
-						frm.call({
-							method: 'update_claim_items_balance',
-							doc: frm.doc,
-							callback: function(r) {
-								frm.refresh_field('claim_items');
-								frm.refresh();
-							}
-						});
-					}, 500);
+					frm.call({
+						method: 'update_claim_items_balance',
+						doc: frm.doc,
+						callback: function(r) {
+							frm.refresh_field('claim_items');
+							frm.reload_doc();
+							dialog.hide();
+						}
+					});
 				});
 			},
 			error: function(err) {

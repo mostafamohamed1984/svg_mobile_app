@@ -80,6 +80,9 @@ function show_bulk_invoice_dialog(frm) {
 		],
 		primary_action_label: __('Create Project Claim'),
 		primary_action: function() {
+			// Disable save before creating the project claim
+			frm.disable_save();
+			
 			// Prevent auto-save by just calling the function and closing the dialog
 			create_bulk_project_claim(frm, dialog);
 			dialog.hide();
@@ -730,7 +733,7 @@ function create_bulk_project_claim(frm, dialog) {
 		return;
 	}
 	
-	// Show loading indicator
+	// Disable save to prevent auto-save
 	frm.disable_save();
 	
 	// Get invoice names for selected invoices
@@ -1004,7 +1007,6 @@ function create_bulk_project_claim(frm, dialog) {
 				console.log("Invoice details response:", data);
 				
 				if (!data.message) {
-					frm.enable_save();
 					frappe.msgprint(__('Could not fetch account information'));
 					return;
 				}
@@ -1070,7 +1072,7 @@ function create_bulk_project_claim(frm, dialog) {
 				// Update form and close dialog
 				frm.refresh_fields();
 				
-				// Do not enable save to prevent auto-save validation
+				// Keep save disabled to prevent auto-save validation
 				// Leave it to the user to click save when ready
 				
 				// Force a complete refresh before showing alert
@@ -1122,7 +1124,7 @@ function create_bulk_project_claim(frm, dialog) {
 							frm.refresh_field('outstanding_amount');
 							frm.refresh();
 							
-							// Prevent automatic saving
+							// Prevent automatic saving by setting save flag to false
 							frm._save_flag = false;
 						}, 500);
 					}
@@ -1130,7 +1132,6 @@ function create_bulk_project_claim(frm, dialog) {
 			},
 			error: function(err) {
 				console.error("Error getting invoice details:", err);
-				frm.enable_save();
 				frappe.msgprint(__('Error creating claim'));
 			}
 		});

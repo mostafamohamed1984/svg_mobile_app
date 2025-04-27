@@ -607,4 +607,32 @@ def get_available_invoice_balances(invoices):
 					flt(item.amount) / invoice_total if invoice_total > 0 else 0
 				)
 	
+	# NEW CODE: Reconcile with actual outstanding amounts
+	for invoice in invoices:
+		if not invoice or invoice not in result:
+			continue
+			
+		# Get the actual outstanding amount from the invoice
+		actual_outstanding = flt(frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0)
+		
+		# Calculate the total available balance from items
+		total_available = 0
+		for item_code in result[invoice]:
+			total_available += flt(result[invoice][item_code]['available_balance'])
+			
+		# If there's a discrepancy (outstanding > 0 but available = 0)
+		if actual_outstanding > 0 and total_available < 0.01:
+			frappe.logger().info(f"Reconciling invoice {invoice}: outstanding={actual_outstanding}, available={total_available}")
+			
+			# Distribute the outstanding amount proportionally to items based on original amounts
+			total_original = 0
+			for item_code in result[invoice]:
+				total_original += flt(result[invoice][item_code]['original_amount'])
+				
+			if total_original > 0:
+				for item_code in result[invoice]:
+					item_proportion = flt(result[invoice][item_code]['original_amount']) / total_original
+					result[invoice][item_code]['available_balance'] = actual_outstanding * item_proportion
+					frappe.logger().info(f"Redistributed to {item_code}: {result[invoice][item_code]['available_balance']}")
+	
 	return result

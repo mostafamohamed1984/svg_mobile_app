@@ -1062,14 +1062,16 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Save the form before updating claim items balance
 				frm.save().then(() => {
-					frm.call({
-						method: 'update_claim_items_balance',
-						doc: frm.doc,
-						callback: function(r) {
-							frm.refresh_field('claim_items');
-							frm.reload_doc();
-							dialog.hide();
-						}
+					// After save, reload the doc to get the new child rows from the DB
+					frm.reload_doc().then(() => {
+						frm.call({
+							method: 'update_claim_items_balance',
+							doc: frm.doc,
+							callback: function(r) {
+								frm.refresh_field('claim_items');
+								dialog.hide();
+							}
+						});
 					});
 				});
 			},

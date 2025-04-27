@@ -180,6 +180,10 @@ class ProjectClaim(Document):
 		"""Validate that claim amount does not exceed outstanding amount"""
 		if flt(self.claim_amount) > flt(self.outstanding_amount):
 			frappe.throw(f"Claim Amount ({self.claim_amount}) cannot exceed Outstanding Amount ({self.outstanding_amount})")
+		
+		# Also validate against claimable amount if available
+		if hasattr(self, 'claimable_amount') and self.claimable_amount and flt(self.claim_amount) > flt(self.claimable_amount):
+			frappe.throw(f"Claim Amount ({self.claim_amount}) cannot exceed Claimable Amount ({self.claimable_amount})")
 	
 	def validate_claim_items(self):
 		"""Validate claim items totals and balances"""

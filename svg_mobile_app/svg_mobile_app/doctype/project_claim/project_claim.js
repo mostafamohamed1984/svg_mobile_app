@@ -1094,6 +1094,7 @@ function create_bulk_project_claim(frm, dialog) {
 				set_value_quietly('party_account', data.message.debit_to);
 				set_value_quietly('claim_amount', total_claimable_amount);
 				set_value_quietly('claimable_amount', total_claimable_amount);
+				set_value_quietly('outstanding_amount', total_claimable_amount);
 				set_value_quietly('being', being_text);
 				set_value_quietly('reference_invoice', primary_invoice);
 				set_value_quietly('invoice_references', invoice_names.join(", "));
@@ -1103,7 +1104,8 @@ function create_bulk_project_claim(frm, dialog) {
 					customer: dialog.get_value('customer'),
 					party_account: data.message.debit_to,
 					claim_amount: total_claimable_amount,
-					claimable_amount: total_claimable_amount
+					claimable_amount: total_claimable_amount,
+					outstanding_amount: total_claimable_amount
 				};
 				
 				// Hide for_project field and show project_references field if multiple projects
@@ -1173,6 +1175,9 @@ function create_bulk_project_claim(frm, dialog) {
 							if (!frm.doc.claimable_amount || frm.doc.claimable_amount !== saved_values.claimable_amount) {
 								set_value_quietly('claimable_amount', saved_values.claimable_amount);
 							}
+							if (!frm.doc.outstanding_amount || frm.doc.outstanding_amount !== saved_values.outstanding_amount) {
+								set_value_quietly('outstanding_amount', saved_values.outstanding_amount);
+							}
 							
 							// Refresh just the fields we need without reloading the whole doc
 							frm.refresh_field('claim_items');
@@ -1180,6 +1185,7 @@ function create_bulk_project_claim(frm, dialog) {
 							frm.refresh_field('customer');
 							frm.refresh_field('party_account');
 							frm.refresh_field('claimable_amount');
+							frm.refresh_field('outstanding_amount');
 							frm.refresh();
 							
 							// Prevent automatic saving by setting save flag to false

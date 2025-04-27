@@ -465,11 +465,13 @@ function update_items_preview(dialog) {
 					let total_shown_amount = 0;
 					
 					invoice_items.forEach((item, idx) => {
-						// Calculate allocated amount based on ratio, but capped by available balance
-						let max_claimable = Math.min(item.available_balance, inv.claim_amount);
-						let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
+						// Skip items with zero available balance
+						if (item.available_balance <= 0) return;
 						
-						// Keep track of totals for display
+						// Calculate allocated amount based on ratio (which might have been edited)
+						let allocated_amount = Math.min(flt(item.ratio) * claim_amount / 100, item.available_balance || claim_amount);
+						
+						// Calculate global ratio (relative to total claim amount)
 						total_shown_ratio += item.ratio;
 						total_shown_amount += allocated_amount;
 						
@@ -848,6 +850,9 @@ function create_bulk_project_claim(frm, dialog) {
 			
 			// Calculate claim items for this invoice using the edited values
 			invoice_items.forEach(item => {
+				// Skip items with zero available balance
+				if (item.available_balance <= 0) return;
+				
 				// Calculate allocated amount based on ratio (which might have been edited)
 				let allocated_amount = Math.min(flt(item.ratio) * claim_amount / 100, item.available_balance || claim_amount);
 				
@@ -1012,6 +1017,9 @@ function create_bulk_project_claim(frm, dialog) {
 					total_outstanding_amount += flt(inv.outstanding);
 				});
 				
+				// Filter out items with zero or negative available balance before creating claim items
+				let filtered_claim_items = claim_items.filter(item => item.amount > 0);
+				
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
@@ -1039,26 +1047,27 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Clear existing items and add new ones
 				frm.clear_table('claim_items');
-				claim_items.forEach(item => {
+				filtered_claim_items.forEach(item => {
 					let row = frm.add_child('claim_items', item);
 				});
 				
 				// Update form and close dialog
 				frm.refresh_fields();
 				frm.enable_save();
-				dialog.hide();
 				
 				frappe.show_alert({
 					message: __('Claim items created from multiple invoices'),
 					indicator: 'green'
 				}, 5);
 				
-				// After claim creation, refresh claim_items from backend
+				// After claim creation, refresh claim_items from backend and reload doc for consistency
 				frappe.call({
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
 						frm.refresh_field('claim_items');
+						frm.reload_doc();
+						dialog.hide(); // Close dialog only after data is loaded
 					}
 				});
 			},

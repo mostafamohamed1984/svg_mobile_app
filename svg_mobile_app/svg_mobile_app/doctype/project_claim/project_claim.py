@@ -218,11 +218,7 @@ class ProjectClaim(Document):
 		
 		# Add debug logs
 		frappe.logger().debug(f"Updating balance for claim: {self.name}, invoices: {invoices}")
-		frappe.logger().debug(f"Current claim items: {[{
-			'item': item.item, 
-			'amount': item.amount,
-			'current_balance': item.current_balance
-		} for item in self.claim_items]}")
+		frappe.logger().debug(f"Current claim items: {[{'item': item.item, 'amount': item.amount, 'current_balance': item.current_balance} for item in self.claim_items]}")
 		
 		# For debugging, log the available balances from each invoice
 		for inv in invoices:
@@ -266,11 +262,7 @@ class ProjectClaim(Document):
 			frappe.logger().debug(f"Updated current_balance for {item.item} to {item.current_balance}")
 		
 		# Log final result
-		frappe.logger().debug(f"Updated claim items: {[{
-			'item': item.item, 
-			'amount': item.amount,
-			'current_balance': item.current_balance
-		} for item in self.claim_items]}")
+		frappe.logger().debug(f"Updated claim items: {[{'item': item.item, 'amount': item.amount, 'current_balance': item.current_balance} for item in self.claim_items]}")
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""

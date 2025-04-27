@@ -397,7 +397,7 @@ def get_available_invoice_balances(invoices):
 		WHERE parent IN %s
 	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
 	
-	# Get all previous claims for these invoices
+	# Get all previous claims for these invoices - look at both reference_invoice and invoice_references
 	previous_claims = frappe.db.sql("""
 		SELECT 
 			pc.reference_invoice, 
@@ -413,12 +413,48 @@ def get_available_invoice_balances(invoices):
 			pc.reference_invoice, ci.item
 	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
 	
+	# Also get claims from invoice_references
+	additional_claims = frappe.db.sql("""
+		SELECT 
+			ci.item, 
+			SUM(ci.amount) as claimed_amount
+		FROM 
+			`tabClaim Items` ci
+			JOIN `tabProject Claim` pc ON ci.parent = pc.name
+		WHERE 
+			pc.invoice_references IS NOT NULL
+			AND pc.docstatus = 1
+			AND (
+				{invoice_conditions}
+			)
+		GROUP BY 
+			ci.item
+	""".format(
+		invoice_conditions = " OR ".join([f"pc.invoice_references LIKE '%{inv}%'" for inv in invoices])
+	), as_dict=True)
+	
 	# Create a map for easier lookup
 	claim_map = {}
 	for claim in previous_claims:
 		if claim.reference_invoice not in claim_map:
 			claim_map[claim.reference_invoice] = {}
 		claim_map[claim.reference_invoice][claim.item] = flt(claim.claimed_amount)
+	
+	# Add additional claims from invoice_references to each invoice that contains the item
+	for add_claim in additional_claims:
+		item_code = add_claim.item
+		claimed_amount = flt(add_claim.claimed_amount)
+		
+		# Find all invoices that contain this item
+		for item in items_data:
+			if item.item_code == item_code:
+				inv = item.invoice
+				if inv not in claim_map:
+					claim_map[inv] = {}
+				if item_code not in claim_map[inv]:
+					claim_map[inv][item_code] = 0
+				# Add proportional claimed amount
+				claim_map[inv][item_code] += claimed_amount
 	
 	# Calculate available balances
 	result = {}

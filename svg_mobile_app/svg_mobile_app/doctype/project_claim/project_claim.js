@@ -166,7 +166,7 @@ function show_bulk_invoice_dialog(frm) {
 		console.log("Set Full Amount clicked");
 		dialog.invoices_data.forEach(inv => {
 			if (inv.select) {
-				inv.claim_amount = inv.outstanding;
+				inv.claim_amount = inv.claimable_amount;
 			}
 		});
 		render_invoices_table(dialog);
@@ -227,6 +227,7 @@ function fetch_customer_invoices(dialog, customer) {
 			if (response.message && response.message.length > 0) {
 				console.log("Found invoices:", response.message.length);
 				
+				// First prepare basic invoice data
 				dialog.invoices_data = response.message.map(inv => {
 					return {
 						'invoice': inv.name,
@@ -236,18 +237,45 @@ function fetch_customer_invoices(dialog, customer) {
 						'due_date': inv.due_date,
 						'total': inv.grand_total,
 						'outstanding': inv.outstanding_amount,
-						'claim_amount': inv.outstanding_amount, // Default to full amount
+						'claim_amount': inv.outstanding_amount, // Will be updated after getting available balances
 						'select': 1 // Pre-select all
 					};
 				});
 				
-				console.log("Processed invoices:", dialog.invoices_data);
+				// Get invoice names for all invoices
+				let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
 				
-				// Render the invoices table
-				render_invoices_table(dialog);
-				
-				// Update the total claim amount
-				update_total_claim_amount(dialog);
+				// Get available balances for all invoices
+				frappe.call({
+					method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+					args: {
+						invoices: invoice_names
+					},
+					callback: function(balance_result) {
+						let balance_data = balance_result.message || {};
+						
+						// Update each invoice with claimable amount based on available balances
+						dialog.invoices_data.forEach(inv => {
+							let invoice_balance_data = balance_data[inv.invoice] || {};
+							let claimable_amount = 0;
+							
+							// Sum available balances for all items in this invoice
+							Object.keys(invoice_balance_data).forEach(item_code => {
+								claimable_amount += invoice_balance_data[item_code].available_balance || 0;
+							});
+							
+							// Update claim amount to the claimable amount instead of outstanding
+							inv.claimable_amount = claimable_amount;
+							inv.claim_amount = claimable_amount;
+						});
+						
+						// Render the invoices table with updated data
+						render_invoices_table(dialog);
+						
+						// Update the total claim amount
+						update_total_claim_amount(dialog);
+					}
+				});
 			} else {
 				console.log("No invoices found");
 				
@@ -300,6 +328,7 @@ function render_invoices_table(dialog) {
 							<th>${__('Due Date')}</th>
 							<th>${__('Total')}</th>
 							<th>${__('Outstanding')}</th>
+							<th>${__('Claimable')}</th>
 							<th>${__('Claim Amount')}</th>
 						</tr>
 					</thead>
@@ -324,13 +353,14 @@ function render_invoices_table(dialog) {
 				<td>${inv.due_date || ''}</td>
 				<td class="text-right">${format_currency(inv.total)}</td>
 				<td class="text-right">${format_currency(inv.outstanding)}</td>
+				<td class="text-right">${format_currency(inv.claimable_amount)}</td>
 				<td>
 					<input 
 						type="text" 
 						class="form-control claim-amount-input no-spinner" 
 						data-index="${index}" 
 						value="${inv.claim_amount}" 
-						max="${inv.outstanding}"
+						max="${inv.claimable_amount}"
 						${!inv.select ? 'disabled' : ''}
 						style="text-align: right;"
 						onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
@@ -740,10 +770,10 @@ function create_bulk_project_claim(frm, dialog) {
 	}
 	
 	// Validate claim amounts
-	let invalid_claims = selected_invoices.filter(inv => flt(inv.claim_amount) > flt(inv.outstanding));
+	let invalid_claims = selected_invoices.filter(inv => flt(inv.claim_amount) > flt(inv.claimable_amount));
 	if (invalid_claims.length > 0) {
-		let error_list = invalid_claims.map(inv => `${inv.invoice}: ${format_currency(inv.claim_amount)} > ${format_currency(inv.outstanding)}`).join('<br>');
-		frappe.msgprint(__('Claim Amount cannot exceed Outstanding Amount for the following invoices:<br>') + error_list);
+		let error_list = invalid_claims.map(inv => `${inv.invoice}: ${format_currency(inv.claim_amount)} > ${format_currency(inv.claimable_amount)}`).join('<br>');
+		frappe.msgprint(__('Claim Amount cannot exceed Claimable Amount for the following invoices:<br>') + error_list);
 		return;
 	}
 	
@@ -760,10 +790,10 @@ function create_bulk_project_claim(frm, dialog) {
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	
-	// Calculate total outstanding amount across all selected invoices
-	let total_outstanding_amount = 0;
+	// Calculate total claimable amount across all selected invoices
+	let total_claimable_amount = 0;
 	selected_invoices.forEach(inv => {
-		total_outstanding_amount += flt(inv.outstanding);
+		total_claimable_amount += flt(inv.claim_amount);
 	});
 	
 	// If we have already processed items, use those directly
@@ -988,7 +1018,7 @@ function create_bulk_project_claim(frm, dialog) {
 			let inv_total = total_by_invoice[ref.invoice] || 0;
 			
 			being_text += `- ${ref.invoice} (${ref.status}, ${ref.project || 'No Project'}${ref.project_contractor ? ', ' + ref.project_contractor : ''}, Due: ${ref.due_date || 'N/A'})\n`;
-			being_text += `  Total Claimed: ${format_currency(inv_total)} of ${format_currency(ref.amount)} outstanding\n`;
+			being_text += `  Total Claimed: ${format_currency(inv_total)} of ${format_currency(ref.amount)} claimable\n`;
 			
 			if (inv_items.length > 0) {
 				being_text += `  Items:\n`;
@@ -1036,10 +1066,10 @@ function create_bulk_project_claim(frm, dialog) {
 				let primary_invoice_data = selected_invoices.find(inv => inv.invoice === primary_invoice);
 				let project_contractor = primary_invoice_data ? primary_invoice_data.project_contractor : null;
 				
-				// Calculate total outstanding amount across all selected invoices
-				let total_outstanding_amount = 0;
+				// Calculate total claimable amount across all selected invoices
+				let total_claimable_amount = 0;
 				selected_invoices.forEach(inv => {
-					total_outstanding_amount += flt(inv.outstanding);
+					total_claimable_amount += flt(inv.claim_amount);
 				});
 				
 				// Filter out items with zero or negative available balance before creating claim items
@@ -1062,8 +1092,8 @@ function create_bulk_project_claim(frm, dialog) {
 				set_value_quietly('project_references', all_projects);
 				set_value_quietly('project_contractor', project_contractor);
 				set_value_quietly('party_account', data.message.debit_to);
-				set_value_quietly('claim_amount', total_claim_amount);
-				set_value_quietly('outstanding_amount', total_outstanding_amount);
+				set_value_quietly('claim_amount', total_claimable_amount);
+				set_value_quietly('claimable_amount', total_claimable_amount);
 				set_value_quietly('being', being_text);
 				set_value_quietly('reference_invoice', primary_invoice);
 				set_value_quietly('invoice_references', invoice_names.join(", "));
@@ -1072,8 +1102,8 @@ function create_bulk_project_claim(frm, dialog) {
 				let saved_values = {
 					customer: dialog.get_value('customer'),
 					party_account: data.message.debit_to,
-					claim_amount: total_claim_amount,
-					outstanding_amount: total_outstanding_amount
+					claim_amount: total_claimable_amount,
+					claimable_amount: total_claimable_amount
 				};
 				
 				// Hide for_project field and show project_references field if multiple projects
@@ -1140,8 +1170,8 @@ function create_bulk_project_claim(frm, dialog) {
 							if (!frm.doc.party_account || frm.doc.party_account !== saved_values.party_account) {
 								set_value_quietly('party_account', saved_values.party_account);
 							}
-							if (!frm.doc.outstanding_amount || frm.doc.outstanding_amount !== saved_values.outstanding_amount) {
-								set_value_quietly('outstanding_amount', saved_values.outstanding_amount);
+							if (!frm.doc.claimable_amount || frm.doc.claimable_amount !== saved_values.claimable_amount) {
+								set_value_quietly('claimable_amount', saved_values.claimable_amount);
 							}
 							
 							// Refresh just the fields we need without reloading the whole doc
@@ -1149,7 +1179,7 @@ function create_bulk_project_claim(frm, dialog) {
 							frm.refresh_field('claim_amount');
 							frm.refresh_field('customer');
 							frm.refresh_field('party_account');
-							frm.refresh_field('outstanding_amount');
+							frm.refresh_field('claimable_amount');
 							frm.refresh();
 							
 							// Prevent automatic saving by setting save flag to false

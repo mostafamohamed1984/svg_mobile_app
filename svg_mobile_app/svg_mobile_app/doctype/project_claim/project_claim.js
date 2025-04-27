@@ -1051,26 +1051,30 @@ function create_bulk_project_claim(frm, dialog) {
 					let row = frm.add_child('claim_items', item);
 				});
 				
-				// Update form first
+				// Update form and close dialog
 				frm.refresh_fields();
 				frm.enable_save();
 				
-				// Now update claim items balance and ensure everything is loaded
+				frappe.show_alert({
+					message: __('Claim items created from multiple invoices'),
+					indicator: 'green'
+				}, 5);
+				
+				// After claim creation, refresh claim_items from backend and reload doc for consistency
 				frappe.call({
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
+						// Force a complete refresh of the form to ensure all data is loaded
+						frm.refresh();
 						frm.refresh_field('claim_items');
+						frm.refresh_field('claim_amount');
 						
-						frappe.show_alert({
-							message: __('Claim items created from multiple invoices'),
-							indicator: 'green'
-						}, 5);
-						
-						// Give time for the UI to update before closing dialog
+						// Use timeout to ensure UI has time to update before closing
 						setTimeout(function() {
-							dialog.hide();
-						}, 500);
+							frm.reload_doc();
+							dialog.hide(); // Close dialog only after data is loaded
+						}, 300);
 					}
 				});
 			},

@@ -1074,30 +1074,22 @@ function create_bulk_project_claim(frm, dialog) {
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
-						// Store the current items for safekeeping
+						// Store the current items and claim amount for safekeeping
 						let current_items = [...frm.doc.claim_items || []];
-						
-						// Also store the claim amount to prevent it from being reset
-						let saved_claim_amount = frm.doc.claim_amount;
+						let current_claim_amount = frm.doc.claim_amount;
 						
 						// Close dialog before any reloads to prevent data loss
 						dialog.hide();
 						
 						// Use timeout to avoid any race conditions
 						setTimeout(function() {
-							// Make sure we still have our items
-							if (!frm.doc.claim_items || frm.doc.claim_items.length === 0) {
-								// If items were lost, restore them
-								frm.doc.claim_items = current_items;
+							// Make sure claim_amount is preserved
+							if (!frm.doc.claim_amount || frm.doc.claim_amount !== current_claim_amount) {
+								// If claim_amount was reset, restore it
+								frm.set_value('claim_amount', current_claim_amount);
 							}
 							
-							// Explicitly set the claim amount if it was reset
-							if (!frm.doc.claim_amount || frm.doc.claim_amount !== saved_claim_amount) {
-								frm.set_value('claim_amount', saved_claim_amount);
-							}
-							
-							// Refresh just the fields we need without reloading the whole doc
-							frm.refresh_field('claim_items');
+							// Refresh fields without full reload
 							frm.refresh_field('claim_amount');
 							frm.refresh();
 						}, 500);

@@ -1040,7 +1040,7 @@ function create_bulk_project_claim(frm, dialog) {
 					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
 				});
 				
-				// Store the main form values to prevent them from being lost
+				// Store key values to ensure they aren't lost
 				let saved_values = {
 					customer: dialog.get_value('customer'),
 					party_account: data.message.debit_to,
@@ -1096,14 +1096,18 @@ function create_bulk_project_claim(frm, dialog) {
 								frm.doc.claim_items = current_items;
 							}
 							
-							// Restore main form values that might have been lost
-							if (!frm.doc.customer || !frm.doc.claim_amount) {
-								frm.set_value({
-									'customer': saved_values.customer,
-									'party_account': saved_values.party_account,
-									'claim_amount': saved_values.claim_amount,
-									'outstanding_amount': saved_values.outstanding_amount
-								});
+							// Restore important fields if they were cleared
+							if (!frm.doc.claim_amount || frm.doc.claim_amount !== saved_values.claim_amount) {
+								frm.set_value('claim_amount', saved_values.claim_amount);
+							}
+							if (!frm.doc.customer || frm.doc.customer !== saved_values.customer) {
+								frm.set_value('customer', saved_values.customer);
+							}
+							if (!frm.doc.party_account || frm.doc.party_account !== saved_values.party_account) {
+								frm.set_value('party_account', saved_values.party_account);
+							}
+							if (!frm.doc.outstanding_amount || frm.doc.outstanding_amount !== saved_values.outstanding_amount) {
+								frm.set_value('outstanding_amount', saved_values.outstanding_amount);
 							}
 							
 							// Refresh just the fields we need without reloading the whole doc
@@ -1113,6 +1117,9 @@ function create_bulk_project_claim(frm, dialog) {
 							frm.refresh_field('party_account');
 							frm.refresh_field('outstanding_amount');
 							frm.refresh();
+							
+							// Prevent automatic saving
+							frm._save_flag = false;
 						}, 500);
 					}
 				});

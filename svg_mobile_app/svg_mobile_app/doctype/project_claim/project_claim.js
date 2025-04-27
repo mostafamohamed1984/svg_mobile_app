@@ -378,6 +378,7 @@ function update_items_preview(dialog) {
 		},
 		callback: function(balance_result) {
 			let balance_data = balance_result.message || {};
+			console.log("Balance data received:", balance_data);  // Debug log
 			
 			// Process each invoice separately to avoid permission issues
 			let all_items = [];
@@ -400,9 +401,11 @@ function update_items_preview(dialog) {
 						item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
 						item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
 						item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
+						console.log(`Item ${item.item_code} from invoice ${item.invoice}: Original=${item.original_amount}, Claimed=${item.claimed_amount}, Available=${item.available_balance}`);  // Debug log
 					} else {
 						// Default to original amount if no balance data
 						item.available_balance = item.amount;
+						console.log(`No balance data for item ${item.item_code} from invoice ${item.invoice}, using original amount: ${item.amount}`);  // Debug log
 					}
 				});
 				

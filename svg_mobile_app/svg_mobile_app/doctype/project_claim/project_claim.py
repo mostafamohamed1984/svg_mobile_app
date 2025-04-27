@@ -371,6 +371,16 @@ def get_available_invoice_balances(invoices):
 			invoices = json.loads(invoices)
 		except:
 			invoices = invoices.split(",")
+			
+	# Debug log
+	frappe.logger().debug(f"Getting balances for invoices: {invoices}")
+	
+	# Get invoice outstanding amounts
+	invoice_outstanding = {}
+	for invoice in invoices:
+		outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount")
+		invoice_outstanding[invoice] = float(outstanding) if outstanding is not None else 0
+		frappe.logger().debug(f"Invoice {invoice} outstanding: {invoice_outstanding[invoice]}")
 	
 	# Get all items from these invoices
 	items_data = frappe.db.sql("""
@@ -407,18 +417,57 @@ def get_available_invoice_balances(invoices):
 	
 	# Calculate available balances
 	result = {}
+	
+	# First group items by invoice and calculate total original amounts
+	invoice_items = {}
+	invoice_total_original = {}
+	
 	for item in items_data:
-		if item.invoice not in result:
-			result[item.invoice] = {}
+		inv = item.invoice
+		if inv not in invoice_items:
+			invoice_items[inv] = []
+			invoice_total_original[inv] = 0
 		
-		claimed = 0
-		if item.invoice in claim_map and item.item_code in claim_map[item.invoice]:
-			claimed = flt(claim_map[item.invoice][item.item_code])
+		invoice_items[inv].append(item)
+		invoice_total_original[inv] += float(item.amount)
+	
+	# Now calculate available balances with proportion to outstanding
+	for inv, items in invoice_items.items():
+		if inv not in result:
+			result[inv] = {}
 		
-		result[item.invoice][item.item_code] = {
-			'original_amount': item.amount,
-			'claimed_amount': claimed,
-			'available_balance': item.amount - claimed
-		}
+		outstanding = invoice_outstanding.get(inv, 0)
+		original_total = invoice_total_original.get(inv, 0)
+		
+		# Skip if no original amount
+		if original_total <= 0:
+			continue
+			
+		# Calculate available proportion (how much of the original is still available)
+		available_proportion = outstanding / original_total if original_total > 0 else 0
+		frappe.logger().debug(f"Invoice {inv}: outstanding={outstanding}, original_total={original_total}, proportion={available_proportion}")
+		
+		for item in items:
+			original_amount = float(item.amount)
+			# First, calculate available amount based on outstanding proportion
+			available_by_outstanding = original_amount * available_proportion
+			
+			# Then check for previous claims
+			claimed = 0
+			if inv in claim_map and item.item_code in claim_map[inv]:
+				claimed = float(claim_map[inv][item.item_code])
+			
+			# The item's available balance should be proportional to outstanding
+			# and reduced by any specific claims against this item
+			available_balance = max(0, available_by_outstanding)
+			
+			result[inv][item.item_code] = {
+				'original_amount': original_amount,
+				'claimed_amount': claimed,
+				'available_balance': available_balance,
+				'available_proportion': available_proportion
+			}
+			
+			frappe.logger().debug(f"Item {item.item_code}: original={original_amount}, claimed={claimed}, available={available_balance}")
 	
 	return result

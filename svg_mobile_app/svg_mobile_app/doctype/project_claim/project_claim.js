@@ -857,10 +857,69 @@ function create_bulk_project_claim(frm, dialog) {
 		console.log("Claim items created:", claim_items);
 		
 		// Create "Being" text with reference to all invoices including project contractor
-		let being_text = __('Being claim for invoices: ') + 
-			references.map(ref => 
-				`${ref.invoice} (${format_currency(ref.amount)}, ${ref.status}, ${ref.project || 'No Project'}${ref.project_contractor ? ', ' + ref.project_contractor : ''}, Due: ${ref.due_date || 'N/A'})`
-			).join(', ');
+		let being_text = __('Being claim for invoices:') + '\n\n';
+		
+		// Group claim items by invoice for detailed description
+		let items_by_invoice_for_being = {};
+		let total_by_invoice = {};
+		
+		// Initialize the maps
+		invoice_names.forEach(inv => {
+			items_by_invoice_for_being[inv] = [];
+			total_by_invoice[inv] = 0;
+		});
+		
+		// Group items by invoice and calculate totals
+		claim_items.forEach(item => {
+			// Find which invoice(s) this item comes from
+			for (let inv_name in dialog.items_by_invoice) {
+				let items = dialog.items_by_invoice[inv_name];
+				let found_item = items.find(i => i.item_code === item.item);
+				
+				if (found_item) {
+					// This invoice contains this item
+					// Find the current ratio and amount for this item in this invoice
+					let inv = selected_invoices.find(i => i.invoice === inv_name);
+					let inv_claim_amount = inv ? flt(inv.claim_amount) : 0;
+					let item_ratio = found_item.ratio || 0;
+					let item_claim_amount = Math.min(
+						flt(item_ratio) * inv_claim_amount / 100,
+						found_item.available_balance || 0
+					);
+					
+					if (item_claim_amount > 0) {
+						items_by_invoice_for_being[inv_name].push({
+							item_name: found_item.item_name || item.item,
+							item_code: item.item,
+							amount: item_claim_amount,
+							ratio: item_ratio
+						});
+						
+						total_by_invoice[inv_name] += item_claim_amount;
+					}
+				}
+			}
+		});
+		
+		// Create the detailed description
+		references.forEach(ref => {
+			let inv_items = items_by_invoice_for_being[ref.invoice] || [];
+			let inv_total = total_by_invoice[ref.invoice] || 0;
+			
+			being_text += `- ${ref.invoice} (${ref.status}, ${ref.project || 'No Project'}${ref.project_contractor ? ', ' + ref.project_contractor : ''}, Due: ${ref.due_date || 'N/A'})\n`;
+			being_text += `  Total Claimed: ${format_currency(inv_total)} of ${format_currency(ref.amount)} outstanding\n`;
+			
+			if (inv_items.length > 0) {
+				being_text += `  Items:\n`;
+				inv_items.forEach(item => {
+					being_text += `    • ${item.item_name} (${item.item_code}): ${format_currency(item.amount)} (${item.ratio.toFixed(1)}%)\n`;
+				});
+			}
+			
+			being_text += '\n';
+		});
+		
+		console.log("Claim items created:", claim_items);
 		
 		// Determine which invoice to use as the main reference
 		// We'll use the first selected invoice with the highest claim amount

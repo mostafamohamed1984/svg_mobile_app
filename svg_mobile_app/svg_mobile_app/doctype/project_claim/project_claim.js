@@ -80,7 +80,9 @@ function show_bulk_invoice_dialog(frm) {
 		],
 		primary_action_label: __('Create Project Claim'),
 		primary_action: function() {
+			// Prevent auto-save by just calling the function and closing the dialog
 			create_bulk_project_claim(frm, dialog);
+			dialog.hide();
 		}
 	});
 	
@@ -1067,13 +1069,15 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Update form and close dialog
 				frm.refresh_fields();
-				frm.enable_save();
+				
+				// Do not enable save to prevent auto-save validation
+				// Leave it to the user to click save when ready
 				
 				// Force a complete refresh before showing alert
 				frm.refresh();
 				
 				frappe.show_alert({
-					message: __('Claim items created from multiple invoices'),
+					message: __('Claim items created from multiple invoices. Please review and save when ready.'),
 					indicator: 'green'
 				}, 5);
 				

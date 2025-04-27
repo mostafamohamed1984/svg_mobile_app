@@ -825,6 +825,8 @@ function create_bulk_project_claim(frm, dialog) {
 				if (existing_item) {
 					// Update existing item
 					existing_item.amount += allocated_amount;
+					// Also sum up the current_balance
+					existing_item.current_balance += flt(item.available_balance || 0);
 				} else {
 					// Add new item - we'll calculate the global ratio after summing all items
 					claim_items.push({
@@ -832,7 +834,8 @@ function create_bulk_project_claim(frm, dialog) {
 						amount: allocated_amount, 
 						ratio: 0, // Placeholder, will be calculated later
 						unearned_account: item.income_account || '',
-						revenue_account: item.custom_default_earning_account || ''
+						revenue_account: item.custom_default_earning_account || '',
+						current_balance: flt(item.available_balance || 0) // Add current_balance field
 					});
 				}
 			});

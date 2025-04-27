@@ -394,10 +394,30 @@ function update_items_preview(dialog) {
 					return;
 				}
 				
-				// Group items by invoice (show all items for preview)
+				// Filter out items with zero or negative available balance
+				let filtered_items = all_items.filter(item => item.available_balance > 0);
+				let excluded_count = all_items.length - filtered_items.length;
+				
+				// Update available balance for each item
+				filtered_items.forEach(item => {
+					if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
+						item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
+						item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
+						item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
+						console.log(`Item ${item.item_code} from invoice ${item.invoice}: Original=${item.original_amount}, Claimed=${item.claimed_amount}, Available=${item.available_balance}`);  // Debug log
+					} else {
+						// Default to original amount if no balance data
+						item.available_balance = item.amount;
+						console.log(`No balance data for item ${item.item_code} from invoice ${item.invoice}, using original amount: ${item.amount}`);  // Debug log
+					}
+				});
+				
+				// Group items by invoice
 				let items_by_invoice = {};
 				let invoice_totals = {};
-				all_items.forEach(item => {
+				
+				// First group and calculate totals
+				filtered_items.forEach(item => {
 					if (!items_by_invoice[item.invoice]) {
 						items_by_invoice[item.invoice] = [];
 						invoice_totals[item.invoice] = 0;
@@ -405,34 +425,28 @@ function update_items_preview(dialog) {
 					items_by_invoice[item.invoice].push(item);
 					invoice_totals[item.invoice] += flt(item.amount);
 				});
+				
 				// Then calculate ratios
-				all_items.forEach(item => {
+				filtered_items.forEach(item => {
 					if (invoice_totals[item.invoice] > 0) {
 						item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
 					} else {
 						item.ratio = 0;
 					}
 				});
-				// Calculate the true total claimable amount (sum of allocated amounts per item, capped by available balance)
-				let total_claimable = 0;
-				all_items.forEach(item => {
-					if (item.available_balance > 0) {
-						let invoice = selected_invoices.find(inv => inv.invoice === item.invoice);
-						if (invoice) {
-							let claim_amount = flt(invoice.claim_amount);
-							let max_claimable = Math.min(item.available_balance, claim_amount);
-							let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
-							total_claimable += allocated_amount;
-						}
-					}
-				});
-				dialog.set_value('total_claim_amount', total_claimable);
+				
+				console.log("Grouped items:", items_by_invoice);
+				
 				// Create HTML for item allocation tables with editable inputs
 				let html = '<div class="margin-top">';
+				
 				selected_invoices.forEach(inv => {
 					let invoice_items = items_by_invoice[inv.invoice] || [];
 					if (invoice_items.length === 0) return;
+					
+					// Get claim amount for this invoice
 					let claim_amount = flt(inv.claim_amount);
+					
 					html += `
 						<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
 							<h5>${__('Invoice')}: ${inv.invoice} ${inv.project_contractor ? '(' + inv.project_contractor + ')' : ''}</h5>
@@ -450,18 +464,21 @@ function update_items_preview(dialog) {
 									</thead>
 									<tbody>
 					`;
+					
 					let total_shown_ratio = 0;
 					let total_shown_amount = 0;
+					
 					invoice_items.forEach((item, idx) => {
-						let is_disabled = item.available_balance <= 0;
+						// Calculate allocated amount based on ratio, but capped by available balance
 						let max_claimable = Math.min(item.available_balance, inv.claim_amount);
 						let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
-						if (!is_disabled) {
-							total_shown_ratio += item.ratio;
-							total_shown_amount += allocated_amount;
-						}
+						
+						// Keep track of totals for display
+						total_shown_ratio += item.ratio;
+						total_shown_amount += allocated_amount;
+						
 						html += `
-							<tr data-item="${item.item_code}" data-invoice="${inv.invoice}" data-idx="${idx}" ${is_disabled ? 'style="color: #aaa; background: #f9f9f9;"' : ''}>
+							<tr data-item="${item.item_code}" data-invoice="${inv.invoice}" data-idx="${idx}">
 								<td>${item.item_name || item.item_code}</td>
 								<td class="text-right">${format_currency(item.amount)}</td>
 								<td class="text-right">${format_currency(item.available_balance)}</td>
@@ -475,7 +492,7 @@ function update_items_preview(dialog) {
 										value="${item.ratio.toFixed(2)}" 
 										min="0"
 										max="100"
-										style="text-align: right;" ${is_disabled ? 'disabled' : ''}
+										style="text-align: right;"
 										onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 									>
 								</td>
@@ -489,14 +506,15 @@ function update_items_preview(dialog) {
 										value="${allocated_amount.toFixed(2)}" 
 										min="0"
 										max="${Math.min(inv.claim_amount, item.available_balance)}"
-										style="text-align: right;" ${is_disabled ? 'disabled' : ''}
+										style="text-align: right;"
 										onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 									>
-									${is_disabled ? '<span class="text-danger small">Not claimable</span>' : ''}
 								</td>
 							</tr>
 						`;
 					});
+					
+					// Add a totals row
 					html += `
 						<tr class="table-active">
 							<td colspan="3" class="text-right"><strong>${__('Total')}:</strong></td>
@@ -504,6 +522,7 @@ function update_items_preview(dialog) {
 							<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_shown_amount)}</td>
 						</tr>
 					`;
+					
 					html += `
 									</tbody>
 								</table>
@@ -511,13 +530,39 @@ function update_items_preview(dialog) {
 						</div>
 					`;
 				});
+				
 				html += '</div>';
-				dialog.fields_dict.items_preview_html.html(html);
+				
+				// Calculate the true total claimable amount (sum of allocated amounts per item, capped by available balance)
+				let total_claimable = 0;
+				filtered_items.forEach(item => {
+					let invoice = selected_invoices.find(inv => inv.invoice === item.invoice);
+					if (invoice) {
+						let claim_amount = flt(invoice.claim_amount);
+						let max_claimable = Math.min(item.available_balance, claim_amount);
+						let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
+						total_claimable += allocated_amount;
+					}
+				});
+				dialog.set_value('total_claim_amount', total_claimable);
+				
+				// Add user info note below the total claim amount
 				dialog.fields_dict.items_preview_html.$wrapper.append(`
 					<div class="alert alert-info mt-2">
 						Note: The total claim amount shown is the sum of what can actually be claimed per item, after applying available balances.
 					</div>
 				`);
+				
+				if (excluded_count > 0) {
+					dialog.fields_dict.items_preview_html.$wrapper.append(`
+						<div class="alert alert-warning mt-2">
+							${excluded_count} item(s) with zero available balance were excluded from the claim.
+						</div>
+					`);
+				}
+				
+				dialog.fields_dict.items_preview_html.html(html);
+				
 				// Attach event handlers to inputs
 				dialog.$wrapper.find('.item-ratio-input').on('change', function() {
 					let $this = $(this);
@@ -816,43 +861,63 @@ function create_bulk_project_claim(frm, dialog) {
 			// Calculate claim items for this invoice using the edited values
 			invoice_items.forEach(item => {
 				// Calculate allocated amount based on ratio (which might have been edited)
-				let allocated_amount = Math.min(flt(item.ratio) * claim_amount / 100, item.available_balance || claim_amount);
+				// Ensure item.available_balance is treated as a number
+				let available_balance = flt(item.available_balance); 
+				let allocated_amount = Math.min(flt(item.ratio) * claim_amount / 100, available_balance || claim_amount);
 				
-				// Calculate global ratio (relative to total claim amount)
-				total_claim_amount += flt(allocated_amount);
-				
-				// Check if item already exists in claim_items
-				let existing_item = claim_items.find(ci => ci.item === item.item_code);
-				
-				if (existing_item) {
-					// Update existing item
-					existing_item.amount += allocated_amount;
-					// Also sum up the current_balance - but avoid double counting
-					// We only want to add each item's available_balance once
-					if (!existing_item.processed_invoices) {
-						existing_item.processed_invoices = [];
-					}
+				// Only process items with a positive allocated amount
+				if (allocated_amount > 0) {
+					// Calculate global ratio (relative to total claim amount) - This will be done later
+					total_claim_amount += flt(allocated_amount);
 					
-					// Only add the available balance if we haven't processed this invoice for this item yet
-					if (!existing_item.processed_invoices.includes(inv.invoice)) {
-						existing_item.processed_invoices.push(inv.invoice);
-						console.log(`Adding available_balance for ${item.item_code} from invoice ${inv.invoice}: ${item.available_balance}`);
+					// Check if item already exists in claim_items
+					let existing_item = claim_items.find(ci => ci.item === item.item_code);
+					
+					if (existing_item) {
+						// Update existing item
+						existing_item.amount += allocated_amount;
+						// We need to track the *total* available balance for this item across all its source invoices
+						// Let's add the available balance from this specific invoice source
+						if (!existing_item.balance_sources) {
+							existing_item.balance_sources = {};
+						}
+						if (!existing_item.balance_sources[inv.invoice]) {
+							existing_item.balance_sources[inv.invoice] = available_balance;
+							existing_item.current_balance = (existing_item.current_balance || 0) + available_balance; // Sum up balances
+							console.log(`Adding available_balance for ${item.item_code} from invoice ${inv.invoice}: ${available_balance}. New total balance: ${existing_item.current_balance}`);
+						}
+						// Keep track of processed invoices for this item
+						if (!existing_item.processed_invoices) {
+							existing_item.processed_invoices = [];
+						}
+						if (!existing_item.processed_invoices.includes(inv.invoice)) {
+							existing_item.processed_invoices.push(inv.invoice);
+						}
+					} else {
+						// Add new item - we'll calculate the global ratio after summing all items
+						claim_items.push({
+							item: item.item_code,
+							item_name: item.item_name || item.item_code, // Include item_name
+							amount: allocated_amount, 
+							ratio: 0, // Placeholder, will be calculated later
+							current_balance: available_balance, // Add current balance immediately
+							unearned_account: item.income_account || '',
+							revenue_account: item.custom_default_earning_account || '',
+							processed_invoices: [inv.invoice], // Track which invoices we've processed
+							balance_sources: { [inv.invoice]: available_balance } // Track balance source
+						});
+						console.log(`Adding new item ${item.item_code} with balance ${available_balance} from invoice ${inv.invoice}`);
 					}
 				} else {
-					// Add new item - we'll calculate the global ratio after summing all items
-					claim_items.push({
-						item: item.item_code,
-						amount: allocated_amount, 
-						ratio: 0, // Placeholder, will be calculated later
-						unearned_account: item.income_account || '',
-						revenue_account: item.custom_default_earning_account || '',
-						processed_invoices: [inv.invoice] // Track which invoices we've processed
-					});
+					console.log(`Skipping item ${item.item_code} from invoice ${inv.invoice} due to zero calculated amount (Ratio: ${item.ratio}, Available: ${available_balance}, Claim Amount: ${claim_amount})`);
 				}
 			});
 		});
 		
-		// Now calculate global ratios based on the total claim amount
+		// Recalculate the total actual claim amount based on items included
+		total_claim_amount = claim_items.reduce((sum, item) => sum + flt(item.amount), 0);
+		
+		// Now calculate global ratios based on the *actual* total claim amount
 		if (total_claim_amount > 0) {
 			claim_items.forEach(item => {
 				item.ratio = flt(item.amount) / total_claim_amount * 100;
@@ -980,7 +1045,9 @@ function create_bulk_project_claim(frm, dialog) {
 				});
 				
 				// Filter out items with zero or negative available balance before creating claim items
-				let filtered_claim_items = claim_items.filter(item => item.current_balance > 0);
+				// We already filtered based on allocated_amount > 0 during creation
+				// No need for the filtered_claim_items variable here, just use claim_items
+				// let filtered_claim_items = claim_items.filter(item => item.current_balance > 0); // REMOVE THIS LINE
 				
 				// Set values in the form
 				frm.set_value({
@@ -994,7 +1061,7 @@ function create_bulk_project_claim(frm, dialog) {
 					'being': being_text,
 					'reference_invoice': primary_invoice, // Set the primary invoice as reference
 					'invoice_references': invoice_names.join(", "), // Set additional invoices in the new field
-					'claim_items': filtered_claim_items
+					// 'claim_items': filtered_claim_items // Use claim_items directly
 				});
 				
 				// Hide for_project field and show project_references field if multiple projects
@@ -1010,7 +1077,10 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Clear existing items and add new ones
 				frm.clear_table('claim_items');
-				filtered_claim_items.forEach(item => {
+				claim_items.forEach(item => { // Use claim_items directly
+					// Remove temporary fields before adding to child table
+					delete item.processed_invoices; 
+					delete item.balance_sources;
 					let row = frm.add_child('claim_items', item);
 				});
 				
@@ -1025,12 +1095,14 @@ function create_bulk_project_claim(frm, dialog) {
 				}, 5);
 				
 				// After claim creation, refresh claim_items from backend and reload doc for consistency
+				// We added current_balance directly, so reload might not be needed just for that.
+				// Let's keep the backend update call for consistency but remove the reload.
 				frappe.call({
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
 						frm.refresh_field('claim_items');
-						frm.reload_doc();
+						// frm.reload_doc(); // REMOVE THIS RELOAD
 					}
 				});
 			},

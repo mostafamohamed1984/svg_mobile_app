@@ -860,8 +860,8 @@ function create_bulk_project_claim(frm, dialog) {
 			
 			// Calculate claim items for this invoice using the edited values
 			invoice_items.forEach(item => {
-				// Skip items with zero or negative available balance
-				if (item.available_balance <= 0) return;
+				// Skip items with zero or negative available balance, but only if available_balance property exists
+				if (item.available_balance !== undefined && item.available_balance <= 0) return;
 				
 				// Calculate allocated amount based on ratio (which might have been edited)
 				let allocated_amount = Math.min(flt(item.ratio) * claim_amount / 100, item.available_balance || claim_amount);

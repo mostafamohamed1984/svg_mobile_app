@@ -726,12 +726,12 @@ function create_bulk_project_claim(frm, dialog) {
 		// Otherwise, process each invoice separately
 		let all_items = [];
 		let processed_count = 0;
-		
+
 		// Process each invoice to get its items
 		invoice_names.forEach(invoice_name => {
 			frappe.model.with_doc('Sales Invoice', invoice_name, function() {
 				let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
-				
+
 				if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
 					// Process each item in the invoice
 					invoice_doc.items.forEach(item => {
@@ -745,36 +745,52 @@ function create_bulk_project_claim(frm, dialog) {
 						});
 					});
 				}
-				
+
 				processed_count++;
-				
-				// If all invoices have been processed, show the results
+
+				// If all invoices have been processed, fetch available balances and show the results
 				if (processed_count === invoice_names.length) {
-					// Group items by invoice
-					let items_by_invoice = {};
-					let invoice_totals = {};
-					
-					// First group and calculate totals
-					all_items.forEach(item => {
-						if (!items_by_invoice[item.invoice]) {
-							items_by_invoice[item.invoice] = [];
-							invoice_totals[item.invoice] = 0;
+					// Fetch available balances for all items
+					frappe.call({
+						method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+						args: {
+							invoices: invoice_names
+						},
+						callback: function(balance_result) {
+							let balance_data = balance_result.message || {};
+							// Set available_balance for each item
+							all_items.forEach(item => {
+								if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
+									item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
+									item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
+									item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
+								} else {
+									item.available_balance = item.amount;
+								}
+							});
+							// Group items by invoice
+							let items_by_invoice = {};
+							let invoice_totals = {};
+							all_items.forEach(item => {
+								if (!items_by_invoice[item.invoice]) {
+									items_by_invoice[item.invoice] = [];
+									invoice_totals[item.invoice] = 0;
+								}
+								items_by_invoice[item.invoice].push(item);
+								invoice_totals[item.invoice] += flt(item.amount);
+							});
+							// Then calculate ratios
+							all_items.forEach(item => {
+								if (invoice_totals[item.invoice] > 0) {
+									item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
+								} else {
+									item.ratio = 0;
+								}
+							});
+							dialog.items_by_invoice = items_by_invoice;
+							createClaimFromProcessedItems();
 						}
-						items_by_invoice[item.invoice].push(item);
-						invoice_totals[item.invoice] += flt(item.amount);
 					});
-					
-					// Then calculate ratios
-					all_items.forEach(item => {
-						if (invoice_totals[item.invoice] > 0) {
-							item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
-						} else {
-							item.ratio = 0;
-						}
-					});
-					
-					dialog.items_by_invoice = items_by_invoice;
-					createClaimFromProcessedItems();
 				}
 			});
 		});

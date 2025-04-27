@@ -394,7 +394,7 @@ function update_items_preview(dialog) {
 					return;
 				}
 				
-				// Group items by invoice (show all items in preview)
+				// Group items by invoice (show all items for preview)
 				let items_by_invoice = {};
 				let invoice_totals = {};
 				all_items.forEach(item => {
@@ -415,14 +415,15 @@ function update_items_preview(dialog) {
 				});
 				// Calculate the true total claimable amount (sum of allocated amounts per item, capped by available balance)
 				let total_claimable = 0;
-				let filtered_items = all_items.filter(item => item.available_balance > 0);
-				filtered_items.forEach(item => {
-					let invoice = selected_invoices.find(inv => inv.invoice === item.invoice);
-					if (invoice) {
-						let claim_amount = flt(invoice.claim_amount);
-						let max_claimable = Math.min(item.available_balance, claim_amount);
-						let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
-						total_claimable += allocated_amount;
+				all_items.forEach(item => {
+					if (item.available_balance > 0) {
+						let invoice = selected_invoices.find(inv => inv.invoice === item.invoice);
+						if (invoice) {
+							let claim_amount = flt(invoice.claim_amount);
+							let max_claimable = Math.min(item.available_balance, claim_amount);
+							let allocated_amount = Math.min(item.ratio * claim_amount / 100, max_claimable);
+							total_claimable += allocated_amount;
+						}
 					}
 				});
 				dialog.set_value('total_claim_amount', total_claimable);
@@ -496,7 +497,6 @@ function update_items_preview(dialog) {
 							</tr>
 						`;
 					});
-					// Add a totals row
 					html += `
 						<tr class="table-active">
 							<td colspan="3" class="text-right"><strong>${__('Total')}:</strong></td>
@@ -513,12 +513,122 @@ function update_items_preview(dialog) {
 				});
 				html += '</div>';
 				dialog.fields_dict.items_preview_html.html(html);
-				// Add user info note below the total claim amount
 				dialog.fields_dict.items_preview_html.$wrapper.append(`
 					<div class="alert alert-info mt-2">
-						Note: The total claim amount shown is the sum of what can actually be claimed per item, after applying available balances. Items with zero available balance are shown but will not be included in the claim.
+						Note: The total claim amount shown is the sum of what can actually be claimed per item, after applying available balances.
 					</div>
 				`);
+				// Attach event handlers to inputs
+				dialog.$wrapper.find('.item-ratio-input').on('change', function() {
+					let $this = $(this);
+					let invoice = $this.data('invoice');
+					let item_code = $this.data('item');
+					let idx = $this.data('idx');
+					let ratio = parseFloat($this.val());
+					
+					// Update the item ratio in our data
+					let invoice_items = items_by_invoice[invoice];
+					if (invoice_items && invoice_items[idx]) {
+						// Get the old ratio value
+						let old_ratio = invoice_items[idx].ratio;
+						let ratio_change = ratio - old_ratio;
+						
+						// Update this item's ratio
+						invoice_items[idx].ratio = ratio;
+						
+						// Recalculate this item's amount based on new ratio
+						let inv = selected_invoices.find(i => i.invoice === invoice);
+						if (inv) {
+							let claim_amount = flt(inv.claim_amount);
+							let allocated_amount = Math.min(ratio * claim_amount / 100, invoice_items[idx].available_balance);
+							
+							// Update the amount input for THIS item first
+							dialog.$wrapper.find(`.item-amount-input[data-invoice="${invoice}"][data-idx="${idx}"]`)
+								.val(allocated_amount.toFixed(2));
+						}
+						
+						// Auto-adjust other items' ratios to maintain 100% total
+						if (invoice_items.length > 1 && Math.abs(ratio_change) > 0.01) {
+							// Calculate current total (excluding the updated item)
+							let current_total_others = 0;
+							invoice_items.forEach((item, i) => {
+								if (i !== idx) {
+									current_total_others += flt(item.ratio);
+								}
+							});
+							
+							// Calculate target total for others (to make grand total 100%)
+							let target_total_others = 100 - ratio;
+							
+							// Skip adjustment if we'd create negative ratios
+							if (target_total_others >= 0) {
+								// Calculate adjustment factor
+								let adjustment_factor = current_total_others > 0 ? 
+									target_total_others / current_total_others : 0;
+								
+								// Adjust other items proportionally
+								invoice_items.forEach((item, i) => {
+									if (i !== idx) {
+										let new_ratio = current_total_others > 0 ? 
+											flt(item.ratio) * adjustment_factor : 
+											target_total_others / (invoice_items.length - 1);
+										
+										// Update the ratio
+										item.ratio = Math.max(0, new_ratio);
+										
+										// Update the input field
+										dialog.$wrapper.find(`.item-ratio-input[data-invoice="${invoice}"][data-idx="${i}"]`)
+											.val(item.ratio.toFixed(2));
+										
+										// Also update amount
+										let inv = selected_invoices.find(i => i.invoice === invoice);
+										if (inv) {
+											let claim_amount = flt(inv.claim_amount);
+											let allocated_amount = Math.min(
+												item.ratio * claim_amount / 100, 
+												item.available_balance
+											);
+											
+											// Update the amount input
+											dialog.$wrapper.find(`.item-amount-input[data-invoice="${invoice}"][data-idx="${i}"]`)
+												.val(allocated_amount.toFixed(2));
+										}
+									}
+								});
+							}
+						}
+						
+						// Update totals
+						updateTotalsForInvoice(dialog, invoice, invoice_items, selected_invoices);
+					}
+				});
+				
+				dialog.$wrapper.find('.item-amount-input').on('change', function() {
+					let $this = $(this);
+					let invoice = $this.data('invoice');
+					let item_code = $this.data('item');
+					let idx = $this.data('idx');
+					let amount = parseFloat($this.val());
+					
+					// Find the invoice to get claim amount
+					let inv = selected_invoices.find(i => i.invoice === invoice);
+					if (inv && items_by_invoice[invoice] && items_by_invoice[invoice][idx]) {
+						let claim_amount = flt(inv.claim_amount);
+						
+						// Calculate new ratio
+						let ratio = claim_amount > 0 ? (amount / claim_amount * 100) : 0;
+						
+						// Update the item data
+						items_by_invoice[invoice][idx].ratio = ratio;
+						
+						// Update the ratio input
+						dialog.$wrapper.find(`.item-ratio-input[data-invoice="${invoice}"][data-idx="${idx}"]`).val(ratio.toFixed(2));
+						
+						// Update totals
+						updateTotalsForInvoice(dialog, invoice, items_by_invoice[invoice], selected_invoices);
+					}
+				});
+				
 				// Store items_by_invoice for later use when creating the claim
 				dialog.items_by_invoice = items_by_invoice;
 			}

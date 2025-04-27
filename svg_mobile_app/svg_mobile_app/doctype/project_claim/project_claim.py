@@ -348,7 +348,7 @@ class ProjectClaim(Document):
 		# If we couldn't parse the being field, try to distribute the claim amount evenly
 		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
 			for invoice in invoices:
-				invoice_claim_amounts[invoice] = self.claim_amount / len(invoices)
+				invoice_claim_amounts[invoice] = flt(self.claim_amount) / len(invoices)
 		
 		# Update each invoice's outstanding amount
 		for invoice, claim_amount in invoice_claim_amounts.items():

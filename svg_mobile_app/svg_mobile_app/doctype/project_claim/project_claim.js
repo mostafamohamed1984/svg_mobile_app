@@ -1094,12 +1094,10 @@ function create_bulk_project_claim(frm, dialog) {
 				set_value_quietly('party_account', data.message.debit_to);
 				set_value_quietly('claim_amount', total_claimable_amount);
 				set_value_quietly('claimable_amount', total_claimable_amount);
+				set_value_quietly('outstanding_amount', total_claimable_amount);  // Ensure outstanding_amount is set
 				set_value_quietly('being', being_text);
 				set_value_quietly('reference_invoice', primary_invoice);
 				set_value_quietly('invoice_references', invoice_names.join(", "));
-				
-				// Make sure outstanding_amount is equal to claimable_amount
-				set_value_quietly('outstanding_amount', total_claimable_amount);
 				
 				// Store key values to ensure they aren't lost
 				let saved_values = {
@@ -1176,6 +1174,7 @@ function create_bulk_project_claim(frm, dialog) {
 							}
 							if (!frm.doc.claimable_amount || frm.doc.claimable_amount !== saved_values.claimable_amount) {
 								set_value_quietly('claimable_amount', saved_values.claimable_amount);
+								set_value_quietly('outstanding_amount', saved_values.outstanding_amount);
 							}
 							if (!frm.doc.outstanding_amount || frm.doc.outstanding_amount !== saved_values.outstanding_amount) {
 								set_value_quietly('outstanding_amount', saved_values.outstanding_amount);

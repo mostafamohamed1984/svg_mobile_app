@@ -178,11 +178,11 @@ class ProjectClaim(Document):
 	
 	def validate_claim_amount(self):
 		"""Validate that claim amount does not exceed outstanding amount"""
-		if flt(self.claim_amount) > flt(self.claimable_amount):
-			frappe.throw(f"Claim Amount ({self.claim_amount}) cannot exceed Claimable Amount ({self.claimable_amount})")
+		if flt(self.claim_amount) > flt(self.outstanding_amount):
+			frappe.throw(f"Claim Amount ({self.claim_amount}) cannot exceed Outstanding Amount ({self.outstanding_amount})")
 		
-		# Still update outstanding_amount to match claimable_amount if not set
-		if not self.outstanding_amount:
+		# Ensure that outstanding_amount is properly set from claimable_amount if it exists
+		if hasattr(self, 'claimable_amount') and self.claimable_amount and not self.outstanding_amount:
 			self.outstanding_amount = self.claimable_amount
 	
 	def validate_claim_items(self):

@@ -1051,7 +1051,7 @@ function create_bulk_project_claim(frm, dialog) {
 					let row = frm.add_child('claim_items', item);
 				});
 				
-				// Update form and close dialog
+				// First update fields and save
 				frm.refresh_fields();
 				frm.enable_save();
 				
@@ -1060,21 +1060,25 @@ function create_bulk_project_claim(frm, dialog) {
 					indicator: 'green'
 				}, 5);
 				
-				// After claim creation, refresh claim_items from backend and reload doc for consistency
-				frappe.call({
-					method: 'update_claim_items_balance',
-					doc: frm.doc,
-					callback: function(r) {
-						frm.refresh_field('claim_items');
-						
-						// Reload doc and wait for it to complete before hiding dialog
-						frm.reload_doc();
-						
-						// Give time for the UI to fully update before hiding dialog
-						setTimeout(function() {
-							dialog.hide(); // Close dialog only after data is fully loaded
-						}, 300);
-					}
+				// First hide the dialog before any async operations
+				dialog.hide();
+				
+				// Then save the form to ensure all data is committed
+				frm.save().then(() => {
+					// After save completes, reload the doc to get the latest data
+					frm.reload_doc();
+					
+					// After reload, update claim items balance
+					setTimeout(() => {
+						frm.call({
+							method: 'update_claim_items_balance',
+							doc: frm.doc,
+							callback: function(r) {
+								frm.refresh_field('claim_items');
+								frm.refresh();
+							}
+						});
+					}, 500);
 				});
 			},
 			error: function(err) {

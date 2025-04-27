@@ -1040,6 +1040,14 @@ function create_bulk_project_claim(frm, dialog) {
 					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
 				});
 				
+				// Store the main form values to prevent them from being lost
+				let saved_values = {
+					customer: dialog.get_value('customer'),
+					party_account: data.message.debit_to,
+					claim_amount: total_claim_amount,
+					outstanding_amount: total_outstanding_amount
+				};
+				
 				// Hide for_project field and show project_references field if multiple projects
 				if (unique_projects.size > 1) {
 					frm.set_df_property('for_project', 'hidden', 1);
@@ -1074,23 +1082,36 @@ function create_bulk_project_claim(frm, dialog) {
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
-						// Store the current items and claim amount for safekeeping
+						// Store the current items for safekeeping
 						let current_items = [...frm.doc.claim_items || []];
-						let current_claim_amount = frm.doc.claim_amount;
 						
 						// Close dialog before any reloads to prevent data loss
 						dialog.hide();
 						
 						// Use timeout to avoid any race conditions
 						setTimeout(function() {
-							// Make sure claim_amount is preserved
-							if (!frm.doc.claim_amount || frm.doc.claim_amount !== current_claim_amount) {
-								// If claim_amount was reset, restore it
-								frm.set_value('claim_amount', current_claim_amount);
+							// Make sure we still have our items
+							if (!frm.doc.claim_items || frm.doc.claim_items.length === 0) {
+								// If items were lost, restore them
+								frm.doc.claim_items = current_items;
 							}
 							
-							// Refresh fields without full reload
+							// Restore main form values that might have been lost
+							if (!frm.doc.customer || !frm.doc.claim_amount) {
+								frm.set_value({
+									'customer': saved_values.customer,
+									'party_account': saved_values.party_account,
+									'claim_amount': saved_values.claim_amount,
+									'outstanding_amount': saved_values.outstanding_amount
+								});
+							}
+							
+							// Refresh just the fields we need without reloading the whole doc
+							frm.refresh_field('claim_items');
 							frm.refresh_field('claim_amount');
+							frm.refresh_field('customer');
+							frm.refresh_field('party_account');
+							frm.refresh_field('outstanding_amount');
 							frm.refresh();
 						}, 500);
 					}

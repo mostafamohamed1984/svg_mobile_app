@@ -394,8 +394,12 @@ function update_items_preview(dialog) {
 					return;
 				}
 				
+				// Filter out items with zero or negative available balance
+				let filtered_items = all_items.filter(item => item.available_balance > 0);
+				let excluded_count = all_items.length - filtered_items.length;
+				
 				// Update available balance for each item
-				all_items.forEach(item => {
+				filtered_items.forEach(item => {
 					if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
 						item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
 						item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
@@ -413,7 +417,7 @@ function update_items_preview(dialog) {
 				let invoice_totals = {};
 				
 				// First group and calculate totals
-				all_items.forEach(item => {
+				filtered_items.forEach(item => {
 					if (!items_by_invoice[item.invoice]) {
 						items_by_invoice[item.invoice] = [];
 						invoice_totals[item.invoice] = 0;
@@ -423,7 +427,7 @@ function update_items_preview(dialog) {
 				});
 				
 				// Then calculate ratios
-				all_items.forEach(item => {
+				filtered_items.forEach(item => {
 					if (invoice_totals[item.invoice] > 0) {
 						item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
 					} else {
@@ -531,7 +535,7 @@ function update_items_preview(dialog) {
 				
 				// Calculate the true total claimable amount (sum of allocated amounts per item, capped by available balance)
 				let total_claimable = 0;
-				all_items.forEach(item => {
+				filtered_items.forEach(item => {
 					let invoice = selected_invoices.find(inv => inv.invoice === item.invoice);
 					if (invoice) {
 						let claim_amount = flt(invoice.claim_amount);
@@ -548,6 +552,14 @@ function update_items_preview(dialog) {
 						Note: The total claim amount shown is the sum of what can actually be claimed per item, after applying available balances.
 					</div>
 				`);
+				
+				if (excluded_count > 0) {
+					dialog.fields_dict.items_preview_html.$wrapper.append(`
+						<div class="alert alert-warning mt-2">
+							${excluded_count} item(s) with zero available balance were excluded from the claim.
+						</div>
+					`);
+				}
 				
 				dialog.fields_dict.items_preview_html.html(html);
 				
@@ -1012,6 +1024,9 @@ function create_bulk_project_claim(frm, dialog) {
 					total_outstanding_amount += flt(inv.outstanding);
 				});
 				
+				// Filter out items with zero or negative available balance before creating claim items
+				let filtered_claim_items = claim_items.filter(item => item.current_balance > 0);
+				
 				// Set values in the form
 				frm.set_value({
 					'customer': dialog.get_value('customer'),
@@ -1023,7 +1038,8 @@ function create_bulk_project_claim(frm, dialog) {
 					'outstanding_amount': total_outstanding_amount,
 					'being': being_text,
 					'reference_invoice': primary_invoice, // Set the primary invoice as reference
-					'invoice_references': invoice_names.join(", ") // Set additional invoices in the new field
+					'invoice_references': invoice_names.join(", "), // Set additional invoices in the new field
+					'claim_items': filtered_claim_items
 				});
 				
 				// Hide for_project field and show project_references field if multiple projects
@@ -1039,7 +1055,7 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Clear existing items and add new ones
 				frm.clear_table('claim_items');
-				claim_items.forEach(item => {
+				filtered_claim_items.forEach(item => {
 					let row = frm.add_child('claim_items', item);
 				});
 				
@@ -1053,12 +1069,13 @@ function create_bulk_project_claim(frm, dialog) {
 					indicator: 'green'
 				}, 5);
 				
-				// After claim creation, refresh claim_items from backend
+				// After claim creation, refresh claim_items from backend and reload doc for consistency
 				frappe.call({
 					method: 'update_claim_items_balance',
 					doc: frm.doc,
 					callback: function(r) {
 						frm.refresh_field('claim_items');
+						frm.reload_doc();
 					}
 				});
 			},

@@ -17,9 +17,17 @@ class ProjectClaim(Document):
 			self.process_multiple_invoice_references()
 	
 	def on_submit(self):
-		# Update any custom fields to track claim history for all invoices referenced
-		if self.being and "Reference Invoices:" in self.being:
-			self.update_invoice_claim_history()
+		# Get all involved invoices
+		invoices = [self.reference_invoice]
+		if self.invoice_references:
+			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+			invoices.extend(additional_invoices)
+		
+		# Track claim information for all referenced invoices
+		self.update_invoice_claim_history(invoices)
+		
+		# Update project-specific claim tracking if needed
+		self.update_project_claim_tracking()
 	
 	def process_multiple_invoice_references(self):
 		"""Process claims with multiple invoice references"""
@@ -41,29 +49,21 @@ class ProjectClaim(Document):
 		# Store in the invoice_references field
 		self.invoice_references = invoices_str
 	
-	def update_invoice_claim_history(self):
+	def update_invoice_claim_history(self, invoices=None):
 		"""Update claim history for all referenced invoices"""
-		# First check the invoice_references field
-		invoice_list = []
-		
-		if self.invoice_references:
-			invoice_list = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
-		
-		# If no references in the field, try extracting from being
-		if not invoice_list and self.being and "Reference Invoices:" in self.being:
-			import re
-			pattern = r"Reference Invoices:\s*([\w\d\-, ]+)"
-			matches = re.search(pattern, self.being)
+		if not invoices:
+			# If no explicit list provided, try to get from references
+			invoices = [self.reference_invoice] if self.reference_invoice else []
 			
-			if matches:
-				invoices_str = matches.group(1)
-				invoice_list = [inv.strip() for inv in invoices_str.split(',') if inv.strip()]
+			if self.invoice_references:
+				additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+				invoices.extend(additional_invoices)
 		
-		if not invoice_list:
+		if not invoices:
 			return
 			
 		# Update each invoice with a reference to this claim
-		for invoice in invoice_list:
+		for invoice in invoices:
 			if frappe.db.exists("Sales Invoice", invoice):
 				# Check if we have a custom field for claim references
 				if frappe.db.exists("Custom Field", {"dt": "Sales Invoice", "fieldname": "claim_references"}):
@@ -79,7 +79,100 @@ class ProjectClaim(Document):
 							
 						# Update the invoice
 						frappe.db.set_value("Sales Invoice", invoice, "claim_references", new_refs)
+	
+	def update_project_claim_tracking(self):
+		"""Update project-specific claim tracking"""
+		projects = []
+		
+		# Get the main project
+		if self.for_project:
+			projects.append(self.for_project)
+		
+		# Get additional projects from project_references
+		if self.project_references:
+			additional_projects = [proj.strip() for proj in self.project_references.split(',') if proj.strip()]
+			for proj in additional_projects:
+				if proj not in projects:
+					projects.append(proj)
+		
+		# If we have multiple projects, we need to determine how much of the claim goes to each
+		if len(projects) > 1:
+			# Try to parse the being field to get project-specific amounts
+			import re
+			
+			# Create a map to track project claim amounts
+			project_amounts = {}
+			for proj in projects:
+				project_amounts[proj] = 0
+			
+			# Check if we have an invoice to project mapping from the being field
+			invoice_project_map = {}
+			invoice_amounts = {}
+			
+			# Parse the being field to extract invoice, project, and amount information
+			lines = self.being.split('\n')
+			current_invoice = None
+			
+			for line in lines:
+				# Check for invoice line
+				invoice_match = re.search(r'- ([\w\d-]+) \((.*?), (.*?)(,|$)', line)
+				if invoice_match:
+					current_invoice = invoice_match.group(1)
+					project_text = invoice_match.group(3).strip()
+					if project_text != 'No Project':
+						invoice_project_map[current_invoice] = project_text
+			
+				# Check for total claimed line
+				if current_invoice and 'Total Claimed:' in line:
+					amount_match = re.search(r'Total Claimed: ([0-9,.]+)', line)
+					if amount_match:
+						amount_text = amount_match.group(1).replace(',', '')
+						try:
+							invoice_amounts[current_invoice] = float(amount_text)
+						except ValueError:
+							pass  # Ignore if we can't parse the amount
+			
+			# Now distribute the claim amount to each project based on the invoices
+			for invoice, amount in invoice_amounts.items():
+				if invoice in invoice_project_map:
+					project = invoice_project_map[invoice]
+					if project in project_amounts:
+						project_amounts[project] += amount
+			
+			# Update project-specific claim tracking if we have a custom field for it
+			for project, amount in project_amounts.items():
+				if amount > 0 and frappe.db.exists("Project Contractors", project):
+					if frappe.db.exists("Custom Field", {"dt": "Project Contractors", "fieldname": "claim_references"}):
+						current_refs = frappe.db.get_value("Project Contractors", project, "claim_references") or ""
 						
+						# Add this claim if not already included
+						claim_ref = f"{self.name} ({frappe.format(amount, {'fieldtype': 'Currency'})}"
+						if claim_ref not in current_refs:
+							if current_refs:
+								new_refs = current_refs + ", " + claim_ref
+							else:
+								new_refs = claim_ref
+							
+							# Update the project
+							frappe.db.set_value("Project Contractors", project, "claim_references", new_refs)
+		else:
+			# Single project case - simpler
+			project = projects[0] if projects else None
+			if project and frappe.db.exists("Project Contractors", project):
+				if frappe.db.exists("Custom Field", {"dt": "Project Contractors", "fieldname": "claim_references"}):
+					current_refs = frappe.db.get_value("Project Contractors", project, "claim_references") or ""
+					
+					# Add this claim if not already included
+					claim_ref = f"{self.name} ({frappe.format(self.claim_amount, {'fieldtype': 'Currency'})}"
+					if claim_ref not in current_refs:
+						if current_refs:
+							new_refs = current_refs + ", " + claim_ref
+						else:
+							new_refs = claim_ref
+						
+						# Update the project
+						frappe.db.set_value("Project Contractors", project, "claim_references", new_refs)
+	
 	def validate_claim_amount(self):
 		"""Validate that claim amount does not exceed outstanding amount"""
 		if flt(self.claim_amount) > flt(self.outstanding_amount):

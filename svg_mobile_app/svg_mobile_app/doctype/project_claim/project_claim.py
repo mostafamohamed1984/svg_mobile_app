@@ -217,12 +217,12 @@ class ProjectClaim(Document):
 		all_balances = get_available_invoice_balances(invoices)
 		
 		for item in self.claim_items:
-			# Find which invoice this item came from - default to the main reference invoice
-			item_invoice = self.reference_invoice
-			original_amount = 0
-			claimed_amount = 0
+			# Track totals across all invoices for this item
+			total_original_amount = 0
+			total_claimed_amount = 0
+			matches_found = False
 			
-			# Try to find the item in all invoices to get the correct balance
+			# Find ALL invoices containing this item and sum the balances
 			for invoice in invoices:
 				if invoice in all_balances and item.item in all_balances[invoice]:
 					# Found the item in this invoice
@@ -239,16 +239,21 @@ class ProjectClaim(Document):
 						""", (self.name, item.item), as_dict=True)
 						
 						if current_doc_claim and current_doc_claim[0].amount:
-							# Don't count this document's claim amount in the claimed total
+							# Don't count this document's claim amount in the claimed total for this invoice
 							claimed_amount -= flt(current_doc_claim[0].amount)
 					
-					# We found a match, use this invoice's data
-					item_invoice = invoice
-					break
+					# Add to running totals
+					total_original_amount += flt(original_amount)
+					total_claimed_amount += flt(claimed_amount)
+					matches_found = True
 			
-			# Set the current balance based on the best match found
-			available_balance = flt(original_amount) - flt(claimed_amount)
-			item.current_balance = max(0, available_balance)
+			# Set the current balance based on all matches found across all invoices
+			if matches_found:
+				available_balance = flt(total_original_amount) - flt(total_claimed_amount)
+				item.current_balance = max(0, available_balance)
+			else:
+				# No matches found, set to zero
+				item.current_balance = 0
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""

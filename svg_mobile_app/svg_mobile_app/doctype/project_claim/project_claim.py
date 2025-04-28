@@ -156,15 +156,13 @@ class ProjectClaim(Document):
 					'party': customer or self.customer,
 					'credit_in_account_currency': invoice_claim_amounts[invoice],
 					'reference_type': 'Sales Invoice',
-					'reference_name': invoice,
-					'cost_center': self.cost_center or None
+					'reference_name': invoice
 				})
 		
 		# Debit receiving account (full claim amount minus tax)
 		accounts.append({
 			'account': self.receiving_account,
-			'debit_in_account_currency': claim_amount - tax_amount,
-			'cost_center': self.cost_center or None
+			'debit_in_account_currency': claim_amount - tax_amount
 		})
 		
 		# Add entries for each claim item
@@ -176,24 +174,21 @@ class ProjectClaim(Document):
 			if hasattr(item, 'unearned_account') and item.unearned_account:
 				accounts.append({
 					'account': item.unearned_account,
-					'debit_in_account_currency': item_amount,
-					'cost_center': self.cost_center or None
+					'debit_in_account_currency': item_amount
 				})
 			
 			# Credit revenue account
 			if hasattr(item, 'revenue_account') and item.revenue_account:
 				accounts.append({
 					'account': item.revenue_account,
-					'credit_in_account_currency': item_amount,
-					'cost_center': self.cost_center or None
+					'credit_in_account_currency': item_amount
 				})
 		
 		# Add tax row if applicable
 		if tax_amount > 0 and self.tax_account:
 			accounts.append({
 				'account': self.tax_account,
-				'debit_in_account_currency': tax_amount,
-				'cost_center': self.cost_center or None
+				'debit_in_account_currency': tax_amount
 			})
 		
 		# Verify the totals balance

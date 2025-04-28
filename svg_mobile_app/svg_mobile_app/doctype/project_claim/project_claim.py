@@ -143,7 +143,7 @@ class ProjectClaim(Document):
 		# Prepare accounts array
 		accounts = []
 		
-		# Process each invoice
+		# STEP 1: Credit customer accounts for each invoice
 		for invoice in invoices:
 			if invoice_claim_amounts[invoice] > 0:
 				# Get the customer for this invoice
@@ -159,39 +159,51 @@ class ProjectClaim(Document):
 					'reference_name': invoice
 				})
 		
-		# Debit receiving account (full claim amount minus tax)
+		# STEP 2: Debit receiving account (full claim amount minus tax)
 		accounts.append({
 			'account': self.receiving_account,
 			'debit_in_account_currency': claim_amount - tax_amount
 		})
 		
-		# Add entries for each claim item
-		for item in self.claim_items:
-			item_ratio = flt(item.ratio) / 100
-			item_amount = claim_amount * item_ratio
-			
-			# Debit unearned account
-			if hasattr(item, 'unearned_account') and item.unearned_account:
-				accounts.append({
-					'account': item.unearned_account,
-					'debit_in_account_currency': item_amount
-				})
-			
-			# Credit revenue account
-			if hasattr(item, 'revenue_account') and item.revenue_account:
-				accounts.append({
-					'account': item.revenue_account,
-					'credit_in_account_currency': item_amount
-				})
-		
-		# Add tax row if applicable
+		# STEP 3: Add tax debit if applicable
 		if tax_amount > 0 and self.tax_account:
 			accounts.append({
 				'account': self.tax_account,
 				'debit_in_account_currency': tax_amount
 			})
 		
-		# Verify the totals balance
+		# Verify the totals balance before adding the item accounting entries
+		debit_so_far = sum(account.get('debit_in_account_currency', 0) for account in accounts)
+		credit_so_far = sum(account.get('credit_in_account_currency', 0) for account in accounts)
+		
+		# Check if balancing entries are needed
+		if abs(debit_so_far - credit_so_far) > 0.01:
+			# We need to add balancing entries to achieve double-entry accounting
+			# The total of all claim items should equal the total claim amount
+			# So we add these as unearned-to-revenue transfers without affecting the overall balance
+			
+			# First, verify that claim items total to the claim amount
+			items_total = sum(flt(item.amount) for item in self.claim_items)
+			if abs(items_total - claim_amount) > 0.01:
+				frappe.throw(f"Claim items total ({items_total}) doesn't match claim amount ({claim_amount})")
+				return
+				
+			# Add entries for each claim item - these are internal transfers that balance each other
+			for item in self.claim_items:
+				if hasattr(item, 'unearned_account') and item.unearned_account and hasattr(item, 'revenue_account') and item.revenue_account:
+					# Debit unearned account
+					accounts.append({
+						'account': item.unearned_account,
+						'debit_in_account_currency': flt(item.amount)
+					})
+					
+					# Credit revenue account
+					accounts.append({
+						'account': item.revenue_account,
+						'credit_in_account_currency': flt(item.amount)
+					})
+		
+		# Final verification of the totals balance
 		total_debit = sum(account.get('debit_in_account_currency', 0) for account in accounts)
 		total_credit = sum(account.get('credit_in_account_currency', 0) for account in accounts)
 		
@@ -218,6 +230,9 @@ class ProjectClaim(Document):
 		# Link the journal entry to this claim
 		self.db_set('journal_entry', je.name)
 		self.db_set('status', 'Reconciled')
+		
+		# Update the Sales Invoice outstanding amounts now that the Journal Entry is created
+		self.update_invoice_outstanding_amounts(invoices)
 	
 	def process_multiple_invoice_references(self):
 		"""Process claims with multiple invoice references"""

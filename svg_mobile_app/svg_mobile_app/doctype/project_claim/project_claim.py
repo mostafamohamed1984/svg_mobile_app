@@ -496,7 +496,10 @@ class ProjectClaim(Document):
 		# Calculate amounts
 		import datetime
 		today = datetime.datetime.now().strftime("%Y-%m-%d")
-		default_company = self.company
+		
+		# Get company from the reference invoice since it's not in the Project Claim
+		default_company = frappe.db.get_value("Sales Invoice", self.reference_invoice, "company") or frappe.defaults.get_user_default('company')
+		
 		claim_amount = flt(self.claim_amount)
 		tax_amount = flt(self.tax_amount or 0)
 		

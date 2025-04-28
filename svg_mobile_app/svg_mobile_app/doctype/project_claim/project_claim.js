@@ -55,13 +55,39 @@ function show_bulk_invoice_dialog(frm) {
 					let customer = dialog.get_value('customer');
 					console.log("Customer selected:", customer);
 					if (customer) {
+						// Clear project contractor filter when customer changes
+						dialog.set_value('project_contractor', '');
 						fetch_customer_invoices(dialog, customer);
 					}
 				}
 			},
 			{
-				fieldname: 'action_buttons',
-				fieldtype: 'HTML'
+				fieldname: 'project_contractor',
+				label: __('Project Contractor'),
+				fieldtype: 'Link',
+				options: 'Project Contractors',
+				onchange: function() {
+					// Filter invoices by project contractor
+					let project_contractor = dialog.get_value('project_contractor');
+					if (project_contractor) {
+						filter_invoices_by_project_contractor(dialog, project_contractor);
+					} else {
+						// If project contractor is cleared, show all invoices for the customer
+						let customer = dialog.get_value('customer');
+						if (customer) {
+							fetch_customer_invoices(dialog, customer);
+						}
+					}
+				},
+				get_query: function() {
+					// Filter project contractors based on selected customer
+					let customer = dialog.get_value('customer');
+					return {
+						filters: {
+							'customer': customer
+						}
+					};
+				}
 			},
 			{
 				fieldname: 'invoices_html',
@@ -103,38 +129,6 @@ function show_bulk_invoice_dialog(frm) {
 		}
 	});
 	
-	// Create buttons for actions
-	dialog.fields_dict.action_buttons.html(`
-		<div class="row" style="margin-top: 20px; margin-bottom: 10px;">
-			<div class="col">
-				<button id="select_all_btn" type="button" class="btn btn-sm btn-default form-control">
-					${__('Select All')}
-				</button>
-			</div>
-			<div class="col">
-				<button id="deselect_all_btn" type="button" class="btn btn-sm btn-default form-control">
-					${__('Deselect All')}
-				</button>
-			</div>
-			<div class="col">
-				<button id="set_full_amount_btn" type="button" class="btn btn-sm btn-default form-control">
-					${__('Set Full Amount')}
-				</button>
-			</div>
-		</div>
-		<style>
-			/* Remove spinners from number inputs */
-			input.no-spinner::-webkit-outer-spin-button,
-			input.no-spinner::-webkit-inner-spin-button {
-				-webkit-appearance: none;
-				margin: 0;
-			}
-			input.no-spinner[type=number] {
-				-moz-appearance: textfield;
-			}
-		</style>
-	`);
-	
 	// Initialize the invoices data
 	dialog.invoices_data = [];
 	
@@ -144,35 +138,6 @@ function show_bulk_invoice_dialog(frm) {
 			<div class="text-muted">${__('Select a customer to view invoices')}</div>
 		</div>
 	`);
-	
-	// Attach button click handlers
-	dialog.$wrapper.on('click', '#select_all_btn', function() {
-		console.log("Select All clicked");
-		dialog.invoices_data.forEach(inv => inv.select = 1);
-		render_invoices_table(dialog);
-		update_total_claim_amount(dialog);
-		return false;
-	});
-	
-	dialog.$wrapper.on('click', '#deselect_all_btn', function() {
-		console.log("Deselect All clicked");
-		dialog.invoices_data.forEach(inv => inv.select = 0);
-		render_invoices_table(dialog);
-		update_total_claim_amount(dialog);
-		return false;
-	});
-	
-	dialog.$wrapper.on('click', '#set_full_amount_btn', function() {
-		console.log("Set Full Amount clicked");
-		dialog.invoices_data.forEach(inv => {
-			if (inv.select) {
-				inv.claim_amount = inv.claimable_amount;
-			}
-		});
-		render_invoices_table(dialog);
-		update_total_claim_amount(dialog);
-		return false;
-	});
 	
 	// Checkbox change handler (will be delegated)
 	dialog.$wrapper.on('change', '.invoice-select', function() {
@@ -218,7 +183,7 @@ function fetch_customer_invoices(dialog, customer) {
 				'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
 				'outstanding_amount': ['>', 0]
 			},
-			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
+			fields: ['name', 'posting_date', 'custom_for_project', 'custom_project_contractor', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 			order_by: 'posting_date desc'
 		},
 		callback: function(response) {
@@ -233,11 +198,12 @@ function fetch_customer_invoices(dialog, customer) {
 						'invoice': inv.name,
 						'invoice_date': inv.posting_date,
 						'project': inv.custom_for_project || '',
+						'project_contractor': inv.custom_project_contractor || '',
 						'status': inv.status,
 						'due_date': inv.due_date,
 						'total': inv.grand_total,
 						'outstanding': inv.outstanding_amount,
-						'claim_amount': inv.outstanding_amount, // Will be updated after getting available balances
+						'claim_amount': 0, // Initialize to 0 instead of full amount
 						'select': 1 // Pre-select all
 					};
 				});
@@ -264,9 +230,8 @@ function fetch_customer_invoices(dialog, customer) {
 								claimable_amount += invoice_balance_data[item_code].available_balance || 0;
 							});
 							
-							// Update claim amount to the claimable amount instead of outstanding
+							// Update claimable amount but keep claim_amount at 0
 							inv.claimable_amount = claimable_amount;
-							inv.claim_amount = claimable_amount;
 						});
 						
 						// Render the invoices table with updated data
@@ -301,6 +266,108 @@ function fetch_customer_invoices(dialog, customer) {
 			`);
 		}
 	});
+}
+
+// Function to filter invoices by project contractor
+function filter_invoices_by_project_contractor(dialog, project_contractor) {
+	if (!dialog.invoices_data || dialog.invoices_data.length === 0) {
+		return;
+	}
+	
+	console.log("Filtering invoices by project contractor:", project_contractor);
+	
+	// Filter the invoices in the UI only (data is already loaded)
+	let filtered_invoices = dialog.invoices_data.filter(inv => 
+		inv.project_contractor === project_contractor
+	);
+	
+	if (filtered_invoices.length > 0) {
+		// Update the UI to show only filtered invoices
+		render_filtered_invoices_table(dialog, filtered_invoices);
+	} else {
+		// Show message if no invoices found for this project contractor
+		dialog.fields_dict.invoices_html.html(`
+			<div class="alert alert-warning my-4">
+				${__('No outstanding invoices found for this project contractor')}
+			</div>
+		`);
+	}
+}
+
+// Function to render filtered invoices table
+function render_filtered_invoices_table(dialog, filtered_data) {
+	console.log("Rendering filtered invoices table with data:", filtered_data);
+	
+	let html = `
+		<div class="margin-top">
+			<div class="alert alert-info my-2">
+				${__('Found')} ${filtered_data.length} ${__('outstanding invoices')}
+			</div>
+			<div class="table-responsive">
+				<table class="table table-bordered">
+					<thead>
+						<tr>
+							<th>${__('Select')}</th>
+							<th>${__('Invoice')}</th>
+							<th>${__('Date')}</th>
+							<th>${__('Project')}</th>
+							<th>${__('Status')}</th>
+							<th>${__('Due Date')}</th>
+							<th>${__('Total')}</th>
+							<th>${__('Outstanding')}</th>
+							<th>${__('Claimable')}</th>
+							<th>${__('Claim Amount')}</th>
+						</tr>
+					</thead>
+					<tbody>
+	`;
+	
+	filtered_data.forEach((inv, index) => {
+		// Find the actual index in the original data array
+		const originalIndex = dialog.invoices_data.findIndex(item => item.invoice === inv.invoice);
+		
+		html += `
+			<tr>
+				<td>
+					<input 
+						type="checkbox" 
+						class="invoice-select" 
+						data-index="${originalIndex}" 
+						${inv.select ? 'checked' : ''}
+					>
+				</td>
+				<td>${inv.invoice}</td>
+				<td>${inv.invoice_date}</td>
+				<td>${inv.project || ''}</td>
+				<td>${inv.status}</td>
+				<td>${inv.due_date || ''}</td>
+				<td class="text-right">${format_currency(inv.total)}</td>
+				<td class="text-right">${format_currency(inv.outstanding)}</td>
+				<td class="text-right">${format_currency(inv.claimable_amount)}</td>
+				<td>
+					<input 
+						type="text" 
+						class="form-control claim-amount-input no-spinner" 
+						data-index="${originalIndex}" 
+						value="${inv.claim_amount}" 
+						max="${inv.claimable_amount}"
+						${!inv.select ? 'disabled' : ''}
+						style="text-align: right;"
+						onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
+					>
+				</td>
+			</tr>
+		`;
+	});
+	
+	html += `
+					</tbody>
+				</table>
+			</div>
+		</div>
+	`;
+	
+	dialog.fields_dict.invoices_html.html(html);
 }
 
 function render_invoices_table(dialog) {

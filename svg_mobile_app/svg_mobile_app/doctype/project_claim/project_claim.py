@@ -330,25 +330,81 @@ class ProjectClaim(Document):
 			current_invoice = None
 			
 			for line in lines:
-				# Check for invoice line
+				# Check for invoice line pattern like "- ACC-SINV-2025-00024 (Unpaid, PRO-00020, Due: 2025-04-28)"
 				invoice_match = re.search(r'- ([\w\d-]+)', line)
 				if invoice_match:
-					current_invoice = invoice_match.group(1)
+					current_invoice = invoice_match.group(1).strip()
+					frappe.logger().debug(f"Found invoice reference: {current_invoice}")
 				
-				# Check for total claimed line
+				# Check for total claimed line pattern like "Total Claimed: د.إ 70,000.00 of د.إ 70,000.00 claimable"
 				if current_invoice and 'Total Claimed:' in line:
-					amount_match = re.search(r'Total Claimed: ([0-9,.]+)', line)
+					amount_match = re.search(r'Total Claimed: [^0-9]*([0-9,.]+)', line)
 					if amount_match:
 						amount_text = amount_match.group(1).replace(',', '')
 						try:
-							invoice_claim_amounts[current_invoice] = float(amount_text)
-						except ValueError:
+							claim_amount = float(amount_text)
+							invoice_claim_amounts[current_invoice] = claim_amount
+							frappe.logger().debug(f"Parsed claim amount for {current_invoice}: {claim_amount}")
+						except (ValueError, KeyError) as e:
+							frappe.logger().error(f"Error parsing claim amount for {current_invoice}: {e}")
 							pass  # Ignore if we can't parse the amount
 		
-		# If we couldn't parse the being field, try to distribute the claim amount evenly
-		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-			for invoice in invoices:
-				invoice_claim_amounts[invoice] = flt(self.claim_amount) / len(invoices)
+		# Log what we found from parsing
+		frappe.logger().debug(f"Parsed claim amounts from being: {invoice_claim_amounts}")
+		
+		# If we couldn't parse the being field, try to extract from claim items by invoice
+		if sum(invoice_claim_amounts.values()) == 0 and self.claim_items:
+			# Get the item-invoice mapping by checking the "being" text for item details under each invoice
+			item_invoice_map = {}
+			current_invoice = None
+			
+			if self.being:
+				lines = self.being.split('\n')
+				for line in lines:
+					invoice_match = re.search(r'- ([\w\d-]+)', line)
+					if invoice_match:
+						current_invoice = invoice_match.group(1).strip()
+						continue
+						
+					# Look for item lines under an invoice like "• اتعاب مناقصة (اتعاب مناقصة): د.إ 30,000.00 (42.9%)"
+					if current_invoice and '•' in line:
+						item_match = re.search(r'•\s+(.*?)\s+\((.*?)\):', line)
+						if item_match:
+							item_name = item_match.group(1).strip()
+							item_code = item_match.group(2).strip()
+							
+							# Find this item in claim_items
+							for item in self.claim_items:
+								if item.item == item_code:
+									# Create mapping
+									if item.item not in item_invoice_map:
+										item_invoice_map[item.item] = {}
+									
+									# Find the amount for this item in this invoice from the being field
+									amount_match = re.search(r':\s+[^0-9]*([0-9,.]+)', line)
+									if amount_match:
+										amount_text = amount_match.group(1).replace(',', '')
+										try:
+											item_amount = float(amount_text)
+											item_invoice_map[item.item][current_invoice] = item_amount
+											# Add to invoice total
+											invoice_claim_amounts[current_invoice] += item_amount
+										except ValueError:
+											pass
+			
+			# If we still couldn't determine specific amounts, use the total claim amount and distribute evenly
+			if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
+				even_share = flt(self.claim_amount) / len(invoices)
+				for invoice in invoices:
+					invoice_claim_amounts[invoice] = even_share
+		
+		# Ensure we're not trying to reduce any invoice by more than our total claim amount
+		total_reductions = sum(invoice_claim_amounts.values())
+		if total_reductions > flt(self.claim_amount):
+			# Scale down proportionally
+			scale_factor = flt(self.claim_amount) / total_reductions
+			for invoice in invoice_claim_amounts:
+				invoice_claim_amounts[invoice] *= scale_factor
 		
 		# Update each invoice's outstanding amount
 		for invoice, claim_amount in invoice_claim_amounts.items():
@@ -364,6 +420,12 @@ class ProjectClaim(Document):
 				
 				# Log the update
 				frappe.logger().info(f"Updated invoice {invoice} outstanding amount: {current_outstanding} -> {new_outstanding} (claimed {claim_amount})")
+				
+				# Update the Sales Invoice's status if needed
+				if new_outstanding == 0:
+					frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
+				elif new_outstanding < flt(frappe.db.get_value("Sales Invoice", invoice, "grand_total")):
+					frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
 
 	def get_items_from_invoices(self, invoices):
 		"""Get items from multiple invoices for bulk claim creation"""
@@ -498,9 +560,9 @@ def get_available_invoice_balances(invoices):
 				'item_proportion': 0
 			}
 	
-	# Get only claims specifically against these invoices
-	# Modified to track by invoice-item pair
-	previous_claims_sql = """
+	# MODIFIED: Get claims for all invoices, checking both reference_invoice AND invoice_references
+	# First get all claims where the invoice is the main reference
+	primary_claims_sql = """
 		SELECT 
 			pc.reference_invoice as invoice,
 			ci.item, 
@@ -513,50 +575,68 @@ def get_available_invoice_balances(invoices):
 			AND pc.reference_invoice IN %s
 		GROUP BY 
 			pc.reference_invoice, ci.item
-		
-		UNION ALL
-		
+	"""
+	
+	# Then get claims where the invoice is in invoice_references
+	secondary_claims_sql = """
 		SELECT 
-			TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(ir.invoice_part, ',', n.n), ',', -1)) as invoice,
-			ci.item,
-			SUM(ci.amount * pc.item_invoice_ratio) as claimed_amount
+			inv.invoice as invoice,
+			ci.item, 
+			SUM(CASE
+				WHEN pc.claimable_amount > 0 THEN ci.amount * (inv.claim_amount / pc.claimable_amount)
+				ELSE 0
+			END) as claimed_amount
 		FROM 
 			`tabClaim Items` ci
 			JOIN `tabProject Claim` pc ON ci.parent = pc.name
 			JOIN (
 				SELECT 
 					pc.name,
-					pc.invoice_references,
-					CONCAT(pc.reference_invoice, ',', pc.invoice_references) as invoice_part,
-					(LENGTH(CONCAT(pc.reference_invoice, ',', pc.invoice_references)) - LENGTH(REPLACE(CONCAT(pc.reference_invoice, ',', pc.invoice_references), ',', '')) + 1) as parts
-				FROM `tabProject Claim` pc
-				WHERE pc.docstatus = 1
-				AND pc.invoice_references IS NOT NULL
-				AND pc.invoice_references != ''
-			) ir ON ir.name = pc.name
-			JOIN (
-				SELECT a.N + b.N * 10 + 1 as n
+					trim(regexp_substr(replace(concat(', ', pc.invoice_references, ', '), ' ', ''), ',[^,]+,', 1, level)) as invoice,
+					pc.being,
+					CASE
+						WHEN pc.being LIKE %s THEN 
+							CAST(regexp_substr(
+								regexp_substr(pc.being, concat('- ', trim(regexp_substr(replace(concat(', ', pc.invoice_references, ', '), ' ', ''), ',[^,]+,', 1, level)), '.*Total Claimed: ([0-9,.]+)')), 
+								'([0-9,.]+)') 
+							AS DECIMAL(18,2))
+						ELSE pc.claim_amount / (LENGTH(pc.invoice_references) - LENGTH(REPLACE(pc.invoice_references, ',', '')) + 1)
+					END as claim_amount
 				FROM 
-					(SELECT 0 as N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) a,
-					(SELECT 0 as N UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9) b
-				ORDER BY n
-			) n ON n.n <= ir.parts
-		WHERE 
-			TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(ir.invoice_part, ',', n.n), ',', -1)) IN %s
+					`tabProject Claim` pc
+				JOIN
+					(SELECT @rownum := 0) r
+				JOIN
+					(SELECT @rownum := @rownum + 1 AS level FROM information_schema.columns LIMIT 100) levels
+				WHERE 
+					pc.docstatus = 1
+					AND pc.invoice_references IS NOT NULL
+					AND pc.invoice_references != ''
+					AND trim(regexp_substr(replace(concat(', ', pc.invoice_references, ', '), ' ', ''), ',[^,]+,', 1, level)) IN %s
+			) inv ON inv.name = pc.name
 		GROUP BY 
-			TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(ir.invoice_part, ',', n.n), ',', -1)), ci.item
+			inv.invoice, ci.item
 	"""
 	
-	# If we get syntax errors, fall back to a simpler query that might be less accurate
 	try:
-		previous_claims = frappe.db.sql(previous_claims_sql, [
-			tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
+		# Get primary claims (where invoice is the main reference)
+		primary_claims = frappe.db.sql(primary_claims_sql, [
 			tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])
 		], as_dict=True)
+		
+		# Get secondary claims (where invoice is in invoice_references)
+		secondary_claims = frappe.db.sql(secondary_claims_sql, [
+			'%Total Claimed:%',  # Pattern for the being field
+			tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])
+		], as_dict=True)
+		
+		# Combine both sets of claims
+		all_claims = primary_claims + secondary_claims
+		
 	except Exception as e:
 		frappe.logger().error(f"Error in complex claim query: {e}")
-		# Fallback to simpler query
-		previous_claims_sql = """
+		# Fallback to simpler query that only checks reference_invoice
+		fallback_sql = """
 			SELECT 
 				pc.reference_invoice as invoice,
 				ci.item, 
@@ -573,13 +653,13 @@ def get_available_invoice_balances(invoices):
 			GROUP BY 
 				pc.reference_invoice, ci.item
 		"""
-		previous_claims = frappe.db.sql(previous_claims_sql, [
+		all_claims = frappe.db.sql(fallback_sql, [
 			tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
 			'%' + '%'.join([inv.replace("'", "''") for inv in invoices]) + '%'
 		], as_dict=True)
 	
 	# Process claims by invoice and item
-	for claim in previous_claims:
+	for claim in all_claims:
 		invoice = claim.invoice
 		item = claim.item
 		claimed_amount = flt(claim.claimed_amount)
@@ -607,7 +687,7 @@ def get_available_invoice_balances(invoices):
 					flt(item.amount) / invoice_total if invoice_total > 0 else 0
 				)
 	
-	# NEW CODE: Reconcile with actual outstanding amounts
+	# Reconcile with actual outstanding amounts
 	for invoice in invoices:
 		if not invoice or invoice not in result:
 			continue
@@ -620,6 +700,9 @@ def get_available_invoice_balances(invoices):
 		for item_code in result[invoice]:
 			total_available += flt(result[invoice][item_code]['available_balance'])
 			
+		# Log for debugging
+		frappe.logger().debug(f"Invoice {invoice}: Outstanding={actual_outstanding}, Available={total_available}")
+		
 		# If there's a discrepancy (outstanding > 0 but available = 0)
 		if actual_outstanding > 0 and total_available < 0.01:
 			frappe.logger().info(f"Reconciling invoice {invoice}: outstanding={actual_outstanding}, available={total_available}")
@@ -634,5 +717,15 @@ def get_available_invoice_balances(invoices):
 					item_proportion = flt(result[invoice][item_code]['original_amount']) / total_original
 					result[invoice][item_code]['available_balance'] = actual_outstanding * item_proportion
 					frappe.logger().info(f"Redistributed to {item_code}: {result[invoice][item_code]['available_balance']}")
+		
+		# If there's a discrepancy in the other direction (available > outstanding), cap availability
+		elif actual_outstanding < total_available and actual_outstanding > 0:
+			frappe.logger().info(f"Capping invoice {invoice}: outstanding={actual_outstanding}, available={total_available}")
+			
+			# Scale down proportionally
+			scale_factor = actual_outstanding / total_available
+			for item_code in result[invoice]:
+				result[invoice][item_code]['available_balance'] *= scale_factor
+				frappe.logger().info(f"Scaled {item_code} by {scale_factor}: new available={result[invoice][item_code]['available_balance']}")
 	
 	return result

@@ -405,6 +405,11 @@ class ProjectClaim(Document):
 			scale_factor = flt(self.claim_amount) / total_reductions
 			for invoice in invoice_claim_amounts:
 				invoice_claim_amounts[invoice] *= scale_factor
+				
+		# IMPORTANT: Double-check the math is correct before proceeding
+		frappe.logger().info(f"Final claim amounts: {invoice_claim_amounts}")
+		frappe.logger().info(f"Total claim amounts: {sum(invoice_claim_amounts.values())}")
+		frappe.logger().info(f"Document claim amount: {flt(self.claim_amount)}")
 		
 		# Update each invoice's outstanding amount
 		for invoice, claim_amount in invoice_claim_amounts.items():
@@ -412,20 +417,32 @@ class ProjectClaim(Document):
 				# Get current outstanding amount
 				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
 				
+				# CRITICAL FIX: Always subtract the claim amount, never add
+				# Make sure the amount is treated as positive for reduction
+				claim_reduction = abs(claim_amount)
+				
 				# Calculate new outstanding amount (ensure it doesn't go below zero)
-				new_outstanding = max(0, current_outstanding - claim_amount)
+				new_outstanding = max(0, current_outstanding - claim_reduction)
 				
-				# Update the invoice
-				frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
+				# Verify the calculation before updating
+				frappe.logger().info(f"Invoice {invoice}: {current_outstanding} - {claim_reduction} = {new_outstanding}")
 				
-				# Log the update
-				frappe.logger().info(f"Updated invoice {invoice} outstanding amount: {current_outstanding} -> {new_outstanding} (claimed {claim_amount})")
-				
-				# Update the Sales Invoice's status if needed
-				if new_outstanding == 0:
-					frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
-				elif new_outstanding < flt(frappe.db.get_value("Sales Invoice", invoice, "grand_total")):
-					frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
+				# Update the invoice only if the calculation is reasonable
+				if new_outstanding <= current_outstanding:
+					frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
+					
+					# Log the update
+					frappe.logger().info(f"Updated invoice {invoice} outstanding amount: {current_outstanding} -> {new_outstanding} (claimed {claim_amount})")
+					
+					# Update the Sales Invoice's status if needed
+					if new_outstanding == 0:
+						frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
+					elif new_outstanding < flt(frappe.db.get_value("Sales Invoice", invoice, "grand_total")):
+						frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
+				else:
+					# Something is wrong with the calculation, log an error
+					frappe.logger().error(f"Invalid calculation for invoice {invoice}: {current_outstanding} -> {new_outstanding}")
+					frappe.throw(f"Invalid outstanding amount calculation for invoice {invoice}. Please check the logs.")
 
 	def get_items_from_invoices(self, invoices):
 		"""Get items from multiple invoices for bulk claim creation"""

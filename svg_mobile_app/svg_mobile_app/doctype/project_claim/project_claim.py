@@ -3,7 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import flt
+from frappe.utils import flt, today
 
 
 class ProjectClaim(Document):
@@ -26,11 +26,203 @@ class ProjectClaim(Document):
 		# Track claim information for all referenced invoices
 		self.update_invoice_claim_history(invoices)
 		
-		# Update invoice outstanding amounts
-		self.update_invoice_outstanding_amounts(invoices)
+		# Create journal entry first
+		self.create_journal_entry(invoices)
 		
 		# Update project-specific claim tracking if needed
 		self.update_project_claim_tracking()
+	
+	def create_journal_entry(self, invoices):
+		"""Create a journal entry using the same logic as in the client script"""
+		# Validate required fields
+		if not self.party_account or not self.receiving_account:
+			frappe.throw("Please set Party Account and Receiving Account first")
+			return
+		
+		if not self.claim_items or len(self.claim_items) == 0:
+			frappe.throw("Please add items to the Claim Items table first")
+			return
+		
+		# Calculate amounts
+		default_company = frappe.defaults.get_user_default('company') or self.company
+		claim_amount = flt(self.claim_amount)
+		tax_amount = flt(self.tax_amount or 0)
+		
+		# Parse the being field to extract invoice-specific claim amounts
+		import re
+		
+		# Map to track claim amounts per invoice
+		invoice_claim_amounts = {}
+		
+		# Initialize with zero
+		for invoice in invoices:
+			invoice_claim_amounts[invoice] = 0
+		
+		# Parse the being field to extract invoice-specific amounts
+		if self.being:
+			lines = self.being.split('\n')
+			current_invoice = None
+			
+			for line in lines:
+				# Check for invoice line pattern like "- ACC-SINV-2025-00024 (Unpaid, PRO-00020, Due: 2025-04-28)"
+				invoice_match = re.search(r'- ([\w\d-]+)', line)
+				if invoice_match:
+					current_invoice = invoice_match.group(1).strip()
+					frappe.logger().debug(f"Found invoice reference: {current_invoice}")
+				
+				# Check for total claimed line pattern like "Total Claimed: د.إ 70,000.00 of د.إ 70,000.00 claimable"
+				if current_invoice and 'Total Claimed:' in line:
+					amount_match = re.search(r'Total Claimed: [^0-9]*([0-9,.]+)', line)
+					if amount_match:
+						amount_text = amount_match.group(1).replace(',', '')
+						try:
+							claim_amount_inv = float(amount_text)
+							invoice_claim_amounts[current_invoice] = claim_amount_inv
+							frappe.logger().debug(f"Parsed claim amount for {current_invoice}: {claim_amount_inv}")
+						except (ValueError, KeyError) as e:
+							frappe.logger().error(f"Error parsing claim amount for {current_invoice}: {e}")
+							pass  # Ignore if we can't parse the amount
+		
+		# Log what we found from parsing
+		frappe.logger().debug(f"Parsed claim amounts from being: {invoice_claim_amounts}")
+		
+		# If we couldn't parse the being field, try to extract from claim items by invoice
+		if sum(invoice_claim_amounts.values()) == 0 and self.claim_items:
+			# Get the item-invoice mapping by checking the "being" text for item details under each invoice
+			item_invoice_map = {}
+			current_invoice = None
+			
+			if self.being:
+				lines = self.being.split('\n')
+				for line in lines:
+					invoice_match = re.search(r'- ([\w\d-]+)', line)
+					if invoice_match:
+						current_invoice = invoice_match.group(1).strip()
+						continue
+						
+					# Look for item lines under an invoice like "• اتعاب مناقصة (اتعاب مناقصة): د.إ 30,000.00 (42.9%)"
+					if current_invoice and '•' in line:
+						item_match = re.search(r'•\s+(.*?)\s+\((.*?)\):', line)
+						if item_match:
+							item_name = item_match.group(1).strip()
+							item_code = item_match.group(2).strip()
+							
+							# Find this item in claim_items
+							for item in self.claim_items:
+								if item.item == item_code:
+									# Create mapping
+									if item.item not in item_invoice_map:
+										item_invoice_map[item.item] = {}
+									
+									# Find the amount for this item in this invoice from the being field
+									amount_match = re.search(r':\s+[^0-9]*([0-9,.]+)', line)
+									if amount_match:
+										amount_text = amount_match.group(1).replace(',', '')
+										try:
+											item_amount = float(amount_text)
+											item_invoice_map[item.item][current_invoice] = item_amount
+											# Add to invoice total
+											invoice_claim_amounts[current_invoice] += item_amount
+										except ValueError:
+											pass
+			
+			# If we still couldn't determine specific amounts, use the total claim amount and distribute evenly
+			if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
+				even_share = flt(self.claim_amount) / len(invoices)
+				for invoice in invoices:
+					invoice_claim_amounts[invoice] = even_share
+		
+		# Ensure we're not trying to reduce any invoice by more than our total claim amount
+		total_reductions = sum(invoice_claim_amounts.values())
+		if total_reductions > flt(self.claim_amount):
+			# Scale down proportionally
+			scale_factor = flt(self.claim_amount) / total_reductions
+			for invoice in invoice_claim_amounts:
+				invoice_claim_amounts[invoice] *= scale_factor
+		
+		# Prepare accounts array
+		accounts = []
+		
+		# Process each invoice
+		for invoice in invoices:
+			if invoice_claim_amounts[invoice] > 0:
+				# Get the customer for this invoice
+				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
+				
+				# Credit customer account for this invoice
+				accounts.append({
+					'account': self.party_account,
+					'party_type': 'Customer',
+					'party': customer or self.customer,
+					'credit_in_account_currency': invoice_claim_amounts[invoice],
+					'reference_type': 'Sales Invoice',
+					'reference_name': invoice,
+					'cost_center': self.cost_center or None
+				})
+		
+		# Debit receiving account (full claim amount minus tax)
+		accounts.append({
+			'account': self.receiving_account,
+			'debit_in_account_currency': claim_amount - tax_amount,
+			'cost_center': self.cost_center or None
+		})
+		
+		# Add entries for each claim item
+		for item in self.claim_items:
+			item_ratio = flt(item.ratio) / 100
+			item_amount = claim_amount * item_ratio
+			
+			# Debit unearned account
+			if hasattr(item, 'unearned_account') and item.unearned_account:
+				accounts.append({
+					'account': item.unearned_account,
+					'debit_in_account_currency': item_amount,
+					'cost_center': self.cost_center or None
+				})
+			
+			# Credit revenue account
+			if hasattr(item, 'revenue_account') and item.revenue_account:
+				accounts.append({
+					'account': item.revenue_account,
+					'credit_in_account_currency': item_amount,
+					'cost_center': self.cost_center or None
+				})
+		
+		# Add tax row if applicable
+		if tax_amount > 0 and self.tax_account:
+			accounts.append({
+				'account': self.tax_account,
+				'debit_in_account_currency': tax_amount,
+				'cost_center': self.cost_center or None
+			})
+		
+		# Verify the totals balance
+		total_debit = sum(account.get('debit_in_account_currency', 0) for account in accounts)
+		total_credit = sum(account.get('credit_in_account_currency', 0) for account in accounts)
+		
+		if abs(total_debit - total_credit) > 0.01:
+			frappe.throw(f"Journal Entry is not balanced. Debit: {total_debit}, Credit: {total_credit}")
+			return
+		
+		# Create the journal entry
+		je = frappe.get_doc({
+			'doctype': 'Journal Entry',
+			'voucher_type': 'Journal Entry',
+			'posting_date': today(),
+			'company': default_company,
+			'accounts': accounts,
+			'multi_currency': 0,
+			'user_remark': f"for Project Claim {self.name} Being {self.being}",
+			'total_debit': total_debit,
+			'total_credit': total_credit
+		})
+		
+		je.flags.ignore_permissions = True
+		je.submit()
+		
+		# Link the journal entry to this claim
+		self.db_set('journal_entry', je.name)
+		self.db_set('status', 'Reconciled')
 	
 	def process_multiple_invoice_references(self):
 		"""Process claims with multiple invoice references"""

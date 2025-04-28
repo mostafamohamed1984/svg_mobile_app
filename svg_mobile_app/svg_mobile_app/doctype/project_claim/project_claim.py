@@ -544,20 +544,19 @@ class ProjectClaim(Document):
 		# Prepare accounts array
 		accounts = []
 		
-		# Add entry for each invoice with their specific amount
+		# Add entry for each invoice with their specific amount but WITHOUT reference to avoid double impact
 		for invoice, invoice_amount in invoice_claim_amounts.items():
 			if invoice_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
 				# Get customer from the invoice
 				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
 				
-				# Credit customer account for this invoice's portion
+				# Credit customer account for this invoice's portion - but without referencing the invoice
 				accounts.append({
 					'account': self.party_account,
 					'party_type': 'Customer',
 					'party': customer or self.customer,
-					'credit_in_account_currency': invoice_amount,
-					'reference_type': 'Sales Invoice',
-					'reference_name': invoice
+					'credit_in_account_currency': invoice_amount
+					# Removed the reference to the Sales Invoice to avoid double impact
 				})
 		
 		# Debit receiving account (full claim amount minus tax)
@@ -622,8 +621,8 @@ class ProjectClaim(Document):
 		
 		frappe.msgprint(f"Journal Entry {je.name} created and Project Claim marked as Reconciled")
 		
-		# Journal entry has already updated the outstanding amounts, so no need to call 
-		# self.update_invoice_outstanding_amounts(invoices)
+		# Now manually update the invoice outstanding amounts
+		self.update_invoice_outstanding_amounts(invoices)
 		
 		return je.name
 

@@ -1276,7 +1276,7 @@ function create_bulk_project_claim(frm, dialog) {
 			let due_date_text = ref.due_date ? ref.due_date : 'N/A';
 			
 			// Remove all project/project_contractor references - simply don't include them
-			being_text += `- ${ref.invoice} (${status_text}, Due: ${due_date_text})\n`;
+			being_text += `- ${ref.invoice} \n`;
 			being_text += `  Total Claimed: ${format_currency(inv_total)} of ${format_currency(ref.amount)} claimable\n`;
 			
 			if (inv_items.length > 0) {

@@ -55,39 +55,21 @@ function show_bulk_invoice_dialog(frm) {
 					let customer = dialog.get_value('customer');
 					console.log("Customer selected:", customer);
 					if (customer) {
-						// Clear project contractor filter when customer changes
-						dialog.set_value('project_contractor', '');
 						fetch_customer_invoices(dialog, customer);
 					}
 				}
 			},
 			{
-				fieldname: 'project_contractor',
-				label: __('Project Contractor'),
-				fieldtype: 'Link',
-				options: 'Project Contractors',
-				onchange: function() {
-					// Filter invoices by project contractor
-					let project_contractor = dialog.get_value('project_contractor');
-					if (project_contractor) {
-						filter_invoices_by_project_contractor(dialog, project_contractor);
-					} else {
-						// If project contractor is cleared, show all invoices for the customer
-						let customer = dialog.get_value('customer');
-						if (customer) {
-							fetch_customer_invoices(dialog, customer);
-						}
-					}
-				},
-				get_query: function() {
-					// Filter project contractors based on selected customer
-					let customer = dialog.get_value('customer');
-					return {
-						filters: {
-							'customer': customer
-						}
-					};
-				}
+				fieldname: 'invoice_filter',
+				label: __('Filter Invoices'),
+				fieldtype: 'Select',
+				options: '',
+				depends_on: 'eval:doc.customer',
+				description: __('Select to filter invoices to display')
+			},
+			{
+				fieldname: 'action_buttons',
+				fieldtype: 'HTML'
 			},
 			{
 				fieldname: 'invoices_html',
@@ -129,8 +111,24 @@ function show_bulk_invoice_dialog(frm) {
 		}
 	});
 	
+	// Create styling for number inputs
+	dialog.fields_dict.action_buttons.html(`
+		<style>
+			/* Remove spinners from number inputs */
+			input.no-spinner::-webkit-outer-spin-button,
+			input.no-spinner::-webkit-inner-spin-button {
+				-webkit-appearance: none;
+				margin: 0;
+			}
+			input.no-spinner[type=number] {
+				-moz-appearance: textfield;
+			}
+		</style>
+	`);
+	
 	// Initialize the invoices data
 	dialog.invoices_data = [];
+	dialog.all_invoices_data = [];
 	
 	// Initialize the invoices HTML container
 	dialog.fields_dict.invoices_html.html(`
@@ -139,15 +137,6 @@ function show_bulk_invoice_dialog(frm) {
 		</div>
 	`);
 	
-	// Checkbox change handler (will be delegated)
-	dialog.$wrapper.on('change', '.invoice-select', function() {
-		const index = $(this).data('index');
-		console.log(`Checkbox ${index} changed to ${this.checked}`);
-		
-		dialog.invoices_data[index].select = this.checked ? 1 : 0;
-		update_total_claim_amount(dialog);
-	});
-	
 	// Amount input change handler (will be delegated)
 	dialog.$wrapper.on('change', '.claim-amount-input', function() {
 		const index = $(this).data('index');
@@ -155,6 +144,15 @@ function show_bulk_invoice_dialog(frm) {
 		console.log(`Amount ${index} changed to ${value}`);
 		
 		dialog.invoices_data[index].claim_amount = value;
+		update_total_claim_amount(dialog);
+	});
+	
+	// Checkbox change handler (will be delegated)
+	dialog.$wrapper.on('change', '.invoice-select', function() {
+		const index = $(this).data('index');
+		console.log(`Checkbox ${index} changed to ${this.checked}`);
+		
+		dialog.invoices_data[index].select = this.checked ? 1 : 0;
 		update_total_claim_amount(dialog);
 	});
 	
@@ -183,7 +181,7 @@ function fetch_customer_invoices(dialog, customer) {
 				'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
 				'outstanding_amount': ['>', 0]
 			},
-			fields: ['name', 'posting_date', 'custom_for_project', 'custom_project_contractor', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
+			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 			order_by: 'posting_date desc'
 		},
 		callback: function(response) {
@@ -193,23 +191,56 @@ function fetch_customer_invoices(dialog, customer) {
 				console.log("Found invoices:", response.message.length);
 				
 				// First prepare basic invoice data
-				dialog.invoices_data = response.message.map(inv => {
+				dialog.all_invoices_data = response.message.map(inv => {
 					return {
 						'invoice': inv.name,
 						'invoice_date': inv.posting_date,
 						'project': inv.custom_for_project || '',
-						'project_contractor': inv.custom_project_contractor || '',
 						'status': inv.status,
 						'due_date': inv.due_date,
 						'total': inv.grand_total,
 						'outstanding': inv.outstanding_amount,
-						'claim_amount': 0, // Initialize to 0 instead of full amount
+						'claim_amount': 0, // Initialize with 0 instead of outstanding amount
 						'select': 1 // Pre-select all
 					};
 				});
 				
+				// Set initial invoices_data to all invoices
+				dialog.invoices_data = [...dialog.all_invoices_data];
+				
+				// Build filter options based on projects
+				let projects = [];
+				dialog.all_invoices_data.forEach(inv => {
+					if (inv.project && !projects.includes(inv.project)) {
+						projects.push(inv.project);
+					}
+				});
+				
+				// Update the filter dropdown
+				let filter_options = ['All Invoices'];
+				projects.forEach(project => {
+					filter_options.push(`Project: ${project}`);
+				});
+				dialog.set_df_property('invoice_filter', 'options', filter_options.join('\n'));
+				dialog.set_value('invoice_filter', 'All Invoices');
+				
+				// Add handler for filter dropdown
+				dialog.fields_dict.invoice_filter.df.onchange = function() {
+					let filter_value = dialog.get_value('invoice_filter');
+					
+					if (filter_value === 'All Invoices') {
+						dialog.invoices_data = [...dialog.all_invoices_data];
+					} else if (filter_value.startsWith('Project:')) {
+						let project = filter_value.replace('Project: ', '');
+						dialog.invoices_data = dialog.all_invoices_data.filter(inv => inv.project === project);
+					}
+					
+					render_invoices_table(dialog);
+					update_total_claim_amount(dialog);
+				};
+				
 				// Get invoice names for all invoices
-				let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
+				let invoice_names = dialog.all_invoices_data.map(inv => inv.invoice);
 				
 				// Get available balances for all invoices
 				frappe.call({
@@ -221,7 +252,7 @@ function fetch_customer_invoices(dialog, customer) {
 						let balance_data = balance_result.message || {};
 						
 						// Update each invoice with claimable amount based on available balances
-						dialog.invoices_data.forEach(inv => {
+						dialog.all_invoices_data.forEach(inv => {
 							let invoice_balance_data = balance_data[inv.invoice] || {};
 							let claimable_amount = 0;
 							
@@ -230,9 +261,12 @@ function fetch_customer_invoices(dialog, customer) {
 								claimable_amount += invoice_balance_data[item_code].available_balance || 0;
 							});
 							
-							// Update claimable amount but keep claim_amount at 0
+							// Update claimable amount but keep claim amount at 0
 							inv.claimable_amount = claimable_amount;
 						});
+						
+						// Update invoices_data from all_invoices_data
+						dialog.invoices_data = [...dialog.all_invoices_data];
 						
 						// Render the invoices table with updated data
 						render_invoices_table(dialog);
@@ -245,6 +279,7 @@ function fetch_customer_invoices(dialog, customer) {
 				console.log("No invoices found");
 				
 				dialog.invoices_data = [];
+				dialog.all_invoices_data = [];
 				
 				// Show message if no invoices found
 				dialog.fields_dict.invoices_html.html(`
@@ -266,108 +301,6 @@ function fetch_customer_invoices(dialog, customer) {
 			`);
 		}
 	});
-}
-
-// Function to filter invoices by project contractor
-function filter_invoices_by_project_contractor(dialog, project_contractor) {
-	if (!dialog.invoices_data || dialog.invoices_data.length === 0) {
-		return;
-	}
-	
-	console.log("Filtering invoices by project contractor:", project_contractor);
-	
-	// Filter the invoices in the UI only (data is already loaded)
-	let filtered_invoices = dialog.invoices_data.filter(inv => 
-		inv.project_contractor === project_contractor
-	);
-	
-	if (filtered_invoices.length > 0) {
-		// Update the UI to show only filtered invoices
-		render_filtered_invoices_table(dialog, filtered_invoices);
-	} else {
-		// Show message if no invoices found for this project contractor
-		dialog.fields_dict.invoices_html.html(`
-			<div class="alert alert-warning my-4">
-				${__('No outstanding invoices found for this project contractor')}
-			</div>
-		`);
-	}
-}
-
-// Function to render filtered invoices table
-function render_filtered_invoices_table(dialog, filtered_data) {
-	console.log("Rendering filtered invoices table with data:", filtered_data);
-	
-	let html = `
-		<div class="margin-top">
-			<div class="alert alert-info my-2">
-				${__('Found')} ${filtered_data.length} ${__('outstanding invoices')}
-			</div>
-			<div class="table-responsive">
-				<table class="table table-bordered">
-					<thead>
-						<tr>
-							<th>${__('Select')}</th>
-							<th>${__('Invoice')}</th>
-							<th>${__('Date')}</th>
-							<th>${__('Project')}</th>
-							<th>${__('Status')}</th>
-							<th>${__('Due Date')}</th>
-							<th>${__('Total')}</th>
-							<th>${__('Outstanding')}</th>
-							<th>${__('Claimable')}</th>
-							<th>${__('Claim Amount')}</th>
-						</tr>
-					</thead>
-					<tbody>
-	`;
-	
-	filtered_data.forEach((inv, index) => {
-		// Find the actual index in the original data array
-		const originalIndex = dialog.invoices_data.findIndex(item => item.invoice === inv.invoice);
-		
-		html += `
-			<tr>
-				<td>
-					<input 
-						type="checkbox" 
-						class="invoice-select" 
-						data-index="${originalIndex}" 
-						${inv.select ? 'checked' : ''}
-					>
-				</td>
-				<td>${inv.invoice}</td>
-				<td>${inv.invoice_date}</td>
-				<td>${inv.project || ''}</td>
-				<td>${inv.status}</td>
-				<td>${inv.due_date || ''}</td>
-				<td class="text-right">${format_currency(inv.total)}</td>
-				<td class="text-right">${format_currency(inv.outstanding)}</td>
-				<td class="text-right">${format_currency(inv.claimable_amount)}</td>
-				<td>
-					<input 
-						type="text" 
-						class="form-control claim-amount-input no-spinner" 
-						data-index="${originalIndex}" 
-						value="${inv.claim_amount}" 
-						max="${inv.claimable_amount}"
-						${!inv.select ? 'disabled' : ''}
-						style="text-align: right;"
-						onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
-					>
-				</td>
-			</tr>
-		`;
-	});
-	
-	html += `
-					</tbody>
-				</table>
-			</div>
-		</div>
-	`;
-	
-	dialog.fields_dict.invoices_html.html(html);
 }
 
 function render_invoices_table(dialog) {

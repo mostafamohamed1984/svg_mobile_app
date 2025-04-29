@@ -1082,6 +1082,13 @@ function create_bulk_project_claim(frm, dialog) {
 			project_contractor: inv.project_contractor
 		})));
 		
+		// Get project contractor names for selected invoices (same way as invoice_names)
+		let project_contractor_names = selected_invoices
+			.map(inv => inv.project_contractor)
+			.filter(Boolean); // Remove null/undefined values
+		
+		console.log("Project contractor names collected:", project_contractor_names);
+		
 		// Process each invoice
 		selected_invoices.forEach(inv => {
 			let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
@@ -1301,8 +1308,8 @@ function create_bulk_project_claim(frm, dialog) {
 				// Set values in the form without triggering validation
 				set_value_quietly('customer', dialog.get_value('customer'));
 				set_value_quietly('for_project', data.message.custom_for_project || null);
-				set_value_quietly('project_references', all_projects);
-				console.log("Set project_references to:", all_projects, "frm.doc.project_references=", frm.doc.project_references);
+				set_value_quietly('project_references', project_contractor_names.join(", "));
+				console.log("Set project_references to:", project_contractor_names.join(", "), "using same approach as invoice_references");
 				set_value_quietly('project_contractor', project_contractor);
 				set_value_quietly('party_account', data.message.debit_to);
 				set_value_quietly('claim_amount', total_claimable_amount);

@@ -822,7 +822,59 @@ function create_bulk_project_claim(frm, dialog) {
 	console.log("Creating bulk project claim");
 	
 	// Get selected invoices and validate
-	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	let selected_invoices = [];
+	
+	// First get the currently visible selected invoices
+	let visible_selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	selected_invoices = selected_invoices.concat(visible_selected_invoices);
+	
+	// Also check for any other invoices that are in the dialog.selected_invoices Set but not currently visible
+	if (dialog.selected_invoices && dialog.saved_claim_amounts) {
+		// For each invoice in our saved claim amounts
+		Object.keys(dialog.saved_claim_amounts).forEach(invoice => {
+			// Check if it's already in our selected_invoices array
+			if (!selected_invoices.some(inv => inv.invoice === invoice) && dialog.selected_invoices.has(invoice)) {
+				// If not, we need to add it based on the saved data
+				let invoice_items = dialog.saved_claim_amounts[invoice];
+				if (invoice_items) {
+					// Calculate total claim amount for this invoice
+					let total_claim_amount = 0;
+					Object.values(invoice_items).forEach(amount => {
+						total_claim_amount += flt(amount);
+					});
+					
+					// Only add if there's a claim amount
+					if (total_claim_amount > 0) {
+						// Find the project and other details from our invoice cache
+						let project_contractor = '';
+						let project = '';
+						
+						// Check if we have this info in our processed items
+						if (dialog.items_by_invoice && dialog.items_by_invoice[invoice]) {
+							let items = dialog.items_by_invoice[invoice];
+							if (items.length > 0 && items[0].project) {
+								project = items[0].project;
+								project_contractor = project; // Default to project if we don't have contractor
+							}
+						}
+						
+						// Add this invoice to our selected_invoices
+						selected_invoices.push({
+							'invoice': invoice,
+							'claim_amount': total_claim_amount,
+							'select': 1,
+							'project': project,
+							'project_contractor': project_contractor,
+							// Other fields will be filled with defaults
+							'status': 'Selected',
+							'invoice_date': '',
+							'due_date': ''
+						});
+					}
+				}
+			}
+		});
+	}
 	
 	console.log("Selected invoices:", selected_invoices);
 	

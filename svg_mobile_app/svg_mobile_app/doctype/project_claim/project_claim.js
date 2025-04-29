@@ -542,8 +542,16 @@ function update_items_preview(dialog) {
 							};
 						});
 						
+						// Collect project contractors from missing invoices
+						let project_contractors_from_missing = missing_invoices
+							.map(inv => inv.project_contractor)
+							.filter(Boolean);
+						
+						// Store them in the dialog object for later use
+						dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
+						
 						// Log the project contractors from missing invoices
-						console.log("Project contractors from missing invoices:", missing_invoices.map(inv => inv.project_contractor).filter(Boolean));
+						console.log("Project contractors from missing invoices:", project_contractors_from_missing);
 						
 						// Add these to our selection and continue loading
 						selected_invoices = selected_invoices.concat(missing_invoices);
@@ -1352,12 +1360,23 @@ function create_bulk_project_claim(frm, dialog) {
 					}
 				});
 
+				// Check for additional contractors from missing invoices
+				if (dialog.project_contractors_from_missing_invoices && dialog.project_contractors_from_missing_invoices.length > 0) {
+					dialog.project_contractors_from_missing_invoices.forEach(contractor => {
+						if (contractor && !all_project_contractors.includes(contractor)) {
+							all_project_contractors.push(contractor);
+							console.log(`Added missing project contractor ${contractor} to project_references`);
+						}
+					});
+				}
+
 				// Check for additional contractors from selected rows in the dialog grid
-				if (dialog.fields_dict.invoices_table) {
+				if (dialog.fields_dict.invoices_table && dialog.fields_dict.invoices_table.grid) {
 					let selected_rows = dialog.fields_dict.invoices_table.grid.get_selected_children() || [];
 					selected_rows.forEach(row => {
 						if (row.project_contractor && !all_project_contractors.includes(row.project_contractor)) {
 							all_project_contractors.push(row.project_contractor);
+							console.log(`Added project contractor ${row.project_contractor} from selected rows to project_references`);
 						}
 					});
 				}
@@ -1367,6 +1386,7 @@ function create_bulk_project_claim(frm, dialog) {
 					dialog.invoices_data.forEach(inv => {
 						if (inv.project_contractor && !all_project_contractors.includes(inv.project_contractor)) {
 							all_project_contractors.push(inv.project_contractor);
+							console.log(`Added project contractor ${inv.project_contractor} from invoices_data to project_references`);
 						}
 					});
 				}

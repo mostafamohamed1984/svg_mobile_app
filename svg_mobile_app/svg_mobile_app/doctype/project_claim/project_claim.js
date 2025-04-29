@@ -524,11 +524,13 @@ function update_items_preview(dialog) {
 					if (response.message && response.message.length > 0) {
 						// Create invoice objects for the missing invoices
 						let missing_invoices = response.message.map(inv => {
+							// Important: For invoices from different project contractors, we need to preserve
+							// the original project contractors in the data
 							return {
 								'invoice': inv.name,
 								'invoice_date': inv.posting_date,
 								'project': inv.custom_for_project || '',
-								'project_contractor': inv.custom_for_project || '', // Use project as contractor
+								'project_contractor': inv.custom_for_project || '', // This is the correct project contractor
 								'status': inv.status,
 								'due_date': inv.due_date,
 								'total': inv.grand_total,
@@ -538,6 +540,9 @@ function update_items_preview(dialog) {
 								'claimable_amount': 0 // Will be updated with balances
 							};
 						});
+						
+						// Log the project contractors from missing invoices
+						console.log("Project contractors from missing invoices:", missing_invoices.map(inv => inv.project_contractor).filter(Boolean));
 						
 						// Add these to our selection and continue loading
 						selected_invoices = selected_invoices.concat(missing_invoices);
@@ -1071,6 +1076,12 @@ function create_bulk_project_claim(frm, dialog) {
 		let total_claim_amount = 0;
 		let unique_projects = new Set();
 		
+		console.log("Selected invoices before processing:", selected_invoices.map(inv => ({
+			invoice: inv.invoice,
+			project: inv.project,
+			project_contractor: inv.project_contractor
+		})));
+		
 		// Process each invoice
 		selected_invoices.forEach(inv => {
 			let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
@@ -1081,13 +1092,15 @@ function create_bulk_project_claim(frm, dialog) {
 			// Collect unique projects
 			if (inv.project) {
 				unique_projects.add(inv.project);
+				console.log(`Added project ${inv.project} from invoice ${inv.invoice}`);
 			}
 			
 			// Also add the project_contractor if it's different from the project
 			if (inv.project_contractor && inv.project_contractor !== inv.project) {
 				unique_projects.add(inv.project_contractor);
+				console.log(`Added project_contractor ${inv.project_contractor} from invoice ${inv.invoice}`);
 			}
-			
+
 			// Store reference for description
 			references.push({
 				invoice: inv.invoice,
@@ -1243,6 +1256,9 @@ function create_bulk_project_claim(frm, dialog) {
 		// Format all projects for display
 		let all_projects = Array.from(unique_projects).join(", ");
 		
+		console.log("Final unique_projects set:", Array.from(unique_projects));
+		console.log("Value being set to project_references:", all_projects);
+		
 		// Get party account and project from the primary invoice
 		frappe.call({
 			method: 'frappe.client.get_value',
@@ -1286,6 +1302,7 @@ function create_bulk_project_claim(frm, dialog) {
 				set_value_quietly('customer', dialog.get_value('customer'));
 				set_value_quietly('for_project', data.message.custom_for_project || null);
 				set_value_quietly('project_references', all_projects);
+				console.log("Set project_references to:", all_projects, "frm.doc.project_references=", frm.doc.project_references);
 				set_value_quietly('project_contractor', project_contractor);
 				set_value_quietly('party_account', data.message.debit_to);
 				set_value_quietly('claim_amount', total_claimable_amount);

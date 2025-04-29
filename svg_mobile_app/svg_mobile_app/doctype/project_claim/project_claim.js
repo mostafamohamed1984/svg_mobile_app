@@ -78,6 +78,20 @@ function show_bulk_invoice_dialog(frm) {
 					// When a project contractor is selected for filtering
 					let project_contractor = dialog.get_value('project_contractor_filter');
 					if (project_contractor) {
+						// Fetch project and customer name
+						frappe.db.get_value('Project Contractors', project_contractor, ['project_name', 'customer_name'], function(r) {
+							if (r) {
+								// Update the field's description to show the details
+								let projectInfo = r.project_name ? `Project: ${r.project_name}` : '';
+								let customerInfo = r.customer_name ? `Customer: ${r.customer_name}` : '';
+								let description = [projectInfo, customerInfo].filter(Boolean).join(', ');
+								
+								// Update the field description
+								dialog.set_df_property('project_contractor_filter', 'description', description);
+								dialog.refresh_field('project_contractor_filter');
+							}
+						});
+						
 						// Fetch invoices for this customer and project contractor
 						fetch_customer_invoices_by_contractor(dialog, dialog.get_value('customer'), project_contractor);
 					} else {
@@ -87,6 +101,10 @@ function show_bulk_invoice_dialog(frm) {
 								<div class="text-muted">${__('Select a project contractor to view invoices')}</div>
 							</div>
 						`);
+						
+						// Clear the description
+						dialog.set_df_property('project_contractor_filter', 'description', '');
+						dialog.refresh_field('project_contractor_filter');
 					}
 				}
 			},
@@ -370,16 +388,21 @@ function render_invoices_table(dialog, invoices_data) {
 	
 	console.log("Rendering invoices table with data:", invoices_data);
 	
+	// Auto-select all invoices
+	invoices_data.forEach(inv => {
+		inv.select = 1;
+		dialog.selected_invoices.add(inv.invoice);
+	});
+	
 	let html = `
 		<div class="margin-top">
 			<div class="alert alert-info my-2">
-				${__('Found')} ${invoices_data.length} ${__('outstanding invoices')}
+				${__('Found')} ${invoices_data.length} ${__('outstanding invoices - all automatically selected')}
 			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered">
 					<thead>
 						<tr>
-							<th>${__('Select')}</th>
 							<th>${__('Invoice')}</th>
 							<th>${__('Date')}</th>
 							<th>${__('Project')}</th>
@@ -396,14 +419,6 @@ function render_invoices_table(dialog, invoices_data) {
 	invoices_data.forEach((inv, index) => {
 		html += `
 			<tr>
-				<td>
-					<input 
-						type="checkbox" 
-						class="invoice-select" 
-						data-index="${index}" 
-						${inv.select ? 'checked' : ''}
-					>
-				</td>
 				<td>${inv.invoice}</td>
 				<td>${inv.invoice_date}</td>
 				<td>${inv.project || ''}</td>
@@ -424,6 +439,9 @@ function render_invoices_table(dialog, invoices_data) {
 	`;
 	
 	dialog.fields_dict.invoices_html.html(html);
+	
+	// Automatically trigger update of items preview
+	update_items_preview(dialog);
 }
 
 function update_total_claim_amount(dialog) {

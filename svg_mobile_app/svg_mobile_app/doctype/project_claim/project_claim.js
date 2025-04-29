@@ -320,6 +320,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				// Get invoice names for all invoices
 				let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
 				
+				
 				// Get available balances for all invoices
 				frappe.call({
 					method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
@@ -582,6 +583,7 @@ function update_items_preview(dialog) {
 		// Get invoice names for selected invoices
 		let invoice_names = selected_invoices.map(inv => inv.invoice);
 		console.log("Selected invoice names:", invoice_names);
+		
 		
 		// First get available balances for all invoices
 		frappe.call({
@@ -984,6 +986,17 @@ function create_bulk_project_claim(frm, dialog) {
 	
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
+	
+	// Also get project contractor names the same way, but ensure they're unique
+	let project_contractor_set = new Set();
+	selected_invoices.forEach(inv => {
+		if (inv.project_contractor) {
+			project_contractor_set.add(inv.project_contractor);
+			console.log(`Adding project contractor ${inv.project_contractor} from invoice ${inv.invoice} to the set`);
+		}
+	});
+	let project_contractor_names = Array.from(project_contractor_set);
+	console.log("Unique project contractor names:", project_contractor_names);
 	
 	// Calculate total claimable amount across all selected invoices
 	let total_claimable_amount = 0;

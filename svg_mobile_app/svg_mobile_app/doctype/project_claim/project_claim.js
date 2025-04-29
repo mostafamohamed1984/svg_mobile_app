@@ -133,6 +133,7 @@ function show_bulk_invoice_dialog(frm) {
 	// Initialize the invoices data
 	dialog.invoices_data = [];
 	dialog.selected_invoices = new Set(); // Track selected invoices
+	dialog.saved_claim_amounts = {}; // Store claim amounts by invoice and item
 	
 	// Initialize the invoices HTML container
 	dialog.fields_dict.invoices_html.html(`
@@ -154,6 +155,12 @@ function show_bulk_invoice_dialog(frm) {
 		if (invoice_items && invoice_items[idx]) {
 			// Update the amount directly and recalculate ratios internally (hidden from user)
 			invoice_items[idx].claim_amount = value;
+			
+			// Save the claim amount in our persistent storage
+			if (!dialog.saved_claim_amounts[invoice]) {
+				dialog.saved_claim_amounts[invoice] = {};
+			}
+			dialog.saved_claim_amounts[invoice][item] = value;
 			
 			// Recalculate the total for this invoice
 			let invoice_total = 0;
@@ -193,6 +200,12 @@ function show_bulk_invoice_dialog(frm) {
 			update_items_preview(dialog);
 		} else {
 			dialog.selected_invoices.delete(invoice);
+			
+			// Clear saved claim amounts for this invoice if unchecked
+			if (dialog.saved_claim_amounts[invoice]) {
+				delete dialog.saved_claim_amounts[invoice];
+			}
+			
 			// Update the items preview to remove the items for this invoice
 			update_items_preview(dialog);
 		}
@@ -534,6 +547,15 @@ function update_items_preview(dialog) {
 							item.available_balance = item.amount;
 							console.log(`No balance data for item ${item.item_code} from invoice ${item.invoice}, using original amount: ${item.amount}`);  // Debug log
 						}
+						
+						// Restore saved claim amount if available
+						if (dialog.saved_claim_amounts[item.invoice] && 
+							dialog.saved_claim_amounts[item.invoice][item.item_code] !== undefined) {
+							item.claim_amount = dialog.saved_claim_amounts[item.invoice][item.item_code];
+							console.log(`Restored saved claim amount for ${item.item_code} in ${item.invoice}: ${item.claim_amount}`);
+						} else {
+							item.claim_amount = 0;
+						}
 					});
 					
 					// Group items by invoice
@@ -556,6 +578,23 @@ function update_items_preview(dialog) {
 							item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
 						} else {
 							item.ratio = 0;
+						}
+					});
+					
+					// Calculate invoice totals based on item claim amounts
+					selected_invoices.forEach(inv => {
+						let invoice_items = items_by_invoice[inv.invoice] || [];
+						if (invoice_items.length > 0) {
+							let invoice_total = 0;
+							invoice_items.forEach(item => {
+								invoice_total += flt(item.claim_amount || 0);
+							});
+							
+							// Update the invoice's claim amount
+							let invoice_index = dialog.invoices_data.findIndex(i => i.invoice === inv.invoice);
+							if (invoice_index !== -1) {
+								dialog.invoices_data[invoice_index].claim_amount = invoice_total;
+							}
 						}
 					});
 					
@@ -879,7 +918,7 @@ function create_bulk_project_claim(frm, dialog) {
 								items_by_invoice[item.invoice].push(item);
 								invoice_totals[item.invoice] += flt(item.amount);
 							});
-							// Then calculate ratios internally (not shown in UI but used for processing)
+							// Then calculate ratios - hidden from UI but still used for calculations
 							all_items.forEach(item => {
 								if (invoice_totals[item.invoice] > 0) {
 									item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
@@ -1006,8 +1045,16 @@ function create_bulk_project_claim(frm, dialog) {
 		// Group items by invoice and calculate totals
 		claim_items.forEach(item => {
 			// Find which invoice(s) this item comes from
-			for (let inv_name in dialog.items_by_invoice) {
-				let items = dialog.items_by_invoice[inv_name];
+			if (!item.processed_invoices) return; // Skip if no processed_invoices array
+			
+			item.processed_invoices.forEach(inv_name => {
+				// Make sure the array exists before trying to push to it
+				if (!items_by_invoice_for_being[inv_name]) {
+					items_by_invoice_for_being[inv_name] = [];
+					total_by_invoice[inv_name] = 0;
+				}
+				
+				let items = dialog.items_by_invoice[inv_name] || [];
 				let found_item = items.find(i => i.item_code === item.item);
 				
 				if (found_item) {
@@ -1026,7 +1073,7 @@ function create_bulk_project_claim(frm, dialog) {
 						total_by_invoice[inv_name] += item_claim_amount;
 					}
 				}
-			}
+			});
 		});
 		
 		// Create the detailed description

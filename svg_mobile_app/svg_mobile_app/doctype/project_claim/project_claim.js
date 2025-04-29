@@ -987,16 +987,36 @@ function create_bulk_project_claim(frm, dialog) {
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	
-	// Also get project contractor names the same way, but ensure they're unique
-	let project_contractor_set = new Set();
-	selected_invoices.forEach(inv => {
-		if (inv.project_contractor) {
-			project_contractor_set.add(inv.project_contractor);
-			console.log(`Adding project contractor ${inv.project_contractor} from invoice ${inv.invoice} to the set`);
+	// Get project contractor names for selected invoices (same way as invoice_names)
+	let project_contractor_names = selected_invoices
+		.map(inv => inv.project_contractor)
+		.filter(Boolean); // Remove null/undefined values
+
+	console.log("Project contractor names collected:", project_contractor_names);
+
+	// IMPORTANT: We need to include project contractors from all selected invoices
+	// Check if we have any missing project contractors in our console.log line 551
+	let missing_contractors = dialog.fields_dict.invoices_table.grid.get_selected_children()
+		.filter(row => row.project_contractor && !project_contractor_names.includes(row.project_contractor))
+		.map(row => row.project_contractor);
+
+	// Add any missing contractors
+	if (missing_contractors.length > 0) {
+		console.log("Found additional project contractors not in current view:", missing_contractors);
+		project_contractor_names = [...new Set([...project_contractor_names, ...missing_contractors])];
+	}
+
+	// Also check for contractors in dialog.all_selected_invoices if it exists
+	if (dialog.all_selected_invoices) {
+		let additional_contractors = dialog.all_selected_invoices
+			.filter(inv => inv.project_contractor && !project_contractor_names.includes(inv.project_contractor))
+			.map(inv => inv.project_contractor);
+			
+		if (additional_contractors.length > 0) {
+			console.log("Found contractors from all_selected_invoices:", additional_contractors);
+			project_contractor_names = [...new Set([...project_contractor_names, ...additional_contractors])];
 		}
-	});
-	let project_contractor_names = Array.from(project_contractor_set);
-	console.log("Unique project contractor names:", project_contractor_names);
+	}
 	
 	// Calculate total claimable amount across all selected invoices
 	let total_claimable_amount = 0;
@@ -1321,8 +1341,40 @@ function create_bulk_project_claim(frm, dialog) {
 				// Set values in the form without triggering validation
 				set_value_quietly('customer', dialog.get_value('customer'));
 				set_value_quietly('for_project', data.message.custom_for_project || null);
-				set_value_quietly('project_references', project_contractor_names.join(", "));
-				console.log("Set project_references to:", project_contractor_names.join(", "), "using same approach as invoice_references");
+
+				// Get all project contractors from all sources
+				let all_project_contractors = [];
+
+				// Add from unique_projects (already collected)
+				Array.from(unique_projects).forEach(proj => {
+					if (proj && !all_project_contractors.includes(proj)) {
+						all_project_contractors.push(proj);
+					}
+				});
+
+				// Check for additional contractors from selected rows in the dialog grid
+				if (dialog.fields_dict.invoices_table) {
+					let selected_rows = dialog.fields_dict.invoices_table.grid.get_selected_children() || [];
+					selected_rows.forEach(row => {
+						if (row.project_contractor && !all_project_contractors.includes(row.project_contractor)) {
+							all_project_contractors.push(row.project_contractor);
+						}
+					});
+				}
+
+				// Check for contractors in the invoices_data array too
+				if (dialog.invoices_data) {
+					dialog.invoices_data.forEach(inv => {
+						if (inv.project_contractor && !all_project_contractors.includes(inv.project_contractor)) {
+							all_project_contractors.push(inv.project_contractor);
+						}
+					});
+				}
+
+				console.log("Final project contractors collected for project_references:", all_project_contractors);
+				set_value_quietly('project_references', all_project_contractors.join(", "));
+				console.log("Set project_references to:", all_project_contractors.join(", "), "using all available sources");
+
 				set_value_quietly('project_contractor', project_contractor);
 				set_value_quietly('party_account', data.message.debit_to);
 				set_value_quietly('claim_amount', total_claimable_amount);

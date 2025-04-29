@@ -51,25 +51,45 @@ function show_bulk_invoice_dialog(frm) {
 				reqd: 1,
 				default: frm.doc.customer || '',
 				onchange: function() {
-					// When customer changes, fetch invoices automatically
+					// When customer changes, clear the sales invoice filter
+					dialog.set_value('sales_invoice_filter', '');
+					
+					// Fetch invoices for this customer
 					let customer = dialog.get_value('customer');
-					console.log("Customer selected:", customer);
 					if (customer) {
 						fetch_customer_invoices(dialog, customer);
 					}
 				}
 			},
 			{
-				fieldname: 'invoice_filter',
-				label: __('Filter Invoices'),
-				fieldtype: 'Select',
-				options: '',
-				depends_on: 'eval:doc.customer',
-				description: __('Select to filter invoices to display')
-			},
-			{
-				fieldname: 'action_buttons',
-				fieldtype: 'HTML'
+				fieldname: 'sales_invoice_filter',
+				label: __('Filter Sales Invoice'),
+				fieldtype: 'Link',
+				options: 'Sales Invoice',
+				get_query: function() {
+					return {
+						filters: {
+							'customer': dialog.get_value('customer'),
+							'docstatus': 1,
+							'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
+							'outstanding_amount': ['>', 0]
+						}
+					};
+				},
+				onchange: function() {
+					// When a sales invoice is selected for filtering
+					let invoice = dialog.get_value('sales_invoice_filter');
+					if (invoice) {
+						// Filter the displayed invoices to show only the selected one
+						let filteredData = dialog.invoices_data.filter(inv => inv.invoice === invoice);
+						if (filteredData.length > 0) {
+							render_invoices_table(dialog, filteredData);
+						}
+					} else {
+						// If filter is cleared, show all invoices
+						render_invoices_table(dialog, dialog.invoices_data);
+					}
+				}
 			},
 			{
 				fieldname: 'invoices_html',
@@ -111,24 +131,8 @@ function show_bulk_invoice_dialog(frm) {
 		}
 	});
 	
-	// Create styling for number inputs
-	dialog.fields_dict.action_buttons.html(`
-		<style>
-			/* Remove spinners from number inputs */
-			input.no-spinner::-webkit-outer-spin-button,
-			input.no-spinner::-webkit-inner-spin-button {
-				-webkit-appearance: none;
-				margin: 0;
-			}
-			input.no-spinner[type=number] {
-				-moz-appearance: textfield;
-			}
-		</style>
-	`);
-	
 	// Initialize the invoices data
 	dialog.invoices_data = [];
-	dialog.all_invoices_data = [];
 	
 	// Initialize the invoices HTML container
 	dialog.fields_dict.invoices_html.html(`
@@ -191,7 +195,7 @@ function fetch_customer_invoices(dialog, customer) {
 				console.log("Found invoices:", response.message.length);
 				
 				// First prepare basic invoice data
-				dialog.all_invoices_data = response.message.map(inv => {
+				dialog.invoices_data = response.message.map(inv => {
 					return {
 						'invoice': inv.name,
 						'invoice_date': inv.posting_date,
@@ -201,46 +205,12 @@ function fetch_customer_invoices(dialog, customer) {
 						'total': inv.grand_total,
 						'outstanding': inv.outstanding_amount,
 						'claim_amount': 0, // Initialize with 0 instead of outstanding amount
-						'select': 1 // Pre-select all
+						'select': 0 // Don't pre-select invoices
 					};
 				});
 				
-				// Set initial invoices_data to all invoices
-				dialog.invoices_data = [...dialog.all_invoices_data];
-				
-				// Build filter options based on projects
-				let projects = [];
-				dialog.all_invoices_data.forEach(inv => {
-					if (inv.project && !projects.includes(inv.project)) {
-						projects.push(inv.project);
-					}
-				});
-				
-				// Update the filter dropdown
-				let filter_options = ['All Invoices'];
-				projects.forEach(project => {
-					filter_options.push(`Project: ${project}`);
-				});
-				dialog.set_df_property('invoice_filter', 'options', filter_options.join('\n'));
-				dialog.set_value('invoice_filter', 'All Invoices');
-				
-				// Add handler for filter dropdown
-				dialog.fields_dict.invoice_filter.df.onchange = function() {
-					let filter_value = dialog.get_value('invoice_filter');
-					
-					if (filter_value === 'All Invoices') {
-						dialog.invoices_data = [...dialog.all_invoices_data];
-					} else if (filter_value.startsWith('Project:')) {
-						let project = filter_value.replace('Project: ', '');
-						dialog.invoices_data = dialog.all_invoices_data.filter(inv => inv.project === project);
-					}
-					
-					render_invoices_table(dialog);
-					update_total_claim_amount(dialog);
-				};
-				
 				// Get invoice names for all invoices
-				let invoice_names = dialog.all_invoices_data.map(inv => inv.invoice);
+				let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
 				
 				// Get available balances for all invoices
 				frappe.call({
@@ -252,7 +222,7 @@ function fetch_customer_invoices(dialog, customer) {
 						let balance_data = balance_result.message || {};
 						
 						// Update each invoice with claimable amount based on available balances
-						dialog.all_invoices_data.forEach(inv => {
+						dialog.invoices_data.forEach(inv => {
 							let invoice_balance_data = balance_data[inv.invoice] || {};
 							let claimable_amount = 0;
 							
@@ -261,15 +231,12 @@ function fetch_customer_invoices(dialog, customer) {
 								claimable_amount += invoice_balance_data[item_code].available_balance || 0;
 							});
 							
-							// Update claimable amount but keep claim amount at 0
+							// Set claimable amount but keep claim amount at 0
 							inv.claimable_amount = claimable_amount;
 						});
 						
-						// Update invoices_data from all_invoices_data
-						dialog.invoices_data = [...dialog.all_invoices_data];
-						
 						// Render the invoices table with updated data
-						render_invoices_table(dialog);
+						render_invoices_table(dialog, dialog.invoices_data);
 						
 						// Update the total claim amount
 						update_total_claim_amount(dialog);
@@ -279,7 +246,6 @@ function fetch_customer_invoices(dialog, customer) {
 				console.log("No invoices found");
 				
 				dialog.invoices_data = [];
-				dialog.all_invoices_data = [];
 				
 				// Show message if no invoices found
 				dialog.fields_dict.invoices_html.html(`
@@ -303,18 +269,18 @@ function fetch_customer_invoices(dialog, customer) {
 	});
 }
 
-function render_invoices_table(dialog) {
-	if (!dialog.invoices_data || dialog.invoices_data.length === 0) {
+function render_invoices_table(dialog, invoices_data) {
+	if (!invoices_data || invoices_data.length === 0) {
 		console.log("No invoices to render");
 		return;
 	}
 	
-	console.log("Rendering invoices table with data:", dialog.invoices_data);
+	console.log("Rendering invoices table with data:", invoices_data);
 	
 	let html = `
 		<div class="margin-top">
 			<div class="alert alert-info my-2">
-				${__('Found')} ${dialog.invoices_data.length} ${__('outstanding invoices')}
+				${__('Found')} ${invoices_data.length} ${__('outstanding invoices')}
 			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered">
@@ -329,20 +295,23 @@ function render_invoices_table(dialog) {
 							<th>${__('Total')}</th>
 							<th>${__('Outstanding')}</th>
 							<th>${__('Claimable')}</th>
-							<th>${__('Claim Amount')}</th>
 						</tr>
 					</thead>
 					<tbody>
 	`;
 	
-	dialog.invoices_data.forEach((inv, index) => {
+	invoices_data.forEach((inv, index) => {
+		// Get the original index if we're using filtered data
+		let originalIndex = dialog.invoices_data.findIndex(originalInv => originalInv.invoice === inv.invoice);
+		if (originalIndex === -1) originalIndex = index;
+		
 		html += `
 			<tr>
 				<td>
 					<input 
 						type="checkbox" 
 						class="invoice-select" 
-						data-index="${index}" 
+						data-index="${originalIndex}" 
 						${inv.select ? 'checked' : ''}
 					>
 				</td>
@@ -354,18 +323,6 @@ function render_invoices_table(dialog) {
 				<td class="text-right">${format_currency(inv.total)}</td>
 				<td class="text-right">${format_currency(inv.outstanding)}</td>
 				<td class="text-right">${format_currency(inv.claimable_amount)}</td>
-				<td>
-					<input 
-						type="text" 
-						class="form-control claim-amount-input no-spinner" 
-						data-index="${index}" 
-						value="${inv.claim_amount}" 
-						max="${inv.claimable_amount}"
-						${!inv.select ? 'disabled' : ''}
-						style="text-align: right;"
-						onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
-					>
-				</td>
 			</tr>
 		`;
 	});
@@ -400,7 +357,7 @@ function update_total_claim_amount(dialog) {
 
 function update_items_preview(dialog) {
 	console.log("Updating items preview");
-	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	let selected_invoices = dialog.invoices_data.filter(inv => inv.select);
 	if (selected_invoices.length === 0) {
 		dialog.fields_dict.items_preview_html.html('');
 		return;
@@ -496,6 +453,22 @@ function update_items_preview(dialog) {
 						<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
 							<h5>${__('Invoice')}: ${inv.invoice} ${inv.project_contractor ? '(' + inv.project_contractor + ')' : ''}</h5>
 							<h6>${__('Project')}: ${inv.project || ''}</h6>
+							<div class="row mb-3">
+								<div class="col-md-4">
+									<div class="form-group">
+										<label for="claim_amount_${inv.invoice}">${__('Claim Amount')}:</label>
+										<input 
+											type="text" 
+											id="claim_amount_${inv.invoice}"
+											class="form-control invoice-claim-amount-input" 
+											data-invoice="${inv.invoice}"
+											value="${claim_amount}" 
+											style="text-align: right;"
+											onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
+										>
+									</div>
+								</div>
+							</div>
 							<div class="table-responsive">
 								<table class="table table-bordered item-allocation-table">
 									<thead>
@@ -552,7 +525,7 @@ function update_items_preview(dialog) {
 										data-idx="${idx}"
 										value="${allocated_amount.toFixed(2)}" 
 										min="0"
-										max="${Math.min(inv.claim_amount, item.available_balance)}"
+										max="${Math.min(inv.claim_amount || 0, item.available_balance)}"
 										style="text-align: right;"
 										onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 									>
@@ -594,13 +567,22 @@ function update_items_preview(dialog) {
 				dialog.set_value('total_claim_amount', total_claimable);
 				
 				// Add user info note below the total claim amount
-				dialog.fields_dict.items_preview_html.$wrapper.append(`
-					<div class="alert alert-info mt-2">
-						Note: The total claim amount shown is the sum of what can actually be claimed per item, after applying available balances.
-					</div>
-				`);
-				
 				dialog.fields_dict.items_preview_html.html(html);
+				
+				// Add style for input spinners
+				dialog.$wrapper.find('head').append(`
+					<style>
+						/* Remove spinners from number inputs */
+						input.no-spinner::-webkit-outer-spin-button,
+						input.no-spinner::-webkit-inner-spin-button {
+							-webkit-appearance: none;
+							margin: 0;
+						}
+						input.no-spinner[type=number] {
+							-moz-appearance: textfield;
+						}
+					</style>
+				`);
 				
 				// Attach event handlers to inputs
 				dialog.$wrapper.find('.item-ratio-input').on('change', function() {
@@ -710,6 +692,38 @@ function update_items_preview(dialog) {
 						
 						// Update totals
 						updateTotalsForInvoice(dialog, invoice, items_by_invoice[invoice], selected_invoices);
+					}
+				});
+				
+				// Add handler for invoice-level claim amount input
+				dialog.$wrapper.find('.invoice-claim-amount-input').on('change', function() {
+					let $this = $(this);
+					let invoice = $this.data('invoice');
+					let new_claim_amount = parseFloat($this.val()) || 0;
+					
+					// Find and update the invoice data
+					let inv_index = dialog.invoices_data.findIndex(inv => inv.invoice === invoice);
+					if (inv_index !== -1) {
+						let old_claim_amount = dialog.invoices_data[inv_index].claim_amount;
+						dialog.invoices_data[inv_index].claim_amount = new_claim_amount;
+						
+						// Update the invoice items
+						let invoice_items = items_by_invoice[invoice] || [];
+						invoice_items.forEach((item, idx) => {
+							if (item.available_balance <= 0) return;
+							
+							// Recalculate allocated amount based on current ratio
+							let allocated_amount = Math.min(flt(item.ratio) * new_claim_amount / 100, item.available_balance);
+							
+							// Update the amount input
+							dialog.$wrapper.find(`.item-amount-input[data-invoice="${invoice}"][data-idx="${idx}"]`)
+								.val(allocated_amount.toFixed(2))
+								.attr('max', Math.min(new_claim_amount, item.available_balance));
+						});
+						
+						// Update totals
+						updateTotalsForInvoice(dialog, invoice, invoice_items, selected_invoices);
+						update_total_claim_amount(dialog);
 					}
 				});
 				

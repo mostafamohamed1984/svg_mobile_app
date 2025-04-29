@@ -405,8 +405,8 @@ function update_total_claim_amount(dialog) {
 
 function update_items_preview(dialog) {
 	console.log("Updating items preview");
-	let selected_invoices = dialog.invoices_data.filter(inv => inv.select);
-	if (selected_invoices.length === 0) {
+	let current_selected_invoices = dialog.invoices_data.filter(inv => inv.select);
+	if (current_selected_invoices.length === 0) {
 		dialog.fields_dict.items_preview_html.html('');
 		return;
 	}
@@ -420,7 +420,7 @@ function update_items_preview(dialog) {
 	`);
 	
 	// Get invoice names for selected invoices
-	let invoice_names = selected_invoices.map(inv => inv.invoice);
+	let invoice_names = current_selected_invoices.map(inv => inv.invoice);
 	console.log("Selected invoice names:", invoice_names);
 	
 	// Store these invoices in the Set for tracking
@@ -496,7 +496,7 @@ function update_items_preview(dialog) {
 				// Create HTML for item allocation tables with editable inputs
 				let html = '<div class="margin-top">';
 				
-				selected_invoices.forEach(inv => {
+				current_selected_invoices.forEach(inv => {
 					let invoice_items = items_by_invoice[inv.invoice] || [];
 					if (invoice_items.length === 0) return;
 					
@@ -578,7 +578,7 @@ function update_items_preview(dialog) {
 				
 				// Update the total claim amount for all selected invoices
 				let total_claim = 0;
-				selected_invoices.forEach(inv => {
+				current_selected_invoices.forEach(inv => {
 					total_claim += flt(inv.claim_amount);
 				});
 				dialog.set_value('total_claim_amount', total_claim);
@@ -1010,12 +1010,12 @@ function create_bulk_project_claim(frm, dialog) {
 		
 		// Determine which invoice to use as the main reference
 		// We'll use the first selected invoice with the highest claim amount
-		let primary_invoice = selected_invoices.sort((a, b) => 
+		let primary_invoice = all_selected_invoices.sort((a, b) => 
 			flt(b.claim_amount) - flt(a.claim_amount)
 		)[0].invoice;
 		
 		// Get primary project as the one with the highest claim amount
-		let primary_project = selected_invoices.sort((a, b) => 
+		let primary_project = all_selected_invoices.sort((a, b) => 
 			flt(b.claim_amount) - flt(a.claim_amount)
 		)[0].project;
 		
@@ -1043,7 +1043,7 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Calculate total claimable amount across all selected invoices
 				let total_claimable_amount = 0;
-				selected_invoices.forEach(inv => {
+				all_selected_invoices.forEach(inv => {
 					total_claimable_amount += flt(inv.claim_amount);
 				});
 				
@@ -1112,7 +1112,7 @@ function create_bulk_project_claim(frm, dialog) {
 				// Show success message
 				setTimeout(() => {
 					frappe.show_alert({
-						message: __('Project Claim created from {0} invoices. Please review and save.', [selected_invoices.length]),
+						message: __('Project Claim created from {0} invoices. Please review and save.', [all_selected_invoices.length]),
 						indicator: 'green'
 					}, 5);
 					

@@ -193,13 +193,6 @@ function show_bulk_invoice_dialog(frm) {
 			update_items_preview(dialog);
 		} else {
 			dialog.selected_invoices.delete(invoice);
-			// If this invoice has items, remove its claim amounts
-			if (dialog.items_by_invoice && dialog.items_by_invoice[invoice]) {
-				let invoice_items = dialog.items_by_invoice[invoice];
-				invoice_items.forEach(item => {
-					item.claim_amount = 0;
-				});
-			}
 			// Update the items preview to remove the items for this invoice
 			update_items_preview(dialog);
 		}
@@ -405,333 +398,405 @@ function update_total_claim_amount(dialog) {
 
 function update_items_preview(dialog) {
 	console.log("Updating items preview");
-	let current_selected_invoices = dialog.invoices_data.filter(inv => inv.select);
-	if (current_selected_invoices.length === 0) {
-		dialog.fields_dict.items_preview_html.html('');
-		return;
-	}
+	let selected_invoices = dialog.invoices_data.filter(inv => inv.select);
 	
-	// Show loading indicator
-	dialog.fields_dict.items_preview_html.html(`
-		<div class="text-center my-4">
-			<i class="fa fa-spinner fa-spin"></i>
-			<p>${__('Loading invoice items...')}</p>
-		</div>
-	`);
-	
-	// Get invoice names for selected invoices
-	let invoice_names = current_selected_invoices.map(inv => inv.invoice);
-	console.log("Selected invoice names:", invoice_names);
-	
-	// Store these invoices in the Set for tracking
-	invoice_names.forEach(inv => {
-		dialog.selected_invoices.add(inv);
-	});
-	
-	// First get available balances for all invoices
-	frappe.call({
-		method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
-		args: {
-			invoices: invoice_names
-		},
-		callback: function(balance_result) {
-			let balance_data = balance_result.message || {};
-			console.log("Balance data received:", balance_data);  // Debug log
+	// Also include any previously selected invoices that are in our tracking Set
+	// but might not be in the current invoices_data (from other project contractors)
+	if (dialog.selected_invoices && dialog.selected_invoices.size > 0) {
+		// We need to ensure we have all the selected invoices loaded
+		let all_selected_invoice_names = Array.from(dialog.selected_invoices);
+		
+		// Filter out ones that are already in our selected_invoices array
+		let current_selected_names = selected_invoices.map(inv => inv.invoice);
+		let missing_invoice_names = all_selected_invoice_names.filter(
+			name => !current_selected_names.includes(name)
+		);
+		
+		// If we have some selected invoices that aren't in the current view,
+		// we need to load them separately
+		if (missing_invoice_names.length > 0 && !dialog.loading_missing_invoices) {
+			dialog.loading_missing_invoices = true;
 			
-			// Process each invoice separately to avoid permission issues
-			let all_items = [];
-			let processed_count = 0;
-			
-			// Function to process results after all invoices are loaded
-			function process_results() {
-				if (all_items.length === 0) {
-					dialog.fields_dict.items_preview_html.html(`
-						<div class="alert alert-warning my-4">
-							${__('No items found for selected invoices')}
-						</div>
-					`);
-					return;
-				}
-				
-				// Update available balance for each item
-				all_items.forEach(item => {
-					if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
-						item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
-						item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
-						item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
-						console.log(`Item ${item.item_code} from invoice ${item.invoice}: Original=${item.original_amount}, Claimed=${item.claimed_amount}, Available=${item.available_balance}`);  // Debug log
-					} else {
-						// Default to original amount if no balance data
-						item.available_balance = item.amount;
-						console.log(`No balance data for item ${item.item_code} from invoice ${item.invoice}, using original amount: ${item.amount}`);  // Debug log
-					}
-				});
-				
-				// Group items by invoice
-				let items_by_invoice = {};
-				let invoice_totals = {};
-				
-				// First group and calculate totals
-				all_items.forEach(item => {
-					if (!items_by_invoice[item.invoice]) {
-						items_by_invoice[item.invoice] = [];
-						invoice_totals[item.invoice] = 0;
-					}
-					items_by_invoice[item.invoice].push(item);
-					invoice_totals[item.invoice] += flt(item.amount);
-				});
-				
-				// Then calculate ratios - hidden from UI but still used for calculations
-				all_items.forEach(item => {
-					if (invoice_totals[item.invoice] > 0) {
-						item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
-					} else {
-						item.ratio = 0;
-					}
-				});
-				
-				console.log("Grouped items:", items_by_invoice);
-				dialog.items_by_invoice = items_by_invoice;
-				
-				// Create HTML for item allocation tables with editable inputs
-				let html = '<div class="margin-top">';
-				
-				current_selected_invoices.forEach(inv => {
-					let invoice_items = items_by_invoice[inv.invoice] || [];
-					if (invoice_items.length === 0) return;
-					
-					html += `
-						<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
-							<h5>${__('Invoice')}: ${inv.invoice} ${inv.project_contractor ? '(' + inv.project_contractor + ')' : ''}</h5>
-							<h6>${__('Project')}: ${inv.project || ''}</h6>
-							<div class="table-responsive">
-								<table class="table table-bordered item-allocation-table">
-									<thead>
-										<tr>
-											<th>${__('Item')}</th>
-											<th>${__('Original Amount')}</th>
-											<th>${__('Available Balance')}</th>
-											<th>${__('Claim Amount')}</th>
-										</tr>
-									</thead>
-									<tbody>
-					`;
-					
-					let total_amount = 0;
-					
-					invoice_items.forEach((item, idx) => {
-						// Skip items with zero available balance
-						if (item.available_balance <= 0) return;
-						
-						// Initialize item's claim amount if not set
-						if (!item.claim_amount) {
-							item.claim_amount = 0;
-						}
-						total_amount += flt(item.claim_amount);
-						
-						html += `
-							<tr data-item="${item.item_code}" data-invoice="${inv.invoice}" data-idx="${idx}">
-								<td>${item.item_name || item.item_code}</td>
-								<td class="text-right">${format_currency(item.amount)}</td>
-								<td class="text-right">${format_currency(item.available_balance)}</td>
-								<td>
-									<input 
-										type="text" 
-										class="form-control item-amount-input no-spinner" 
-										data-invoice="${inv.invoice}"
-										data-item="${item.item_code}"
-										data-idx="${idx}"
-										value="${item.claim_amount.toFixed(2)}" 
-										min="0"
-										max="${item.available_balance}"
-										style="text-align: right;"
-										onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
-									>
-								</td>
-							</tr>
-						`;
-					});
-					
-					// Add a totals row
-					html += `
-						<tr class="table-active">
-							<td colspan="3" class="text-right"><strong>${__('Total')}:</strong></td>
-							<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_amount)}</td>
-						</tr>
-					`;
-					
-					html += `
-									</tbody>
-								</table>
-							</div>
-						</div>
-					`;
-					
-					// Update invoice claim amount
-					let invoice_index = dialog.invoices_data.findIndex(i => i.invoice === inv.invoice);
-					if (invoice_index !== -1) {
-						dialog.invoices_data[invoice_index].claim_amount = total_amount;
-					}
-				});
-				
-				html += '</div>';
-				
-				// Update the total claim amount for all selected invoices
-				let total_claim = 0;
-				current_selected_invoices.forEach(inv => {
-					total_claim += flt(inv.claim_amount);
-				});
-				dialog.set_value('total_claim_amount', total_claim);
-				
-				// Add the HTML to the dialog
-				dialog.fields_dict.items_preview_html.html(html);
-				
-				// Add style for input spinners
-				dialog.$wrapper.find('head').append(`
-					<style>
-						/* Remove spinners from number inputs */
-						input.no-spinner::-webkit-outer-spin-button,
-						input.no-spinner::-webkit-inner-spin-button {
-							-webkit-appearance: none;
-							margin: 0;
-						}
-						input.no-spinner[type=number] {
-							-moz-appearance: textfield;
-						}
-					</style>
+			// Show loading indicator if no existing items
+			if (selected_invoices.length === 0) {
+				dialog.fields_dict.items_preview_html.html(`
+					<div class="text-center my-4">
+						<i class="fa fa-spinner fa-spin"></i>
+						<p>${__('Loading selected invoices...')}</p>
+					</div>
 				`);
-				
-				// Attach event handlers to inputs
-				dialog.$wrapper.find('.item-amount-input').on('change', function() {
-					let $this = $(this);
-					let invoice = $this.data('invoice');
-					let item_code = $this.data('item');
-					let idx = $this.data('idx');
-					let amount = parseFloat($this.val()) || 0;
-					
-					// Validate against available balance
-					let invoice_items = items_by_invoice[invoice];
-					if (invoice_items && invoice_items[idx]) {
-						let available_balance = invoice_items[idx].available_balance;
-						if (amount > available_balance) {
-							amount = available_balance;
-							$this.val(amount.toFixed(2));
-							frappe.show_alert({
-								message: __('Amount cannot exceed available balance'),
-								indicator: 'orange'
-							}, 3);
-						}
-						
-						// Update the claim amount in our data
-						invoice_items[idx].claim_amount = amount;
-						
-						// Recalculate the total for this invoice
-						let invoice_total = 0;
-						invoice_items.forEach(item => {
-							invoice_total += flt(item.claim_amount || 0);
-						});
-						
-						// Update the invoice amount in our data
-						let invoice_index = dialog.invoices_data.findIndex(inv => inv.invoice === invoice);
-						if (invoice_index !== -1) {
-							dialog.invoices_data[invoice_index].claim_amount = invoice_total;
-						}
-						
-						// Update the invoice total in the UI
-						dialog.$wrapper.find('.amount-total[data-invoice="' + invoice + '"]').text(format_currency(invoice_total));
-						
-						// Also recalculate ratios internally (hidden from user)
-						if (invoice_total > 0) {
-							invoice_items.forEach(item => {
-								item.ratio = flt(item.claim_amount || 0) / invoice_total * 100;
-							});
-						}
-						
-						// Update the total claim amount
-						update_total_claim_amount(dialog);
-					}
-				});
 			}
 			
-			// Process each selected invoice to get its items
-			invoice_names.forEach(invoice_name => {
-				frappe.model.with_doc('Sales Invoice', invoice_name, function() {
-					let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
+			// Fetch the missing invoices
+			frappe.call({
+				method: 'frappe.client.get_list',
+				args: {
+					doctype: 'Sales Invoice',
+					filters: {
+						'name': ['in', missing_invoice_names]
+					},
+					fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount']
+				},
+				callback: function(response) {
+					dialog.loading_missing_invoices = false;
 					
-					if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
-						// Process each item in the invoice
-						invoice_doc.items.forEach(item => {
-							all_items.push({
-								invoice: invoice_name,
-								item_code: item.item_code,
-								item_name: item.item_name,
-								amount: item.amount,
-								income_account: item.income_account,
-								custom_default_earning_account: item.custom_default_earning_account,
-								claim_amount: 0 // Initialize with 0
-							});
+					if (response.message && response.message.length > 0) {
+						// Create invoice objects for the missing invoices
+						let missing_invoices = response.message.map(inv => {
+							return {
+								'invoice': inv.name,
+								'invoice_date': inv.posting_date,
+								'project': inv.custom_for_project || '',
+								'project_contractor': inv.custom_for_project || '', // Use project as contractor
+								'status': inv.status,
+								'due_date': inv.due_date,
+								'total': inv.grand_total,
+								'outstanding': inv.outstanding_amount,
+								'claim_amount': 0, // Will be updated later from stored data
+								'select': 1, // These are definitely selected
+								'claimable_amount': 0 // Will be updated with balances
+							};
 						});
+						
+						// Add these to our selection and continue loading
+						selected_invoices = selected_invoices.concat(missing_invoices);
+						load_invoice_items(selected_invoices);
+					} else {
+						// If we couldn't find the invoices, just use what we have
+						load_invoice_items(selected_invoices);
 					}
-					
-					processed_count++;
-					
-					// If all invoices have been processed, show the results
-					if (processed_count === invoice_names.length) {
-						process_results();
-					}
-				});
+				},
+				error: function() {
+					dialog.loading_missing_invoices = false;
+					load_invoice_items(selected_invoices);
+				}
 			});
+			return;
 		}
-	});
+	}
+	
+	// Direct load if we don't need to fetch missing invoices
+	load_invoice_items(selected_invoices);
+	
+	// Function to load the items for all selected invoices
+	function load_invoice_items(selected_invoices) {
+		if (selected_invoices.length === 0) {
+			dialog.fields_dict.items_preview_html.html('');
+			return;
+		}
+		
+		// Show loading indicator
+		dialog.fields_dict.items_preview_html.html(`
+			<div class="text-center my-4">
+				<i class="fa fa-spinner fa-spin"></i>
+				<p>${__('Loading invoice items...')}</p>
+			</div>
+		`);
+		
+		// Get invoice names for selected invoices
+		let invoice_names = selected_invoices.map(inv => inv.invoice);
+		console.log("Selected invoice names:", invoice_names);
+		
+		// First get available balances for all invoices
+		frappe.call({
+			method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+			args: {
+				invoices: invoice_names
+			},
+			callback: function(balance_result) {
+				let balance_data = balance_result.message || {};
+				console.log("Balance data received:", balance_data);  // Debug log
+				
+				// Process each invoice separately to avoid permission issues
+				let all_items = [];
+				let processed_count = 0;
+				
+				// Function to process results after all invoices are loaded
+				function process_results() {
+					if (all_items.length === 0) {
+						dialog.fields_dict.items_preview_html.html(`
+							<div class="alert alert-warning my-4">
+								${__('No items found for selected invoices')}
+							</div>
+						`);
+						return;
+					}
+					
+					// Update available balance for each item
+					all_items.forEach(item => {
+						if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
+							item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
+							item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
+							item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
+							console.log(`Item ${item.item_code} from invoice ${item.invoice}: Original=${item.original_amount}, Claimed=${item.claimed_amount}, Available=${item.available_balance}`);  // Debug log
+						} else {
+							// Default to original amount if no balance data
+							item.available_balance = item.amount;
+							console.log(`No balance data for item ${item.item_code} from invoice ${item.invoice}, using original amount: ${item.amount}`);  // Debug log
+						}
+					});
+					
+					// Group items by invoice
+					let items_by_invoice = {};
+					let invoice_totals = {};
+					
+					// First group and calculate totals
+					all_items.forEach(item => {
+						if (!items_by_invoice[item.invoice]) {
+							items_by_invoice[item.invoice] = [];
+							invoice_totals[item.invoice] = 0;
+						}
+						items_by_invoice[item.invoice].push(item);
+						invoice_totals[item.invoice] += flt(item.amount);
+					});
+					
+					// Then calculate ratios - hidden from UI but still used for calculations
+					all_items.forEach(item => {
+						if (invoice_totals[item.invoice] > 0) {
+							item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100;
+						} else {
+							item.ratio = 0;
+						}
+					});
+					
+					console.log("Grouped items:", items_by_invoice);
+					dialog.items_by_invoice = items_by_invoice;
+					
+					// Create HTML for item allocation tables with editable inputs
+					let html = '<div class="margin-top">';
+					
+					// First, add a section showing all selected invoices
+					let total_count = selected_invoices.length;
+					if (total_count > 0) {
+						html += `
+							<div class="alert alert-info mb-4">
+								<h6>${__('Selected Invoices:')} ${total_count}</h6>
+								<div class="selected-invoices-summary">
+						`;
+						
+						selected_invoices.forEach(inv => {
+							let projectInfo = inv.project ? ` (${inv.project})` : '';
+							html += `<div class="badge badge-primary mr-2 mb-2 p-2">${inv.invoice}${projectInfo}</div>`;
+						});
+						
+						html += `
+								</div>
+							</div>
+						`;
+					}
+					
+					selected_invoices.forEach(inv => {
+						let invoice_items = items_by_invoice[inv.invoice] || [];
+						if (invoice_items.length === 0) return;
+						
+						html += `
+							<div class="invoice-items-section mb-4" data-invoice="${inv.invoice}">
+								<h5>${__('Invoice')}: ${inv.invoice} ${inv.project_contractor ? '(' + inv.project_contractor + ')' : ''}</h5>
+								<h6>${__('Project')}: ${inv.project || ''}</h6>
+								<div class="table-responsive">
+									<table class="table table-bordered item-allocation-table">
+										<thead>
+											<tr>
+												<th>${__('Item')}</th>
+												<th>${__('Original Amount')}</th>
+												<th>${__('Available Balance')}</th>
+												<th>${__('Claim Amount')}</th>
+											</tr>
+										</thead>
+										<tbody>
+						`;
+						
+						let total_amount = 0;
+						
+						invoice_items.forEach((item, idx) => {
+							// Skip items with zero available balance
+							if (item.available_balance <= 0) return;
+							
+							// Initialize item's claim amount if not set
+							if (!item.claim_amount) {
+								item.claim_amount = 0;
+							}
+							total_amount += flt(item.claim_amount);
+							
+							html += `
+								<tr data-item="${item.item_code}" data-invoice="${inv.invoice}" data-idx="${idx}">
+									<td>${item.item_name || item.item_code}</td>
+									<td class="text-right">${format_currency(item.amount)}</td>
+									<td class="text-right">${format_currency(item.available_balance)}</td>
+									<td>
+										<input 
+											type="text" 
+											class="form-control item-amount-input no-spinner" 
+											data-invoice="${inv.invoice}"
+											data-item="${item.item_code}"
+											data-idx="${idx}"
+											value="${item.claim_amount.toFixed(2)}" 
+											min="0"
+											max="${item.available_balance}"
+											style="text-align: right;"
+											onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
+										>
+									</td>
+								</tr>
+							`;
+						});
+						
+						// Add a totals row
+						html += `
+							<tr class="table-active">
+								<td colspan="3" class="text-right"><strong>${__('Total')}:</strong></td>
+								<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_amount)}</td>
+							</tr>
+						`;
+						
+						html += `
+										</tbody>
+									</table>
+								</div>
+							</div>
+						`;
+						
+						// Update invoice claim amount
+						let invoice_index = dialog.invoices_data.findIndex(i => i.invoice === inv.invoice);
+						if (invoice_index !== -1) {
+							dialog.invoices_data[invoice_index].claim_amount = total_amount;
+						}
+					});
+					
+					html += '</div>';
+					
+					// Update the total claim amount for all selected invoices
+					let total_claim = 0;
+					selected_invoices.forEach(inv => {
+						total_claim += flt(inv.claim_amount);
+					});
+					dialog.set_value('total_claim_amount', total_claim);
+					
+					// Add the HTML to the dialog
+					dialog.fields_dict.items_preview_html.html(html);
+					
+					// Add style for input spinners
+					dialog.$wrapper.find('head').append(`
+						<style>
+							/* Remove spinners from number inputs */
+							input.no-spinner::-webkit-outer-spin-button,
+							input.no-spinner::-webkit-inner-spin-button {
+								-webkit-appearance: none;
+								margin: 0;
+							}
+							input.no-spinner[type=number] {
+								-moz-appearance: textfield;
+							}
+							/* Style for selected invoices badges */
+							.selected-invoices-summary .badge {
+								font-size: 0.9em;
+							}
+						</style>
+					`);
+					
+					// Attach event handlers to inputs
+					dialog.$wrapper.find('.item-amount-input').on('change', function() {
+						let $this = $(this);
+						let invoice = $this.data('invoice');
+						let item_code = $this.data('item');
+						let idx = $this.data('idx');
+						let amount = parseFloat($this.val()) || 0;
+						
+						// Validate against available balance
+						let invoice_items = items_by_invoice[invoice];
+						if (invoice_items && invoice_items[idx]) {
+							let available_balance = invoice_items[idx].available_balance;
+							if (amount > available_balance) {
+								amount = available_balance;
+								$this.val(amount.toFixed(2));
+								frappe.show_alert({
+									message: __('Amount cannot exceed available balance'),
+									indicator: 'orange'
+								}, 3);
+							}
+							
+							// Update the claim amount in our data
+							invoice_items[idx].claim_amount = amount;
+							
+							// Recalculate the total for this invoice
+							let invoice_total = 0;
+							invoice_items.forEach(item => {
+								invoice_total += flt(item.claim_amount || 0);
+							});
+							
+							// Update the invoice amount in our data
+							let invoice_index = dialog.invoices_data.findIndex(inv => inv.invoice === invoice);
+							if (invoice_index !== -1) {
+								dialog.invoices_data[invoice_index].claim_amount = invoice_total;
+							}
+							
+							// Update the invoice total in the UI
+							dialog.$wrapper.find('.amount-total[data-invoice="' + invoice + '"]').text(format_currency(invoice_total));
+							
+							// Also recalculate ratios internally (hidden from user)
+							if (invoice_total > 0) {
+								invoice_items.forEach(item => {
+									item.ratio = flt(item.claim_amount || 0) / invoice_total * 100;
+								});
+							}
+							
+							// Update the total claim amount
+							update_total_claim_amount(dialog);
+						}
+					});
+				}
+				
+				// Process each selected invoice to get its items
+				invoice_names.forEach(invoice_name => {
+					frappe.model.with_doc('Sales Invoice', invoice_name, function() {
+						let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
+						
+						if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
+							// Process each item in the invoice
+							invoice_doc.items.forEach(item => {
+								all_items.push({
+									invoice: invoice_name,
+									item_code: item.item_code,
+									item_name: item.item_name,
+									amount: item.amount,
+									income_account: item.income_account,
+									custom_default_earning_account: item.custom_default_earning_account,
+									claim_amount: 0 // Initialize with 0
+								});
+							});
+						}
+						
+						processed_count++;
+						
+						// If all invoices have been processed, show the results
+						if (processed_count === invoice_names.length) {
+							process_results();
+						}
+					});
+				});
+			}
+		});
+	}
 }
 
 function create_bulk_project_claim(frm, dialog) {
 	console.log("Creating bulk project claim");
 	
-	// Get ALL selected invoices from ALL project contractors by checking the selected_invoices Set
-	let selected_invoice_names = Array.from(dialog.selected_invoices);
-	let all_selected_invoices = [];
+	// Get selected invoices and validate
+	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
 	
-	// Find all selected invoice data
-	dialog.invoices_data.forEach(inv => {
-		if (inv.select && flt(inv.claim_amount) > 0) {
-			all_selected_invoices.push(inv);
-		}
-	});
+	console.log("Selected invoices:", selected_invoices);
 	
-	// Also look for any selected invoices that might not be in the current view
-	selected_invoice_names.forEach(invoice_name => {
-		// Check if this invoice is already in the selected list
-		let exists = all_selected_invoices.some(inv => inv.invoice === invoice_name);
-		
-		if (!exists && dialog.items_by_invoice && dialog.items_by_invoice[invoice_name]) {
-			// This invoice was selected before but isn't in the current view
-			// Find the original data for this invoice if available
-			let invoice_total = 0;
-			let invoice_items = dialog.items_by_invoice[invoice_name];
-			
-			// Calculate total claim amount for this invoice
-			invoice_items.forEach(item => {
-				invoice_total += flt(item.claim_amount || 0);
-			});
-			
-			if (invoice_total > 0) {
-				// Reconstruct the invoice data as best we can
-				all_selected_invoices.push({
-					invoice: invoice_name,
-					claim_amount: invoice_total,
-					select: 1,
-					// Other fields may be undefined but that's okay
-					// as long as we have the invoice name and claim amount
-				});
-			}
-		}
-	});
-	
-	console.log("Selected invoices:", all_selected_invoices);
-	
-	if (all_selected_invoices.length === 0) {
+	if (selected_invoices.length === 0) {
 		frappe.msgprint(__('Please select at least one invoice and set claim amount'));
+		return;
+	}
+	
+	// Validate claim amounts
+	let invalid_claims = selected_invoices.filter(inv => flt(inv.claim_amount) > flt(inv.claimable_amount));
+	if (invalid_claims.length > 0) {
+		let error_list = invalid_claims.map(inv => `${inv.invoice}: ${format_currency(inv.claim_amount)} > ${format_currency(inv.claimable_amount)}`).join('<br>');
+		frappe.msgprint(__('Claim Amount cannot exceed Claimable Amount for the following invoices:<br>') + error_list);
 		return;
 	}
 	
@@ -746,11 +811,11 @@ function create_bulk_project_claim(frm, dialog) {
 	frm.validate = function() { return true; };
 	
 	// Get invoice names for selected invoices
-	let invoice_names = all_selected_invoices.map(inv => inv.invoice);
+	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	
 	// Calculate total claimable amount across all selected invoices
 	let total_claimable_amount = 0;
-	all_selected_invoices.forEach(inv => {
+	selected_invoices.forEach(inv => {
 		total_claimable_amount += flt(inv.claim_amount);
 	});
 	
@@ -822,16 +887,7 @@ function create_bulk_project_claim(frm, dialog) {
 									item.ratio = 0;
 								}
 							});
-							// Use whatever we have in dialog.items_by_invoice and add any missing invoices
-							if (!dialog.items_by_invoice) {
-								dialog.items_by_invoice = {};
-							}
-							
-							// Merge the newly processed items into existing items_by_invoice
-							for (let invoice in items_by_invoice) {
-								dialog.items_by_invoice[invoice] = items_by_invoice[invoice];
-							}
-							
+							dialog.items_by_invoice = items_by_invoice;
 							createClaimFromProcessedItems();
 						}
 					});
@@ -849,26 +905,11 @@ function create_bulk_project_claim(frm, dialog) {
 		let unique_projects = new Set();
 		
 		// Process each invoice
-		all_selected_invoices.forEach(inv => {
+		selected_invoices.forEach(inv => {
 			let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
 			if (invoice_items.length === 0) return;
 			
 			let claim_amount = flt(inv.claim_amount);
-			
-			// Find project and project_contractor info for this invoice if not available
-			if (!inv.project || !inv.project_contractor || !inv.invoice_date || !inv.due_date || !inv.status) {
-				// Try to load it
-				frappe.model.with_doc('Sales Invoice', inv.invoice, function(r) {
-					let doc = frappe.get_doc('Sales Invoice', inv.invoice);
-					if (doc) {
-						inv.project = doc.custom_for_project || '';
-						inv.project_contractor = doc.custom_for_project || ''; // Use same field
-						inv.invoice_date = doc.posting_date || '';
-						inv.due_date = doc.due_date || '';
-						inv.status = doc.status || '';
-					}
-				});
-			}
 			
 			// Collect unique projects
 			if (inv.project) {
@@ -1010,12 +1051,12 @@ function create_bulk_project_claim(frm, dialog) {
 		
 		// Determine which invoice to use as the main reference
 		// We'll use the first selected invoice with the highest claim amount
-		let primary_invoice = all_selected_invoices.sort((a, b) => 
+		let primary_invoice = selected_invoices.sort((a, b) => 
 			flt(b.claim_amount) - flt(a.claim_amount)
 		)[0].invoice;
 		
 		// Get primary project as the one with the highest claim amount
-		let primary_project = all_selected_invoices.sort((a, b) => 
+		let primary_project = selected_invoices.sort((a, b) => 
 			flt(b.claim_amount) - flt(a.claim_amount)
 		)[0].project;
 		
@@ -1043,7 +1084,7 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Calculate total claimable amount across all selected invoices
 				let total_claimable_amount = 0;
-				all_selected_invoices.forEach(inv => {
+				selected_invoices.forEach(inv => {
 					total_claimable_amount += flt(inv.claim_amount);
 				});
 				
@@ -1112,7 +1153,7 @@ function create_bulk_project_claim(frm, dialog) {
 				// Show success message
 				setTimeout(() => {
 					frappe.show_alert({
-						message: __('Project Claim created from {0} invoices. Please review and save.', [all_selected_invoices.length]),
+						message: __('Project Claim created from {0} invoices. Please review and save.', [selected_invoices.length]),
 						indicator: 'green'
 					}, 5);
 					

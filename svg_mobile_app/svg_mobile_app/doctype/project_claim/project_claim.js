@@ -66,7 +66,7 @@ function show_bulk_invoice_dialog(frm) {
 				fieldname: 'project_contractor_filter',
 				label: __('Filter by Project Contractor'),
 				fieldtype: 'Link',
-				options: 'Project Contractor',
+				options: 'Project Contractors',
 				get_query: function() {
 					return {
 						filters: {

@@ -221,12 +221,12 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 			doctype: 'Sales Invoice',
 			filters: {
 				'customer': customer,
-				'custom_project_contractor': project_contractor,
+				'custom_for_project': project_contractor,
 				'docstatus': 1,
 				'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
 				'outstanding_amount': ['>', 0]
 			},
-			fields: ['name', 'posting_date', 'custom_for_project', 'custom_project_contractor', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
+			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 			order_by: 'posting_date desc'
 		},
 		callback: function(response) {
@@ -244,7 +244,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 						'invoice': inv.name,
 						'invoice_date': inv.posting_date,
 						'project': inv.custom_for_project || '',
-						'project_contractor': inv.custom_project_contractor || '',
+						'project_contractor': project_contractor, // Use the selected project contractor
 						'status': inv.status,
 						'due_date': inv.due_date,
 						'total': inv.grand_total,
@@ -963,7 +963,7 @@ function create_bulk_project_claim(frm, dialog) {
 			args: {
 				doctype: 'Sales Invoice',
 				filters: { name: primary_invoice },
-				fieldname: ['debit_to', 'custom_for_project', 'custom_project_contractor']
+				fieldname: ['debit_to', 'custom_for_project']
 			},
 			callback: function(data) {
 				console.log("Invoice details response:", data);
@@ -973,8 +973,8 @@ function create_bulk_project_claim(frm, dialog) {
 					return;
 				}
 				
-				// Get the project contractor from the data
-				let project_contractor = data.message.custom_project_contractor;
+				// Get the project contractor from the dialog (which was selected by the user)
+				let project_contractor = dialog.get_value('project_contractor_filter');
 				
 				// Calculate total claimable amount across all selected invoices
 				let total_claimable_amount = 0;

@@ -138,26 +138,26 @@ function show_bulk_invoice_dialog(frm) {
 				}, 200);
 			} else {
 				// If no invoices are selected, proceed directly
-				// Store original state
-				let was_local = frm.doc.__islocal;
-				let had_unsaved = frm.doc.__unsaved;
-				
-				// Completely bypass validation by making the form appear saved and not new
-				frm.doc.__islocal = false;
-				frm.doc.__unsaved = 0;
-				
-				// Disable save before creating the project claim
-				frm.disable_save();
-				
-				// Prevent auto-save by just calling the function and closing the dialog
-				create_bulk_project_claim(frm, dialog);
-				dialog.hide();
-				
-				// Restore original state after a delay
-				setTimeout(() => {
-					frm.doc.__islocal = was_local;
-					frm.doc.__unsaved = had_unsaved;
-				}, 100);
+			// Store original state
+			let was_local = frm.doc.__islocal;
+			let had_unsaved = frm.doc.__unsaved;
+			
+			// Completely bypass validation by making the form appear saved and not new
+			frm.doc.__islocal = false;
+			frm.doc.__unsaved = 0;
+			
+			// Disable save before creating the project claim
+			frm.disable_save();
+			
+			// Prevent auto-save by just calling the function and closing the dialog
+			create_bulk_project_claim(frm, dialog);
+			dialog.hide();
+			
+			// Restore original state after a delay
+			setTimeout(() => {
+				frm.doc.__islocal = was_local;
+				frm.doc.__unsaved = had_unsaved;
+			}, 100);
 			}
 		}
 	});
@@ -304,7 +304,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				
 				// Get available balances for all invoices
 				frappe.call({
-					method: 'svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+					method: 'svg_mobile_app.svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 					args: {
 						invoices: invoice_names
 					},
@@ -562,7 +562,7 @@ function update_items_preview(dialog) {
 		
 		// First get available balances for all invoices
 		frappe.call({
-			method: 'svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+			method: 'svg_mobile_app.svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 			args: {
 				invoices: invoice_names
 			},
@@ -1001,7 +1001,7 @@ function create_bulk_project_claim(frm, dialog) {
 				if (processed_count === invoice_names.length) {
 					// Fetch available balances for all items
 					frappe.call({
-						method: 'svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+						method: 'svg_mobile_app.svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 						args: {
 							invoices: invoice_names
 						},

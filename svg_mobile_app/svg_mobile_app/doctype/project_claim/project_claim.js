@@ -1275,21 +1275,8 @@ function create_bulk_project_claim(frm, dialog) {
 			let status_text = ref.status || '';
 			let due_date_text = ref.due_date ? ref.due_date : 'N/A';
 			
-			// Since custom_for_project in sales invoice refers to project contractor,
-			// we need to handle this properly to avoid duplication
-			let project_text = '';
-			
-			// Use project contractor but avoid duplication
-			if (ref.project_contractor) {
-				project_text = ref.project_contractor;
-			} else if (ref.project) {
-				// ref.project likely comes from custom_for_project which is actually project contractor
-				project_text = ref.project;
-			} else {
-				project_text = 'No Project';
-			}
-			
-			being_text += `- ${ref.invoice} (${status_text}, ${project_text}, Due: ${due_date_text})\n`;
+			// Remove all project/project_contractor references - simply don't include them
+			being_text += `- ${ref.invoice} (${status_text}, Due: ${due_date_text})\n`;
 			being_text += `  Total Claimed: ${format_currency(inv_total)} of ${format_currency(ref.amount)} claimable\n`;
 			
 			if (inv_items.length > 0) {

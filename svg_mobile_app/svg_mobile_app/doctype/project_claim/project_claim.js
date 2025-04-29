@@ -1089,16 +1089,16 @@ function create_bulk_project_claim(frm, dialog) {
 			
 			let claim_amount = flt(inv.claim_amount);
 			
-			// Collect unique projects
+			// Always add the project_contractor to unique_projects, regardless of whether it matches the project
+			if (inv.project_contractor) {
+				unique_projects.add(inv.project_contractor);
+				console.log(`Added project_contractor ${inv.project_contractor} from invoice ${inv.invoice}`);
+			}
+			
+			// Also add the project if it exists and differs from the project_contractor
 			if (inv.project) {
 				unique_projects.add(inv.project);
 				console.log(`Added project ${inv.project} from invoice ${inv.invoice}`);
-			}
-			
-			// Also add the project_contractor if it's different from the project
-			if (inv.project_contractor && inv.project_contractor !== inv.project) {
-				unique_projects.add(inv.project_contractor);
-				console.log(`Added project_contractor ${inv.project_contractor} from invoice ${inv.invoice}`);
 			}
 
 			// Store reference for description

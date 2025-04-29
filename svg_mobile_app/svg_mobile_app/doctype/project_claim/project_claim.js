@@ -304,7 +304,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				
 				// Get available balances for all invoices
 				frappe.call({
-					method: 'svg_mobile_app.svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+					method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 					args: {
 						invoices: invoice_names
 					},
@@ -562,7 +562,7 @@ function update_items_preview(dialog) {
 		
 		// First get available balances for all invoices
 		frappe.call({
-			method: 'svg_mobile_app.svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+			method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 			args: {
 				invoices: invoice_names
 			},
@@ -1001,7 +1001,7 @@ function create_bulk_project_claim(frm, dialog) {
 				if (processed_count === invoice_names.length) {
 					// Fetch available balances for all items
 					frappe.call({
-						method: 'svg_mobile_app.svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+						method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
 						args: {
 							invoices: invoice_names
 						},

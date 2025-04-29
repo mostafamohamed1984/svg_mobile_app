@@ -1003,10 +1003,18 @@ function create_bulk_project_claim(frm, dialog) {
 	console.log("Project contractor names collected:", project_contractor_names);
 
 	// IMPORTANT: We need to include project contractors from all selected invoices
-	// Check if we have any missing project contractors in our console.log line 551
-	let missing_contractors = dialog.fields_dict.invoices_table.grid.get_selected_children()
-		.filter(row => row.project_contractor && !project_contractor_names.includes(row.project_contractor))
-		.map(row => row.project_contractor);
+	// Check if we have any missing project contractors from fields_dict.invoices_table if it exists
+	let missing_contractors = [];
+	
+	// Safely access the grid and its selected children if available
+	if (dialog.fields_dict && dialog.fields_dict.invoices_table && 
+		dialog.fields_dict.invoices_table.grid && 
+		typeof dialog.fields_dict.invoices_table.grid.get_selected_children === 'function') {
+		
+		missing_contractors = dialog.fields_dict.invoices_table.grid.get_selected_children()
+			.filter(row => row.project_contractor && !project_contractor_names.includes(row.project_contractor))
+			.map(row => row.project_contractor);
+	}
 
 	// Add any missing contractors
 	if (missing_contractors.length > 0) {
@@ -1014,18 +1022,6 @@ function create_bulk_project_claim(frm, dialog) {
 		project_contractor_names = [...new Set([...project_contractor_names, ...missing_contractors])];
 	}
 
-	// Also check for contractors in dialog.all_selected_invoices if it exists
-	if (dialog.all_selected_invoices) {
-		let additional_contractors = dialog.all_selected_invoices
-			.filter(inv => inv.project_contractor && !project_contractor_names.includes(inv.project_contractor))
-			.map(inv => inv.project_contractor);
-			
-		if (additional_contractors.length > 0) {
-			console.log("Found contractors from all_selected_invoices:", additional_contractors);
-			project_contractor_names = [...new Set([...project_contractor_names, ...additional_contractors])];
-		}
-	}
-	
 	// Calculate total claimable amount across all selected invoices
 	let total_claimable_amount = 0;
 	selected_invoices.forEach(inv => {

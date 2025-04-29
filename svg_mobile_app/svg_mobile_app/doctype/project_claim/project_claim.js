@@ -1083,6 +1083,11 @@ function create_bulk_project_claim(frm, dialog) {
 				unique_projects.add(inv.project);
 			}
 			
+			// Also add the project_contractor if it's different from the project
+			if (inv.project_contractor && inv.project_contractor !== inv.project) {
+				unique_projects.add(inv.project_contractor);
+			}
+			
 			// Store reference for description
 			references.push({
 				invoice: inv.invoice,
@@ -1235,14 +1240,6 @@ function create_bulk_project_claim(frm, dialog) {
 			flt(b.claim_amount) - flt(a.claim_amount)
 		)[0].project;
 		
-		// Get the project contractor from the dialog (which was selected by the user)
-		let project_contractor = dialog.get_value('project_contractor_filter');
-		
-		// Make sure the project contractor is included in the unique projects
-		if (project_contractor) {
-			unique_projects.add(project_contractor);
-		}
-		
 		// Format all projects for display
 		let all_projects = Array.from(unique_projects).join(", ");
 		
@@ -1261,6 +1258,9 @@ function create_bulk_project_claim(frm, dialog) {
 					frappe.msgprint(__('Could not fetch account information'));
 					return;
 				}
+				
+				// Get the project contractor from the dialog (which was selected by the user)
+				let project_contractor = dialog.get_value('project_contractor_filter');
 				
 				// Calculate total claimable amount across all selected invoices
 				let total_claimable_amount = 0;

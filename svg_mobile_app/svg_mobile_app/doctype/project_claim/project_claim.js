@@ -193,6 +193,13 @@ function show_bulk_invoice_dialog(frm) {
 			update_items_preview(dialog);
 		} else {
 			dialog.selected_invoices.delete(invoice);
+			// If this invoice has items, remove its claim amounts
+			if (dialog.items_by_invoice && dialog.items_by_invoice[invoice]) {
+				let invoice_items = dialog.items_by_invoice[invoice];
+				invoice_items.forEach(item => {
+					item.claim_amount = 0;
+				});
+			}
 			// Update the items preview to remove the items for this invoice
 			update_items_preview(dialog);
 		}
@@ -415,6 +422,11 @@ function update_items_preview(dialog) {
 	// Get invoice names for selected invoices
 	let invoice_names = selected_invoices.map(inv => inv.invoice);
 	console.log("Selected invoice names:", invoice_names);
+	
+	// Store these invoices in the Set for tracking
+	invoice_names.forEach(inv => {
+		dialog.selected_invoices.add(inv);
+	});
 	
 	// First get available balances for all invoices
 	frappe.call({
@@ -676,21 +688,50 @@ function update_items_preview(dialog) {
 function create_bulk_project_claim(frm, dialog) {
 	console.log("Creating bulk project claim");
 	
-	// Get selected invoices and validate
-	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
+	// Get ALL selected invoices from ALL project contractors by checking the selected_invoices Set
+	let selected_invoice_names = Array.from(dialog.selected_invoices);
+	let all_selected_invoices = [];
 	
-	console.log("Selected invoices:", selected_invoices);
+	// Find all selected invoice data
+	dialog.invoices_data.forEach(inv => {
+		if (inv.select && flt(inv.claim_amount) > 0) {
+			all_selected_invoices.push(inv);
+		}
+	});
 	
-	if (selected_invoices.length === 0) {
+	// Also look for any selected invoices that might not be in the current view
+	selected_invoice_names.forEach(invoice_name => {
+		// Check if this invoice is already in the selected list
+		let exists = all_selected_invoices.some(inv => inv.invoice === invoice_name);
+		
+		if (!exists && dialog.items_by_invoice && dialog.items_by_invoice[invoice_name]) {
+			// This invoice was selected before but isn't in the current view
+			// Find the original data for this invoice if available
+			let invoice_total = 0;
+			let invoice_items = dialog.items_by_invoice[invoice_name];
+			
+			// Calculate total claim amount for this invoice
+			invoice_items.forEach(item => {
+				invoice_total += flt(item.claim_amount || 0);
+			});
+			
+			if (invoice_total > 0) {
+				// Reconstruct the invoice data as best we can
+				all_selected_invoices.push({
+					invoice: invoice_name,
+					claim_amount: invoice_total,
+					select: 1,
+					// Other fields may be undefined but that's okay
+					// as long as we have the invoice name and claim amount
+				});
+			}
+		}
+	});
+	
+	console.log("Selected invoices:", all_selected_invoices);
+	
+	if (all_selected_invoices.length === 0) {
 		frappe.msgprint(__('Please select at least one invoice and set claim amount'));
-		return;
-	}
-	
-	// Validate claim amounts
-	let invalid_claims = selected_invoices.filter(inv => flt(inv.claim_amount) > flt(inv.claimable_amount));
-	if (invalid_claims.length > 0) {
-		let error_list = invalid_claims.map(inv => `${inv.invoice}: ${format_currency(inv.claim_amount)} > ${format_currency(inv.claimable_amount)}`).join('<br>');
-		frappe.msgprint(__('Claim Amount cannot exceed Claimable Amount for the following invoices:<br>') + error_list);
 		return;
 	}
 	
@@ -705,11 +746,11 @@ function create_bulk_project_claim(frm, dialog) {
 	frm.validate = function() { return true; };
 	
 	// Get invoice names for selected invoices
-	let invoice_names = selected_invoices.map(inv => inv.invoice);
+	let invoice_names = all_selected_invoices.map(inv => inv.invoice);
 	
 	// Calculate total claimable amount across all selected invoices
 	let total_claimable_amount = 0;
-	selected_invoices.forEach(inv => {
+	all_selected_invoices.forEach(inv => {
 		total_claimable_amount += flt(inv.claim_amount);
 	});
 	
@@ -781,7 +822,16 @@ function create_bulk_project_claim(frm, dialog) {
 									item.ratio = 0;
 								}
 							});
-							dialog.items_by_invoice = items_by_invoice;
+							// Use whatever we have in dialog.items_by_invoice and add any missing invoices
+							if (!dialog.items_by_invoice) {
+								dialog.items_by_invoice = {};
+							}
+							
+							// Merge the newly processed items into existing items_by_invoice
+							for (let invoice in items_by_invoice) {
+								dialog.items_by_invoice[invoice] = items_by_invoice[invoice];
+							}
+							
 							createClaimFromProcessedItems();
 						}
 					});
@@ -799,11 +849,26 @@ function create_bulk_project_claim(frm, dialog) {
 		let unique_projects = new Set();
 		
 		// Process each invoice
-		selected_invoices.forEach(inv => {
+		all_selected_invoices.forEach(inv => {
 			let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
 			if (invoice_items.length === 0) return;
 			
 			let claim_amount = flt(inv.claim_amount);
+			
+			// Find project and project_contractor info for this invoice if not available
+			if (!inv.project || !inv.project_contractor || !inv.invoice_date || !inv.due_date || !inv.status) {
+				// Try to load it
+				frappe.model.with_doc('Sales Invoice', inv.invoice, function(r) {
+					let doc = frappe.get_doc('Sales Invoice', inv.invoice);
+					if (doc) {
+						inv.project = doc.custom_for_project || '';
+						inv.project_contractor = doc.custom_for_project || ''; // Use same field
+						inv.invoice_date = doc.posting_date || '';
+						inv.due_date = doc.due_date || '';
+						inv.status = doc.status || '';
+					}
+				});
+			}
 			
 			// Collect unique projects
 			if (inv.project) {

@@ -1304,15 +1304,16 @@ function create_bulk_project_claim(frm, dialog) {
 					outstanding_amount: total_claimable_amount
 				};
 				
-				// Hide for_project field and show project_references field if multiple projects
+				// Always show the project_references field, even with one project
+				frm.set_df_property('project_references', 'hidden', 0);
+				
+				// Only hide for_project and project_name if we have multiple projects
 				if (unique_projects.size > 1) {
 					frm.set_df_property('for_project', 'hidden', 1);
 					frm.set_df_property('project_name', 'hidden', 1);
-					frm.set_df_property('project_references', 'hidden', 0);
 				} else {
 					frm.set_df_property('for_project', 'hidden', 0);
 					frm.set_df_property('project_name', 'hidden', 0);
-					frm.set_df_property('project_references', 'hidden', 1);
 				}
 				
 				// Clear existing items and add new ones

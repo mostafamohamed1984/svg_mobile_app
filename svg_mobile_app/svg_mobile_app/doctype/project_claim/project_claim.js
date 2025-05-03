@@ -290,7 +290,8 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				'outstanding_amount': ['>', 0]
 			},
 			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
-			order_by: 'posting_date desc'
+			order_by: 'posting_date desc',
+			limit_page_length: 100  // Increase from default 20 to 100
 		},
 		callback: function(response) {
 			console.log("API response:", response);
@@ -693,12 +694,12 @@ function update_items_preview(dialog) {
 						html += `
 							<div class="alert alert-info mb-4">
 								<h6>${__('Selected Invoices:')} ${total_count}</h6>
-								<div class="selected-invoices-summary">
+								<div class="selected-invoices-summary" style="max-height: 150px; overflow-y: auto; display: flex; flex-wrap: wrap;">
 						`;
 						
 						selected_invoices.forEach(inv => {
 							let projectInfo = inv.project ? ` (${inv.project})` : '';
-							html += `<div class="badge badge-primary mr-2 mb-2 p-2">${inv.invoice}${projectInfo}</div>`;
+							html += `<div class="badge badge-primary mr-1 mb-1 py-1 px-2">${inv.invoice}${projectInfo}</div>`;
 						});
 						
 						html += `
@@ -810,8 +811,17 @@ function update_items_preview(dialog) {
 								-moz-appearance: textfield;
 							}
 							/* Style for selected invoices badges */
-							.selected-invoices-summary .badge {
+							.selected-invoices-summary {
 								font-size: 0.9em;
+								max-height: 150px;
+								overflow-y: auto;
+								display: flex;
+								flex-wrap: wrap;
+							}
+							.selected-invoices-summary .badge {
+								font-size: 0.85em;
+								margin-right: 3px;
+								margin-bottom: 3px;
 							}
 						</style>
 					`);

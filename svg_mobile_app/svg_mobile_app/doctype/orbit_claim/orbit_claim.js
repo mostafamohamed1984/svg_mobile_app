@@ -1,7 +1,7 @@
 // Copyright (c) 2025, SVG and contributors
 // For license information, please see license.txt
 
-frappe.ui.form.on("Project Claim", {
+frappe.ui.form.on("Orbit Claim", {
 	refresh: function(frm) {
 		// Update current balance in claim items
 		if (frm.doc.reference_invoice && frm.doc.claim_items && frm.doc.claim_items.length > 0) {
@@ -123,9 +123,9 @@ function show_bulk_invoice_dialog(frm) {
 				read_only: 1
 			}
 		],
-		primary_action_label: __('Create Project Claim'),
+		primary_action_label: __('Create Orbit Claim'),
 		primary_action: function() {
-			// Before creating the project claim, make sure all selected invoices are displayed in the preview
+			// Before creating the orbit claim, make sure all selected invoices are displayed in the preview
 			// This ensures all invoices are processed, even from other project contractors
 			if (dialog.selected_invoices && dialog.selected_invoices.size > 0) {
 				// Force update of items preview to include all selected invoices
@@ -141,11 +141,11 @@ function show_bulk_invoice_dialog(frm) {
 					frm.doc.__islocal = false;
 					frm.doc.__unsaved = 0;
 					
-					// Disable save before creating the project claim
+					// Disable save before creating the orbit claim
 					frm.disable_save();
 					
 					// Prevent auto-save by just calling the function and closing the dialog
-					create_bulk_project_claim(frm, dialog);
+					create_bulk_orbit_claim(frm, dialog);
 					dialog.hide();
 					
 					// Restore original state after a delay
@@ -164,11 +164,11 @@ function show_bulk_invoice_dialog(frm) {
 			frm.doc.__islocal = false;
 			frm.doc.__unsaved = 0;
 			
-			// Disable save before creating the project claim
+			// Disable save before creating the orbit claim
 			frm.disable_save();
 			
 			// Prevent auto-save by just calling the function and closing the dialog
-			create_bulk_project_claim(frm, dialog);
+			create_bulk_orbit_claim(frm, dialog);
 			dialog.hide();
 			
 			// Restore original state after a delay
@@ -518,40 +518,40 @@ function update_items_preview(dialog) {
 			// Fetch the missing invoices - MODIFIED to handle larger batches
 			// This is a crucial change to avoid the 20 limit
 			let fetchMissingInvoices = function(invoice_batch) {
-			frappe.call({
-				method: 'frappe.client.get_list',
-				args: {
-					doctype: 'Sales Invoice',
-					filters: {
+				frappe.call({
+					method: 'frappe.client.get_list',
+					args: {
+						doctype: 'Sales Invoice',
+						filters: {
 							'name': ['in', invoice_batch]
-					},
+						},
 						fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 						limit_page_length: 0  // No limit
-				},
-				callback: function(response) {
-					if (response.message && response.message.length > 0) {
-						// Create invoice objects for the missing invoices
-						let missing_invoices = response.message.map(inv => {
-							return {
-								'invoice': inv.name,
-								'invoice_date': inv.posting_date,
-								'project': inv.custom_for_project || '',
+					},
+					callback: function(response) {
+						if (response.message && response.message.length > 0) {
+							// Create invoice objects for the missing invoices
+							let missing_invoices = response.message.map(inv => {
+								return {
+									'invoice': inv.name,
+									'invoice_date': inv.posting_date,
+									'project': inv.custom_for_project || '',
 									'project_contractor': inv.custom_for_project || '',
-								'status': inv.status,
-								'due_date': inv.due_date,
-								'total': inv.grand_total,
-								'outstanding': inv.outstanding_amount,
+									'status': inv.status,
+									'due_date': inv.due_date,
+									'total': inv.grand_total,
+									'outstanding': inv.outstanding_amount,
 									'claim_amount': 0,
 									'select': 1,
 									'claimable_amount': 0
-							};
-						});
-						
-						// Collect project contractors from missing invoices
-						let project_contractors_from_missing = missing_invoices
-							.map(inv => inv.project_contractor)
-							.filter(Boolean);
-						
+								};
+							});
+							
+							// Collect project contractors from missing invoices
+							let project_contractors_from_missing = missing_invoices
+								.map(inv => inv.project_contractor)
+								.filter(Boolean);
+							
 							// Add these to the existing list if we have one
 							if (dialog.project_contractors_from_missing_invoices) {
 								project_contractors_from_missing.forEach(pc => {
@@ -560,11 +560,11 @@ function update_items_preview(dialog) {
 									}
 								});
 							} else {
-						dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
+								dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
 							}
-						
+							
 							// Add these to our selection
-						selected_invoices = selected_invoices.concat(missing_invoices);
+							selected_invoices = selected_invoices.concat(missing_invoices);
 						}
 						
 						// We're done fetching this batch
@@ -572,17 +572,17 @@ function update_items_preview(dialog) {
 							// We have more to fetch
 							let nextBatch = missing_invoice_names.splice(0, 50);
 							fetchMissingInvoices(nextBatch);
-					} else {
+						} else {
 							// All done - now load the items
 							dialog.loading_missing_invoices = false;
+							load_invoice_items(selected_invoices);
+						}
+					},
+					error: function() {
+						dialog.loading_missing_invoices = false;
 						load_invoice_items(selected_invoices);
 					}
-				},
-				error: function() {
-					dialog.loading_missing_invoices = false;
-					load_invoice_items(selected_invoices);
-				}
-			});
+				});
 			};
 			
 			// Start the batch process - fetch up to 50 invoices at a time
@@ -932,8 +932,8 @@ function update_items_preview(dialog) {
 	}
 }
 
-function create_bulk_project_claim(frm, dialog) {
-	console.log("Creating bulk project claim");
+function create_bulk_orbit_claim(frm, dialog) {
+	console.log("Creating bulk orbit claim");
 	
 	// Get selected invoices and validate
 	let selected_invoices = dialog.invoices_data.filter(inv => inv.select && flt(inv.claim_amount) > 0);
@@ -1475,7 +1475,7 @@ function create_bulk_project_claim(frm, dialog) {
 				// Show success message
 				setTimeout(() => {
 					frappe.show_alert({
-						message: __('Project Claim created from {0} invoices. Please review and save.', [selected_invoices.length]),
+						message: __('Orbit Claim created from {0} invoices. Please review and save.', [selected_invoices.length]),
 						indicator: 'green'
 					}, 5);
 					

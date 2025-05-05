@@ -184,6 +184,7 @@ function show_bulk_invoice_dialog(frm) {
 	dialog.invoices_data = [];
 	dialog.selected_invoices = new Set(); // Track selected invoices
 	dialog.saved_claim_amounts = {}; // Store claim amounts by invoice and item
+	dialog.max_invoices = 100; // No reason to limit to a small number
 	
 	// Initialize the invoices HTML container
 	dialog.fields_dict.invoices_html.html(`
@@ -490,12 +491,14 @@ function update_items_preview(dialog) {
 	if (dialog.selected_invoices && dialog.selected_invoices.size > 0) {
 		// We need to ensure we have all the selected invoices loaded
 		let all_selected_invoice_names = Array.from(dialog.selected_invoices);
+		console.log("All selected invoices in Set: " + all_selected_invoice_names.length);
 		
 		// Filter out ones that are already in our selected_invoices array
 		let current_selected_names = selected_invoices.map(inv => inv.invoice);
 		let missing_invoice_names = all_selected_invoice_names.filter(
 			name => !current_selected_names.includes(name)
 		);
+		console.log("Missing invoice names: " + missing_invoice_names.length);
 		
 		// If we have some selected invoices that aren't in the current view,
 		// we need to load them separately
@@ -512,63 +515,79 @@ function update_items_preview(dialog) {
 				`);
 			}
 			
-			// Fetch the missing invoices
-			frappe.call({
-				method: 'frappe.client.get_list',
-				args: {
-					doctype: 'Sales Invoice',
-					filters: {
-						'name': ['in', missing_invoice_names]
+			// Fetch the missing invoices - MODIFIED to handle larger batches
+			// This is a crucial change to avoid the 20 limit
+			let fetchMissingInvoices = function(invoice_batch) {
+				frappe.call({
+					method: 'frappe.client.get_list',
+					args: {
+						doctype: 'Sales Invoice',
+						filters: {
+							'name': ['in', invoice_batch]
+						},
+						fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
+						limit_page_length: 0  // No limit
 					},
-					fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount']
-				},
-				callback: function(response) {
-					dialog.loading_missing_invoices = false;
-					
-					if (response.message && response.message.length > 0) {
-						// Create invoice objects for the missing invoices
-						let missing_invoices = response.message.map(inv => {
-							// Important: For invoices from different project contractors, we need to preserve
-							// the original project contractors in the data
-							return {
-								'invoice': inv.name,
-								'invoice_date': inv.posting_date,
-								'project': inv.custom_for_project || '',
-								'project_contractor': inv.custom_for_project || '', // This is the correct project contractor
-								'status': inv.status,
-								'due_date': inv.due_date,
-								'total': inv.grand_total,
-								'outstanding': inv.outstanding_amount,
-								'claim_amount': 0, // Will be updated later from stored data
-								'select': 1, // These are definitely selected
-								'claimable_amount': 0 // Will be updated with balances
-							};
-						});
+					callback: function(response) {
+						if (response.message && response.message.length > 0) {
+							// Create invoice objects for the missing invoices
+							let missing_invoices = response.message.map(inv => {
+								return {
+									'invoice': inv.name,
+									'invoice_date': inv.posting_date,
+									'project': inv.custom_for_project || '',
+									'project_contractor': inv.custom_for_project || '',
+									'status': inv.status,
+									'due_date': inv.due_date,
+									'total': inv.grand_total,
+									'outstanding': inv.outstanding_amount,
+									'claim_amount': 0,
+									'select': 1,
+									'claimable_amount': 0
+								};
+							});
+							
+							// Collect project contractors from missing invoices
+							let project_contractors_from_missing = missing_invoices
+								.map(inv => inv.project_contractor)
+								.filter(Boolean);
+							
+							// Add these to the existing list if we have one
+							if (dialog.project_contractors_from_missing_invoices) {
+								project_contractors_from_missing.forEach(pc => {
+									if (!dialog.project_contractors_from_missing_invoices.includes(pc)) {
+										dialog.project_contractors_from_missing_invoices.push(pc);
+									}
+								});
+							} else {
+								dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
+							}
+							
+							// Add these to our selection
+							selected_invoices = selected_invoices.concat(missing_invoices);
+						}
 						
-						// Collect project contractors from missing invoices
-						let project_contractors_from_missing = missing_invoices
-							.map(inv => inv.project_contractor)
-							.filter(Boolean);
-						
-						// Store them in the dialog object for later use
-						dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
-						
-						// Log the project contractors from missing invoices
-						console.log("Project contractors from missing invoices:", project_contractors_from_missing);
-						
-						// Add these to our selection and continue loading
-						selected_invoices = selected_invoices.concat(missing_invoices);
-						load_invoice_items(selected_invoices);
-					} else {
-						// If we couldn't find the invoices, just use what we have
+						// We're done fetching this batch
+						if (missing_invoice_names.length > 0) {
+							// We have more to fetch
+							let nextBatch = missing_invoice_names.splice(0, 50);
+							fetchMissingInvoices(nextBatch);
+						} else {
+							// All done - now load the items
+							dialog.loading_missing_invoices = false;
+							load_invoice_items(selected_invoices);
+						}
+					},
+					error: function() {
+						dialog.loading_missing_invoices = false;
 						load_invoice_items(selected_invoices);
 					}
-				},
-				error: function() {
-					dialog.loading_missing_invoices = false;
-					load_invoice_items(selected_invoices);
-				}
-			});
+				});
+			};
+			
+			// Start the batch process - fetch up to 50 invoices at a time
+			let firstBatch = missing_invoice_names.splice(0, 50);
+			fetchMissingInvoices(firstBatch);
 			return;
 		}
 	}

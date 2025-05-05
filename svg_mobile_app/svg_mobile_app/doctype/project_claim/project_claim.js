@@ -276,12 +276,13 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 			<p>${__('Fetching invoices...')}</p>
 		</div>
 	`);
+
+	// Initialize an array to store all invoices
+	let all_invoices = [];
 	
-	// Initialize allInvoices array to collect all pages of results
-	let allInvoices = [];
-	
-	// Function to fetch invoices with pagination
-	function fetchInvoicePage(start = 0) {
+	// Define a function to recursively fetch invoices with pagination
+	function fetch_invoices_page(start = 0, page_length = 200) {
+		// Get customer's outstanding invoices filtered by project contractor
 		frappe.call({
 			method: 'frappe.client.get_list',
 			args: {
@@ -296,51 +297,26 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 				order_by: 'posting_date desc',
 				limit_start: start,
-				limit_page_length: 20 // Use standard page length
+				limit_page_length: page_length
 			},
 			callback: function(response) {
+				console.log(`API response for page starting at ${start}:`, response);
+				
 				if (response.message && response.message.length > 0) {
-					// Append new batch of invoices to our collection
-					allInvoices = allInvoices.concat(response.message);
-					console.log(`Fetched batch of ${response.message.length} invoices, total so far: ${allInvoices.length}`);
+					// Add the invoices from this page to our collection
+					all_invoices = all_invoices.concat(response.message);
+					console.log(`Found ${response.message.length} invoices on this page, total now: ${all_invoices.length}`);
 					
-					// Check if we got a full page (indicating there might be more)
-					if (response.message.length === 20) {
-						// Update loading message to show progress
-						dialog.fields_dict.invoices_html.html(`
-							<div class="text-center my-4">
-								<i class="fa fa-spinner fa-spin fa-2x"></i>
-								<p>${__('Fetching invoices...')} (${allInvoices.length} ${__('found so far')})</p>
-							</div>
-						`);
-						
-						// Fetch next page
-						fetchInvoicePage(start + 20);
+					// If we got a full page, there might be more invoices, fetch the next page
+					if (response.message.length === page_length) {
+						fetch_invoices_page(start + page_length, page_length);
 					} else {
-						// We've reached the end, process all invoices
-						processAllInvoices(allInvoices);
+						// We've fetched all invoices, process them now
+						process_all_invoices();
 					}
 				} else {
-					// No invoices in this batch
-					if (allInvoices.length === 0) {
-						// No invoices found at all
-						console.log("No invoices found");
-						
-						dialog.invoices_data = [];
-						
-						// Show message if no invoices found
-						dialog.fields_dict.invoices_html.html(`
-							<div class="alert alert-warning my-4">
-								${__('No outstanding invoices found for this customer and project contractor')}
-							</div>
-						`);
-						
-						// Clear the totals
-						dialog.set_value('total_claim_amount', 0);
-					} else {
-						// We've reached the end with some invoices, process them
-						processAllInvoices(allInvoices);
-					}
+					// No invoices in this page, we've fetched everything
+					process_all_invoices();
 				}
 			},
 			error: function(err) {
@@ -354,69 +330,85 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 		});
 	}
 	
-	// Function to process all collected invoices
-	function processAllInvoices(invoices) {
-		console.log("Processing all invoices, total count:", invoices.length);
-		
-		// First prepare basic invoice data
-		dialog.invoices_data = invoices.map(inv => {
-			// Check if this invoice was previously selected
-			let was_selected = dialog.selected_invoices.has(inv.name);
+	// Function to process all fetched invoices
+	function process_all_invoices() {
+		if (all_invoices.length > 0) {
+			console.log("Processing all fetched invoices:", all_invoices.length);
 			
-			return {
-				'invoice': inv.name,
-				'invoice_date': inv.posting_date,
-				'project': inv.custom_for_project || '',
-				'project_contractor': project_contractor, // Use the selected project contractor
-				'status': inv.status,
-				'due_date': inv.due_date,
-				'total': inv.grand_total,
-				'outstanding': inv.outstanding_amount,
-				'claim_amount': 0, // Initialize with 0 instead of outstanding amount
-				'select': was_selected ? 1 : 0 // Maintain selection state
-			};
-		});
-		
-		// Get invoice names for all invoices
-		let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
-		
-		// Get available balances for all invoices
-		frappe.call({
-			method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
-			args: {
-				invoices: invoice_names
-			},
-			callback: function(balance_result) {
-				let balance_data = balance_result.message || {};
+			// First prepare basic invoice data
+			dialog.invoices_data = all_invoices.map(inv => {
+				// Check if this invoice was previously selected
+				let was_selected = dialog.selected_invoices.has(inv.name);
 				
-				// Update each invoice with claimable amount based on available balances
-				dialog.invoices_data.forEach(inv => {
-					let invoice_balance_data = balance_data[inv.invoice] || {};
-					let claimable_amount = 0;
+				return {
+					'invoice': inv.name,
+					'invoice_date': inv.posting_date,
+					'project': inv.custom_for_project || '',
+					'project_contractor': project_contractor, // Use the selected project contractor
+					'status': inv.status,
+					'due_date': inv.due_date,
+					'total': inv.grand_total,
+					'outstanding': inv.outstanding_amount,
+					'claim_amount': 0, // Initialize with 0 instead of outstanding amount
+					'select': was_selected ? 1 : 0 // Maintain selection state
+				};
+			});
+			
+			// Get invoice names for all invoices
+			let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
+			
+			// Get available balances for all invoices
+			frappe.call({
+				method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+				args: {
+					invoices: invoice_names
+				},
+				callback: function(balance_result) {
+					let balance_data = balance_result.message || {};
 					
-					// Sum available balances for all items in this invoice
-					Object.keys(invoice_balance_data).forEach(item_code => {
-						claimable_amount += invoice_balance_data[item_code].available_balance || 0;
+					// Update each invoice with claimable amount based on available balances
+					dialog.invoices_data.forEach(inv => {
+						let invoice_balance_data = balance_data[inv.invoice] || {};
+						let claimable_amount = 0;
+						
+						// Sum available balances for all items in this invoice
+						Object.keys(invoice_balance_data).forEach(item_code => {
+							claimable_amount += invoice_balance_data[item_code].available_balance || 0;
+						});
+						
+						// Set claimable amount but keep claim amount at 0
+						inv.claimable_amount = claimable_amount;
 					});
 					
-					// Set claimable amount but keep claim amount at 0
-					inv.claimable_amount = claimable_amount;
-				});
-				
-				// Render the invoices table with updated data
-				render_invoices_table(dialog, dialog.invoices_data);
-				
-				// Update the items preview for any selected invoices
-				update_items_preview(dialog);
-				
-				// Update the total claim amount
-				update_total_claim_amount(dialog);
-			}
-		});
+					// Render the invoices table with updated data
+					render_invoices_table(dialog, dialog.invoices_data);
+					
+					// Update the items preview for any selected invoices
+					update_items_preview(dialog);
+					
+					// Update the total claim amount
+					update_total_claim_amount(dialog);
+				}
+			});
+		} else {
+			console.log("No invoices found");
+			
+			dialog.invoices_data = [];
+			
+			// Show message if no invoices found
+			dialog.fields_dict.invoices_html.html(`
+				<div class="alert alert-warning my-4">
+					${__('No outstanding invoices found for this customer and project contractor')}
+				</div>
+			`);
+			
+			// Clear the totals
+			dialog.set_value('total_claim_amount', 0);
+		}
 	}
 	
-	// Start fetching the first page
-	fetchInvoicePage(0);
+	// Start fetching the first page of invoices
+	fetch_invoices_page(0, 200);
 }
 
 function render_invoices_table(dialog, invoices_data) {
@@ -437,7 +429,9 @@ function render_invoices_table(dialog, invoices_data) {
 		<div class="margin-top">
 			<div class="alert alert-info my-2">
 				${__('Found')} ${invoices_data.length} ${__('outstanding invoices - all automatically selected')}
-				${invoices_data.length > 20 ? `<br><strong>${__('Successfully fetched all')} ${invoices_data.length} ${__('invoices (not limited by Frappe pagination)')}</strong>` : ''}
+			</div>
+			<div class="text-muted small mb-2">
+				${__('Showing all')} ${invoices_data.length} ${__('invoices. There is no limit to how many invoices you can select.')}
 			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered">
@@ -548,63 +542,110 @@ function update_items_preview(dialog) {
 				`);
 			}
 			
-			// Fetch the missing invoices
-			frappe.call({
-				method: 'frappe.client.get_list',
-				args: {
-					doctype: 'Sales Invoice',
-					filters: {
-						'name': ['in', missing_invoice_names]
+			// Process missing invoices in chunks to avoid query limits
+			let all_missing_invoices = [];
+			let chunk_size = 50;
+			let chunks_loaded = 0;
+			let total_chunks = Math.ceil(missing_invoice_names.length / chunk_size);
+			
+			function process_chunk(start_idx) {
+				// Get chunk of invoice names
+				let end_idx = Math.min(start_idx + chunk_size, missing_invoice_names.length);
+				let chunk = missing_invoice_names.slice(start_idx, end_idx);
+				
+				// Fetch this chunk of invoices
+				frappe.call({
+					method: 'frappe.client.get_list',
+					args: {
+						doctype: 'Sales Invoice',
+						filters: {
+							'name': ['in', chunk]
+						},
+						fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount']
 					},
-					fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount']
-				},
-				callback: function(response) {
-					dialog.loading_missing_invoices = false;
-					
-					if (response.message && response.message.length > 0) {
-						// Create invoice objects for the missing invoices
-						let missing_invoices = response.message.map(inv => {
-							// Important: For invoices from different project contractors, we need to preserve
-							// the original project contractors in the data
-							return {
-								'invoice': inv.name,
-								'invoice_date': inv.posting_date,
-								'project': inv.custom_for_project || '',
-								'project_contractor': inv.custom_for_project || '', // This is the correct project contractor
-								'status': inv.status,
-								'due_date': inv.due_date,
-								'total': inv.grand_total,
-								'outstanding': inv.outstanding_amount,
-								'claim_amount': 0, // Will be updated later from stored data
-								'select': 1, // These are definitely selected
-								'claimable_amount': 0 // Will be updated with balances
-							};
-						});
+					callback: function(response) {
+						chunks_loaded++;
 						
-						// Collect project contractors from missing invoices
-						let project_contractors_from_missing = missing_invoices
-							.map(inv => inv.project_contractor)
-							.filter(Boolean);
+						if (response.message && response.message.length > 0) {
+							// Add this chunk to our collection
+							all_missing_invoices = all_missing_invoices.concat(response.message);
+							
+							// If there are more chunks to process, continue
+							if (end_idx < missing_invoice_names.length) {
+								process_chunk(end_idx);
+							} else {
+								// All chunks processed, finalize
+								finish_loading_missing_invoices();
+							}
+						} else {
+							// No invoices in this chunk
+							if (chunks_loaded === total_chunks) {
+								// All chunks processed, finalize
+								finish_loading_missing_invoices();
+							} else if (end_idx < missing_invoice_names.length) {
+								// Continue with next chunk
+								process_chunk(end_idx);
+							}
+						}
+					},
+					error: function(err) {
+						console.error(`Error fetching invoice chunk: ${err}`);
+						chunks_loaded++;
 						
-						// Store them in the dialog object for later use
-						dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
-						
-						// Log the project contractors from missing invoices
-						console.log("Project contractors from missing invoices:", project_contractors_from_missing);
-						
-						// Add these to our selection and continue loading
-						selected_invoices = selected_invoices.concat(missing_invoices);
-						load_invoice_items(selected_invoices);
-					} else {
-						// If we couldn't find the invoices, just use what we have
-						load_invoice_items(selected_invoices);
+						// Continue with next chunk if there are more
+						if (end_idx < missing_invoice_names.length) {
+							process_chunk(end_idx);
+						} else if (chunks_loaded === total_chunks) {
+							// All chunks processed, finalize with whatever we have
+							finish_loading_missing_invoices();
+						}
 					}
-				},
-				error: function() {
-					dialog.loading_missing_invoices = false;
-					load_invoice_items(selected_invoices);
+				});
+			}
+			
+			function finish_loading_missing_invoices() {
+				dialog.loading_missing_invoices = false;
+				
+				if (all_missing_invoices.length > 0) {
+					console.log(`Loaded ${all_missing_invoices.length} missing invoices from ${missing_invoice_names.length} requested`);
+					
+					// Create invoice objects for the missing invoices
+					let missing_invoices = all_missing_invoices.map(inv => {
+						// Important: For invoices from different project contractors, we need to preserve
+						// the original project contractors in the data
+						return {
+							'invoice': inv.name,
+							'invoice_date': inv.posting_date,
+							'project': inv.custom_for_project || '',
+							'project_contractor': inv.custom_for_project || '', // This is the correct project contractor
+							'status': inv.status,
+							'due_date': inv.due_date,
+							'total': inv.grand_total,
+							'outstanding': inv.outstanding_amount,
+							'claim_amount': 0, // Will be updated later from stored data
+							'select': 1, // These are definitely selected
+							'claimable_amount': 0 // Will be updated with balances
+						};
+					});
+					
+					// Collect project contractors from missing invoices
+					let project_contractors_from_missing = missing_invoices
+						.map(inv => inv.project_contractor)
+						.filter(Boolean);
+					
+					// Store them in the dialog object for later use
+					dialog.project_contractors_from_missing_invoices = project_contractors_from_missing;
+					
+					// Add these to our selection and continue loading
+					selected_invoices = selected_invoices.concat(missing_invoices);
 				}
-			});
+				
+				// Continue with whatever invoices we have
+				load_invoice_items(selected_invoices);
+			}
+			
+			// Start processing the first chunk
+			process_chunk(0);
 			return;
 		}
 	}
@@ -930,8 +971,7 @@ function update_items_preview(dialog) {
 									item_name: item.item_name,
 									amount: item.amount,
 									income_account: item.income_account,
-									custom_default_earning_account: item.custom_default_earning_account,
-									claim_amount: 0 // Initialize with 0
+									custom_default_earning_account: item.custom_default_earning_account
 								});
 							});
 						}

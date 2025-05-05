@@ -277,100 +277,146 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 		</div>
 	`);
 	
-	// Get customer's outstanding invoices filtered by project contractor using the custom method
-	frappe.call({
-		method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_customer_invoices_for_project_contractor',
-		args: {
-			customer: customer,
-			project_contractor: project_contractor
-		},
-		callback: function(response) {
-			console.log("API response:", response);
-			
-			if (response.message && response.message.length > 0) {
-				console.log("Found invoices:", response.message.length);
-				
-				// First prepare basic invoice data
-				dialog.invoices_data = response.message.map(inv => {
-					// Check if this invoice was previously selected
-					let was_selected = dialog.selected_invoices.has(inv.name);
+	// Initialize allInvoices array to collect all pages of results
+	let allInvoices = [];
+	
+	// Function to fetch invoices with pagination
+	function fetchInvoicePage(start = 0) {
+		frappe.call({
+			method: 'frappe.client.get_list',
+			args: {
+				doctype: 'Sales Invoice',
+				filters: {
+					'customer': customer,
+					'custom_for_project': project_contractor,
+					'docstatus': 1,
+					'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
+					'outstanding_amount': ['>', 0]
+				},
+				fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
+				order_by: 'posting_date desc',
+				limit_start: start,
+				limit_page_length: 20 // Use standard page length
+			},
+			callback: function(response) {
+				if (response.message && response.message.length > 0) {
+					// Append new batch of invoices to our collection
+					allInvoices = allInvoices.concat(response.message);
+					console.log(`Fetched batch of ${response.message.length} invoices, total so far: ${allInvoices.length}`);
 					
-					return {
-						'invoice': inv.name,
-						'invoice_date': inv.posting_date,
-						'project': inv.custom_for_project || '',
-						'project_contractor': project_contractor, // Use the selected project contractor
-						'status': inv.status,
-						'due_date': inv.due_date,
-						'total': inv.grand_total,
-						'outstanding': inv.outstanding_amount,
-						'claim_amount': 0, // Initialize with 0 instead of outstanding amount
-						'select': was_selected ? 1 : 0 // Maintain selection state
-					};
-				});
-				
-				// Get invoice names for all invoices
-				let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
-				
-				
-				// Get available balances for all invoices
-				frappe.call({
-					method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
-					args: {
-						invoices: invoice_names
-					},
-					callback: function(balance_result) {
-						let balance_data = balance_result.message || {};
+					// Check if we got a full page (indicating there might be more)
+					if (response.message.length === 20) {
+						// Update loading message to show progress
+						dialog.fields_dict.invoices_html.html(`
+							<div class="text-center my-4">
+								<i class="fa fa-spinner fa-spin fa-2x"></i>
+								<p>${__('Fetching invoices...')} (${allInvoices.length} ${__('found so far')})</p>
+							</div>
+						`);
 						
-						// Update each invoice with claimable amount based on available balances
-						dialog.invoices_data.forEach(inv => {
-							let invoice_balance_data = balance_data[inv.invoice] || {};
-							let claimable_amount = 0;
-							
-							// Sum available balances for all items in this invoice
-							Object.keys(invoice_balance_data).forEach(item_code => {
-								claimable_amount += invoice_balance_data[item_code].available_balance || 0;
-							});
-							
-							// Set claimable amount but keep claim amount at 0
-							inv.claimable_amount = claimable_amount;
-						});
-						
-						// Render the invoices table with updated data
-						render_invoices_table(dialog, dialog.invoices_data);
-						
-						// Update the items preview for any selected invoices
-						update_items_preview(dialog);
-						
-						// Update the total claim amount
-						update_total_claim_amount(dialog);
+						// Fetch next page
+						fetchInvoicePage(start + 20);
+					} else {
+						// We've reached the end, process all invoices
+						processAllInvoices(allInvoices);
 					}
-				});
-			} else {
-				console.log("No invoices found");
-				
-				dialog.invoices_data = [];
-				
-				// Show message if no invoices found
+				} else {
+					// No invoices in this batch
+					if (allInvoices.length === 0) {
+						// No invoices found at all
+						console.log("No invoices found");
+						
+						dialog.invoices_data = [];
+						
+						// Show message if no invoices found
+						dialog.fields_dict.invoices_html.html(`
+							<div class="alert alert-warning my-4">
+								${__('No outstanding invoices found for this customer and project contractor')}
+							</div>
+						`);
+						
+						// Clear the totals
+						dialog.set_value('total_claim_amount', 0);
+					} else {
+						// We've reached the end with some invoices, process them
+						processAllInvoices(allInvoices);
+					}
+				}
+			},
+			error: function(err) {
+				console.error("Error fetching invoices:", err);
 				dialog.fields_dict.invoices_html.html(`
-					<div class="alert alert-warning my-4">
-						${__('No outstanding invoices found for this customer and project contractor')}
+					<div class="alert alert-danger my-4">
+						${__('Error fetching invoices. Please check console for details.')}
 					</div>
 				`);
-				
-				// Clear the totals
-				dialog.set_value('total_claim_amount', 0);
 			}
-		},
-		error: function(err) {
-			console.error("Error fetching invoices:", err);
-			dialog.fields_dict.invoices_html.html(`
-				<div class="alert alert-danger my-4">
-					${__('Error fetching invoices. Please check console for details.')}
-				</div>
-			`);
-		}
-	});
+		});
+	}
+	
+	// Function to process all collected invoices
+	function processAllInvoices(invoices) {
+		console.log("Processing all invoices, total count:", invoices.length);
+		
+		// First prepare basic invoice data
+		dialog.invoices_data = invoices.map(inv => {
+			// Check if this invoice was previously selected
+			let was_selected = dialog.selected_invoices.has(inv.name);
+			
+			return {
+				'invoice': inv.name,
+				'invoice_date': inv.posting_date,
+				'project': inv.custom_for_project || '',
+				'project_contractor': project_contractor, // Use the selected project contractor
+				'status': inv.status,
+				'due_date': inv.due_date,
+				'total': inv.grand_total,
+				'outstanding': inv.outstanding_amount,
+				'claim_amount': 0, // Initialize with 0 instead of outstanding amount
+				'select': was_selected ? 1 : 0 // Maintain selection state
+			};
+		});
+		
+		// Get invoice names for all invoices
+		let invoice_names = dialog.invoices_data.map(inv => inv.invoice);
+		
+		// Get available balances for all invoices
+		frappe.call({
+			method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+			args: {
+				invoices: invoice_names
+			},
+			callback: function(balance_result) {
+				let balance_data = balance_result.message || {};
+				
+				// Update each invoice with claimable amount based on available balances
+				dialog.invoices_data.forEach(inv => {
+					let invoice_balance_data = balance_data[inv.invoice] || {};
+					let claimable_amount = 0;
+					
+					// Sum available balances for all items in this invoice
+					Object.keys(invoice_balance_data).forEach(item_code => {
+						claimable_amount += invoice_balance_data[item_code].available_balance || 0;
+					});
+					
+					// Set claimable amount but keep claim amount at 0
+					inv.claimable_amount = claimable_amount;
+				});
+				
+				// Render the invoices table with updated data
+				render_invoices_table(dialog, dialog.invoices_data);
+				
+				// Update the items preview for any selected invoices
+				update_items_preview(dialog);
+				
+				// Update the total claim amount
+				update_total_claim_amount(dialog);
+			}
+		});
+	}
+	
+	// Start fetching the first page
+	fetchInvoicePage(0);
 }
 
 function render_invoices_table(dialog, invoices_data) {
@@ -391,7 +437,7 @@ function render_invoices_table(dialog, invoices_data) {
 		<div class="margin-top">
 			<div class="alert alert-info my-2">
 				${__('Found')} ${invoices_data.length} ${__('outstanding invoices - all automatically selected')}
-				${invoices_data.length > 20 ? `<br><strong>${__('All')} ${invoices_data.length} ${__('invoices displayed (no longer limited to 20)')}</strong>` : ''}
+				${invoices_data.length > 20 ? `<br><strong>${__('Successfully fetched all')} ${invoices_data.length} ${__('invoices (not limited by Frappe pagination)')}</strong>` : ''}
 			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered">

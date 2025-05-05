@@ -1,6 +1,12 @@
 // Copyright (c) 2025, SVG and contributors
 // For license information, please see license.txt
 
+// Ensure flt function is available
+const flt = function(value, precision) {
+	precision = precision || frappe.defaults.get_default("float_precision") || 2;
+	return parseFloat(parseFloat(value).toFixed(precision));
+};
+
 frappe.ui.form.on("Orbit Claim", {
 	refresh: function(frm) {
 		// Update current balance in claim items
@@ -20,6 +26,65 @@ frappe.ui.form.on("Orbit Claim", {
 				show_bulk_invoice_dialog(frm);
 			}).addClass('btn-primary');
 		}
+		
+		// Set query filters for accounts
+		frm.set_query("receiving_account", function() {
+			return {
+				filters: {
+					company: frappe.defaults.get_user_default('company'),
+					is_group: 0,
+					account_type: ['in', ['Bank', 'Cash']]
+				}
+			};
+		});
+		
+		// Filter Tax Account based on company
+		frm.set_query("tax_account", function() {
+			return {
+				filters: {
+					company: frappe.defaults.get_user_default('company'),
+					is_group: 0,
+					account_type: "Tax"
+				}
+			};
+		});
+	},
+	
+	mode_of_payment: function(frm) {
+		if (frm.doc.mode_of_payment) {
+			// Fetch the Mode of Payment's accounts table
+			frappe.call({
+				method: 'frappe.client.get',
+				args: {
+					doctype: 'Mode of Payment',
+					name: frm.doc.mode_of_payment
+				},
+				callback: function(r) {
+					if (r.message && r.message.accounts && r.message.accounts.length > 0) {
+						// Since there's only one row, get the first account
+						const default_account = r.message.accounts[0].default_account;
+						if (default_account) {
+							frm.set_value('receiving_account', default_account);
+						}
+					}
+				}
+			});
+			
+			// Clear fields based on mode of payment change
+			if (frm.doc.mode_of_payment !== 'Bank Transfer Orbit (AED)') {
+				frm.set_value('reference_number', '');
+			}
+			
+			if (frm.doc.mode_of_payment !== 'Cheque') {
+				frm.set_value('due_date', '');
+				frm.set_value('cheque_number', '');
+				frm.set_value('bank_name', '');
+			}
+			
+			if (frm.doc.mode_of_payment !== 'Visa') {
+				frm.set_value('visa_number', '');
+			}
+		}
 	},
 	
 	reference_invoice: function(frm) {
@@ -32,6 +97,22 @@ frappe.ui.form.on("Orbit Claim", {
 					frm.refresh_field('claim_items');
 				}
 			});
+		}
+	},
+	
+	claim_amount: function(frm) {
+		if (frm.doc.claim_amount && frm.doc.outstanding_amount) {
+			if (flt(frm.doc.claim_amount) > flt(frm.doc.outstanding_amount)) {
+				frappe.msgprint(__('Claim Amount cannot be greater than Outstanding Amount'));
+				frm.set_value('claim_amount', '');
+				return;
+			}
+			
+			// Calculate tax amount (tax_ratio is percentage)
+			if (frm.doc.tax_ratio) {
+				const tax_amount = flt(frm.doc.claim_amount) * flt(frm.doc.tax_ratio) / 100;
+				frm.set_value('tax_amount', tax_amount);
+			}
 		}
 	}
 });

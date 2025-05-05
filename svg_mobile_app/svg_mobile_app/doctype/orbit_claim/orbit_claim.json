@@ -166,7 +166,6 @@
    "fieldtype": "Link",
    "label": "Receiving Account",
    "options": "Account",
-   "read_only": 1,
    "reqd": 1
   },
   {

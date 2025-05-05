@@ -889,3 +889,31 @@ def get_available_invoice_balances(invoices):
 				frappe.logger().info(f"Scaled {item_code} by {scale_factor}: new available={result[invoice][item_code]['available_balance']}")
 	
 	return result
+
+@frappe.whitelist()
+def get_customer_invoices_for_project_contractor(customer, project_contractor):
+	"""
+	Get all outstanding invoices for a customer and project contractor without pagination limits
+	"""
+	invoices = frappe.db.sql("""
+		SELECT 
+			name,
+			posting_date,
+			custom_for_project,
+			status,
+			due_date,
+			grand_total,
+			outstanding_amount
+		FROM 
+			`tabSales Invoice`
+		WHERE 
+			customer = %s
+			AND custom_for_project = %s
+			AND docstatus = 1
+			AND status IN ('Partly Paid', 'Unpaid', 'Overdue')
+			AND outstanding_amount > 0
+		ORDER BY 
+			posting_date DESC
+	""", (customer, project_contractor), as_dict=1)
+	
+	return invoices

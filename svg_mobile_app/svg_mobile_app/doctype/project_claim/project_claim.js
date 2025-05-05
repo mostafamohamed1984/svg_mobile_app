@@ -277,21 +277,12 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 		</div>
 	`);
 	
-	// Get customer's outstanding invoices filtered by project contractor
+	// Get customer's outstanding invoices filtered by project contractor using the custom method
 	frappe.call({
-		method: 'frappe.client.get_list',
+		method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_customer_invoices_for_project_contractor',
 		args: {
-			doctype: 'Sales Invoice',
-			filters: {
-				'customer': customer,
-				'custom_for_project': project_contractor,
-				'docstatus': 1,
-				'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
-				'outstanding_amount': ['>', 0]
-			},
-			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
-			order_by: 'posting_date desc',
-			limit_page_length: 100  // Increase from default 20 to 100
+			customer: customer,
+			project_contractor: project_contractor
 		},
 		callback: function(response) {
 			console.log("API response:", response);
@@ -400,6 +391,7 @@ function render_invoices_table(dialog, invoices_data) {
 		<div class="margin-top">
 			<div class="alert alert-info my-2">
 				${__('Found')} ${invoices_data.length} ${__('outstanding invoices - all automatically selected')}
+				${invoices_data.length > 20 ? `<br><strong>${__('All')} ${invoices_data.length} ${__('invoices displayed (no longer limited to 20)')}</strong>` : ''}
 			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered">

@@ -683,20 +683,6 @@ def get_available_invoice_balances(invoices):
 			
 	frappe.logger().debug(f"Getting balances for invoices: {invoices}")
 	
-	# Process invoices in chunks of 50 to avoid query limits
-	result = {}
-	chunk_size = 50
-	for i in range(0, len(invoices), chunk_size):
-		invoice_chunk = invoices[i:i+chunk_size]
-		chunk_result = _get_invoice_balances_for_chunk(invoice_chunk)
-		# Merge the chunk results into the main result
-		for invoice in chunk_result:
-			result[invoice] = chunk_result[invoice]
-	
-	return result
-
-def _get_invoice_balances_for_chunk(invoices):
-	"""Process a chunk of invoices to get their balances"""
 	# Get all items from these invoices
 	items_data = frappe.db.sql("""
 		SELECT 

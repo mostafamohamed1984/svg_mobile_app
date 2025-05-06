@@ -148,23 +148,11 @@ app_license = "mit"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"svg_mobile_app.tasks.all"
-# 	],
-# 	"daily": [
-# 		"svg_mobile_app.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"svg_mobile_app.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"svg_mobile_app.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"svg_mobile_app.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+    "daily": [
+        "svg_mobile_app.svg_mobile_app.doctype.issue_requirements_reminders.issue_requirements_reminders.process_scheduled_reminders"
+    ]
+}
 
 # Testing
 # -------

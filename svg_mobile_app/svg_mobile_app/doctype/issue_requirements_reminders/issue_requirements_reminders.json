@@ -1,0 +1,198 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:IRR-{####}",
+ "creation": "2025-03-15 13:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "reminder_title",
+  "enabled",
+  "section_break_when",
+  "remind_on",
+  "date_to_remind",
+  "column_break_4",
+  "frequency",
+  "repeat_reminder",
+  "next_date",
+  "section_break_who",
+  "reminder_role",
+  "column_break_9",
+  "send_to_email",
+  "section_break_what",
+  "content",
+  "column_break_13",
+  "reminder_status",
+  "section_break_logs",
+  "reminder_logs",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "reminder_title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Reminder Title",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enabled",
+   "reqd": 0
+  },
+  {
+   "fieldname": "section_break_when",
+   "fieldtype": "Section Break",
+   "label": "When to Remind"
+  },
+  {
+   "depends_on": "eval:doc.remind_on === 'Specific Date'",
+   "fieldname": "date_to_remind",
+   "fieldtype": "Date",
+   "label": "Date to Remind"
+  },
+  {
+   "fieldname": "reminder_role",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Reminder Role",
+   "options": "Role",
+   "reqd": 1
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Text Editor",
+   "label": "Content",
+   "reqd": 1
+  },
+  {
+   "default": "Daily",
+   "fieldname": "frequency",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Frequency",
+   "options": "Daily\nWeekly\nMonthly\nQuarterly\nYearly\nSpecific Date",
+   "reqd": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "repeat_reminder",
+   "fieldtype": "Check",
+   "label": "Repeat Reminder"
+  },
+  {
+   "default": "Active",
+   "fieldname": "reminder_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Active\nInactive\nCompleted"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Issue Requirements Reminders",
+   "print_hide": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_who",
+   "fieldtype": "Section Break",
+   "label": "Who to Remind"
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_what",
+   "fieldtype": "Section Break",
+   "label": "What to Remind"
+  },
+  {
+   "fieldname": "column_break_13",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "send_to_email",
+   "fieldtype": "Check",
+   "label": "Send to Email"
+  },
+  {
+   "depends_on": "eval:doc.repeat_reminder",
+   "fieldname": "next_date",
+   "fieldtype": "Date",
+   "label": "Next Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_logs",
+   "fieldtype": "Section Break",
+   "label": "Reminder Logs"
+  },
+  {
+   "fieldname": "reminder_logs",
+   "fieldtype": "Table",
+   "label": "Reminder Logs",
+   "options": "Issue Requirements Reminder Log"
+  },
+  {
+   "fieldname": "remind_on",
+   "fieldtype": "Select",
+   "label": "Remind On",
+   "options": "Frequency\nSpecific Date",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-03-15 13:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Issue Requirements Reminders",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "HR Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

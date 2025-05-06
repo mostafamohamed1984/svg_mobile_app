@@ -5,107 +5,105 @@ frappe.ui.form.on('Attendance Roles', {
             return;
         }
 
-        // Get company from session defaults
-        frappe.db.get_value('User', frappe.session.user, 'company', function(data) {
-            let company = data?.company || frappe.defaults.get_user_default('company');
-            
-            let filters = [
-                ['attendance_date', '>=', frm.doc.date_from],
-                ['attendance_date', '<=', frm.doc.date_to],
-                ['custom_deduction', '>', 0],
-                ['status', '=', 'Present'], // Filter for status = "Present"
-                ['shift', 'not like', '%Excuse%'] // Filter to exclude shifts containing "Excuse"
-            ];
-            
-            // Add company filter if available
-            if (company) {
-                filters.push(['company', '=', company]);
-            }
-            
-            frappe.call({
-                method: 'frappe.client.get_list',
-                args: {
-                    doctype: 'Attendance',
-                    filters: filters,
-                    fields: ['employee', 'employee_name', 'attendance_date', 'working_hours', 'custom_deduction', 'company'],
-                    order_by: 'employee, attendance_date asc'
-                },
-                callback: function (response) {
-                    if (response.message) {
-                        let attendance_data = response.message;
+        // Get company from session defaults only
+        let company = frappe.defaults.get_user_default('company');
+        
+        let filters = [
+            ['attendance_date', '>=', frm.doc.date_from],
+            ['attendance_date', '<=', frm.doc.date_to],
+            ['custom_deduction', '>', 0],
+            ['status', '=', 'Present'], // Filter for status = "Present"
+            ['shift', 'not like', '%Excuse%'] // Filter to exclude shifts containing "Excuse"
+        ];
+        
+        // Add company filter if available
+        if (company) {
+            filters.push(['company', '=', company]);
+        }
+        
+        frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Attendance',
+                filters: filters,
+                fields: ['employee', 'employee_name', 'attendance_date', 'working_hours', 'custom_deduction', 'company'],
+                order_by: 'employee, attendance_date asc'
+            },
+            callback: function (response) {
+                if (response.message) {
+                    let attendance_data = response.message;
 
-                        // Clear existing rows in the Attendance Log table
-                        frm.clear_table('attendance_log');
+                    // Clear existing rows in the Attendance Log table
+                    frm.clear_table('attendance_log');
 
-                        // Track late hour occurrences for each employee in company "Egypt"
-                        let employee_late_count_egypt = {
-                            "0_0.5": {},
-                            "0.5_1": {}
-                        };
+                    // Track late hour occurrences for each employee in company "Egypt"
+                    let employee_late_count_egypt = {
+                        "0_0.5": {},
+                        "0.5_1": {}
+                    };
 
-                        // Add rows to the Attendance Log table
-                        attendance_data.forEach(row => {
-                            let new_row = frm.add_child('attendance_log');
-                            new_row.employee = row.employee;
-                            new_row.name1 = row.employee_name;
-                            new_row.day = row.attendance_date;
-                            new_row.working_hours = row.working_hours;
-                            new_row.late_hours = row.custom_deduction;
-                            new_row.company = row.company;
+                    // Add rows to the Attendance Log table
+                    attendance_data.forEach(row => {
+                        let new_row = frm.add_child('attendance_log');
+                        new_row.employee = row.employee;
+                        new_row.name1 = row.employee_name;
+                        new_row.day = row.attendance_date;
+                        new_row.working_hours = row.working_hours;
+                        new_row.late_hours = row.custom_deduction;
+                        new_row.company = row.company;
 
-                            // Deduction calculation logic
-                            let deduction = 0;
+                        // Deduction calculation logic
+                        let deduction = 0;
 
-                            if (row.company === 'Egypt') {
-                                if (row.custom_deduction > 0 && row.custom_deduction <= 0.5) {
-                                    if (!employee_late_count_egypt["0_0.5"][row.employee]) {
-                                        employee_late_count_egypt["0_0.5"][row.employee] = 0;
-                                    }
-                                    employee_late_count_egypt["0_0.5"][row.employee] += 1;
-                                    let occurrence = employee_late_count_egypt["0_0.5"][row.employee];
-
-                                    if (occurrence === 1) deduction = 0.25;
-                                    else if (occurrence === 2) deduction = 0.5;
-                                    else if (occurrence === 3) deduction = 1;
-                                    else deduction = 2;
-
-                                } else if (row.custom_deduction > 0.5 && row.custom_deduction <= 1) {
-                                    if (!employee_late_count_egypt["0.5_1"][row.employee]) {
-                                        employee_late_count_egypt["0.5_1"][row.employee] = 0;
-                                    }
-                                    employee_late_count_egypt["0.5_1"][row.employee] += 1;
-                                    let occurrence = employee_late_count_egypt["0.5_1"][row.employee];
-
-                                    if (occurrence === 1) deduction = 0.5;
-                                    else if (occurrence === 2) deduction = 1;
-                                    else if (occurrence === 3) deduction = 2;
-                                    else deduction = 3;
+                        if (row.company === 'Egypt') {
+                            if (row.custom_deduction > 0 && row.custom_deduction <= 0.5) {
+                                if (!employee_late_count_egypt["0_0.5"][row.employee]) {
+                                    employee_late_count_egypt["0_0.5"][row.employee] = 0;
                                 }
-                            } else if (row.company === 'SHJ') {
-                                // Rules for "SHJ" company
-                                if (row.custom_deduction > 0.26 && row.custom_deduction <= 0.5) {
-                                    deduction = 0.25;
-                                } else if (row.custom_deduction > 0.5 && row.custom_deduction <= 1) {
-                                    deduction = 0.5;
-                                } else if (row.custom_deduction > 1 && row.custom_deduction <= 1.5) {
-                                    deduction = 0.75;
-                                } else if (row.custom_deduction > 1.5) {
-                                    deduction = 1;
+                                employee_late_count_egypt["0_0.5"][row.employee] += 1;
+                                let occurrence = employee_late_count_egypt["0_0.5"][row.employee];
+
+                                if (occurrence === 1) deduction = 0.25;
+                                else if (occurrence === 2) deduction = 0.5;
+                                else if (occurrence === 3) deduction = 1;
+                                else deduction = 2;
+
+                            } else if (row.custom_deduction > 0.5 && row.custom_deduction <= 1) {
+                                if (!employee_late_count_egypt["0.5_1"][row.employee]) {
+                                    employee_late_count_egypt["0.5_1"][row.employee] = 0;
                                 }
+                                employee_late_count_egypt["0.5_1"][row.employee] += 1;
+                                let occurrence = employee_late_count_egypt["0.5_1"][row.employee];
+
+                                if (occurrence === 1) deduction = 0.5;
+                                else if (occurrence === 2) deduction = 1;
+                                else if (occurrence === 3) deduction = 2;
+                                else deduction = 3;
                             }
+                        } else if (row.company === 'SHJ') {
+                            // Rules for "SHJ" company
+                            if (row.custom_deduction > 0.26 && row.custom_deduction <= 0.5) {
+                                deduction = 0.25;
+                            } else if (row.custom_deduction > 0.5 && row.custom_deduction <= 1) {
+                                deduction = 0.5;
+                            } else if (row.custom_deduction > 1 && row.custom_deduction <= 1.5) {
+                                deduction = 0.75;
+                            } else if (row.custom_deduction > 1.5) {
+                                deduction = 1;
+                            }
+                        }
 
-                            new_row.deduction = deduction;
-                        });
+                        new_row.deduction = deduction;
+                    });
 
-                        // Refresh the table
-                        frm.refresh_field('attendance_log');
+                    // Refresh the table
+                    frm.refresh_field('attendance_log');
 
-                        frappe.msgprint(__('Attendance data fetched and populated successfully.'));
-                    } else {
-                        frappe.msgprint(__('No attendance records found for the selected date range and criteria.'));
-                    }
+                    frappe.msgprint(__('Attendance data fetched and populated successfully.'));
+                } else {
+                    frappe.msgprint(__('No attendance records found for the selected date range and criteria.'));
                 }
-            });
+            }
         });
     },
 
@@ -115,85 +113,83 @@ frappe.ui.form.on('Attendance Roles', {
             return;
         }
 
-        // Get company from session defaults
-        frappe.db.get_value('User', frappe.session.user, 'company', function(data) {
-            let company = data?.company || frappe.defaults.get_user_default('company');
-            
-            let filters = [
-                ['attendance_date', '>=', frm.doc.date_from],
-                ['attendance_date', '<=', frm.doc.date_to],
-                ['shift', '=', 'Egy Excuse']
-            ];
-            
-            // Add company filter if available
-            if (company) {
-                filters.push(['company', '=', company]);
-            }
-            
-            frappe.call({
-                method: 'frappe.client.get_list',
-                args: {
-                    doctype: 'Attendance',
-                    filters: filters,
-                    fields: ['employee', 'employee_name', 'attendance_date', 'working_hours', 'company', 'custom_shift_hours'],
-                    order_by: 'employee, attendance_date asc'
-                },
-                callback: function (attendance_response) {
-                    if (!attendance_response.message || attendance_response.message.length === 0) {
-                        frappe.msgprint(__('No Excuses records found for the selected date range and criteria.'));
-                        return;
-                    }
-
-                    let attendance_data = attendance_response.message;
-                    let employees_dates = attendance_data.map(row => ({
-                        employee: row.employee,
-                        attendance_date: row.attendance_date
-                    }));
-
-                    // Fetch Shift Request Data
-                    frappe.call({
-                        method: 'frappe.client.get_list',
-                        args: {
-                            doctype: 'Shift Request',
-                            filters: employees_dates.flatMap(ed => [
-                                ['employee', '=', ed.employee],
-                                ['from_date', '=', ed.attendance_date]
-                            ]),
-                            fields: ['employee', 'from_date', 'custom_excuse_hours']
-                        },
-                        callback: function (shift_request_response) {
-                            let shift_request_data = shift_request_response.message || [];
-
-                            // Create a lookup for Shift Request data
-                            let shift_lookup = {};
-                            shift_request_data.forEach(sr => {
-                                shift_lookup[`${sr.employee}_${sr.from_date}`] = sr.custom_excuse_hours || 0;
-                            });
-
-                            frm.clear_table('excuses_log');
-
-                            attendance_data.forEach(row => {
-                                let new_row = frm.add_child('excuses_log');
-                                new_row.employee = row.employee;
-                                new_row.name1 = row.employee_name;
-                                new_row.day = row.attendance_date;
-                                new_row.requested_hours = shift_lookup[`${row.employee}_${row.attendance_date}`] || 0;
-                                new_row.working_hours = row.working_hours;
-                                new_row.company = row.company;
-
-                                let shift_hours = (row.custom_shift_hours || 0) - new_row.requested_hours;
-                                let difference = shift_hours - (row.working_hours || 0);
-
-                                new_row.shift_hours = shift_hours;
-                                new_row.difference = difference;
-                            });
-
-                            frm.refresh_field('excuses_log');
-                            frappe.msgprint(__('Excuses data fetched and populated successfully.'));
-                        }
-                    });
+        // Get company from session defaults only
+        let company = frappe.defaults.get_user_default('company');
+        
+        let filters = [
+            ['attendance_date', '>=', frm.doc.date_from],
+            ['attendance_date', '<=', frm.doc.date_to],
+            ['shift', '=', 'Egy Excuse']
+        ];
+        
+        // Add company filter if available
+        if (company) {
+            filters.push(['company', '=', company]);
+        }
+        
+        frappe.call({
+            method: 'frappe.client.get_list',
+            args: {
+                doctype: 'Attendance',
+                filters: filters,
+                fields: ['employee', 'employee_name', 'attendance_date', 'working_hours', 'company', 'custom_shift_hours'],
+                order_by: 'employee, attendance_date asc'
+            },
+            callback: function (attendance_response) {
+                if (!attendance_response.message || attendance_response.message.length === 0) {
+                    frappe.msgprint(__('No Excuses records found for the selected date range and criteria.'));
+                    return;
                 }
-            });
+
+                let attendance_data = attendance_response.message;
+                let employees_dates = attendance_data.map(row => ({
+                    employee: row.employee,
+                    attendance_date: row.attendance_date
+                }));
+
+                // Fetch Shift Request Data
+                frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Shift Request',
+                        filters: employees_dates.flatMap(ed => [
+                            ['employee', '=', ed.employee],
+                            ['from_date', '=', ed.attendance_date]
+                        ]),
+                        fields: ['employee', 'from_date', 'custom_excuse_hours']
+                    },
+                    callback: function (shift_request_response) {
+                        let shift_request_data = shift_request_response.message || [];
+
+                        // Create a lookup for Shift Request data
+                        let shift_lookup = {};
+                        shift_request_data.forEach(sr => {
+                            shift_lookup[`${sr.employee}_${sr.from_date}`] = sr.custom_excuse_hours || 0;
+                        });
+
+                        frm.clear_table('excuses_log');
+
+                        attendance_data.forEach(row => {
+                            let new_row = frm.add_child('excuses_log');
+                            new_row.employee = row.employee;
+                            new_row.name1 = row.employee_name;
+                            new_row.day = row.attendance_date;
+                            new_row.requested_hours = shift_lookup[`${row.employee}_${row.attendance_date}`] || 0;
+                            new_row.working_hours = row.working_hours;
+                            new_row.company = row.company;
+
+                            let shift_hours = (row.custom_shift_hours || 0) - new_row.requested_hours;
+                            let difference = shift_hours - (row.working_hours || 0);
+
+                            new_row.shift_hours = shift_hours;
+                            new_row.difference = difference;
+                        });
+
+                        frm.refresh_field('excuses_log');
+                        frappe.msgprint(__('Excuses data fetched and populated successfully.'));
+                    }
+                });
+            }
         });
     },
 

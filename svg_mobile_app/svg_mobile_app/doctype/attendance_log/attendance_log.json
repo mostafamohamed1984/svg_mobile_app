@@ -12,7 +12,7 @@
   "working_hours",
   "late_hours",
   "deduction",
-  "branch"
+  "company"
  ],
  "fields": [
   {
@@ -53,10 +53,10 @@
    "label": "Deduction"
   },
   {
-   "fieldname": "branch",
+   "fieldname": "company",
    "fieldtype": "Link",
-   "label": "Branch",
-   "options": "Branch"
+   "label": "Company",
+   "options": "Company"
   }
  ],
  "index_web_pages_for_search": 1,

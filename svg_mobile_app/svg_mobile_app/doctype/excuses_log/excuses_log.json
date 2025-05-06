@@ -14,7 +14,7 @@
   "working_hours",
   "difference",
   "deduction",
-  "branch"
+  "company"
  ],
  "fields": [
   {
@@ -49,11 +49,11 @@
    "label": "Deduction"
   },
   {
-   "fieldname": "branch",
+   "fieldname": "company",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Branch",
-   "options": "Branch"
+   "label": "Company",
+   "options": "Company"
   },
   {
    "fieldname": "requested_hours",

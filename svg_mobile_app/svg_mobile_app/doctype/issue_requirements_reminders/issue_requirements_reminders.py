@@ -4,6 +4,7 @@
 import frappe
 from frappe.model.document import Document
 from frappe.utils import getdate, add_days, add_months, add_to_date, nowdate, now_datetime
+from frappe.utils.file_manager import save_file
 import datetime
 
 
@@ -15,6 +16,7 @@ class IssueRequirementsReminders(Document):
         if self.reminder_status == "Active" and self.enabled:
             self.schedule_reminder()
     
+    @frappe.whitelist()
     def set_next_date(self):
         """Set the next date for the reminder based on frequency"""
         if self.remind_on == "Specific Date":
@@ -62,6 +64,7 @@ class IssueRequirementsReminders(Document):
             else:
                 self.next_date = datetime.date(today.year + 1, 1, 1)
     
+    @frappe.whitelist()
     def schedule_reminder(self):
         """Schedule the reminder to be processed by background job"""
         if not self.enabled:
@@ -99,6 +102,7 @@ class IssueRequirementsReminders(Document):
                 queue="long"
             )
     
+    @frappe.whitelist()
     def set_next_reminder_date(self):
         """Update next_date field based on frequency for repeating reminders"""
         current_date = getdate(self.next_date)
@@ -117,6 +121,7 @@ class IssueRequirementsReminders(Document):
             # For specific date, don't repeat if it's not repeating
             pass
     
+    @frappe.whitelist()
     def process_reminder(self):
         """Process the reminder by sending notifications and emails"""
         if not self.enabled:
@@ -210,6 +215,7 @@ class IssueRequirementsReminders(Document):
         return frappe.db.get_value("User", user, "email")
 
 
+@frappe.whitelist()
 def process_scheduled_reminders(reminder_id=None, scheduled_date=None):
     """Process scheduled reminders - can be called via scheduler or directly"""
     filters = {"docstatus": 1, "reminder_status": "Active", "enabled": 1}

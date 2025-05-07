@@ -32,6 +32,7 @@
   "date",
   "deal_type",
   "column_break_mg8t",
+  "sketch_number",
   "lead_source",
   "sub_lead_source",
   "stage",
@@ -92,6 +93,11 @@
    "fieldtype": "Select",
    "label": "Deal Type",
    "options": "\nDiscount\ncommission"
+  },
+  {
+   "fieldname": "sketch_number",
+   "fieldtype": "Int",
+   "label": "Sketch Number"
   },
   {
    "fieldname": "client_details_section",

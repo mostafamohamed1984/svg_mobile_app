@@ -206,7 +206,7 @@
   {
    "fieldname": "items_tab",
    "fieldtype": "Tab Break",
-   "label": "Items"
+   "label": "Requirements"
   },
   {
    "fieldname": "items",

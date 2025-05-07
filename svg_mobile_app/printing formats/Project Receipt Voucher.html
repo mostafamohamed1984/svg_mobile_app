@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Voucher</title>
+    <title>Receipt Voucher</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -235,7 +235,7 @@
                 <div class="stamp-container">
                     {% set receiver_signature = frappe.get_doc("visual Identity", doc.receiver) %}
                     <img src="{{ receiver_signature.image }}" alt="Stamp" class="stamp-image" />
-                    <div class="stamp-serial">OR{{year}}{{third}}</div>
+                    <div class="stamp-serial">RV{{year}}{{third}}</div>
                 </div>
             </div>
             
@@ -446,7 +446,7 @@
                 <div class="stamp-container">
                     {% set receiver_signature = frappe.get_doc("visual Identity", doc.receiver) %}
                     <img src="{{ receiver_signature.image }}" alt="Stamp" class="stamp-image" />
-                    <div class="stamp-serial">IN{{year}}{{third}}</div>
+                    <div class="stamp-serial">RV{{year}}{{third}}</div>
                 </div>
             </div>
             

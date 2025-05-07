@@ -55,7 +55,8 @@
   "project_status",
   "priority",
   "items_tab",
-  "items",
+  "sketch_requirements",
+  "sketch_engineering_tasks",
   "follow_up_tab",
   "follow_up_html",
   "sketch_follow_up",
@@ -209,10 +210,16 @@
    "label": "Requirements"
   },
   {
-   "fieldname": "items",
+   "fieldname": "sketch_requirements",
    "fieldtype": "Table",
-   "label": "Items",
-   "options": "Opportunity Item"
+   "label": "Requirements",
+   "options": "Sketch Requirements"
+  },
+  {
+   "fieldname": "sketch_engineering_tasks",
+   "fieldtype": "Table",
+   "label": "Engineering Tasks",
+   "options": "Sketch Engineering Tasks"
   },
   {
    "fieldname": "column_break_mg8t",

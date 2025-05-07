@@ -128,8 +128,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Created By",
-   "options": "User",
-   "read_only": 1
+   "options": "User"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -140,7 +139,7 @@
    "link_fieldname": "custom_for_project"
   }
  ],
- "modified": "2025-04-09 13:49:34.956038",
+ "modified": "2025-04-29 20:13:02.219059",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",

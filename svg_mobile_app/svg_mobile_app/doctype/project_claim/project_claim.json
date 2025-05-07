@@ -98,11 +98,11 @@
    "reqd": 1
   },
   {
+   "description": "Additional invoices included in this bulk claim",
    "fieldname": "invoice_references",
    "fieldtype": "Small Text",
    "label": "Additional Invoice References",
-   "read_only": 1,
-   "description": "Additional invoices included in this bulk claim"
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -224,11 +224,11 @@
    "read_only": 1
   },
   {
+   "description": "All projects associated with this bulk claim",
    "fieldname": "project_references",
    "fieldtype": "Small Text",
    "label": "All Projects",
-   "read_only": 1,
-   "description": "All projects associated with this bulk claim"
+   "read_only": 1
   },
   {
    "default": "Today",
@@ -266,8 +266,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Created By",
-   "options": "User",
-   "read_only": 1
+   "options": "User"
   },
   {
    "fieldname": "signatures_section",
@@ -320,7 +319,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-04-16 02:13:19.572714",
+ "modified": "2025-04-29 22:05:39.660844",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Claim",

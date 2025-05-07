@@ -19,6 +19,7 @@
    "label": "Quotation"
   }
  ],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:[naming_series]",
  "creation": "2025-03-10 01:16:19.251089",
@@ -279,7 +280,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-04-15 02:55:13.397998",
+ "modified": "2025-04-27 15:02:09.960590",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Sketch",

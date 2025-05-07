@@ -23,3 +23,13 @@ function setup_item_filter(frm) {
         };
     };
 }
+
+// Format link titles for Project Contractors fields
+frappe.form.link_formatters['Project Contractors'] = function(value, doc) {
+    if(doc && doc.project_name && doc.customer_name) {
+        return value + '<br><span class="text-muted small">' + doc.project_name + ' - ' + doc.customer_name + '</span>';
+    } else if(doc && doc.project_name) {
+        return value + '<br><span class="text-muted small">' + doc.project_name + '</span>';
+    }
+    return value;
+};

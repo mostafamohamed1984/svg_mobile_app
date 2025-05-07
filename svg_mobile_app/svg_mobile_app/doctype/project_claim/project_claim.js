@@ -71,18 +71,6 @@ function show_bulk_invoice_dialog(frm) {
 					return {
 						filters: {
 							'customer': dialog.get_value('customer')
-						},
-						template: function(data) {
-							return `
-								<div class="list-item">
-									<div class="list-item__content">
-										<div class="list-item__title">${data.name}</div>
-										<div class="list-item__subtitle text-muted small">
-											${data.project_name || ''} ${data.customer_name ? ' - ' + data.customer_name : ''}
-										</div>
-									</div>
-								</div>
-							`;
 						}
 					};
 				},

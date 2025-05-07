@@ -243,7 +243,7 @@
   },
   {
    "fieldname": "last_update",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Last Update"
   },
   {
@@ -316,12 +316,12 @@
   },
   {
    "fieldname": "date_of_receipt_of_completion_certificate",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Date of receipt of completion certificate"
   },
   {
    "fieldname": "construction_permit_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Construction permit date"
   },
   {
@@ -336,7 +336,7 @@
   },
   {
    "fieldname": "revision_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Revision date"
   },
   {
@@ -505,9 +505,10 @@
    "label": "no. of studio"
   }
  ],
+ "image_field": "3d_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-17 14:08:24.935225",
+ "modified": "2025-05-07 14:08:48.316768",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Projects Collection",

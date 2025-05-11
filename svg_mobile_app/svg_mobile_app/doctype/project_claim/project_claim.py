@@ -513,12 +513,18 @@ class ProjectClaim(Document):
 		je.company = frappe.defaults.get_defaults().company
 		
 		# Add entry for receiving account (credit) - total claim amount
-		je.append("accounts", {
+		account_entry = {
 			"account": self.receiving_account,
-			"credit_in_account_currency": self.claim_amount,
-			"party_type": "Customer",
-			"party": self.customer
-		})
+			"credit_in_account_currency": self.claim_amount
+		}
+		
+		# Only add party if the account is a receivable account
+		account_type = frappe.db.get_value("Account", self.receiving_account, "account_type")
+		if account_type in ["Receivable", "Payable"]:
+			account_entry["party_type"] = "Customer"
+			account_entry["party"] = self.customer
+			
+		je.append("accounts", account_entry)
 		
 		# Set up additional references
 		self.references = {}

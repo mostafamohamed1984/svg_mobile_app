@@ -518,7 +518,6 @@ class ProjectClaim(Document):
 			"credit_in_account_currency": self.claim_amount,
 			"party_type": "Customer",
 			"party": self.customer
-			# Removed project reference to avoid validation errors
 		})
 		
 		# Set up additional references
@@ -571,28 +570,25 @@ class ProjectClaim(Document):
 			# Entry for unearned account (debit) - net amount for this group
 			account_entry = {
 				"account": group["unearned_account"],
-				"debit_in_account_currency": group["amount"],
-				"party_type": "Customer",
-				"party": self.customer,
-				"reference_type": "Sales Invoice",
-				"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+				"debit_in_account_currency": group["amount"]
 			}
 			
 			# Only add project reference if it's valid
 			if invoice_project:
 				account_entry["project"] = invoice_project
-			
+				
+			# Add reference to Sales Invoice but don't set party (causes validation error)
+			if group["invoice_reference"]:
+				account_entry["reference_type"] = "Sales Invoice"
+				account_entry["reference_name"] = group["invoice_reference"]
+				
 			je.append("accounts", account_entry)
 			
 			# Entry for revenue account (debit) - tax amount for this group, if applicable
 			if group_tax > 0 and group["revenue_account"]:
 				tax_account_entry = {
 					"account": group["revenue_account"],
-					"debit_in_account_currency": group_tax,
-					"party_type": "Customer",
-					"party": self.customer,
-					"reference_type": "Sales Invoice",
-					"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+					"debit_in_account_currency": group_tax
 				}
 				
 				# Only add project reference if it's valid

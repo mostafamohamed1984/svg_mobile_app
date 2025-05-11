@@ -12,7 +12,8 @@
   "current_balance",
   "unearned_account",
   "revenue_account",
-  "invoice_reference"
+  "invoice_reference",
+  "project_contractor_reference"
  ],
  "fields": [
   {
@@ -62,6 +63,13 @@
    "fieldtype": "Link",
    "label": "Invoice Reference",
    "options": "Sales Invoice",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_contractor_reference",
+   "fieldtype": "Link",
+   "label": "Project Contractor Reference",
+   "options": "Project Contractors",
    "read_only": 1
   }
  ],

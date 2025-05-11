@@ -914,7 +914,9 @@ function update_items_preview(dialog) {
 									amount: item.amount,
 									income_account: item.income_account,
 									custom_default_earning_account: item.custom_default_earning_account,
-									claim_amount: 0 // Initialize with 0
+									claim_amount: 0, // Initialize with 0
+									// Get project contractor from matching invoice in selected_invoices
+									project_contractor: selected_invoices.find(inv => inv.invoice === invoice_name)?.project_contractor || ''
 								});
 							});
 						}
@@ -1081,7 +1083,10 @@ function create_bulk_project_claim(frm, dialog) {
 							item_name: item.item_name,
 							amount: item.amount,
 							income_account: item.income_account,
-							custom_default_earning_account: item.custom_default_earning_account
+							custom_default_earning_account: item.custom_default_earning_account,
+							claim_amount: 0, // Initialize with 0
+							// Get project contractor from matching invoice in selected_invoices
+							project_contractor: selected_invoices.find(inv => inv.invoice === invoice_name)?.project_contractor || ''
 						});
 					});
 				}
@@ -1207,6 +1212,7 @@ function create_bulk_project_claim(frm, dialog) {
 					unearned_account: item.income_account || '',
 					revenue_account: item.custom_default_earning_account || '',
 					invoice_reference: inv.invoice, // Add invoice reference to track source
+					project_contractor_reference: inv.project_contractor || '', // Add project contractor reference
 					current_balance: item.available_balance // Add available balance directly
 				});
 			});

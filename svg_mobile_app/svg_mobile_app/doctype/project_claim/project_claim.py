@@ -27,7 +27,11 @@ class ProjectClaim(Document):
 		self.update_invoice_claim_history(invoices)
 		
 		# Create journal entry instead of directly updating outstanding amounts
-		self.create_journal_entry(invoices)
+		je_name = self.create_journal_entry(invoices)
+		
+		# Update invoice outstanding amounts after journal entry creation
+		if je_name:
+			self.update_invoice_outstanding_amounts(invoices)
 		
 		# Update project-specific claim tracking if needed
 		self.update_project_claim_tracking()
@@ -324,19 +328,20 @@ class ProjectClaim(Document):
 		for invoice in invoices:
 			invoice_claim_amounts[invoice] = 0
 		
-		# Parse the being field to extract invoice-specific amounts
+		# Calculate how much to claim from each invoice
+		# First try to extract from the "being" field
 		if self.being:
 			lines = self.being.split('\n')
 			current_invoice = None
 			
 			for line in lines:
-				# Check for invoice line pattern like "- ACC-SINV-2025-00024 (Unpaid, PRO-00020, Due: 2025-04-28)"
+				# Check for invoice line pattern like "- ACC-SINV-2025-00024"
 				invoice_match = re.search(r'- ([\w\d-]+)', line)
 				if invoice_match:
 					current_invoice = invoice_match.group(1).strip()
 					frappe.logger().debug(f"Found invoice reference: {current_invoice}")
 				
-				# Check for total claimed line pattern like "Total Claimed: د.إ 70,000.00 of د.إ 70,000.00 claimable"
+				# Check for total claimed line pattern like "Total Claimed: 70,000.00"
 				if current_invoice and 'Total Claimed:' in line:
 					amount_match = re.search(r'Total Claimed: [^0-9]*([0-9,.]+)', line)
 					if amount_match:
@@ -347,69 +352,26 @@ class ProjectClaim(Document):
 							frappe.logger().debug(f"Parsed claim amount for {current_invoice}: {claim_amount}")
 						except (ValueError, KeyError) as e:
 							frappe.logger().error(f"Error parsing claim amount for {current_invoice}: {e}")
-							pass  # Ignore if we can't parse the amount
 		
-		# Log what we found from parsing
-		frappe.logger().debug(f"Parsed claim amounts from being: {invoice_claim_amounts}")
+		# If we couldn't parse from being field, try directly from claim items
+		if sum(invoice_claim_amounts.values()) == 0 and hasattr(self, 'claim_items') and self.claim_items:
+			for item in self.claim_items:
+				if hasattr(item, 'invoice_reference') and item.invoice_reference:
+					inv = item.invoice_reference
+					if inv in invoices:
+						invoice_claim_amounts[inv] = invoice_claim_amounts.get(inv, 0) + flt(item.amount)
+						frappe.logger().debug(f"Added amount {item.amount} from item {item.item} to invoice {inv}")
 		
-		# If we couldn't parse the being field, try to extract from claim items by invoice
-		if sum(invoice_claim_amounts.values()) == 0 and self.claim_items:
-			# Get the item-invoice mapping by checking the "being" text for item details under each invoice
-			item_invoice_map = {}
-			current_invoice = None
-			
-			if self.being:
-				lines = self.being.split('\n')
-				for line in lines:
-					invoice_match = re.search(r'- ([\w\d-]+)', line)
-					if invoice_match:
-						current_invoice = invoice_match.group(1).strip()
-						continue
-						
-					# Look for item lines under an invoice like "• اتعاب مناقصة (اتعاب مناقصة): د.إ 30,000.00 (42.9%)"
-					if current_invoice and '•' in line:
-						item_match = re.search(r'•\s+(.*?)\s+\((.*?)\):', line)
-						if item_match:
-							item_name = item_match.group(1).strip()
-							item_code = item_match.group(2).strip()
-							
-							# Find this item in claim_items
-							for item in self.claim_items:
-								if item.item == item_code:
-									# Create mapping
-									if item.item not in item_invoice_map:
-										item_invoice_map[item.item] = {}
-									
-									# Find the amount for this item in this invoice from the being field
-									amount_match = re.search(r':\s+[^0-9]*([0-9,.]+)', line)
-									if amount_match:
-										amount_text = amount_match.group(1).replace(',', '')
-										try:
-											item_amount = float(amount_text)
-											item_invoice_map[item.item][current_invoice] = item_amount
-											# Add to invoice total
-											invoice_claim_amounts[current_invoice] += item_amount
-										except ValueError:
-											pass
-			
-			# If we still couldn't determine specific amounts, use the total claim amount and distribute evenly
-			if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-				even_share = flt(self.claim_amount) / len(invoices)
-				for invoice in invoices:
-					invoice_claim_amounts[invoice] = even_share
+		# If we still couldn't determine amounts, distribute evenly
+		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
+			even_share = flt(self.claim_amount) / len(invoices)
+			for invoice in invoices:
+				invoice_claim_amounts[invoice] = even_share
+				frappe.logger().debug(f"Distributed even share {even_share} to invoice {invoice}")
 		
-		# Ensure we're not trying to reduce any invoice by more than our total claim amount
-		total_reductions = sum(invoice_claim_amounts.values())
-		if total_reductions > flt(self.claim_amount):
-			# Scale down proportionally
-			scale_factor = flt(self.claim_amount) / total_reductions
-			for invoice in invoice_claim_amounts:
-				invoice_claim_amounts[invoice] *= scale_factor
-				
-		# IMPORTANT: Double-check the math is correct before proceeding
-		frappe.logger().info(f"Final claim amounts: {invoice_claim_amounts}")
-		frappe.logger().info(f"Total claim amounts: {sum(invoice_claim_amounts.values())}")
-		frappe.logger().info(f"Document claim amount: {flt(self.claim_amount)}")
+		# Log what we determined for each invoice
+		frappe.logger().info(f"Final claim amounts per invoice: {invoice_claim_amounts}")
+		frappe.logger().info(f"Total determined: {sum(invoice_claim_amounts.values())}, Claim amount: {self.claim_amount}")
 		
 		# Update each invoice's outstanding amount
 		for invoice, claim_amount in invoice_claim_amounts.items():
@@ -417,32 +379,25 @@ class ProjectClaim(Document):
 				# Get current outstanding amount
 				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
 				
-				# CRITICAL FIX: Always subtract the claim amount, never add
-				# Make sure the amount is treated as positive for reduction
+				# Make sure we're reducing by a positive amount
 				claim_reduction = abs(claim_amount)
 				
 				# Calculate new outstanding amount (ensure it doesn't go below zero)
-				new_outstanding = max(0, current_outstanding - claim_reduction)
+				new_outstanding = max(0, flt(current_outstanding) - flt(claim_reduction))
 				
-				# Verify the calculation before updating
-				frappe.logger().info(f"Invoice {invoice}: {current_outstanding} - {claim_reduction} = {new_outstanding}")
+				frappe.logger().info(f"Invoice {invoice}: Current outstanding={current_outstanding}, Reduction={claim_reduction}, New outstanding={new_outstanding}")
 				
-				# Update the invoice only if the calculation is reasonable
-				if new_outstanding <= current_outstanding:
-					frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
-					
-					# Log the update
-					frappe.logger().info(f"Updated invoice {invoice} outstanding amount: {current_outstanding} -> {new_outstanding} (claimed {claim_amount})")
-					
-					# Update the Sales Invoice's status if needed
-					if new_outstanding == 0:
-						frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
-					elif new_outstanding < flt(frappe.db.get_value("Sales Invoice", invoice, "grand_total")):
-						frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
-				else:
-					# Something is wrong with the calculation, log an error
-					frappe.logger().error(f"Invalid calculation for invoice {invoice}: {current_outstanding} -> {new_outstanding}")
-					frappe.throw(f"Invalid outstanding amount calculation for invoice {invoice}. Please check the logs.")
+				# Update the invoice
+				frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
+				
+				# Update status based on new outstanding amount
+				grand_total = frappe.db.get_value("Sales Invoice", invoice, "grand_total") or 0
+				if flt(new_outstanding) <= 0:
+					frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
+					frappe.logger().info(f"Invoice {invoice} marked as Paid")
+				elif flt(new_outstanding) < flt(grand_total):
+					frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
+					frappe.logger().info(f"Invoice {invoice} marked as Partly Paid")
 
 	def get_items_from_invoices(self, invoices):
 		"""Get items from multiple invoices for bulk claim creation"""

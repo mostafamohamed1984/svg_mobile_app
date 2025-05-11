@@ -577,17 +577,7 @@ class ProjectClaim(Document):
 			if invoice_project:
 				account_entry["project"] = invoice_project
 				
-			# Add reference to Sales Invoice and set the matching party
-			if group["invoice_reference"]:
-				account_entry["reference_type"] = "Sales Invoice"
-				account_entry["reference_name"] = group["invoice_reference"]
-				
-				# Get the customer from the invoice to ensure party matches
-				invoice_customer = frappe.db.get_value("Sales Invoice", group["invoice_reference"], "customer")
-				if invoice_customer:
-					account_entry["party_type"] = "Customer"
-					account_entry["party"] = invoice_customer
-				
+			# No reference to Sales Invoice to avoid double-reduction of outstanding amounts
 			je.append("accounts", account_entry)
 			
 			# Entry for revenue account (debit) - tax amount for this group, if applicable

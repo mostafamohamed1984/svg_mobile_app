@@ -1207,6 +1207,7 @@ function create_bulk_project_claim(frm, dialog) {
 					unearned_account: item.income_account || '',
 					revenue_account: item.custom_default_earning_account || '',
 					invoice_reference: inv.invoice, // Add invoice reference to track source
+					project_contractor_reference: inv.project_contractor || '', // Add project contractor reference
 					current_balance: item.available_balance // Add available balance directly
 				});
 			});
@@ -1278,8 +1279,14 @@ function create_bulk_project_claim(frm, dialog) {
 			let status_text = ref.status || '';
 			let due_date_text = ref.due_date ? ref.due_date : 'N/A';
 			
-			// Remove all project/project_contractor references - simply don't include them
-			being_text += `- ${ref.invoice} \n`;
+			// Include project contractor reference for the invoice
+			let project_text = '';
+			if (ref.project_contractor) {
+				project_text = `Project Contractor: ${ref.project_contractor}`;
+			}
+			
+			// Add invoice details with project contractor
+			being_text += `- ${ref.invoice} ${project_text ? '(' + project_text + ')' : ''}\n`;
 			being_text += `  Total Claimed: ${format_currency(inv_total)} of ${format_currency(ref.amount)} claimable\n`;
 			
 			if (inv_items.length > 0) {

@@ -520,29 +520,36 @@ class ProjectClaim(Document):
 		# Set up additional references
 		self.references = {}
 		
-		# Group claim items by account and invoice
+		# Group claim items by account, invoice, and project contractor
 		grouped_items = {}
 		invoice_refs = {}
+		project_refs = {}
 		
-		# First, group items by unearned and revenue accounts
+		# First, group items by unearned and revenue accounts, invoice reference, and project contractor
 		for item in self.claim_items:
 			# Keep track of invoice references
 			if item.invoice_reference and item.invoice_reference not in invoice_refs:
 				invoice_refs[item.invoice_reference] = True
 				
+			# Keep track of project contractor references
+			if hasattr(item, 'project_contractor_reference') and item.project_contractor_reference and item.project_contractor_reference not in project_refs:
+				project_refs[item.project_contractor_reference] = True
+				
 			if not item.unearned_account or not item.revenue_account:
 				# Skip items without accounts
 				continue
 			
-			# Create a key combining unearned account, revenue account, and invoice reference
-			key = f"{item.unearned_account}|{item.revenue_account}|{item.invoice_reference}"
+			# Create a key combining unearned account, revenue account, invoice reference, and project contractor
+			project_contractor = item.project_contractor_reference if hasattr(item, 'project_contractor_reference') else None
+			key = f"{item.unearned_account}|{item.revenue_account}|{item.invoice_reference}|{project_contractor}"
 			
 			if key not in grouped_items:
 				grouped_items[key] = {
 					"unearned_account": item.unearned_account,
 					"revenue_account": item.revenue_account,
 					"amount": 0,
-					"invoice_reference": item.invoice_reference
+					"invoice_reference": item.invoice_reference,
+					"project_contractor_reference": project_contractor
 				}
 				
 			grouped_items[key]["amount"] += flt(item.amount)
@@ -556,10 +563,24 @@ class ProjectClaim(Document):
 			group_tax = flt(group["amount"]) / net_amount * tax_amount if net_amount else 0
 			group_total = flt(group["amount"]) + group_tax
 			
-			# Get the project from the invoice reference if possible
-			invoice_project = None
-			if group["invoice_reference"]:
+			# Determine which project to use (in order of preference):
+			# 1. Project contractor reference from the item
+			# 2. Project from the invoice reference
+			# 3. Primary project from the claim
+			project_to_use = None
+			
+			# First check if we have a project contractor reference
+			if group["project_contractor_reference"]:
+				project_to_use = group["project_contractor_reference"]
+			# Then check if we can get a project from the invoice
+			elif group["invoice_reference"]:
 				invoice_project = frappe.db.get_value("Sales Invoice", group["invoice_reference"], "custom_for_project")
+				if invoice_project:
+					project_to_use = invoice_project
+			
+			# If still no project, use the default
+			if not project_to_use:
+				project_to_use = self.for_project
 			
 			# Entry for unearned account (debit) - net amount for this group
 			je.append("accounts", {
@@ -567,7 +588,7 @@ class ProjectClaim(Document):
 				"debit_in_account_currency": group["amount"],
 				"party_type": "Customer",
 				"party": self.customer,
-				"project": invoice_project or self.for_project,
+				"project": project_to_use,
 				"reference_type": "Sales Invoice",
 				"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
 			})
@@ -579,7 +600,7 @@ class ProjectClaim(Document):
 					"debit_in_account_currency": group_tax,
 					"party_type": "Customer",
 					"party": self.customer,
-					"project": invoice_project or self.for_project,
+					"project": project_to_use,
 					"reference_type": "Sales Invoice",
 					"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
 				})

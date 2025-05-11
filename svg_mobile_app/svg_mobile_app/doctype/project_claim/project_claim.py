@@ -504,27 +504,18 @@ class ProjectClaim(Document):
 		je = frappe.new_doc("Journal Entry")
 		je.posting_date = self.date
 		je.user_remark = f"Project Claim {self.name} for {self.customer_name or self.customer}"
-		
-		# Only set project if it exists
-		if self.for_project and frappe.db.exists("Project", self.for_project):
-			je.project = self.for_project
-		
+		je.project = self.for_project  # Link to primary project
 		je.voucher_type = "Journal Entry"
 		je.company = frappe.defaults.get_defaults().company
 		
 		# Add entry for receiving account (credit) - total claim amount
-		account_entry = {
+		je.append("accounts", {
 			"account": self.receiving_account,
-			"credit_in_account_currency": self.claim_amount
-		}
-		
-		# Only add party if the account is a receivable account
-		account_type = frappe.db.get_value("Account", self.receiving_account, "account_type")
-		if account_type in ["Receivable", "Payable"]:
-			account_entry["party_type"] = "Customer"
-			account_entry["party"] = self.customer
-			
-		je.append("accounts", account_entry)
+			"credit_in_account_currency": self.claim_amount,
+			"party_type": "Customer",
+			"party": self.customer,
+			"project": self.for_project if self.for_project else None
+		})
 		
 		# Set up additional references
 		self.references = {}
@@ -565,39 +556,33 @@ class ProjectClaim(Document):
 			group_tax = flt(group["amount"]) / net_amount * tax_amount if net_amount else 0
 			group_total = flt(group["amount"]) + group_tax
 			
-			# Get the project from the invoice reference if possible, ensuring it exists
+			# Get the project from the invoice reference if possible
 			invoice_project = None
 			if group["invoice_reference"]:
-				project_from_invoice = frappe.db.get_value("Sales Invoice", group["invoice_reference"], "custom_for_project")
-				# Verify the project exists before using it
-				if project_from_invoice and frappe.db.exists("Project", project_from_invoice):
-					invoice_project = project_from_invoice
+				invoice_project = frappe.db.get_value("Sales Invoice", group["invoice_reference"], "custom_for_project")
 			
 			# Entry for unearned account (debit) - net amount for this group
-			account_entry = {
+			je.append("accounts", {
 				"account": group["unearned_account"],
-				"debit_in_account_currency": group["amount"]
-			}
-			
-			# Only add project reference if it's valid
-			if invoice_project:
-				account_entry["project"] = invoice_project
-				
-			# No reference to Sales Invoice to avoid double-reduction of outstanding amounts
-			je.append("accounts", account_entry)
+				"debit_in_account_currency": group["amount"],
+				"party_type": "Customer",
+				"party": self.customer,
+				"project": invoice_project or self.for_project,
+				"reference_type": "Sales Invoice",
+				"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+			})
 			
 			# Entry for revenue account (debit) - tax amount for this group, if applicable
 			if group_tax > 0 and group["revenue_account"]:
-				tax_account_entry = {
+				je.append("accounts", {
 					"account": group["revenue_account"],
-					"debit_in_account_currency": group_tax
-				}
-				
-				# Only add project reference if it's valid
-				if invoice_project:
-					tax_account_entry["project"] = invoice_project
-					
-				je.append("accounts", tax_account_entry)
+					"debit_in_account_currency": group_tax,
+					"party_type": "Customer",
+					"party": self.customer,
+					"project": invoice_project or self.for_project,
+					"reference_type": "Sales Invoice",
+					"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+				})
 				
 			# Store reference to this group amount for later reconciliation
 			if group["invoice_reference"]:
@@ -610,12 +595,8 @@ class ProjectClaim(Document):
 			je.submit()
 			frappe.msgprint(f"Journal Entry {je.name} created successfully")
 		except Exception as e:
-			# Shorten error message to avoid character limit exceeded error
-			error_msg = str(e)
-			if len(error_msg) > 120:
-				error_msg = error_msg[:117] + "..."
-			frappe.log_error(f"Failed to create Journal Entry: {error_msg}")
-			frappe.throw(f"Failed to create Journal Entry: {error_msg}")
+			frappe.log_error(f"Failed to create Journal Entry: {str(e)}")
+			frappe.throw(f"Failed to create Journal Entry: {str(e)}")
 
 # Add a static method to be called from JavaScript
 @frappe.whitelist()

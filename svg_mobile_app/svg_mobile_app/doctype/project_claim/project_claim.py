@@ -504,7 +504,6 @@ class ProjectClaim(Document):
 		je = frappe.new_doc("Journal Entry")
 		je.posting_date = self.date
 		je.user_remark = f"Project Claim {self.name} for {self.customer_name or self.customer}"
-		je.project = self.for_project  # Link to primary project
 		je.voucher_type = "Journal Entry"
 		je.company = frappe.defaults.get_defaults().company
 		
@@ -513,8 +512,7 @@ class ProjectClaim(Document):
 			"account": self.receiving_account,
 			"credit_in_account_currency": self.claim_amount,
 			"party_type": "Customer",
-			"party": self.customer,
-			"project": self.for_project if self.for_project else None
+			"party": self.customer
 		})
 		
 		# Set up additional references
@@ -534,15 +532,14 @@ class ProjectClaim(Document):
 				# Skip items without accounts
 				continue
 			
-			# Create a key combining unearned account, revenue account, and invoice reference
-			key = f"{item.unearned_account}|{item.revenue_account}|{item.invoice_reference}"
+			# Create a key combining unearned account and revenue account (remove invoice reference from key)
+			key = f"{item.unearned_account}|{item.revenue_account}"
 			
 			if key not in grouped_items:
 				grouped_items[key] = {
 					"unearned_account": item.unearned_account,
 					"revenue_account": item.revenue_account,
-					"amount": 0,
-					"invoice_reference": item.invoice_reference
+					"amount": 0
 				}
 				
 			grouped_items[key]["amount"] += flt(item.amount)
@@ -556,20 +553,12 @@ class ProjectClaim(Document):
 			group_tax = flt(group["amount"]) / net_amount * tax_amount if net_amount else 0
 			group_total = flt(group["amount"]) + group_tax
 			
-			# Get the project from the invoice reference if possible
-			invoice_project = None
-			if group["invoice_reference"]:
-				invoice_project = frappe.db.get_value("Sales Invoice", group["invoice_reference"], "custom_for_project")
-			
 			# Entry for unearned account (debit) - net amount for this group
 			je.append("accounts", {
 				"account": group["unearned_account"],
 				"debit_in_account_currency": group["amount"],
 				"party_type": "Customer",
-				"party": self.customer,
-				"project": invoice_project or self.for_project,
-				"reference_type": "Sales Invoice",
-				"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+				"party": self.customer
 			})
 			
 			# Entry for revenue account (debit) - tax amount for this group, if applicable
@@ -578,24 +567,14 @@ class ProjectClaim(Document):
 					"account": group["revenue_account"],
 					"debit_in_account_currency": group_tax,
 					"party_type": "Customer",
-					"party": self.customer,
-					"project": invoice_project or self.for_project,
-					"reference_type": "Sales Invoice",
-					"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+					"party": self.customer
 				})
-				
-			# Store reference to this group amount for later reconciliation
-			if group["invoice_reference"]:
-				if group["invoice_reference"] not in self.references:
-					self.references[group["invoice_reference"]] = 0
-				self.references[group["invoice_reference"]] += group_total
 		
 		try:
 			je.save()
 			je.submit()
 			frappe.msgprint(f"Journal Entry {je.name} created successfully")
 		except Exception as e:
-			frappe.log_error(f"Failed to create Journal Entry: {str(e)}")
 			frappe.throw(f"Failed to create Journal Entry: {str(e)}")
 
 # Add a static method to be called from JavaScript

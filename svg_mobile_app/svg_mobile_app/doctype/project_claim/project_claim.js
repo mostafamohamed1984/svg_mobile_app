@@ -1198,34 +1198,17 @@ function create_bulk_project_claim(frm, dialog) {
 				// Add to total
 				total_claim_amount += allocated_amount;
 				
-				// Check if item already exists in claim_items
-				let existing_item = claim_items.find(ci => ci.item === item.item_code);
-				
-				if (existing_item) {
-					// Update existing item
-					existing_item.amount += allocated_amount;
-					// Also sum up the current_balance - but avoid double counting
-					// We only want to add each item's available_balance once
-					if (!existing_item.processed_invoices) {
-						existing_item.processed_invoices = [];
-					}
-					
-					// Only add the available balance if we haven't processed this invoice for this item yet
-					if (!existing_item.processed_invoices.includes(inv.invoice)) {
-						existing_item.processed_invoices.push(inv.invoice);
-						console.log(`Adding available_balance for ${item.item_code} from invoice ${inv.invoice}: ${item.available_balance}`);
-					}
-				} else {
-					// Add new item - we'll calculate the global ratio after summing all items
-					claim_items.push({
-						item: item.item_code,
-						amount: allocated_amount, 
-						ratio: 0, // Placeholder, will be calculated later
-						unearned_account: item.income_account || '',
-						revenue_account: item.custom_default_earning_account || '',
-						processed_invoices: [inv.invoice] // Track which invoices we've processed
-					});
-				}
+				// MODIFIED: Instead of checking for existing items, always create a new entry
+				// with source invoice reference to keep items separate by invoice
+				claim_items.push({
+					item: item.item_code,
+					amount: allocated_amount,
+					ratio: 0, // Placeholder, will be calculated later
+					unearned_account: item.income_account || '',
+					revenue_account: item.custom_default_earning_account || '',
+					invoice_reference: inv.invoice, // Add invoice reference to track source
+					current_balance: item.available_balance // Add available balance directly
+				});
 			});
 		});
 		
@@ -1263,38 +1246,27 @@ function create_bulk_project_claim(frm, dialog) {
 			total_by_invoice[inv] = 0;
 		});
 		
-		// Group items by invoice and calculate totals
+		// Group items by invoice for the being text
 		claim_items.forEach(item => {
-			// Find which invoice(s) this item comes from
-			if (!item.processed_invoices) return; // Skip if no processed_invoices array
+			// Use the invoice_reference directly instead of processed_invoices
+			let inv_name = item.invoice_reference;
 			
-			item.processed_invoices.forEach(inv_name => {
-				// Make sure the array exists before trying to push to it
-				if (!items_by_invoice_for_being[inv_name]) {
-					items_by_invoice_for_being[inv_name] = [];
-					total_by_invoice[inv_name] = 0;
-				}
-				
-				let items = dialog.items_by_invoice[inv_name] || [];
-				let found_item = items.find(i => i.item_code === item.item);
-				
-				if (found_item) {
-					// This invoice contains this item
-					// Find the current amount for this item in this invoice
-					let item_claim_amount = flt(found_item.claim_amount) || 0;
-					
-					if (item_claim_amount > 0) {
-						items_by_invoice_for_being[inv_name].push({
-							item_name: found_item.item_name || item.item,
-							item_code: item.item,
-							amount: item_claim_amount,
-							ratio: found_item.ratio || 0
-						});
-						
-						total_by_invoice[inv_name] += item_claim_amount;
-					}
-				}
+			// Make sure the array exists before trying to push to it
+			if (!items_by_invoice_for_being[inv_name]) {
+				items_by_invoice_for_being[inv_name] = [];
+				total_by_invoice[inv_name] = 0;
+			}
+			
+			// Add item to the correct invoice group
+			items_by_invoice_for_being[inv_name].push({
+				item_name: item.item_name || item.item,
+				item_code: item.item,
+				amount: item.amount,
+				ratio: item.ratio || 0
 			});
+			
+			// Update total for this invoice
+			total_by_invoice[inv_name] += flt(item.amount);
 		});
 		
 		// Create the detailed description

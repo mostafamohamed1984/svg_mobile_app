@@ -484,147 +484,119 @@ class ProjectClaim(Document):
 		return items_data
 	
 	def create_journal_entry(self, invoices):
-		"""Create journal entry for the claim using the same logic as the client script"""
-		if not self.party_account or not self.receiving_account:
-			frappe.throw("Please set Party Account and Receiving Account first")
+		"""Create a Journal Entry instead of directly updating outstanding amounts"""
+		if not invoices or not self.claim_items:
 			return
 			
-		if not self.claim_items or len(self.claim_items) == 0:
-			frappe.throw("Please add items to the Claim Items table first")
-			return
+		# Get taxes and accounts
+		tax_ratio = flt(self.tax_ratio) / 100 if self.tax_ratio else 0
+		tax_amount = flt(self.claim_amount) * tax_ratio
+		net_amount = flt(self.claim_amount) - tax_amount
+		
+		# Validate accounts
+		if not self.receiving_account:
+			frappe.throw("Receiving Account is required")
 			
-		# Calculate amounts
-		import datetime
-		today = datetime.datetime.now().strftime("%Y-%m-%d")
-		
-		# Get company from the reference invoice since it's not in the Project Claim
-		default_company = frappe.db.get_value("Sales Invoice", self.reference_invoice, "company") or frappe.defaults.get_user_default('company')
-		
-		claim_amount = flt(self.claim_amount)
-		tax_amount = flt(self.tax_amount or 0)
-		
-		# Parse the being field to extract invoice-specific claim amounts
-		import re
-		
-		# Map to track claim amounts per invoice
-		invoice_claim_amounts = {}
-		
-		# Initialize with zero
-		for invoice in invoices:
-			invoice_claim_amounts[invoice] = 0
-		
-		# Parse the being field to extract invoice-specific amounts
-		if self.being:
-			lines = self.being.split('\n')
-			current_invoice = None
+		if tax_amount > 0 and not self.tax_account:
+			frappe.throw("Tax Account is required")
 			
-			for line in lines:
-				# Check for invoice line pattern
-				invoice_match = re.search(r'- ([\w\d-]+)', line)
-				if invoice_match:
-					current_invoice = invoice_match.group(1).strip()
-				
-				# Check for total claimed line pattern
-				if current_invoice and 'Total Claimed:' in line:
-					amount_match = re.search(r'Total Claimed: [^0-9]*([0-9,.]+)', line)
-					if amount_match:
-						amount_text = amount_match.group(1).replace(',', '')
-						try:
-							claim_amount_per_invoice = float(amount_text)
-							invoice_claim_amounts[current_invoice] = claim_amount_per_invoice
-						except (ValueError, KeyError):
-							pass  # Ignore if we can't parse the amount
+		# Create Journal Entry
+		je = frappe.new_doc("Journal Entry")
+		je.posting_date = self.date
+		je.user_remark = f"Project Claim {self.name} for {self.customer_name or self.customer}"
+		je.project = self.for_project  # Link to primary project
+		je.voucher_type = "Journal Entry"
+		je.company = frappe.defaults.get_defaults().company
 		
-		# If we couldn't parse amounts, distribute evenly
-		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-			even_share = flt(claim_amount) / len(invoices)
-			for invoice in invoices:
-				invoice_claim_amounts[invoice] = even_share
-		
-		# Prepare accounts array
-		accounts = []
-		
-		# Add entry for each invoice with their specific amount but WITHOUT reference to avoid double impact
-		for invoice, invoice_amount in invoice_claim_amounts.items():
-			if invoice_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
-				# Get customer from the invoice
-				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
-				
-				# Credit customer account for this invoice's portion - but without referencing the invoice
-				accounts.append({
-					'account': self.party_account,
-					'party_type': 'Customer',
-					'party': customer or self.customer,
-					'credit_in_account_currency': invoice_amount
-					# Removed the reference to the Sales Invoice to avoid double impact
-				})
-		
-		# Debit receiving account (full claim amount minus tax)
-		accounts.append({
-			'account': self.receiving_account,
-			'debit_in_account_currency': claim_amount - tax_amount
+		# Add entry for receiving account (credit) - total claim amount
+		je.append("accounts", {
+			"account": self.receiving_account,
+			"credit_in_account_currency": self.claim_amount,
+			"party_type": "Customer",
+			"party": self.customer,
+			"project": self.for_project if self.for_project else None
 		})
 		
-		# Add entries for each claim item
+		# Set up additional references
+		self.references = {}
+		
+		# Group claim items by account and invoice
+		grouped_items = {}
+		invoice_refs = {}
+		
+		# First, group items by unearned and revenue accounts
 		for item in self.claim_items:
-			item_ratio = flt(item.ratio) / 100
-			item_amount = claim_amount * item_ratio
+			# Keep track of invoice references
+			if item.invoice_reference and item.invoice_reference not in invoice_refs:
+				invoice_refs[item.invoice_reference] = True
+				
+			if not item.unearned_account or not item.revenue_account:
+				# Skip items without accounts
+				continue
 			
-			# Debit unearned account
-			if hasattr(item, 'unearned_account') and item.unearned_account:
-				accounts.append({
-					'account': item.unearned_account,
-					'debit_in_account_currency': item_amount
-				})
+			# Create a key combining unearned account, revenue account, and invoice reference
+			key = f"{item.unearned_account}|{item.revenue_account}|{item.invoice_reference}"
 			
-			# Credit revenue account
-			if hasattr(item, 'revenue_account') and item.revenue_account:
-				accounts.append({
-					'account': item.revenue_account,
-					'credit_in_account_currency': item_amount
-				})
+			if key not in grouped_items:
+				grouped_items[key] = {
+					"unearned_account": item.unearned_account,
+					"revenue_account": item.revenue_account,
+					"amount": 0,
+					"invoice_reference": item.invoice_reference
+				}
+				
+			grouped_items[key]["amount"] += flt(item.amount)
 		
-		# Add tax row if applicable
-		if tax_amount > 0 and hasattr(self, 'tax_account') and self.tax_account:
-			accounts.append({
-				'account': self.tax_account,
-				'debit_in_account_currency': tax_amount
+		# Then create journal entries for each group
+		for key, group in grouped_items.items():
+			if flt(group["amount"]) <= 0:
+				continue
+				
+			# Calculate proportion of tax for this group
+			group_tax = flt(group["amount"]) / net_amount * tax_amount if net_amount else 0
+			group_total = flt(group["amount"]) + group_tax
+			
+			# Get the project from the invoice reference if possible
+			invoice_project = None
+			if group["invoice_reference"]:
+				invoice_project = frappe.db.get_value("Sales Invoice", group["invoice_reference"], "custom_for_project")
+			
+			# Entry for unearned account (debit) - net amount for this group
+			je.append("accounts", {
+				"account": group["unearned_account"],
+				"debit_in_account_currency": group["amount"],
+				"party_type": "Customer",
+				"party": self.customer,
+				"project": invoice_project or self.for_project,
+				"reference_type": "Sales Invoice",
+				"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
 			})
+			
+			# Entry for revenue account (debit) - tax amount for this group, if applicable
+			if group_tax > 0 and group["revenue_account"]:
+				je.append("accounts", {
+					"account": group["revenue_account"],
+					"debit_in_account_currency": group_tax,
+					"party_type": "Customer",
+					"party": self.customer,
+					"project": invoice_project or self.for_project,
+					"reference_type": "Sales Invoice",
+					"reference_name": group["invoice_reference"] if group["invoice_reference"] else None
+				})
+				
+			# Store reference to this group amount for later reconciliation
+			if group["invoice_reference"]:
+				if group["invoice_reference"] not in self.references:
+					self.references[group["invoice_reference"]] = 0
+				self.references[group["invoice_reference"]] += group_total
 		
-		# Verify the totals balance
-		total_debit = sum(account.get('debit_in_account_currency', 0) for account in accounts)
-		total_credit = sum(account.get('credit_in_account_currency', 0) for account in accounts)
-		
-		if abs(total_debit - total_credit) > 0.01:
-			frappe.throw(f"Journal Entry is not balanced. Debit: {total_debit}, Credit: {total_credit}")
-			return
-		
-		# Create the journal entry
-		je = frappe.new_doc("Journal Entry")
-		je.voucher_type = "Journal Entry"
-		je.posting_date = today
-		je.company = default_company
-		je.user_remark = f"for Project Claim {self.name} Being {self.being}"
-		
-		for entry in accounts:
-			je.append("accounts", entry)
-		
-		je.multi_currency = 0
-		je.total_debit = total_debit
-		je.total_credit = total_credit
-		
-		je.insert()
-		je.submit()
-		
-		# Update claim status to Reconciled
-		self.db_set("status", "Reconciled")
-		
-		frappe.msgprint(f"Journal Entry {je.name} created and Project Claim marked as Reconciled")
-		
-		# Now manually update the invoice outstanding amounts
-		self.update_invoice_outstanding_amounts(invoices)
-		
-		return je.name
+		try:
+			je.save()
+			je.submit()
+			frappe.msgprint(f"Journal Entry {je.name} created successfully")
+		except Exception as e:
+			frappe.log_error(f"Failed to create Journal Entry: {str(e)}")
+			frappe.throw(f"Failed to create Journal Entry: {str(e)}")
 
 # Add a static method to be called from JavaScript
 @frappe.whitelist()

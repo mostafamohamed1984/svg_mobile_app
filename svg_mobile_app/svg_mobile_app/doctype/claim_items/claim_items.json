@@ -11,7 +11,8 @@
   "ratio",
   "current_balance",
   "unearned_account",
-  "revenue_account"
+  "revenue_account",
+  "invoice_reference"
  ],
  "fields": [
   {
@@ -54,6 +55,13 @@
    "in_list_view": 1,
    "label": "Revenue Account",
    "options": "Account",
+   "read_only": 1
+  },
+  {
+   "fieldname": "invoice_reference",
+   "fieldtype": "Link",
+   "label": "Invoice Reference",
+   "options": "Sales Invoice",
    "read_only": 1
   }
  ],

@@ -532,18 +532,20 @@ function update_items_preview(dialog) {
 					if (response.message && response.message.length > 0) {
 						// Create invoice objects for the missing invoices
 						let missing_invoices = response.message.map(inv => {
+							// Store the project_contractor consistently
+							let project_contractor = inv.custom_for_project || '';
 							return {
 								'invoice': inv.name,
 								'invoice_date': inv.posting_date,
 								'project': inv.custom_for_project || '',
-									'project_contractor': inv.custom_for_project || '',
+								'project_contractor': project_contractor,
 								'status': inv.status,
 								'due_date': inv.due_date,
 								'total': inv.grand_total,
 								'outstanding': inv.outstanding_amount,
-									'claim_amount': 0,
-									'select': 1,
-									'claimable_amount': 0
+								'claim_amount': 0,
+								'select': 1,
+								'claimable_amount': 0
 							};
 						});
 						
@@ -904,6 +906,12 @@ function update_items_preview(dialog) {
 					frappe.model.with_doc('Sales Invoice', invoice_name, function() {
 						let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
 						
+						// Find the matching selected invoice object to get project_contractor
+						let selected_invoice = selected_invoices.find(inv => inv.invoice === invoice_name);
+						let project_contractor = selected_invoice ? selected_invoice.project_contractor || '' : '';
+						
+						console.log(`Processing invoice ${invoice_name} with project_contractor: ${project_contractor}`);
+
 						if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
 							// Process each item in the invoice
 							invoice_doc.items.forEach(item => {
@@ -914,9 +922,8 @@ function update_items_preview(dialog) {
 									amount: item.amount,
 									income_account: item.income_account,
 									custom_default_earning_account: item.custom_default_earning_account,
-									claim_amount: 0, // Initialize with 0
-									// Get project contractor from matching invoice in selected_invoices
-									project_contractor: selected_invoices.find(inv => inv.invoice === invoice_name)?.project_contractor || ''
+									project_contractor: project_contractor, // Store the project_contractor with each item
+									claim_amount: 0 // Initialize with 0
 								});
 							});
 						}
@@ -1073,6 +1080,12 @@ function create_bulk_project_claim(frm, dialog) {
 		invoice_names.forEach(invoice_name => {
 			frappe.model.with_doc('Sales Invoice', invoice_name, function() {
 				let invoice_doc = frappe.get_doc('Sales Invoice', invoice_name);
+				
+				// Find the matching selected invoice object to get project_contractor
+				let selected_invoice = selected_invoices.find(inv => inv.invoice === invoice_name);
+				let project_contractor = selected_invoice ? selected_invoice.project_contractor || '' : '';
+				
+				console.log(`Processing invoice ${invoice_name} with project_contractor: ${project_contractor}`);
 
 				if (invoice_doc && invoice_doc.items && invoice_doc.items.length > 0) {
 					// Process each item in the invoice
@@ -1084,9 +1097,8 @@ function create_bulk_project_claim(frm, dialog) {
 							amount: item.amount,
 							income_account: item.income_account,
 							custom_default_earning_account: item.custom_default_earning_account,
-							claim_amount: 0, // Initialize with 0
-							// Get project contractor from matching invoice in selected_invoices
-							project_contractor: selected_invoices.find(inv => inv.invoice === invoice_name)?.project_contractor || ''
+							project_contractor: project_contractor, // Store the project_contractor with each item
+							claim_amount: 0 // Initialize with 0
 						});
 					});
 				}
@@ -1203,8 +1215,17 @@ function create_bulk_project_claim(frm, dialog) {
 				// Add to total
 				total_claim_amount += allocated_amount;
 				
+				// Get project contractor directly from the invoice's project_contractor field
+				let project_contractor = inv.project_contractor || '';
+				
+				// If item has its own project_contractor from when it was loaded, use that
+				if (item.project_contractor) {
+					project_contractor = item.project_contractor;
+				}
+				
+				console.log(`Creating claim item for ${item.item_code} from invoice ${inv.invoice} with project_contractor: ${project_contractor}`);
+				
 				// MODIFIED: Instead of checking for existing items, always create a new entry
-				// with source invoice reference to keep items separate by invoice
 				claim_items.push({
 					item: item.item_code,
 					amount: allocated_amount,
@@ -1212,7 +1233,7 @@ function create_bulk_project_claim(frm, dialog) {
 					unearned_account: item.income_account || '',
 					revenue_account: item.custom_default_earning_account || '',
 					invoice_reference: inv.invoice, // Add invoice reference to track source
-					project_contractor_reference: inv.project_contractor || '', // Add project contractor reference
+					project_contractor_reference: project_contractor, // Add project contractor reference from correct invoice
 					current_balance: item.available_balance // Add available balance directly
 				});
 			});

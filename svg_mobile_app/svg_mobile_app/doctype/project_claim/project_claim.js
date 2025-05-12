@@ -1254,20 +1254,17 @@ function create_bulk_project_claim(frm, dialog) {
 		// Round ratios to ensure they total exactly 100%
 		let total_ratio = 0;
 		claim_items.forEach(item => {
-			item.ratio = Math.round(item.ratio * 100) / 100; // Round to 2 decimal places
+			// First round to 2 decimal places
+			item.ratio = Math.floor(item.ratio * 100) / 100; // Use floor instead of round to ensure we don't exceed 100%
 			total_ratio += item.ratio;
 		});
-		
+
 		// Adjust the last item to make sure total is exactly 100%
 		if (claim_items.length > 0) {
-			if (total_ratio > 100) {
-				// If total exceeds 100%, subtract the excess from the last item
-				claim_items[claim_items.length - 1].ratio -= (total_ratio - 100);
-			} else if (Math.abs(total_ratio - 100) > 0.01) {
-				// If total is under 100% by more than 0.01, add the difference to the last item
-				claim_items[claim_items.length - 1].ratio += (100 - total_ratio);
-			}
-			// Ensure we don't have floating point precision issues
+			// Always set the last item's ratio to make up the difference to exactly 100
+			claim_items[claim_items.length - 1].ratio = 100 - (total_ratio - claim_items[claim_items.length - 1].ratio);
+			
+			// Round to exactly 2 decimal places to avoid floating point precision issues
 			claim_items[claim_items.length - 1].ratio = Math.round(claim_items[claim_items.length - 1].ratio * 100) / 100;
 		}
 		

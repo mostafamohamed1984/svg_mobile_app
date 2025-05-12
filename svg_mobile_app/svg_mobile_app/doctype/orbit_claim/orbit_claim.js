@@ -1131,7 +1131,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 		
 		// Get all invoice items for these invoices
 		frappe.call({
-			method: "svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
+			method: "svg._mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
 			args: {
 				invoices: invoice_names
 			},

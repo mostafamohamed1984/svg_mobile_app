@@ -1259,8 +1259,16 @@ function create_bulk_project_claim(frm, dialog) {
 		});
 		
 		// Adjust the last item to make sure total is exactly 100%
-		if (claim_items.length > 0 && Math.abs(total_ratio - 100) > 0.01) {
-			claim_items[claim_items.length - 1].ratio += (100 - total_ratio);
+		if (claim_items.length > 0) {
+			if (total_ratio > 100) {
+				// If total exceeds 100%, subtract the excess from the last item
+				claim_items[claim_items.length - 1].ratio -= (total_ratio - 100);
+			} else if (Math.abs(total_ratio - 100) > 0.01) {
+				// If total is under 100% by more than 0.01, add the difference to the last item
+				claim_items[claim_items.length - 1].ratio += (100 - total_ratio);
+			}
+			// Ensure we don't have floating point precision issues
+			claim_items[claim_items.length - 1].ratio = Math.round(claim_items[claim_items.length - 1].ratio * 100) / 100;
 		}
 		
 		console.log("Claim items created:", claim_items);

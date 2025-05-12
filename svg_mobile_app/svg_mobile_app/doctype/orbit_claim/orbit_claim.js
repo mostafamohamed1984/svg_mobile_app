@@ -1530,6 +1530,9 @@ function create_bulk_orbit_claim(frm, dialog) {
 				set_value_quietly('customer', customer);
 				set_value_quietly('customer_name', customer_name);
 
+				// Set the party_account from the debit_to field
+				set_value_quietly('party_account', data.message.debit_to);
+
 				// Set orbit-specific fields that are different from project claim
 				set_value_quietly('payment_type', 'Orbital');
 				set_value_quietly('mode_of_payment', 'Bank Transfer Orbit (AED)');

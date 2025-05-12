@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt Voucher</title>
+    <title>Payment Voucher</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -179,35 +179,9 @@
             
            <p class="bold-text">Payment Type</p>
             {% set payment_doc = frappe.get_doc("Mode of Payment", doc.mode_of_payment) %}
-            {% if doc.mode_of_payment == "Cheque" %}
-                <p class="inline-text">(Cheque)&nbsp;&nbsp;</p>
-            {% elif doc.mode_of_payment == "Visa" %}
-                <p class="inline-text">(Visa)&nbsp;&nbsp;</p>
-            {% else %}
-                <p class="inline-text">({{payment_doc.type}})&nbsp;&nbsp;</p>
-            {% endif %}
+            <p class="inline-text">({{payment_doc.type}})&nbsp;&nbsp;</p>
             <p class="bold-text">طريقة الدفع</p>
         </div>
-        
-        {% if doc.mode_of_payment == "Cheque" %}
-            <div class="spaced-line">
-                <p class="bold-text">Due Date</p>
-                <p class="inline-text">{{ doc.due_date }}&nbsp;&nbsp;</p>
-                <p class="bold-text">معاد الاستحقاق</p>
-            </div>
-            
-            <div class="spaced-line">
-                <p class="bold-text">Cheque Number</p>
-                <p class="inline-text">{{ doc.cheque_number }}&nbsp;&nbsp;</p>
-                <p class="bold-text">رقم الشيك</p>
-            </div>
-            
-            <div class="spaced-line">
-                <p class="bold-text">Bank Name</p>
-                <p class="inline-text">{{ doc.bank_name }}&nbsp;&nbsp;</p>
-                <p class="bold-text">اسم البنك</p>
-            </div>
-        {% endif %}
         
             <div class="spaced-line">
              <p class="bold-text">Amount in Letters</p>
@@ -235,7 +209,7 @@
                 <div class="stamp-container">
                     {% set receiver_signature = frappe.get_doc("visual Identity", doc.receiver) %}
                     <img src="{{ receiver_signature.image }}" alt="Stamp" class="stamp-image" />
-                    <div class="stamp-serial">RV{{year}}{{third}}</div>
+                    <div class="stamp-serial">OR{{year}}{{third}}</div>
                 </div>
             </div>
             
@@ -259,6 +233,21 @@
                     {% if doc.manager %}
                     {% set manager_signature = frappe.get_doc("visual Identity", doc.manager) %}
                     <img src="{{ manager_signature.image }}" alt="Manager Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer Electronic Signature -->
+        <div class="signature-container custom-space">
+            <div class="signature-item" style="margin: 0 auto; max-width: 250px;">
+                <div class="signature-text">Customer E-Signature</div>
+                <div class="signature-image-container" style="height: 80px;">
+                    {% set esign = frappe.db.get_value("Esign_signature", {"customer": doc.customer}, "sign_blob") %}
+                    {% if esign %}
+                    <img src="{{ esign }}" alt="Customer E-Signature" class="signature-image" />
                     {% else %}
                     <div class="no-signature">................</div>
                     {% endif %}
@@ -332,28 +321,25 @@
                 <thead>
                   <tr class="tm_accent_bg">
                     <th class="tm_width_3 tm_semi_bold tm_white_color">Item</th>
-                    <th class="tm_width_4 tm_semi_bold tm_white_color">Description</th>
-                    <th class="tm_width_2 tm_semi_bold tm_white_color">Price</th>
-                    <th class="tm_width_1 tm_semi_bold tm_white_color">Qty</th>
-                    <th class="tm_width_2 tm_semi_bold tm_white_color tm_text_right">Total</th>
+                    <th class="tm_width_3 tm_semi_bold tm_white_color">Project Contractor</th>
+                    <th class="tm_width_2 tm_semi_bold tm_white_color">Invoice</th>
+                    <th class="tm_width_1 tm_semi_bold tm_white_color">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% if invoice and invoice.items %}
-                    {% for item in invoice.items %}
+                  {% if doc and doc.claim_items %}
+                    {% for item in doc.claim_items %}
                       <tr>
-                        <td class="tm_width_3">{{ item.item_code or "" }}</td>
-                        <td class="tm_width_4">{{ item.description or "" }}</td>
-                        <td class="tm_width_2">{{ frappe.format(item.rate, { fieldtype: "Currency" }) }}</td>
-                        <td class="tm_width_1">{{ item.qty or 0 }}</td>
-                        <td class="tm_width_2 tm_text_right">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
+                        <td class="tm_width_3">{{ item.item or "" }}</td>
+                        <td class="tm_width_3">{{ item.project_contractor_reference or "" }}</td>
+                        <td class="tm_width_2">{{ item.invoice_reference or "" }}</td>
+                        <td class="tm_width_1">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
                       </tr>
                     {% endfor %}
                   {% else %}
                     <tr>
-                      <td colspan="5" class="tm_text_center">
-                        {% if not invoice %}No Sales Invoice reference found{% endif %}
-                        {% if invoice and not invoice.items %}No items in Sales Invoice{% endif %}
+                      <td colspan="4" class="tm_text_center">
+                        No claim items found
                       </td>
                     </tr>
                   {% endif %}
@@ -446,7 +432,7 @@
                 <div class="stamp-container">
                     {% set receiver_signature = frappe.get_doc("visual Identity", doc.receiver) %}
                     <img src="{{ receiver_signature.image }}" alt="Stamp" class="stamp-image" />
-                    <div class="stamp-serial">RV{{year}}{{third}}</div>
+                    <div class="stamp-serial">IN{{year}}{{third}}</div>
                 </div>
             </div>
             
@@ -477,6 +463,20 @@
             </div>
         </div>
 
+        <!-- Customer Electronic Signature -->
+        <div class="signature-container custom-space">
+            <div class="signature-item" style="margin: 0 auto; max-width: 250px;">
+                <div class="signature-text">Customer E-Signature</div>
+                <div class="signature-image-container" style="height: 80px;">
+                    {% set esign = frappe.db.get_value("Esign_signature", {"customer": doc.customer}, "sign_blob") %}
+                    {% if esign %}
+                    <img src="{{ esign }}" alt="Customer E-Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
           <!-- Footer Image -->
           <img class="footer-image" src="/files/Asset 9.png" alt="Footer Image">

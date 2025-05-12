@@ -266,6 +266,21 @@
             </div>
         </div>
 
+        <!-- Customer Electronic Signature -->
+        <div class="signature-container custom-space">
+            <div class="signature-item" style="margin: 0 auto; max-width: 250px;">
+                <div class="signature-text">Customer E-Signature</div>
+                <div class="signature-image-container" style="height: 80px;">
+                    {% set esign = frappe.db.get_value("Esign_signature", {"customer": doc.customer}, "sign_blob") %}
+                    {% if esign %}
+                    <img src="{{ esign }}" alt="Customer E-Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
         <!-- Footer Image -->
         <img class="footer-image" src="/files/Asset 11.png" alt="Footer Image">
     {% endmacro %}
@@ -332,28 +347,25 @@
                 <thead>
                   <tr class="tm_accent_bg">
                     <th class="tm_width_3 tm_semi_bold tm_white_color">Item</th>
-                    <th class="tm_width_4 tm_semi_bold tm_white_color">Description</th>
-                    <th class="tm_width_2 tm_semi_bold tm_white_color">Price</th>
-                    <th class="tm_width_1 tm_semi_bold tm_white_color">Qty</th>
-                    <th class="tm_width_2 tm_semi_bold tm_white_color tm_text_right">Total</th>
+                    <th class="tm_width_3 tm_semi_bold tm_white_color">Project Contractor</th>
+                    <th class="tm_width_2 tm_semi_bold tm_white_color">Invoice</th>
+                    <th class="tm_width_1 tm_semi_bold tm_white_color">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% if invoice and invoice.items %}
-                    {% for item in invoice.items %}
+                  {% if doc and doc.claim_items %}
+                    {% for item in doc.claim_items %}
                       <tr>
-                        <td class="tm_width_3">{{ item.item_code or "" }}</td>
-                        <td class="tm_width_4">{{ item.description or "" }}</td>
-                        <td class="tm_width_2">{{ frappe.format(item.rate, { fieldtype: "Currency" }) }}</td>
-                        <td class="tm_width_1">{{ item.qty or 0 }}</td>
-                        <td class="tm_width_2 tm_text_right">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
+                        <td class="tm_width_3">{{ item.item or "" }}</td>
+                        <td class="tm_width_3">{{ item.project_contractor_reference or "" }}</td>
+                        <td class="tm_width_2">{{ item.invoice_reference or "" }}</td>
+                        <td class="tm_width_1">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
                       </tr>
                     {% endfor %}
                   {% else %}
                     <tr>
-                      <td colspan="5" class="tm_text_center">
-                        {% if not invoice %}No Sales Invoice reference found{% endif %}
-                        {% if invoice and not invoice.items %}No items in Sales Invoice{% endif %}
+                      <td colspan="4" class="tm_text_center">
+                        No claim items found
                       </td>
                     </tr>
                   {% endif %}
@@ -477,6 +489,20 @@
             </div>
         </div>
 
+        <!-- Customer Electronic Signature -->
+        <div class="signature-container custom-space">
+            <div class="signature-item" style="margin: 0 auto; max-width: 250px;">
+                <div class="signature-text">Customer E-Signature</div>
+                <div class="signature-image-container" style="height: 80px;">
+                    {% set esign = frappe.db.get_value("Esign_signature", {"customer": doc.customer}, "sign_blob") %}
+                    {% if esign %}
+                    <img src="{{ esign }}" alt="Customer E-Signature" class="signature-image" />
+                    {% else %}
+                    <div class="no-signature">................</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
           <!-- Footer Image -->
           <img class="footer-image" src="/files/Asset 11.png" alt="Footer Image">

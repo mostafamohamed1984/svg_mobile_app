@@ -1,208 +1,232 @@
 <div class="tm_container">
-    <div class="tm_invoice_wrap">
-      <div class="tm_invoice tm_style1 tm_type1" id="tm_download_section">
-        <div class="tm_invoice_in">
-          <!-- Header Section -->
-          <div class="tm_invoice_head tm_top_head tm_mb15 tm_align_center">
-            <div class="tm_invoice_left">
-              <div class="tm_logo" ><img src="/files/Asset 8.png" alt="Logo"></div>
-              <div class="tm_invoice_label">بيان بالدفعات المستحقه</div>
-            </div>
+  <div class="tm_invoice_wrap">
+    <div class="tm_invoice tm_style1 tm_type1" id="tm_download_section">
+      <div class="tm_invoice_in">
+        <!-- Header Section -->
+        <div class="tm_invoice_head tm_top_head tm_mb15 tm_align_center">
+          <div class="tm_invoice_left">
+            <div class="tm_logo" ><img src="/files/Asset 8.png" alt="Logo"></div>
+            <div class="tm_invoice_label">بيان بالدفعات المستحقه</div>
           </div>
-          {% set sales = doc.reference_invoice %}
-          {% set invoice = frappe.get_doc('Sales Invoice', sales) %}
-          {% set items = doc.claim_items %}
-          {% set taxes = invoice.taxes %}
-          <!-- Invoice Info -->
-          <div class="tm_invoice_info tm_mb25">
-            <!--<div class="tm_invoice_info_list">-->
-            <!--  <p class="tm_invoice_number tm_m0">Invoice No: <b>{{doc.name}}</b></p>-->
-            <!--  <p class="tm_invoice_date tm_m0">Date: <b>{{doc.posting_date}}</b></p>-->
-            <!--</div>-->
+        </div>
+        {% set sales = doc.reference_invoice %}
+        {% set invoice = frappe.get_doc('Sales Invoice', sales) %}
+        {% set items = invoice.items %}
+        {% set taxes = invoice.taxes %}
+        <!-- Invoice Info -->
+        <div class="tm_invoice_info tm_mb25">
+          <!--<div class="tm_invoice_info_list">-->
+          <!--  <p class="tm_invoice_number tm_m0">Invoice No: <b>{{doc.name}}</b></p>-->
+          <!--  <p class="tm_invoice_date tm_m0">Date: <b>{{doc.posting_date}}</b></p>-->
+          <!--</div>-->
+        </div>
+
+        <!-- Invoice To / Pay To Sections -->
+        <div class="tm_invoice_head tm_mb10">
+          <div class="tm_invoice_left">
+            <p class="tm_mb2"><b class="tm_primary_color">Invoice To:</b></p>
+            <p>
+              S.No./رقم الحركه : {{ doc.name }}<br>
+              Client Name/اسم العميل : {{ doc.customer_name}}<br>
+            </p>
           </div>
-  
-          <!-- Invoice To / Pay To Sections -->
-          <div class="tm_invoice_head tm_mb10">
-            <div class="tm_invoice_left">
-              <p class="tm_mb2"><b class="tm_primary_color">Invoice To:</b></p>
-              <p>
-                S.No./رقم الحركه : {{ doc.name }}<br>
-                Client Name/اسم العميل : {{ doc.customer_name}}<br>
-              </p>
-            </div>
-            <div class="tm_invoice_right tm_text_right">
-              <p class="tm_mb2"><b class="tm_primary_color"></b></p>
-              <p>
-                Date التاريخ ({{ doc.date }})<br>
-                Project NO./رقم المشروع : {{doc.project_references}}<br>
-                Project Name./اسم المشروع : {{doc.project_name}}<br>
-              </p>
-            </div>
-          </div>
-  
-          <!-- Items Table -->
-          <div class="tm_table tm_style1">
-            <div class="">
-              <div class="tm_table_responsive">
-                <table>
-                  <thead>
-                    <tr class="tm_accent_bg">
-                      <th class="tm_width_3 tm_semi_bold tm_white_color">Item</th>
-                      <th class="tm_width_4 tm_semi_bold tm_white_color">Description</th>
-                      <th class="tm_width_2 tm_semi_bold tm_white_color">Price</th>
-                      <th class="tm_width_1 tm_semi_bold tm_white_color">Qty</th>
-                      <th class="tm_width_2 tm_semi_bold tm_white_color tm_text_right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% if items %}
-                      {% for item in items %}
-                        <tr>
-                          <td class="tm_width_3">{{ item.item or "" }}</td>
-                          <td class="tm_width_4">{{ item.item or "" }}</td>
-                          <td class="tm_width_2">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
-                          <td class="tm_width_1">1</td>
-                          <td class="tm_width_2 tm_text_right">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
-                        </tr>
-                      {% endfor %}
+          <div class="tm_invoice_right tm_text_right">
+            <p class="tm_mb2"><b class="tm_primary_color"></b></p>
+            <p>
+              Date التاريخ ({{ doc.date }})<br>
+              Project NO./رقم المشروع : {{doc.project_references or ""}}<br>
+              {% if doc.claim_items and doc.claim_items|length > 0 %}
+                {% set contractor_ids = [] %}
+                {% for item in doc.claim_items %}
+                  {% if item.project_contractor_reference and item.project_contractor_reference not in contractor_ids %}
+                    {% set _ = contractor_ids.append(item.project_contractor_reference) %}
+                  {% endif %}
+                {% endfor %}
+                
+                {% if contractor_ids %}
+                  {% set contractor_names = [] %}
+                  {% for contractor_id in contractor_ids %}
+                    {% set contractor_doc = frappe.get_doc("Project Contractors", contractor_id) %}
+                    {% if contractor_doc and contractor_doc.project_name %}
+                      {% set _ = contractor_names.append(contractor_doc.project_name) %}
                     {% else %}
-                      <tr>
-                        <td colspan="5" class="tm_text_center">
-                          No claim items found
-                        </td>
-                      </tr>
+                      {% set _ = contractor_names.append(contractor_id) %}
                     {% endif %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <!-- Payment Summary -->
-            <div class="tm_invoice_footer tm_border_top tm_mb15 tm_m0_md">
-              <div class="tm_left_footer">
-                   <p class="tm_mb2"><b class="tm_primary_color" style="color: #ba0000;  font-size: 20px;">Payment info:</b></p>
-  <p class="tm_m0" style="font-family: 'Arial', sans-serif; font-size: 14px; line-height: 1.8;">
-      <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Due Amount:</strong> 
-      <span style="color: #2c3e50;">
-          {% set net_amount = (frappe.utils.flt(doc.claim_amount) - frappe.utils.flt(doc.tax_amount)) %}
-          {{ frappe.format(net_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
-      </span><br>
-      
-      <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Tax Amount:</strong> 
-      <span style="color: #2c3e50;">
-          {{ frappe.format(doc.tax_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
-      </span><br>
-      
-      <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 25px;">Total Due:</strong> 
-      <span style="color: #27ae60; font-weight: bold; font-size: 20px;">
-          {{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
-      </span><br>
-      
-      <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Outstanding Amount:</strong> 
-      <span style="color: #2c3e50; font-weight: bold;">
-          {{ frappe.format(doc.outstanding_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
-      </span><br>
-      
-      <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Paid Amount:</strong> 
-      <span style="color: #2c3e50; font-weight: bold;">
-          {{ frappe.format(doc.paid_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
-      </span><br> 
-      
-  </p>          
-  </div>
-  
-  
-              <div class="tm_right_footer">
-                <table class="tm_mb15">
-                  <tbody>
-                  <tr class="tm_gray_bg">
-                    <td class="tm_width_3 tm_primary_color tm_bold">Subtotal</td>
-                    <td class="tm_width_3 tm_primary_color tm_bold tm_text_right">
-                      {{ invoice.currency }} {{ frappe.format((frappe.utils.flt(doc.claim_amount) - frappe.utils.flt(doc.tax_amount)), { fieldtype: "Currency" }) }}
-                    </td>
-                  </tr>
-                    </td>
-                  </tr>
-                   {% for taxes in invoice.taxes %}
-                    <tr class="tm_gray_bg">
-                      <td class="tm_width_3 tm_primary_color">Tax & Charges<span class="tm_ternary_color">({{taxes.rate}})%</span></td>
-                      <td class="tm_width_3 tm_primary_color tm_text_right">{{doc.tax_amount}}</td>
-                      {% endfor %}
-                    </tr>
-                    <tr class="tm_accent_bg">
-                      <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color">Grand Total</td>
-                      <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color tm_text_right">
-                          {{ invoice.currency }} {{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-  
-  <div class="tm_invoice_footer tm_border_top tm_mb15 tm_m0_md">
-              
-  <div>
-      <p>
-          <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 18px; ">Being/نظير :</strong> 
-      <span style="color: #000130; font-weight: bold; font-size: 14px;">{{ doc.being}}
-      </span>
-      </p>
-  </div>
-            </div>
-            <!-- Signature Section -->
-            <style>
-              .signature-container {
-                display: flex;
-                justify-content: space-between;
-                margin-top: 20px;
-  
-              }
-              .signature-item {
-                text-align: center;
-                flex: 1;
-              }
-              .signature-text {
-                font-weight: bold;
-                margin-bottom: 5px;
-              }
-              .signature-line {
-                border-bottom: 1px dashed #000;
-                width: 80%;
-                margin: 0 auto;
-              }
-              .footer-image {
-                width: 100%;
-                margin-top: 20px;
-                position: fixed;
-                  bottom: 0;
-                  left: 0;
-                  width: 100%;
-                  z-index: 1000
-              }
-            </style>
-  
-            <div class="signature-container">
-              <div class="signature-item">
-                <div class="signature-text">Received</div>
-                <div class="signature-line"></div>
-                <div class="signature-text">المستلم</div>
-              </div>
-              <div class="signature-item">
-                <div class="signature-text">Approval</div>
-                <div class="signature-line"></div>
-                <div class="signature-text">يعتمد</div>
-              </div>
-              <div class="signature-item">
-                <div class="signature-text">Accountant</div>
-                <div class="signature-line"></div>
-                <div class="signature-text">المحاسب</div>
-              </div>
-            </div>
-  
-            <!-- Footer Image -->
-            <img class="footer-image" src="/files/Asset 9.png" alt="Footer Image">
+                  {% endfor %}
+                  Project Name./اسم المشروع : {{contractor_names|join(", ")}}<br>
+                {% else %}
+                  Project Name./اسم المشروع : {{doc.project_name or ""}}<br>
+                {% endif %}
+              {% else %}
+                Project Name./اسم المشروع : {{doc.project_name or ""}}<br>
+              {% endif %}
+            </p>
           </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="tm_table tm_style1">
+          <div class="">
+            <div class="tm_table_responsive">
+              <table>
+                <thead>
+                  <tr class="tm_accent_bg">
+                    <th class="tm_width_3 tm_semi_bold tm_white_color">Item</th>
+                    <th class="tm_width_3 tm_semi_bold tm_white_color">Project Contractor</th>
+                    <th class="tm_width_2 tm_semi_bold tm_white_color">Invoice</th>
+                    <th class="tm_width_1 tm_semi_bold tm_white_color">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% if doc and doc.claim_items %}
+                    {% for item in doc.claim_items %}
+                      <tr>
+                        <td class="tm_width_3">{{ item.item or "" }}</td>
+                        <td class="tm_width_3">{{ item.project_contractor_reference or "" }}</td>
+                        <td class="tm_width_2">{{ item.invoice_reference or "" }}</td>
+                        <td class="tm_width_1">{{ frappe.format(item.amount, { fieldtype: "Currency" }) }}</td>
+                      </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr>
+                      <td colspan="4" class="tm_text_center">
+                        {% if not invoice %}No Sales Invoice reference found{% endif %}
+                        {% if invoice and not invoice.items %}No items in Sales Invoice{% endif %}
+                        {% if not doc.claim_items %}No claim items found{% endif %}
+                      </td>
+                    </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Payment Summary -->
+          <div class="tm_invoice_footer tm_border_top tm_mb15 tm_m0_md">
+            <div class="tm_left_footer">
+                 <p class="tm_mb2"><b class="tm_primary_color" style="color: #ba0000;  font-size: 20px;">Payment info:</b></p>
+<p class="tm_m0" style="font-family: 'Arial', sans-serif; font-size: 14px; line-height: 1.8;">
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Due Amount:</strong> 
+    <span style="color: #2c3e50;">
+        {% set net_amount = (frappe.utils.flt(doc.claim_amount) - frappe.utils.flt(doc.tax_amount)) %}
+        {{ frappe.format(net_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Tax Amount:</strong> 
+    <span style="color: #2c3e50;">
+        {{ frappe.format(doc.tax_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 25px;">Total Due:</strong> 
+    <span style="color: #27ae60; font-weight: bold; font-size: 20px;">
+        {{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Outstanding Amount:</strong> 
+    <span style="color: #2c3e50; font-weight: bold;">
+        {{ frappe.format(doc.outstanding_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br>
+    
+    <strong style="color: #2c3e50; min-width: 150px; display: inline-block;">Paid Amount:</strong> 
+    <span style="color: #2c3e50; font-weight: bold;">
+        {{ frappe.format(doc.paid_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }}
+    </span><br> 
+    
+</p>          
+</div>
+
+
+            <div class="tm_right_footer">
+              <table class="tm_mb15">
+                <tbody>
+                <tr class="tm_gray_bg">
+                  <td class="tm_width_3 tm_primary_color tm_bold">Subtotal</td>
+                  <td class="tm_width_3 tm_primary_color tm_bold tm_text_right">
+                    {{ invoice.currency }} {{ frappe.format(invoice.total, { fieldtype: "Currency" }) }}
+                  </td>
+                </tr>
+                  </td>
+                </tr>
+                 {% for taxes in invoice.taxes %}
+                  <tr class="tm_gray_bg">
+                    <td class="tm_width_3 tm_primary_color">Tax & Charges<span class="tm_ternary_color">({{taxes.rate}})%</span></td>
+                    <td class="tm_width_3 tm_primary_color tm_text_right">{{taxes.tax_amount}}</td>
+                    {% endfor %}
+                  </tr>
+                  <tr class="tm_accent_bg">
+                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color">Grand Total</td>
+                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color tm_text_right">
+                        {{ invoice.currency }} {{ frappe.format(invoice.grand_total, { fieldtype: "Currency" }) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+<div class="tm_invoice_footer tm_border_top tm_mb15 tm_m0_md">
+            
+<div>
+    <p>
+        <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 18px; ">Being/نظير :</strong> 
+    <span style="color: #000130; font-weight: bold; font-size: 14px;">{{ doc.being}}
+    </span>
+    </p>
+</div>
+          </div>
+          <!-- Signature Section -->
+          <style>
+            .signature-container {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 20px;
+
+            }
+            .signature-item {
+              text-align: center;
+              flex: 1;
+            }
+            .signature-text {
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .signature-line {
+              border-bottom: 1px dashed #000;
+              width: 80%;
+              margin: 0 auto;
+            }
+            .footer-image {
+              width: 100%;
+              margin-top: 20px;
+              position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                z-index: 1000
+            }
+          </style>
+
+          <div class="signature-container">
+            <div class="signature-item">
+              <div class="signature-text">Received</div>
+              <div class="signature-line"></div>
+              <div class="signature-text">المستلم</div>
+            </div>
+            <div class="signature-item">
+              <div class="signature-text">Approval</div>
+              <div class="signature-line"></div>
+              <div class="signature-text">يعتمد</div>
+            </div>
+            <div class="signature-item">
+              <div class="signature-text">Accountant</div>
+              <div class="signature-line"></div>
+              <div class="signature-text">المحاسب</div>
+            </div>
+          </div>
+
+          <!-- Footer Image -->
+          <img class="footer-image" src="/files/Asset 9.png" alt="Footer Image">
         </div>
       </div>
     </div>
   </div>
+</div>

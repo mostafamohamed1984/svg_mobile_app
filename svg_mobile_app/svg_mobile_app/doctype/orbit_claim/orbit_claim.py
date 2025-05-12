@@ -505,7 +505,7 @@ class OrbitClaim(Document):
 			item.ratio = flt(item.amount) / flt(invoice_totals[item.invoice]) * 100 if invoice_totals[item.invoice] else 0
 			
 		return items_data
-	
+
 	def create_journal_entry(self, invoices):
 		"""Create journal entry for the claim using the same logic as the client script"""
 		if not self.party_account or not self.receiving_account:
@@ -649,10 +649,9 @@ class OrbitClaim(Document):
 		
 		return je.name
 
-# Add a static method to be called from JavaScript
 @frappe.whitelist()
 def get_items_from_invoices(invoices):
-	"""Static method to get items from multiple invoices for bulk claim creation"""
+	"""Get items from multiple invoices with their totals and ratios"""
 	if not invoices:
 		return []
 		
@@ -663,7 +662,7 @@ def get_items_from_invoices(invoices):
 			invoices = json.loads(invoices)
 		except:
 			invoices = invoices.split(",")
-			
+				
 	# Get items from all invoices
 	items_data = frappe.db.sql("""
 		SELECT 
@@ -793,46 +792,5 @@ def get_available_invoice_balances(invoices):
 				result[invoice][item_code]['item_proportion'] = (
 					flt(item.amount) / invoice_total if invoice_total > 0 else 0
 				)
-	
-	# Reconcile with actual outstanding amounts
-	for invoice in invoices:
-		if not invoice or invoice not in result:
-			continue
-			
-		# Get the actual outstanding amount from the invoice
-		actual_outstanding = flt(frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0)
-		
-		# Calculate the total available balance from items
-		total_available = 0
-		for item_code in result[invoice]:
-			total_available += flt(result[invoice][item_code]['available_balance'])
-			
-		# Log for debugging
-		frappe.logger().debug(f"Invoice {invoice}: Outstanding={actual_outstanding}, Available={total_available}")
-		
-		# If there's a discrepancy (outstanding > 0 but available = 0)
-		if actual_outstanding > 0 and total_available < 0.01:
-			frappe.logger().info(f"Reconciling invoice {invoice}: outstanding={actual_outstanding}, available={total_available}")
-			
-			# Distribute the outstanding amount proportionally to items based on original amounts
-			total_original = 0
-			for item_code in result[invoice]:
-				total_original += flt(result[invoice][item_code]['original_amount'])
 				
-			if total_original > 0:
-				for item_code in result[invoice]:
-					item_proportion = flt(result[invoice][item_code]['original_amount']) / total_original
-					result[invoice][item_code]['available_balance'] = actual_outstanding * item_proportion
-					frappe.logger().info(f"Redistributed to {item_code}: {result[invoice][item_code]['available_balance']}")
-		
-		# If there's a discrepancy in the other direction (available > outstanding), cap availability
-		elif actual_outstanding < total_available and actual_outstanding > 0:
-			frappe.logger().info(f"Capping invoice {invoice}: outstanding={actual_outstanding}, available={total_available}")
-			
-			# Scale down proportionally
-			scale_factor = actual_outstanding / total_available
-			for item_code in result[invoice]:
-				result[invoice][item_code]['available_balance'] *= scale_factor
-				frappe.logger().info(f"Scaled {item_code} by {scale_factor}: new available={result[invoice][item_code]['available_balance']}")
-	
 	return result

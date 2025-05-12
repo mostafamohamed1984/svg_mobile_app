@@ -408,7 +408,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				
 				// Get available balances for all invoices
 				frappe.call({
-					method: 'svg_mobile_app.doctype.orbit_claim.orbit_claim.get_available_invoice_balances',
+					method: 'svg_mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_available_invoice_balances',
 					args: {
 						invoices: invoice_names
 					},
@@ -698,7 +698,7 @@ function update_items_preview(dialog) {
 		
 		// First get available balances for all invoices
 		frappe.call({
-			method: 'svg_mobile_app.doctype.orbit_claim.orbit_claim.get_available_invoice_balances',
+			method: 'svg_mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_available_invoice_balances',
 			args: {
 				invoices: invoice_names
 			},
@@ -1131,7 +1131,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 		
 		// Get all invoice items for these invoices
 					frappe.call({
-			method: "svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
+			method: "svg_mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
 						args: {
 							invoices: invoice_names
 						},

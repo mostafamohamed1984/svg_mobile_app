@@ -1230,13 +1230,14 @@ function create_bulk_project_claim(frm, dialog) {
 				console.log(`Creating claim item for ${item.item_code} from invoice ${inv.invoice} with project_contractor: ${project_contractor}`);
 				
 				// MODIFIED: Instead of checking for existing items, always create a new entry
+				// The invoice_reference field is critical for proper tracking of claimed amounts
 				claim_items.push({
 					item: item.item_code,
 					amount: allocated_amount,
 					ratio: 0, // Placeholder, will be calculated later
 					unearned_account: item.income_account || '',
 					revenue_account: item.custom_default_earning_account || '',
-					invoice_reference: inv.invoice, // Add invoice reference to track source
+					invoice_reference: inv.invoice, // Critical for proper invoice-level tracking
 					project_contractor_reference: project_contractor, // Add project contractor reference from correct invoice
 					current_balance: item.available_balance // Add available balance directly
 				});

@@ -1538,7 +1538,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 				set_value_quietly('mode_of_payment', 'Bank Transfer Orbit (AED)');
 
 				// Set default status for orbit claims
-				set_value_quietly('status', 'Pending');
+				set_value_quietly('status', 'Unreconciled');
 				
 				// Set default currency if not already set
 				if (!frm.doc.currency) {

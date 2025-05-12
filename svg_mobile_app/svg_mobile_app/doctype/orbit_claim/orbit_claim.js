@@ -1202,7 +1202,11 @@ function create_bulk_orbit_claim(frm, dialog) {
 								amount: item_claim_amount,
 								ratio: 0, // Will calculate later
 								invoice_reference: inv.invoice,
-								income_account: item.income_account || item.custom_default_earning_account
+								income_account: item.income_account || item.custom_default_earning_account,
+								unearned_account: item.income_account || '',
+								revenue_account: item.custom_default_earning_account || '',
+								project_contractor_reference: inv.project_contractor || '',
+								current_balance: item.available_balance || item_claim_amount
 							});
 							
 							// Track for the being field
@@ -1230,7 +1234,11 @@ function create_bulk_orbit_claim(frm, dialog) {
 								amount: item_claim_amount,
 								ratio: 0, // Will calculate later
 								invoice_reference: inv.invoice,
-								income_account: item.income_account || item.custom_default_earning_account
+								income_account: item.income_account || item.custom_default_earning_account,
+								unearned_account: item.income_account || '',
+								revenue_account: item.custom_default_earning_account || '',
+								project_contractor_reference: inv.project_contractor || '',
+								current_balance: item.available_balance || item_claim_amount
 							});
 							
 							// Track for the being field
@@ -1349,7 +1357,11 @@ function create_bulk_orbit_claim(frm, dialog) {
 						amount: amount,
 						ratio: saved_total > 0 ? (amount / saved_total * 100) : 0,
 						invoice_reference: inv.invoice,
-						income_account: item.income_account || item.custom_default_earning_account
+						income_account: item.income_account || item.custom_default_earning_account,
+						unearned_account: item.income_account || '',
+						revenue_account: item.custom_default_earning_account || '',
+						project_contractor_reference: inv.project_contractor || '',
+						current_balance: item.available_balance || amount
 					});
 					
 					// Track for the being field
@@ -1385,7 +1397,11 @@ function create_bulk_orbit_claim(frm, dialog) {
 								amount: amount,
 								ratio: ratio * 100,
 								invoice_reference: inv.invoice,
-								income_account: item.income_account || item.custom_default_earning_account
+								income_account: item.income_account || item.custom_default_earning_account,
+								unearned_account: item.income_account || '',
+								revenue_account: item.custom_default_earning_account || '',
+								project_contractor_reference: inv.project_contractor || '',
+								current_balance: item.available_balance || amount
 							});
 							
 							// Track for the being field

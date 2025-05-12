@@ -1061,9 +1061,9 @@ function create_bulk_orbit_claim(frm, dialog) {
 								});
 								
 								inv.claim_amount = total_claim;
-							}
-						});
-						
+								}
+							});
+							
 						// Add these to our selected_invoices
 						selected_invoices = selected_invoices.concat(missing_invoices);
 						
@@ -1116,9 +1116,9 @@ function create_bulk_orbit_claim(frm, dialog) {
 			.filter(Boolean);
 			
 		let unique_projects = new Set();
-		
+	
 		// Collect the unique projects from the invoices
-		selected_invoices.forEach(inv => {
+	selected_invoices.forEach(inv => {
 			if (inv.project) {
 				unique_projects.add(inv.project);
 			}
@@ -1126,7 +1126,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 				unique_projects.add(inv.project_contractor);
 			}
 		});
-		
+				
 		console.log("Unique projects:", Array.from(unique_projects));
 		
 		// Get all invoice items for these invoices
@@ -1192,12 +1192,12 @@ function create_bulk_orbit_claim(frm, dialog) {
 								} else {
 							// Fallback to proportional allocation if no saved amount
 							item_claim_amount = flt(claim_amount * item.ratio / 100);
-						}
+								}
 						
 						if (item_claim_amount > 0) {
 							// Create a claim item
 							claim_items.push({
-								item: item.item_code,
+								item: item_code,
 								item_name: item.item_name,
 								amount: item_claim_amount,
 								ratio: 0, // Will calculate later
@@ -1242,8 +1242,8 @@ function create_bulk_orbit_claim(frm, dialog) {
 							
 							// Update the invoice total
 							total_by_invoice[inv.invoice] += item_claim_amount;
-						}
-					});
+				}
+			});
 				}
 			});
 			
@@ -1322,7 +1322,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 				
 				// Process each item with its edited amount
 				invoice_items.forEach(item => {
-					const item_code = item.data('item-code');
+					const item_code = item.item_code;
 					if (!item_code || !savedAmounts[item_code]) return;
 					
 					const amount = flt(savedAmounts[item_code]);
@@ -1330,15 +1330,15 @@ function create_bulk_orbit_claim(frm, dialog) {
 				
 				// Add to total
 					total_claim_amount += amount;
-					
+				
 					// Create claim item
 					claim_items.push({
 						item: item_code,
-						item_name: item.data('item-name'),
+						item_name: item.item_name,
 						amount: amount,
 						ratio: saved_total > 0 ? (amount / saved_total * 100) : 0,
 						invoice_reference: inv.invoice,
-						income_account: item.data('income-account')
+						income_account: item.income_account || item.custom_default_earning_account
 					});
 				});
 			} else {
@@ -1482,18 +1482,18 @@ function create_bulk_orbit_claim(frm, dialog) {
 				// Set basic info
 				set_value_quietly('customer', customer);
 				set_value_quietly('customer_name', customer_name);
-				
+
 				// Set orbit-specific fields that are different from project claim
 				set_value_quietly('payment_type', 'Orbital');
 				set_value_quietly('mode_of_payment', 'Bank Transfer Orbit (AED)');
-				
+
 				// Set default status for orbit claims
 				set_value_quietly('status', 'Pending');
 				
 				// Set default currency if not already set
 				if (!frm.doc.currency) {
 					set_value_quietly('currency', data.message.currency || 'AED');
-				}
+					}
 				
 				// Set posting date to today if not set
 				if (!frm.doc.posting_date) {
@@ -1517,7 +1517,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 					// Multiple projects - use references field
 					set_value_quietly('project_references', all_projects);
 				}
-				
+
 				// Set all multi-invoice references
 				set_value_quietly('invoice_references', references.map(ref => ref.invoice).join(", "));
 				

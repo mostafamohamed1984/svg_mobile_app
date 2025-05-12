@@ -1053,7 +1053,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 							
 							// Get the saved claim amount for this invoice
 							if (dialog.saved_claim_amounts[inv.invoice]) {
-								let total_claim = 0;
+							let total_claim = 0;
 								
 								// Sum up all item claim amounts for this invoice
 								Object.values(dialog.saved_claim_amounts[inv.invoice]).forEach(amount => {
@@ -1072,13 +1072,13 @@ function create_bulk_orbit_claim(frm, dialog) {
 					} else {
 						// If we can't get the missing invoices, just proceed with what we have
 						processSelectedInvoices();
-					}
-				}
-			});
+							}
+						}
+					});
 		} else {
 			// No missing invoices, proceed with what we have
 			processSelectedInvoices();
-		}
+				}
 	} else {
 		// No additional selected invoices, proceed directly
 		processSelectedInvoices();
@@ -1086,14 +1086,14 @@ function create_bulk_orbit_claim(frm, dialog) {
 	
 	function processSelectedInvoices() {
 		// Check if we have selected invoices
-		console.log("Selected invoices:", selected_invoices);
+	console.log("Selected invoices:", selected_invoices);
 		console.log("Total selected invoices:", selected_invoices.length);
-		
+	
 		if (!selected_invoices || selected_invoices.length === 0) {
 			frappe.msgprint(__('No invoices selected with claim amounts.'));
-			return;
-		}
-		
+		return;
+	}
+	
 		// Get all unique invoice names
 		let invoice_names = selected_invoices.map(inv => inv.invoice);
 		console.log("Invoice names:", invoice_names);
@@ -1102,9 +1102,9 @@ function create_bulk_orbit_claim(frm, dialog) {
 		let customers = [...new Set(selected_invoices.map(inv => inv.customer).filter(Boolean))];
 		if (customers.length > 1) {
 			frappe.msgprint(__('Selected invoices must all be for the same customer.'));
-			return;
-		}
-		
+		return;
+	}
+	
 		// Set the customer on the form if it's not already set
 		if (!frm.doc.customer && customers.length === 1) {
 			frm.set_value('customer', customers[0]);
@@ -1112,7 +1112,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 		
 		// Create a list of all project contractors from the selected invoices
 		let project_contractors = selected_invoices
-			.map(inv => inv.project_contractor)
+		.map(inv => inv.project_contractor)
 			.filter(Boolean);
 			
 		let unique_projects = new Set();
@@ -1130,37 +1130,37 @@ function create_bulk_orbit_claim(frm, dialog) {
 		console.log("Unique projects:", Array.from(unique_projects));
 		
 		// Get all invoice items for these invoices
-		frappe.call({
-			method: "svg._mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
-			args: {
-				invoices: invoice_names
-			},
+					frappe.call({
+			method: "svg_mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
+						args: {
+							invoices: invoice_names
+						},
 			callback: function(data) {
 				if (data.message) {
 					createClaimItemsFromInvoices(data.message, invoice_names);
-				} else {
+								} else {
 					frappe.msgprint(__('Failed to retrieve invoice items.'));
 				}
-			}
-		});
+								}
+							});
 		
 		// Function to create claim items from invoice items
 		function createClaimItemsFromInvoices(items_data, invoice_names) {
 			console.log("Items data received:", items_data);
 			
-			// Group items by invoice
-			let items_by_invoice = {};
+							// Group items by invoice
+							let items_by_invoice = {};
 			let items_by_invoice_for_being = {};
 			let total_by_invoice = {};
 			
 			// Create a map to look up items by invoice
 			items_data.forEach(item => {
-				if (!items_by_invoice[item.invoice]) {
-					items_by_invoice[item.invoice] = [];
+								if (!items_by_invoice[item.invoice]) {
+									items_by_invoice[item.invoice] = [];
 					items_by_invoice_for_being[item.invoice] = [];
 					total_by_invoice[item.invoice] = 0;
-				}
-				items_by_invoice[item.invoice].push(item);
+								}
+								items_by_invoice[item.invoice].push(item);
 			});
 			
 			// Create claim items based on the selected invoices
@@ -1189,7 +1189,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 						// Use the saved amount if available, otherwise calculate proportionally
 						if (saved_amounts[item_code] !== undefined) {
 							item_claim_amount = flt(saved_amounts[item_code]);
-						} else {
+								} else {
 							// Fallback to proportional allocation if no saved amount
 							item_claim_amount = flt(claim_amount * item.ratio / 100);
 						}
@@ -1327,8 +1327,8 @@ function create_bulk_orbit_claim(frm, dialog) {
 					
 					const amount = flt(savedAmounts[item_code]);
 					if (amount <= 0) return;
-					
-					// Add to total
+				
+				// Add to total
 					total_claim_amount += amount;
 					
 					// Create claim item
@@ -1358,8 +1358,8 @@ function create_bulk_orbit_claim(frm, dialog) {
 							total_claim_amount += amount;
 							
 							// Create claim item
-							claim_items.push({
-								item: item.item_code,
+				claim_items.push({
+					item: item.item_code,
 								item_name: item.item_name,
 								amount: amount,
 								ratio: ratio * 100,
@@ -1467,7 +1467,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 				function set_value_quietly(field, value) {
 					// Only set the value if it's different
 					if (frm.doc[field] !== value) {
-						frm.doc[field] = value;
+					frm.doc[field] = value;
 						frm.refresh_field(field);
 					}
 				}
@@ -1569,8 +1569,8 @@ function create_bulk_orbit_claim(frm, dialog) {
 				// Re-enable save after everything is done
 				setTimeout(function() {
 					frm.enable_save();
-					
-					// Show success message
+				
+				// Show success message
 					frappe.show_alert({
 						message: __('Orbit Claim created successfully from {0} invoices.', [references.length]),
 						indicator: 'green'

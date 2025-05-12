@@ -107,22 +107,37 @@ frappe.ui.form.on('Issue Requirements Reminders', {
                 }, __('Actions'));
             }
         }
+
+        // Set initial visibility of fields based on remind_on value
+        frm.trigger('remind_on');
     },
 
     // Show/hide specific date field based on remind_on selection
     remind_on: function(frm) {
-        frm.toggle_reqd('date_to_remind', frm.doc.remind_on === 'Specific Date');
-        
+        // Toggle fields based on remind_on type
         if (frm.doc.remind_on === 'Specific Date') {
+            frm.set_df_property('date_to_remind', 'reqd', 1);
+            frm.set_df_property('date_to_remind', 'hidden', 0);
             frm.set_df_property('frequency', 'hidden', 1);
+            frm.set_df_property('frequency', 'reqd', 0);
         } else {
+            frm.set_df_property('date_to_remind', 'reqd', 0);
+            frm.set_df_property('date_to_remind', 'hidden', 1);
             frm.set_df_property('frequency', 'hidden', 0);
+            frm.set_df_property('frequency', 'reqd', 1);
+        }
+
+        // Clear values that should not be set
+        if (frm.doc.remind_on === 'Specific Date' && frm.doc.frequency) {
+            frm.set_value('frequency', '');
+        } else if (frm.doc.remind_on === 'Frequency' && frm.doc.date_to_remind) {
+            frm.set_value('date_to_remind', '');
         }
     },
 
     // Set next reminder date before saving
     before_save: function(frm) {
-        if (frm.doc.remind_on === 'Frequency' && !frm.doc.next_date) {
+        if (!frm.doc.next_date) {
             frm.call('set_next_date');
         }
     }

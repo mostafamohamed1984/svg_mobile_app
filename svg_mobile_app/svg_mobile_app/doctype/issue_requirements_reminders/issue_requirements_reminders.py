@@ -117,7 +117,7 @@ class IssueRequirementsReminders(Document):
             self.next_date = add_months(current_date, 3)
         elif self.frequency == "Yearly":
             self.next_date = add_to_date(current_date, years=1)
-        elif self.frequency == "Specific Date" and self.remind_on == "Specific Date":
+        elif self.remind_on == "Specific Date":
             # For specific date, don't repeat if it's not repeating
             pass
     
@@ -127,15 +127,13 @@ class IssueRequirementsReminders(Document):
         if not self.enabled:
             return False
             
-        # Get users with the specified role
-        users = frappe.get_all("Has Role", 
-                              filters={"role": self.reminder_role, "parenttype": "User"},
-                              fields=["parent as user"])
+        # Get users from the reminder_users table
+        users = []
+        for user_row in self.reminder_users:
+            users.append(user_row.user)
         
         success = False
-        for user_dict in users:
-            user = user_dict.get("user")
-            
+        for user in users:
             # Create notification in the system
             try:
                 notification = frappe.new_doc("Notification Log")
@@ -252,4 +250,4 @@ def process_scheduled_reminders(reminder_id=None, scheduled_date=None):
                 frappe.db.set_value("Issue Requirements Reminders", doc.name, "reminder_status", "Completed")
         except Exception as e:
             frappe.log_error(f"Failed to process reminder {reminder.name}: {str(e)}", 
-                           "Issue Requirements Reminder Scheduler") 
+                           "Issue Requirements Reminder") 

@@ -16,7 +16,7 @@
   "repeat_reminder",
   "next_date",
   "section_break_who",
-  "reminder_role",
+  "reminder_users",
   "column_break_9",
   "send_to_email",
   "section_break_what",
@@ -56,11 +56,11 @@
    "label": "Date to Remind"
   },
   {
-   "fieldname": "reminder_role",
-   "fieldtype": "Link",
+   "fieldname": "reminder_users",
+   "fieldtype": "Table MultiSelect",
    "in_list_view": 1,
-   "label": "Reminder Role",
-   "options": "Role",
+   "label": "Users to Remind",
+   "options": "Issue Requirements Reminder User",
    "reqd": 1
   },
   {
@@ -71,11 +71,12 @@
   },
   {
    "default": "Daily",
+   "depends_on": "eval:doc.remind_on === 'Frequency'",
    "fieldname": "frequency",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Frequency",
-   "options": "Daily\nWeekly\nMonthly\nQuarterly\nYearly\nSpecific Date",
+   "options": "Daily\nWeekly\nMonthly\nQuarterly\nYearly",
    "reqd": 1
   },
   {

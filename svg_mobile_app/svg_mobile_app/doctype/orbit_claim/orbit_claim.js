@@ -1041,7 +1041,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 						name: ["in", missing_invoice_names]
 					},
 					fields: ["name as invoice", "posting_date as invoice_date", "due_date", 
-							"status", "project", "custom_project_contractor as project_contractor"]
+							"status", "project", "custom_for_project as project_contractor"]
 				},
 				callback: function(r) {
 					if (r.message) {

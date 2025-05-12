@@ -408,7 +408,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				
 				// Get available balances for all invoices
 				frappe.call({
-					method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+					method: 'svg_mobile_app.doctype.orbit_claim.orbit_claim.get_available_invoice_balances',
 					args: {
 						invoices: invoice_names
 					},
@@ -698,7 +698,7 @@ function update_items_preview(dialog) {
 		
 		// First get available balances for all invoices
 		frappe.call({
-			method: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_available_invoice_balances',
+			method: 'svg_mobile_app.doctype.orbit_claim.orbit_claim.get_available_invoice_balances',
 			args: {
 				invoices: invoice_names
 			},
@@ -1131,7 +1131,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 		
 		// Get all invoice items for these invoices
 					frappe.call({
-			method: "svg_mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
+			method: "svg_mobile_app.doctype.orbit_claim.orbit_claim.get_items_from_invoices",
 						args: {
 							invoices: invoice_names
 						},
@@ -1207,7 +1207,7 @@ function create_bulk_orbit_claim(frm, dialog) {
 							
 							// Track for the being field
 							items_by_invoice_for_being[inv.invoice].push({
-								item_code: item.item_code,
+								item_code: item_code,
 								item_name: item.item_name,
 								amount: item_claim_amount
 							});
@@ -1265,6 +1265,17 @@ function create_bulk_orbit_claim(frm, dialog) {
 		let references = [];
 		let total_claim_amount = 0;
 		let unique_projects = new Set();
+		
+		// Group claim items by invoice for detailed description
+		let items_by_invoice_for_being = {};
+		let total_by_invoice = {};
+		
+		// Initialize the maps with invoice names
+		let invoice_names = selected_invoices.map(inv => inv.invoice);
+		invoice_names.forEach(inv => {
+			items_by_invoice_for_being[inv] = [];
+			total_by_invoice[inv] = 0;
+		});
 		
 		console.log("Selected invoices before processing:", selected_invoices.map(inv => ({
 			invoice: inv.invoice,
@@ -1340,6 +1351,16 @@ function create_bulk_orbit_claim(frm, dialog) {
 						invoice_reference: inv.invoice,
 						income_account: item.income_account || item.custom_default_earning_account
 					});
+					
+					// Track for the being field
+					items_by_invoice_for_being[inv.invoice].push({
+						item_code: item_code,
+						item_name: item.item_name,
+						amount: amount
+					});
+					
+					// Update the invoice total
+					total_by_invoice[inv.invoice] += amount;
 				});
 			} else {
 				// No edited amounts, use proportional allocation
@@ -1366,8 +1387,18 @@ function create_bulk_orbit_claim(frm, dialog) {
 								invoice_reference: inv.invoice,
 								income_account: item.income_account || item.custom_default_earning_account
 							});
-						}
-					});
+							
+							// Track for the being field
+							items_by_invoice_for_being[inv.invoice].push({
+								item_code: item.item_code,
+								item_name: item.item_name,
+								amount: amount
+							});
+							
+							// Update the invoice total
+							total_by_invoice[inv.invoice] += amount;
+				}
+			});
 				}
 			}
 		});

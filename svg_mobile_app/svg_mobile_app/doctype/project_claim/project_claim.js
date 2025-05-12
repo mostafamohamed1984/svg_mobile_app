@@ -776,10 +776,11 @@ function update_items_preview(dialog) {
 											data-invoice="${inv.invoice}"
 											data-item="${item.item_code}"
 											data-idx="${idx}"
-											value="${item.claim_amount.toFixed(2)}" 
+											value="${Math.round(item.claim_amount * 100) / 100}" 
 											min="0"
 											max="${item.available_balance}"
 											style="text-align: right;"
+											onchange="this.value = Math.round(parseFloat(this.value || 0) * 100) / 100"
 											onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 										>
 									</td>
@@ -1211,6 +1212,9 @@ function create_bulk_project_claim(frm, dialog) {
 				
 				// Use the directly entered claim amount (no longer calculated from ratio)
 				let allocated_amount = flt(item.claim_amount);
+				
+				// Round to 2 decimal places to avoid floating-point precision issues
+				allocated_amount = Math.round(allocated_amount * 100) / 100;
 				
 				// Add to total
 				total_claim_amount += allocated_amount;

@@ -522,8 +522,10 @@ class ProjectClaim(Document):
 		
 		# Add entries for each claim item
 		for item in self.claim_items:
-			item_ratio = flt(item.ratio) / 100
-			item_amount = claim_amount * item_ratio
+			# Instead of using the ratio to calculate amount, use the original stored amount directly
+			# item_ratio = flt(item.ratio) / 100
+			# item_amount = claim_amount * item_ratio
+			item_amount = flt(item.amount)
 			
 			# Debit unearned account
 			if hasattr(item, 'unearned_account') and item.unearned_account:

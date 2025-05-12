@@ -114,24 +114,22 @@ frappe.ui.form.on('Issue Requirements Reminders', {
 
     // Show/hide specific date field based on remind_on selection
     remind_on: function(frm) {
-        // Toggle fields based on remind_on type
+        // Clear values that should not be set based on the selected mode
         if (frm.doc.remind_on === 'Specific Date') {
-            frm.set_df_property('date_to_remind', 'reqd', 1);
-            frm.set_df_property('date_to_remind', 'hidden', 0);
-            frm.set_df_property('frequency', 'hidden', 1);
-            frm.set_df_property('frequency', 'reqd', 0);
-        } else {
-            frm.set_df_property('date_to_remind', 'reqd', 0);
-            frm.set_df_property('date_to_remind', 'hidden', 1);
-            frm.set_df_property('frequency', 'hidden', 0);
-            frm.set_df_property('frequency', 'reqd', 1);
-        }
-
-        // Clear values that should not be set
-        if (frm.doc.remind_on === 'Specific Date' && frm.doc.frequency) {
-            frm.set_value('frequency', '');
-        } else if (frm.doc.remind_on === 'Frequency' && frm.doc.date_to_remind) {
-            frm.set_value('date_to_remind', '');
+            // When in Specific Date mode, clear any frequency value
+            if (frm.doc.frequency) {
+                frm.set_value('frequency', '');
+            }
+        } else if (frm.doc.remind_on === 'Frequency') {
+            // When in Frequency mode, clear any specific date
+            if (frm.doc.date_to_remind) {
+                frm.set_value('date_to_remind', '');
+            }
+            
+            // Set default frequency if empty
+            if (!frm.doc.frequency) {
+                frm.set_value('frequency', 'Daily');
+            }
         }
     },
 

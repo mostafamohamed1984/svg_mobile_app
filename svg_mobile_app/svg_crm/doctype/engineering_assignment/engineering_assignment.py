@@ -8,7 +8,50 @@ from frappe.model.document import Document
 class EngineeringAssignment(Document):
     def validate(self):
         self.update_status()
-        self.send_notifications()
+    
+    def after_save(self):
+        self.create_tasks_for_subtasks()
+        
+    def create_tasks_for_subtasks(self):
+        """Create Engineering Tasks for subtasks in this assignment"""
+        if not self.engineering_subtasks:
+            return
+            
+        for subtask in self.engineering_subtasks:
+            if subtask.engineer:
+                # Check if a task already exists for this subtask engineer
+                existing = frappe.get_all(
+                    "Engineering Task",
+                    filters={
+                        "engineering_assignment": self.name,
+                        "junior_engineer": subtask.engineer
+                    }
+                )
+                
+                if not existing:
+                    self.create_engineering_task(subtask)
+    
+    def create_engineering_task(self, subtask):
+        """Create a new Engineering Task for a subtask"""
+        task = frappe.get_doc({
+            "doctype": "Engineering Task",
+            "engineering_assignment": self.name,
+            "sketch": self.sketch,
+            "requirement_item": self.requirement_item,
+            "junior_engineer": subtask.engineer,
+            "task_description": subtask.task_description or "No description provided",
+            "start_date": subtask.start_date or frappe.utils.nowdate(),
+            "end_date": subtask.end_date,
+            "status": "Pending",
+            "priority": self.priority
+        })
+        
+        task.insert(ignore_permissions=True)
+        
+        # Send notification to the junior engineer
+        self.notify_junior_engineer(subtask.engineer, task.name, self.requirement_item)
+        
+        return task
     
     def update_status(self):
         # If this is a new document, no need to update
@@ -26,58 +69,27 @@ class EngineeringAssignment(Document):
                         sketch_doc.save(ignore_permissions=True)
                         break
     
-    def send_notifications(self):
-        # Send notifications to junior engineers when assigned
-        if self.status == "In Progress" and self.engineering_subtasks:
-            for subtask in self.engineering_subtasks:
-                if subtask.engineer:
-                    self.notify_engineer(subtask.engineer, subtask.task_description)
-    
-    def notify_engineer(self, engineer, task_description):
+    def notify_junior_engineer(self, engineer, task_name, item_name):
+        """Send notification to a junior engineer about a new task"""
         # Check if user exists for the engineer
         engineer_user = frappe.db.get_value("Employee", engineer, "user_id")
-        if engineer_user:
-            notification = {
-                "type": "Engineering Task",
-                "document_type": "Engineering Assignment",
-                "document_name": self.name,
-                "subject": f"New Engineering Task: {task_description or 'No description'}",
-                "from_user": frappe.session.user,
-                "email_content": f"You have been assigned a new engineering task: {task_description or 'No description'}"
-            }
+        if not engineer_user:
+            return
             
-            try:
-                frappe.enqueue(
-                    method="frappe.desk.doctype.notification_log.notification_log.enqueue_create_notification",
-                    users=[engineer_user],
-                    **notification
-                )
-            except Exception as e:
-                frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
-
-
-@frappe.whitelist()
-def notify_all_engineers(assignment_name):
-    """
-    Send notifications to all engineers assigned to subtasks in an Engineering Assignment
-    
-    Args:
-        assignment_name (str): Name of the Engineering Assignment document
-    
-    Returns:
-        dict: Result of the notification process
-    """
-    if not assignment_name:
-        frappe.throw("Assignment name is required")
-    
-    assignment = frappe.get_doc("Engineering Assignment", assignment_name)
-    if not assignment.engineering_subtasks:
-        frappe.throw("No engineers are assigned to this document")
-    
-    notification_count = 0
-    for subtask in assignment.engineering_subtasks:
-        if subtask.engineer:
-            assignment.notify_engineer(subtask.engineer, subtask.task_description)
-            notification_count += 1
-            
-    return {"success": True, "message": f"Sent {notification_count} notifications"} 
+        notification = {
+            "type": "Engineering Task",
+            "document_type": "Engineering Task",
+            "document_name": task_name,
+            "subject": f"New Engineering Task for {item_name}",
+            "from_user": frappe.session.user,
+            "email_content": f"You have been assigned a new engineering task for {item_name}. Please check the Engineering Task {task_name}."
+        }
+        
+        try:
+            frappe.enqueue(
+                method="frappe.desk.doctype.notification_log.notification_log.enqueue_create_notification",
+                users=[engineer_user],
+                **notification
+            )
+        except Exception as e:
+            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}") 

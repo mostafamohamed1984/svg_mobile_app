@@ -72,47 +72,6 @@ class EngineeringAssignment(Document):
         # Send notifications on status changes
         if self.has_value_changed("status"):
             self.send_status_notifications()
-            
-        # Check for auto-completion if not already completed
-        if self.status != "Completed":
-            self.check_and_auto_complete()
-    
-    def check_and_auto_complete(self):
-        """Check if all tasks are completed and auto-complete the assignment if appropriate"""
-        if not self.name or self.status == "Completed":
-            return
-            
-        # Get all related engineering tasks
-        tasks = frappe.get_all(
-            "Engineering Task",
-            filters={
-                "engineering_assignment": self.name
-            },
-            fields=["name", "status"]
-        )
-        
-        if not tasks:
-            frappe.logger().info(f"No tasks found for Assignment {self.name}, skipping auto-completion check")
-            return
-        
-        # Check if all tasks are completed
-        all_tasks_completed = all(task.status == "Completed" for task in tasks)
-        
-        if all_tasks_completed:
-            frappe.logger().info(f"All tasks are completed for Assignment {self.name}, auto-completing assignment")
-            
-            # Update the assignment status to Completed
-            self.db_set("status", "Completed")
-            if not self.end_date:
-                self.db_set("end_date", frappe.utils.nowdate())
-                
-            # Trigger requirement status update
-            self.update_requirement_status()
-            frappe.logger().info(f"Auto-completed Assignment {self.name}")
-            
-            return True
-        
-        return False
     
     def create_tasks_for_subtasks(self):
         """Create Engineering Tasks for subtasks in this assignment"""

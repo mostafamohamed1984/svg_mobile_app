@@ -59,13 +59,21 @@ class EngineeringTask(Document):
         
         # If this task is completed, check if all tasks are completed
         if self.status == "Completed":
-            # Trigger auto-completion check on the parent assignment
-            frappe.db.commit()  # Commit current changes to ensure they're visible to the auto-completion logic
-            try:
-                eng_assignment.check_and_auto_complete()
-                frappe.logger().info(f"Triggered auto-completion check for assignment {self.engineering_assignment} after task completion")
-            except Exception as e:
-                frappe.logger().error(f"Error during auto-completion check for {self.engineering_assignment}: {str(e)}")
+            # Get all tasks for this assignment
+            all_tasks = frappe.get_all(
+                "Engineering Task",
+                filters={"engineering_assignment": self.engineering_assignment},
+                fields=["name", "status"]
+            )
+            
+            # Check if all tasks are completed
+            all_completed = all_tasks and all(task.status == "Completed" for task in all_tasks)
+            
+            if all_completed and eng_assignment.status != "Completed":
+                # All tasks are completed, update assignment status
+                eng_assignment.status = "Completed"
+                eng_assignment.save(ignore_permissions=True)
+                frappe.logger().info(f"All tasks completed for assignment {self.engineering_assignment}, marked as Completed")
                 
         # If task is sent back for modification, update assignment accordingly
         elif self.status == "Modification" and eng_assignment.status != "Review":

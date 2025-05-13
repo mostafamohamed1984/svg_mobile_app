@@ -23,6 +23,7 @@
   "actual_hours",
   "notes_section",
   "progress_notes",
+  "rejection_reason",
   "internal_notes"
  ],
  "fields": [
@@ -70,12 +71,12 @@
    "read_only": 1
   },
   {
-   "default": "Pending",
+   "default": "Required",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Pending\nIn Progress\nPaused\nCompleted",
+   "options": "Required\nIn Progress\nReady\nModification\nCompleted",
    "reqd": 1
   },
   {
@@ -132,6 +133,12 @@
    "fieldname": "progress_notes",
    "fieldtype": "Small Text",
    "label": "Progress Notes"
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection Reason",
+   "depends_on": "eval:doc.status=='Modification'"
   },
   {
    "fieldname": "internal_notes",

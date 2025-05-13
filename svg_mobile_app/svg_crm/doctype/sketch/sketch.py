@@ -40,6 +40,8 @@ class Sketch(Document):
 
 	def create_engineering_assignment(self, requirement):
 		"""Create a new engineering assignment from a requirement"""
+		frappe.logger().info(f"Creating engineering assignment for Sketch {self.name}, requirement: {requirement.item}")
+		
 		assignment = frappe.get_doc({
 			"doctype": "Engineering Assignment",
 			"sketch": self.name,
@@ -54,6 +56,7 @@ class Sketch(Document):
 		})
 		
 		assignment.insert(ignore_permissions=True)
+		frappe.logger().info(f"Created engineering assignment {assignment.name} for engineer {requirement.engineer}")
 		
 		# Send notification to the senior engineer
 		self.notify_engineer(requirement.engineer, assignment.name, requirement.item)
@@ -65,7 +68,10 @@ class Sketch(Document):
 		# Check if user exists for the engineer
 		engineer_user = frappe.db.get_value("Employee", engineer, "user_id")
 		if not engineer_user:
+			frappe.logger().info(f"No user found for engineer {engineer}, skipping notification")
 			return
+			
+		frappe.logger().info(f"Preparing to send notification to {engineer_user} for assignment {assignment_name}")
 			
 		notification = {
 			"type": "Engineering Assignment",
@@ -77,13 +83,50 @@ class Sketch(Document):
 		}
 		
 		try:
-			frappe.enqueue(
-				method="frappe.desk.doctype.notification_log.notification_log.enqueue_create_notification",
-				users=[engineer_user],
+			# Directly create notification without enqueuing
+			frappe.get_doc({
+				"doctype": "Notification Log",
+				"for_user": engineer_user,
 				**notification
-			)
+			}).insert(ignore_permissions=True)
+			
+			frappe.logger().info(f"Successfully sent notification to {engineer_user} for Engineering Assignment {assignment_name}")
 		except Exception as e:
 			frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
+			
+	def refresh_requirements_status(self):
+		"""Check the status of all requirements and update based on engineering tasks"""
+		if not self.sketch_requirements:
+			return 0
+			
+		updated_count = 0
+		for req in self.sketch_requirements:
+			if not req.item or req.status == "Completed":
+				continue
+				
+			# Get all engineering tasks for this requirement
+			tasks = frappe.get_all(
+				"Engineering Task",
+				filters={
+					"sketch": self.name,
+					"requirement_item": req.item
+				},
+				fields=["name", "status"]
+			)
+			
+			if tasks:
+				# Check if all tasks are completed
+				all_completed = all(task.status == "Completed" for task in tasks)
+				
+				if all_completed and req.status != "Completed":
+					req.status = "Completed"
+					updated_count += 1
+					frappe.logger().info(f"Updated requirement {req.item} to Completed in Sketch {self.name}")
+			
+		if updated_count > 0:
+			self.save(ignore_permissions=True)
+			
+		return updated_count
 
 
 @frappe.whitelist()
@@ -125,3 +168,21 @@ def create_engineering_assignments(sketch_name):
 		frappe.logger().info(f"Created {created_count} engineering assignments for Sketch {sketch_name}")
 		
 	return {"created": created_count}
+
+@frappe.whitelist()
+def refresh_requirement_statuses(sketch_name):
+	"""Refresh the status of all requirements in a sketch based on their engineering tasks
+	
+	Args:
+		sketch_name (str): Name of the Sketch document
+		
+	Returns:
+		dict: Result with count of updated requirements
+	"""
+	if not sketch_name:
+		frappe.throw("Sketch name is required")
+		
+	sketch = frappe.get_doc("Sketch", sketch_name)
+	updated_count = sketch.refresh_requirements_status()
+	
+	return {"updated": updated_count}

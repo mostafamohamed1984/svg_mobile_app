@@ -7,8 +7,6 @@ from frappe.model.document import Document
 
 class EngineeringAssignment(Document):
     def validate(self):
-        self.update_status()
-        
         # Flag for tracking if we need to process tasks after save
         self._process_subtasks = False
         
@@ -16,6 +14,10 @@ class EngineeringAssignment(Document):
         if not self.is_new():
             if self.has_new_or_modified_subtasks():
                 self._process_subtasks = True
+        
+        # When the status changes to completed, we need to update the parent sketch
+        if not self.is_new() and self.has_value_changed("status") and self.status == "Completed":
+            self.update_requirement_status()
     
     def after_insert(self):
         """Handle new document creation"""
@@ -138,22 +140,6 @@ class EngineeringAssignment(Document):
         except Exception as e:
             frappe.log_error(f"Failed to add task to Sketch {self.sketch}: {str(e)}")
     
-    def update_status(self):
-        # If this is a new document, no need to update
-        if self.is_new():
-            return
-            
-        # Update corresponding Sketch Requirements status
-        if self.status and self.sketch and self.requirement_item:
-            sketch_doc = frappe.get_doc("Sketch", self.sketch)
-            for req in sketch_doc.sketch_requirements:
-                if req.item == self.requirement_item:
-                    # Update only if status has changed and is not already at a higher level
-                    if req.status != self.status and self.status == "Completed":
-                        req.status = self.status
-                        sketch_doc.save(ignore_permissions=True)
-                        break
-    
     def notify_junior_engineer(self, engineer, task_name, item_name):
         """Send notification to a junior engineer about a new task"""
         # Check if user exists for the engineer
@@ -177,4 +163,43 @@ class EngineeringAssignment(Document):
                 **notification
             )
         except Exception as e:
-            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}") 
+            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
+    
+    def update_requirement_status(self):
+        """Update the status of the related requirement in the Sketch document if all tasks are completed"""
+        if not self.sketch or not self.requirement_item:
+            return
+            
+        try:
+            # Get the sketch document
+            sketch = frappe.get_doc("Sketch", self.sketch)
+            
+            # Find all Engineering Assignments for this requirement item
+            all_assignments = frappe.get_all(
+                "Engineering Assignment",
+                filters={
+                    "sketch": self.sketch,
+                    "requirement_item": self.requirement_item
+                },
+                fields=["name", "status"]
+            )
+            
+            # Check if all assignments are completed
+            all_assignments_completed = True
+            for assignment in all_assignments:
+                if assignment.status != "Completed":
+                    all_assignments_completed = False
+                    break
+            
+            if all_assignments_completed:
+                # Find the matching requirement in the sketch
+                for req in sketch.sketch_requirements:
+                    if req.item == self.requirement_item:
+                        # Update the requirement status to Completed
+                        if req.status != "Completed":
+                            req.status = "Completed"
+                            sketch.save(ignore_permissions=True)
+                            frappe.logger().info(f"Updated requirement {self.requirement_item} in Sketch {self.sketch} to Completed")
+                        break
+        except Exception as e:
+            frappe.log_error(f"Failed to update requirement status in Sketch {self.sketch}: {str(e)}") 

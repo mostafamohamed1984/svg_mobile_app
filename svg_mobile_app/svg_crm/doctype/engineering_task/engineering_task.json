@@ -77,7 +77,8 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Required\nIn Progress\nReady\nModification\nCompleted",
-   "reqd": 1
+   "reqd": 1,
+   "read_only": 1
   },
   {
    "fieldname": "task_details_section",

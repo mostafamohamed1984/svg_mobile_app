@@ -35,56 +35,6 @@ frappe.ui.form.on('Engineering Assignment', {
             }, __('Navigate'));
         }
         
-        // Add button to mark assignment as completed when in Review status
-        if (frm.doc.status === 'Review') {
-            // Check if all tasks are ready or completed
-            frappe.call({
-                method: 'frappe.client.get_list',
-                args: {
-                    doctype: 'Engineering Task',
-                    filters: {
-                        'engineering_assignment': frm.doc.name
-                    },
-                    fields: ['name', 'status']
-                },
-                callback: function(r) {
-                    if (r.message) {
-                        const tasks = r.message;
-                        const all_ready_or_completed = tasks.every(task => 
-                            ['Ready', 'Completed'].includes(task.status)
-                        );
-                        
-                        if (all_ready_or_completed) {
-                            frm.add_custom_button(__('Complete Assignment'), function() {
-                                // Check if any tasks need explicit completion
-                                const ready_tasks = tasks.filter(task => task.status === 'Ready');
-                                
-                                if (ready_tasks.length > 0) {
-                                    // Show confirmation with list of tasks to complete
-                                    let task_list = ready_tasks.map(t => `• ${t.name}`).join('<br>');
-                                    
-                                    frappe.confirm(
-                                        __(`This will mark the following tasks as completed:<br>${task_list}<br><br>Continue?`),
-                                        function() {
-                                            // Yes - Complete tasks then complete assignment
-                                            complete_tasks_and_assignment(frm, ready_tasks);
-                                        }
-                                    );
-                                } else {
-                                    // All tasks already completed, just complete assignment
-                                    frm.set_value('status', 'Completed');
-                                    if (!frm.doc.end_date) {
-                                        frm.set_value('end_date', frappe.datetime.nowdate());
-                                    }
-                                    frm.save();
-                                }
-                            }, __('Actions'));
-                        }
-                    }
-                }
-            });
-        }
-        
         // Add button to update subtask statuses
         if (frm.doc.engineering_subtasks && frm.doc.engineering_subtasks.length > 0) {
             frm.add_custom_button(__('Refresh Task Statuses'), function() {
@@ -107,49 +57,6 @@ frappe.ui.form.on('Engineering Assignment', {
         }
     }
 });
-
-// Function to complete all tasks and then the assignment
-function complete_tasks_and_assignment(frm, tasks) {
-    let completed = 0;
-    const total = tasks.length;
-    
-    frappe.show_alert({
-        message: __('Completing tasks... 0/' + total),
-        indicator: 'blue'
-    }, 3);
-    
-    // Complete each task
-    tasks.forEach(task => {
-        frappe.call({
-            method: 'frappe.client.set_value',
-            args: {
-                doctype: 'Engineering Task',
-                name: task.name,
-                fieldname: {
-                    'status': 'Completed',
-                    'end_date': frappe.datetime.nowdate()
-                }
-            },
-            callback: function(r) {
-                completed++;
-                
-                frappe.show_alert({
-                    message: __('Completing tasks... ' + completed + '/' + total),
-                    indicator: 'blue'
-                }, 3);
-                
-                // When all tasks are completed, update the assignment
-                if (completed === total) {
-                    frm.set_value('status', 'Completed');
-                    if (!frm.doc.end_date) {
-                        frm.set_value('end_date', frappe.datetime.nowdate());
-                    }
-                    frm.save();
-                }
-            }
-        });
-    });
-}
 
 // Function to refresh the status of subtasks from Engineering Tasks
 function refresh_subtask_statuses(frm) {

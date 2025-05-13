@@ -13,20 +13,6 @@ frappe.ui.form.on('Engineering Task', {
                 frm.save();
             });
         }
-        
-        // Add button to view parent Engineering Assignment
-        if (!frm.is_new() && frm.doc.engineering_assignment) {
-            frm.add_custom_button(__('View Engineering Assignment'), function() {
-                frappe.set_route('Form', 'Engineering Assignment', frm.doc.engineering_assignment);
-            });
-        }
-        
-        // Add button to view Sketch
-        if (!frm.is_new() && frm.doc.sketch) {
-            frm.add_custom_button(__('View Sketch'), function() {
-                frappe.set_route('Form', 'Sketch', frm.doc.sketch);
-            });
-        }
     },
     
     // Handle status changes

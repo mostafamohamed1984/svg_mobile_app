@@ -11,6 +11,7 @@
   "start_date",
   "end_date",
   "status",
+  "priority",
   "attachment",
   "notes"
  ],
@@ -50,6 +51,14 @@
    "label": "Status",
    "options": "Pending\nIn Progress\nCompleted",
    "reqd": 1
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Priority",
+   "options": "Low\nMedium\nHigh\nUrgent",
+   "default": "Medium"
   },
   {
    "fieldname": "attachment",

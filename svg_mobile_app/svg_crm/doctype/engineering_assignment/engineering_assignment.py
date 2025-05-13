@@ -79,6 +79,8 @@ class EngineeringAssignment(Document):
                 if not existing:
                     task = self.create_engineering_task(subtask)
                     if task:
+                        # Add a row to the Sketch's Engineering Tasks table
+                        self.add_to_sketch_engineering_tasks(subtask, task)
                         tasks_created += 1
         
         if tasks_created > 0:
@@ -86,6 +88,9 @@ class EngineeringAssignment(Document):
     
     def create_engineering_task(self, subtask):
         """Create a new Engineering Task for a subtask"""
+        # Get the priority from the subtask, or use Medium as default
+        priority = subtask.priority if hasattr(subtask, 'priority') else "Medium"
+        
         task = frappe.get_doc({
             "doctype": "Engineering Task",
             "engineering_assignment": self.name,
@@ -96,7 +101,7 @@ class EngineeringAssignment(Document):
             "start_date": subtask.start_date or frappe.utils.nowdate(),
             "end_date": subtask.end_date,
             "status": "Pending",
-            "priority": self.priority
+            "priority": priority
         })
         
         task.insert(ignore_permissions=True)
@@ -105,6 +110,33 @@ class EngineeringAssignment(Document):
         self.notify_junior_engineer(subtask.engineer, task.name, self.requirement_item)
         
         return task
+    
+    def add_to_sketch_engineering_tasks(self, subtask, task):
+        """Add a record to the Sketch's Engineering Tasks table"""
+        if not self.sketch:
+            return
+            
+        try:
+            # Get the sketch document
+            sketch = frappe.get_doc("Sketch", self.sketch)
+            
+            # Create a new row in the sketch_engineering_tasks table
+            sketch.append("sketch_engineering_tasks", {
+                "engineer": subtask.engineer,
+                "start_date": subtask.start_date or frappe.utils.nowdate(),
+                "end_date": subtask.end_date,
+                "status": "Required",  # Default status is Required
+                "description": subtask.task_description,
+                "requirement_item": self.requirement_item
+            })
+            
+            # Save the sketch document
+            sketch.save(ignore_permissions=True)
+            
+            frappe.logger().info(f"Added engineering task for {subtask.engineer} to Sketch {self.sketch}")
+            
+        except Exception as e:
+            frappe.log_error(f"Failed to add task to Sketch {self.sketch}: {str(e)}")
     
     def update_status(self):
         # If this is a new document, no need to update

@@ -21,12 +21,6 @@
   "priority",
   "estimated_hours",
   "actual_hours",
-  "attachments_section",
-  "task_attachment_1",
-  "task_attachment_2",
-  "column_break_17",
-  "task_attachment_3",
-  "task_attachment_4",
   "notes_section",
   "progress_notes",
   "internal_notes"
@@ -71,7 +65,8 @@
    "in_list_view": 1,
    "label": "Junior Engineer",
    "options": "Employee",
-   "reqd": 1
+   "reqd": 1,
+   "read_only": 1
   },
   {
    "default": "Pending",
@@ -96,12 +91,14 @@
   {
    "fieldname": "start_date",
    "fieldtype": "Date",
-   "label": "Start Date"
+   "label": "Start Date",
+   "read_only": 1
   },
   {
    "fieldname": "end_date",
    "fieldtype": "Date",
-   "label": "End Date"
+   "label": "End Date",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_11",
@@ -111,7 +108,8 @@
    "fieldname": "priority",
    "fieldtype": "Select",
    "label": "Priority",
-   "options": "Low\nMedium\nHigh\nUrgent"
+   "options": "Low\nMedium\nHigh\nUrgent",
+   "read_only": 1
   },
   {
    "fieldname": "estimated_hours",
@@ -121,36 +119,8 @@
   {
    "fieldname": "actual_hours",
    "fieldtype": "Float",
-   "label": "Actual Hours"
-  },
-  {
-   "fieldname": "attachments_section",
-   "fieldtype": "Section Break",
-   "label": "Attachments"
-  },
-  {
-   "fieldname": "task_attachment_1",
-   "fieldtype": "Attach",
-   "label": "Task Attachment 1"
-  },
-  {
-   "fieldname": "task_attachment_2",
-   "fieldtype": "Attach",
-   "label": "Task Attachment 2"
-  },
-  {
-   "fieldname": "column_break_17",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "task_attachment_3",
-   "fieldtype": "Attach",
-   "label": "Task Attachment 3"
-  },
-  {
-   "fieldname": "task_attachment_4",
-   "fieldtype": "Attach",
-   "label": "Task Attachment 4"
+   "label": "Actual Hours",
+   "read_only": 1
   },
   {
    "fieldname": "notes_section",

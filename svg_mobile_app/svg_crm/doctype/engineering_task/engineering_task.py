@@ -69,11 +69,15 @@ class EngineeringTask(Document):
             # Check if all tasks are completed
             all_completed = all_tasks and all(task.status == "Completed" for task in all_tasks)
             
-            if all_completed and eng_assignment.status != "Completed":
-                # All tasks are completed, update assignment status
-                eng_assignment.status = "Completed"
-                eng_assignment.save(ignore_permissions=True)
-                frappe.logger().info(f"All tasks completed for assignment {self.engineering_assignment}, marked as Completed")
+            if all_completed:
+                # All tasks are completed, update assignment status regardless of current status
+                if eng_assignment.status != "Completed":
+                    eng_assignment.status = "Completed"
+                    # Set end date if not set
+                    if not eng_assignment.end_date:
+                        eng_assignment.end_date = frappe.utils.nowdate()
+                    eng_assignment.save(ignore_permissions=True)
+                    frappe.logger().info(f"All tasks completed for assignment {self.engineering_assignment}, marked as Completed")
                 
         # If task is sent back for modification, update assignment accordingly
         elif self.status == "Modification" and eng_assignment.status != "Review":

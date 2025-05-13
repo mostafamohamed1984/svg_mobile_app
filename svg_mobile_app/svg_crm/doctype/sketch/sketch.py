@@ -6,6 +6,20 @@ from frappe.model.document import Document
 
 
 class Sketch(Document):
+	def validate(self):
+		"""Validate sketch data before saving"""
+		self.validate_engineering_tasks_status()
+		
+	def validate_engineering_tasks_status(self):
+		"""Ensure all engineering tasks have valid status values"""
+		valid_statuses = ["Required", "In Progress", "Ready", "Modification", "Completed"]
+		
+		if self.sketch_engineering_tasks:
+			for task in self.sketch_engineering_tasks:
+				if task.status and task.status not in valid_statuses:
+					frappe.logger().warning(f"Invalid status '{task.status}' for task {task.engineer} in Sketch {self.name}. Setting to 'Required'.")
+					task.status = "Required"
+		
 	def after_save(self):
 		"""After save, create any necessary engineering assignments"""
 		self.create_engineering_assignments_for_requirements()

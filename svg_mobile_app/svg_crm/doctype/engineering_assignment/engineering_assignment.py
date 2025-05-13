@@ -143,24 +143,35 @@ class EngineeringAssignment(Document):
             # Get the sketch document
             sketch = frappe.get_doc("Sketch", self.sketch)
             
-            # Create a new row in the sketch_engineering_tasks table
-            sketch.append("sketch_engineering_tasks", {
-                "engineer": subtask.engineer,
-                "start_date": subtask.start_date or frappe.utils.nowdate(),
-                "end_date": subtask.end_date,
-                "status": "Required",  # Default status is Required
-                "description": subtask.task_description,
-                "requirement_item": self.requirement_item,
-                "engineering_task": task.name  # Store reference to the Engineering Task
-            })
+            # Check if a row already exists for this task
+            existing_task = None
+            for existing in sketch.sketch_engineering_tasks:
+                if existing.engineer == subtask.engineer and existing.requirement_item == self.requirement_item:
+                    existing_task = existing
+                    break
+            
+            if existing_task:
+                # Update existing row with engineering task reference
+                existing_task.engineering_task = task.name
+                frappe.logger().info(f"Updated existing engineering task reference in Sketch {self.sketch} for {subtask.engineer}")
+            else:
+                # Create a new row in the sketch_engineering_tasks table
+                sketch.append("sketch_engineering_tasks", {
+                    "engineer": subtask.engineer,
+                    "start_date": subtask.start_date or frappe.utils.nowdate(),
+                    "end_date": subtask.end_date,
+                    "status": "Required",  # Default status is Required
+                    "description": subtask.task_description,
+                    "requirement_item": self.requirement_item,
+                    "engineering_task": task.name  # Store reference to the Engineering Task
+                })
+                frappe.logger().info(f"Added new engineering task for {subtask.engineer} to Sketch {self.sketch}")
             
             # Save the sketch document
             sketch.save(ignore_permissions=True)
             
-            frappe.logger().info(f"Added engineering task for {subtask.engineer} to Sketch {self.sketch}")
-            
         except Exception as e:
-            frappe.log_error(f"Failed to add task to Sketch {self.sketch}: {str(e)}")
+            frappe.log_error(f"Failed to add task to Sketch {self.sketch}: {str(e)}", title=f"Add Task to Sketch Error: {task.name}", limit_msg_size=True)
     
     def notify_junior_engineer(self, engineer, task_name, item_name):
         """Send notification to a junior engineer about a new task"""

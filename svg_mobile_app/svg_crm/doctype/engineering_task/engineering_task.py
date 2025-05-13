@@ -8,6 +8,15 @@ from datetime import datetime
 
 class EngineeringTask(Document):
     def validate(self):
+        # Log the current status to debug any validation issues
+        frappe.logger().debug(f"Validating Engineering Task {self.name} with status: {self.status}")
+        
+        # Make sure status is a valid option
+        valid_statuses = ["Required", "In Progress", "Ready", "Modification", "Completed"]
+        if self.status not in valid_statuses:
+            frappe.logger().warning(f"Invalid status '{self.status}' for Engineering Task {self.name}. Setting to 'Required'.")
+            self.status = "Required"
+            
         # Check if status has changed
         if not self.is_new() and self.status_changed():
             # Update the engineering task in sketch doctype
@@ -93,42 +102,55 @@ class EngineeringTask(Document):
             # Get the sketch document
             sketch = frappe.get_doc("Sketch", self.sketch)
             
-            # Find the matching engineering task row
+            # Find the matching engineering task row using the engineering_task field
             task_found = False
+            
+            # First try to find by direct reference
             for task in sketch.sketch_engineering_tasks:
-                if (task.engineer == self.junior_engineer and 
-                    task.requirement_item == self.requirement_item):
+                if task.get("engineering_task") == self.name:
                     task_found = True
                     
-                    # Map the Engineering Task status to Sketch Engineering Task status
-                    new_status = "Required"
-                    if self.status == "Completed":
-                        new_status = "Completed"
-                    elif self.status == "Ready":
-                        new_status = "Ready"
-                    elif self.status == "In Progress":
-                        new_status = "In Progress"
-                    elif self.status == "Modification":
-                        new_status = "Modification"
-                    
-                    # Only update if status has changed
-                    if task.status != new_status:
-                        task.status = new_status
+                    # Map Engineering Task status directly to Sketch Engineering Task status
+                    # No mapping needed since we've updated the options to match
+                    if task.status != self.status:
+                        task.status = self.status
                         task.start_date = self.start_date
                         task.end_date = self.end_date
                         
                         # Save the sketch document
                         sketch.save(ignore_permissions=True)
-                        frappe.logger().info(f"Updated engineering task for {self.junior_engineer} in Sketch {self.sketch} to status {new_status}")
+                        frappe.logger().info(f"Updated engineering task for {self.junior_engineer} in Sketch {self.sketch} to status {self.status}")
                     
                     break
+            
+            # If not found by reference, fallback to finding by engineer and requirement
+            if not task_found:
+                for task in sketch.sketch_engineering_tasks:
+                    if (task.engineer == self.junior_engineer and 
+                        task.requirement_item == self.requirement_item):
+                        task_found = True
+                        
+                        # Set the direct reference for future use
+                        task.engineering_task = self.name
+                        
+                        # Update status to match
+                        if task.status != self.status:
+                            task.status = self.status
+                            task.start_date = self.start_date
+                            task.end_date = self.end_date
+                            
+                            # Save the sketch document
+                            sketch.save(ignore_permissions=True)
+                            frappe.logger().info(f"Updated engineering task for {self.junior_engineer} in Sketch {self.sketch} to status {self.status} and linked reference")
+                        
+                        break
                     
             # If no task was found, log a warning
             if not task_found:
                 frappe.logger().warning(f"No matching task found in Sketch {self.sketch} for engineer {self.junior_engineer} and requirement {self.requirement_item}")
                 
         except Exception as e:
-            frappe.log_error(f"Failed to update task in Sketch {self.sketch}: {str(e)}")
+            frappe.log_error(f"Failed to update task in Sketch {self.sketch}: {str(e)}", title=f"Update Sketch Task Error: {self.name}", limit_msg_size=True)
     
     def send_status_notifications(self):
         """Send notifications based on status changes"""

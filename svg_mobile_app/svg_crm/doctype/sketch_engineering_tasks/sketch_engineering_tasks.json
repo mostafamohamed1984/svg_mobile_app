@@ -11,7 +11,8 @@
   "end_date",
   "status",
   "description",
-  "requirement_item"
+  "requirement_item",
+  "engineering_task"
  ],
  "fields": [
   {
@@ -39,7 +40,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Required\nReady\nCompleted",
+   "options": "Required\nIn Progress\nReady\nModification\nCompleted",
    "read_only": 1
   },
   {
@@ -54,6 +55,12 @@
    "in_list_view": 1,
    "label": "Requirement Item",
    "description": "Item from the requirements table"
+  },
+  {
+   "fieldname": "engineering_task",
+   "fieldtype": "Link",
+   "label": "Engineering Task",
+   "options": "Engineering Task"
   }
  ],
  "index_web_pages_for_search": 1,

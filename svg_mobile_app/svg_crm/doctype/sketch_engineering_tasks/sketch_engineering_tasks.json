@@ -34,11 +34,13 @@
    "label": "End Date"
   },
   {
+   "default": "Required",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Required\nReady\nCompleted"
+   "options": "Required\nReady\nCompleted",
+   "read_only": 1
   },
   {
    "fieldname": "description",

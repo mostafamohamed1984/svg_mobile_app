@@ -1,0 +1,211 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "EA.#####",
+ "creation": "2025-05-15 13:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "sketch_section",
+  "sketch",
+  "sketch_number",
+  "requirement_item",
+  "column_break_4",
+  "senior_engineer",
+  "status",
+  "assignment_details_section",
+  "description",
+  "start_date",
+  "end_date",
+  "column_break_11",
+  "priority",
+  "location",
+  "project_type",
+  "attachments_section",
+  "attachment_1",
+  "attachment_2",
+  "column_break_17",
+  "attachment_3",
+  "attachment_4",
+  "subtasks_section",
+  "engineering_subtasks",
+  "notes_section",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "sketch_section",
+   "fieldtype": "Section Break",
+   "label": "Sketch Reference"
+  },
+  {
+   "fieldname": "sketch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Sketch",
+   "options": "Sketch",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "sketch.sketch_number",
+   "fieldname": "sketch_number",
+   "fieldtype": "Int",
+   "label": "Sketch Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "requirement_item",
+   "fieldtype": "Link",
+   "label": "Requirement Item",
+   "options": "Item",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "senior_engineer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Senior Engineer",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nIn Progress\nReview\nCompleted",
+   "reqd": 1
+  },
+  {
+   "fieldname": "assignment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment Details"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "column_break_11",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Select",
+   "label": "Priority",
+   "options": "Low\nMedium\nHigh\nUrgent"
+  },
+  {
+   "fieldname": "location",
+   "fieldtype": "Data",
+   "label": "Location"
+  },
+  {
+   "fetch_from": "sketch.project_type",
+   "fieldname": "project_type",
+   "fieldtype": "Data",
+   "label": "Project Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "attachments_section",
+   "fieldtype": "Section Break",
+   "label": "Attachments"
+  },
+  {
+   "fieldname": "attachment_1",
+   "fieldtype": "Attach",
+   "label": "Attachment 1"
+  },
+  {
+   "fieldname": "attachment_2",
+   "fieldtype": "Attach",
+   "label": "Attachment 2"
+  },
+  {
+   "fieldname": "column_break_17",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "attachment_3",
+   "fieldtype": "Attach",
+   "label": "Attachment 3"
+  },
+  {
+   "fieldname": "attachment_4",
+   "fieldtype": "Attach",
+   "label": "Attachment 4"
+  },
+  {
+   "fieldname": "subtasks_section",
+   "fieldtype": "Section Break",
+   "label": "Junior Engineer Tasks"
+  },
+  {
+   "fieldname": "engineering_subtasks",
+   "fieldtype": "Table",
+   "label": "Engineering Subtasks",
+   "options": "Engineering Subtask"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [
+  {
+   "link_doctype": "Sketch",
+   "link_fieldname": "name",
+   "parent_doctype": "Sketch",
+   "parentfield": "links"
+  }
+ ],
+ "modified": "2025-05-15 13:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SVG CRM",
+ "name": "Engineering Assignment",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "SVG CRM",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

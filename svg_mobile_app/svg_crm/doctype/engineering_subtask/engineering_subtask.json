@@ -50,7 +50,8 @@
    "in_list_view": 1,
    "label": "Status",
    "options": "Pending\nIn Progress\nCompleted",
-   "reqd": 1
+   "reqd": 1,
+   "read_only": 1
   },
   {
    "fieldname": "priority",

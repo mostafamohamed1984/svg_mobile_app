@@ -14,8 +14,8 @@ frappe.ui.form.on('Engineering Assignment', {
         }
         
         // Add buttons based on assignment status
-        if (frm.doc.status === 'Pending') {
-            // If assignment is pending, allow starting work
+        if (frm.doc.status === 'Required') {
+            // If assignment is required, allow starting work
             frm.add_custom_button(__('Start Assignment'), function() {
                 frm.set_value('status', 'In Progress');
                 if (!frm.doc.start_date) {
@@ -26,7 +26,7 @@ frappe.ui.form.on('Engineering Assignment', {
         }
         
         // Show related engineering tasks
-        if (frm.doc.status !== 'Pending') {
+        if (frm.doc.status !== 'Required') {
             frm.add_custom_button(__('View Related Tasks'), function() {
                 frappe.route_options = {
                     "engineering_assignment": frm.doc.name

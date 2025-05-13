@@ -67,12 +67,12 @@
    "read_only": 1
   },
   {
-   "default": "Pending",
+   "default": "Required",
    "fieldname": "status",
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Pending\nIn Progress\nReview\nCompleted",
+   "options": "Required\nIn Progress\nReview\nCompleted",
    "reqd": 1
   },
   {

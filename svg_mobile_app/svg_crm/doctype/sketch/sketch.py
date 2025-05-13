@@ -66,7 +66,7 @@ class Sketch(Document):
 			"start_date": requirement.start_date or frappe.utils.nowdate(),
 			"end_date": requirement.end_date,
 			"project_type": self.project_type,
-			"status": "Pending"
+			"status": "Required"
 		})
 		
 		assignment.insert(ignore_permissions=True)

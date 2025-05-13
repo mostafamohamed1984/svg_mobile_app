@@ -88,7 +88,7 @@ class EngineeringTask(Document):
             frappe.logger().info(f"Task {self.name} is ready for review, assignment {self.engineering_assignment} set to Review")
 
         # If task is in progress, update assignment
-        elif self.status == "In Progress" and eng_assignment.status == "Pending":
+        elif self.status == "In Progress" and eng_assignment.status == "Required":
             eng_assignment.status = "In Progress"
             eng_assignment.save(ignore_permissions=True)
             frappe.logger().info(f"Task {self.name} is in progress, assignment {self.engineering_assignment} set to In Progress")

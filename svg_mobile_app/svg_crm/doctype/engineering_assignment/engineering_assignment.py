@@ -53,4 +53,31 @@ class EngineeringAssignment(Document):
                     **notification
                 )
             except Exception as e:
-                frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}") 
+                frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
+
+
+@frappe.whitelist()
+def notify_all_engineers(assignment_name):
+    """
+    Send notifications to all engineers assigned to subtasks in an Engineering Assignment
+    
+    Args:
+        assignment_name (str): Name of the Engineering Assignment document
+    
+    Returns:
+        dict: Result of the notification process
+    """
+    if not assignment_name:
+        frappe.throw("Assignment name is required")
+    
+    assignment = frappe.get_doc("Engineering Assignment", assignment_name)
+    if not assignment.engineering_subtasks:
+        frappe.throw("No engineers are assigned to this document")
+    
+    notification_count = 0
+    for subtask in assignment.engineering_subtasks:
+        if subtask.engineer:
+            assignment.notify_engineer(subtask.engineer, subtask.task_description)
+            notification_count += 1
+            
+    return {"success": True, "message": f"Sent {notification_count} notifications"} 

@@ -29,19 +29,18 @@ frappe.ui.form.on('Engineering Task', {
         }
     },
     
-    // When status changes to completed, update the end date if not already set
+    // Handle status changes
     status: function(frm) {
+        // When status changes to completed, update the end date if not already set
         if (frm.doc.status === 'Completed' && !frm.doc.end_date) {
             frm.set_value('end_date', frappe.datetime.nowdate());
+            
+            if (!frm.is_new()) {
+                frappe.show_alert(__('Updating parent Engineering Assignment...'));
+            }
         }
         
-        if (frm.doc.status === 'Completed' && !frm.is_new()) {
-            frappe.show_alert(__('Updating parent Engineering Assignment...'));
-        }
-    },
-    
-    // Set start date when status changes to In Progress if not already set
-    status: function(frm) {
+        // Set start date when status changes to In Progress if not already set
         if (frm.doc.status === 'In Progress' && !frm.doc.start_date) {
             frm.set_value('start_date', frappe.datetime.nowdate());
         }

@@ -119,11 +119,9 @@ frappe.ui.form.on('Engineering Assignment', {
                 }
                 
                 frappe.call({
-                    method: 'frappe.client.submit_action',
+                    method: 'svg_mobile_app.svg_crm.doctype.engineering_assignment.engineering_assignment.notify_all_engineers',
                     args: {
-                        doctype: frm.doctype,
-                        name: frm.docname,
-                        action: 'send_notifications'
+                        assignment_name: frm.docname
                     },
                     callback: function(r) {
                         if(!r.exc) {

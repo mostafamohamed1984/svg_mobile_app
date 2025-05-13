@@ -170,7 +170,7 @@ class EngineeringTask(Document):
             frappe.get_doc({
                 "doctype": "Notification Log",
                 "for_user": engineer_user,
-                "type": "Engineering Task",
+                "type": "Alert",
                 "document_type": "Engineering Task",
                 "document_name": self.name,
                 "subject": subject,
@@ -180,7 +180,7 @@ class EngineeringTask(Document):
             
             frappe.logger().info(f"Sent {subject} notification to {engineer_user} for task {self.name}")
         except Exception as e:
-            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
+            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}", title=f"Notification Error: {subject}", limit_msg_size=True)
     
     def status_changed(self):
         """Check if status has changed from previous value"""

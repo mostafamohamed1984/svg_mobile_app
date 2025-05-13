@@ -173,7 +173,7 @@ class EngineeringAssignment(Document):
         frappe.logger().info(f"Preparing to send notification to {engineer_user} for task {task_name}")
             
         notification = {
-            "type": "Engineering Task",
+            "type": "Alert",
             "document_type": "Engineering Task",
             "document_name": task_name,
             "subject": f"New Engineering Task for {item_name}",
@@ -191,7 +191,7 @@ class EngineeringAssignment(Document):
             
             frappe.logger().info(f"Successfully sent notification to {engineer_user} for Engineering Task {task_name}")
         except Exception as e:
-            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
+            frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}", title=f"Notification Error: {task_name}", limit_msg_size=True)
     
     def update_requirement_status(self):
         """Update the status of the related requirement in the Sketch document if all tasks are completed"""
@@ -321,7 +321,7 @@ class EngineeringAssignment(Document):
             frappe.get_doc({
                 "doctype": "Notification Log",
                 "for_user": user,
-                "type": "Assignment Status",
+                "type": "Alert",
                 "document_type": "Engineering Assignment",
                 "document_name": self.name,
                 "subject": subject,
@@ -331,4 +331,4 @@ class EngineeringAssignment(Document):
             
             frappe.logger().info(f"Sent {subject} notification to {user} for assignment {self.name}")
         except Exception as e:
-            frappe.log_error(f"Failed to send notification to {user}: {str(e)}") 
+            frappe.log_error(f"Failed to send notification to {user}: {str(e)}", title=f"Notification Error: {subject}", limit_msg_size=True) 

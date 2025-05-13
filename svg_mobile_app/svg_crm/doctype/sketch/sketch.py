@@ -74,7 +74,7 @@ class Sketch(Document):
 		frappe.logger().info(f"Preparing to send notification to {engineer_user} for assignment {assignment_name}")
 			
 		notification = {
-			"type": "Engineering Assignment",
+			"type": "Alert",
 			"document_type": "Engineering Assignment",
 			"document_name": assignment_name,
 			"subject": f"New Engineering Assignment for {item_name}",
@@ -92,7 +92,7 @@ class Sketch(Document):
 			
 			frappe.logger().info(f"Successfully sent notification to {engineer_user} for Engineering Assignment {assignment_name}")
 		except Exception as e:
-			frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}")
+			frappe.log_error(f"Failed to send notification to {engineer_user}: {str(e)}", title=f"Notification Error: {assignment_name}", limit_msg_size=True)
 			
 	def refresh_requirements_status(self):
 		"""Check the status of all requirements and update based on engineering tasks"""

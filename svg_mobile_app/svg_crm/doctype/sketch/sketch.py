@@ -47,7 +47,8 @@ class Sketch(Document):
 			"requirement_item": requirement.item,
 			"senior_engineer": requirement.engineer,
 			"description": requirement.description or "No description provided",
-			"start_date": frappe.utils.nowdate(),
+			"start_date": requirement.start_date or frappe.utils.nowdate(),
+			"end_date": requirement.end_date,
 			"project_type": self.project_type,
 			"status": "Pending"
 		})

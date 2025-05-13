@@ -8,15 +8,63 @@ from frappe.model.document import Document
 class EngineeringAssignment(Document):
     def validate(self):
         self.update_status()
-    
-    def after_save(self):
-        self.create_tasks_for_subtasks()
         
+        # Flag for tracking if we need to process tasks after save
+        self._process_subtasks = False
+        
+        # Check for new or modified subtasks
+        if not self.is_new():
+            if self.has_new_or_modified_subtasks():
+                self._process_subtasks = True
+    
+    def after_insert(self):
+        """Handle new document creation"""
+        if self.engineering_subtasks:
+            # For new documents, create tasks for all subtasks
+            self.create_tasks_for_subtasks()
+    
+    def has_new_or_modified_subtasks(self):
+        """Check if there are new subtasks or modified subtasks that need processing"""
+        if not self.engineering_subtasks:
+            return False
+            
+        if self.is_new():
+            # New document, all subtasks are new
+            return True
+            
+        # Get the document before save
+        old_doc = self.get_doc_before_save()
+        if not old_doc:
+            # No previous version, consider all subtasks as new
+            return True
+
+        # Check if there are new subtasks or modified ones
+        old_subtasks = {f"{st.engineer}:{st.task_description}": st for st in (old_doc.engineering_subtasks or [])}
+        
+        for subtask in self.engineering_subtasks:
+            # Skip empty engineers
+            if not subtask.engineer:
+                continue
+                
+            # Check if this subtask is new
+            key = f"{subtask.engineer}:{subtask.task_description}"
+            if key not in old_subtasks:
+                return True
+        
+        return False
+    
+    def on_update(self):
+        """Triggered after document is saved to database"""
+        # Process subtasks if needed
+        if getattr(self, '_process_subtasks', False):
+            self.create_tasks_for_subtasks()
+    
     def create_tasks_for_subtasks(self):
         """Create Engineering Tasks for subtasks in this assignment"""
         if not self.engineering_subtasks:
             return
             
+        tasks_created = 0
         for subtask in self.engineering_subtasks:
             if subtask.engineer:
                 # Check if a task already exists for this subtask engineer
@@ -29,7 +77,12 @@ class EngineeringAssignment(Document):
                 )
                 
                 if not existing:
-                    self.create_engineering_task(subtask)
+                    task = self.create_engineering_task(subtask)
+                    if task:
+                        tasks_created += 1
+        
+        if tasks_created > 0:
+            frappe.logger().info(f"Created {tasks_created} engineering tasks for Assignment {self.name}")
     
     def create_engineering_task(self, subtask):
         """Create a new Engineering Task for a subtask"""

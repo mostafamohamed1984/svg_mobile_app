@@ -31,7 +31,7 @@ frappe.ui.form.on('Engineering Assignment', {
     // When status changes to completed, update the parent Sketch requirement
     status: function(frm) {
         if (frm.doc.status === 'Completed' && !frm.is_new()) {
-            frappe.show_alert(__('Updating requirement status in the Sketch document'));
+            console.log('Updating requirement status in the Sketch document');
         }
     }
 }); 

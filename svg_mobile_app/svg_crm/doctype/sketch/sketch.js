@@ -38,7 +38,7 @@ frappe.ui.form.on("Sketch", {
                     },
                     callback: function(r) {
                         if(!r.exc && r.message && r.message.created > 0) {
-                            frappe.show_alert(__(`Created ${r.message.created} engineering assignments and sent notifications.`));
+                            console.log(`Created ${r.message.created} engineering assignments`);
                         }
                     }
                 });

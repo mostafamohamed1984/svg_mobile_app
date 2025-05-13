@@ -16,6 +16,7 @@ class Sketch(Document):
 			return
 			
 		# Find requirements that need engineering assignments
+		assignments_created = 0
 		for req in self.sketch_requirements:
 			if req.status == 'Required' and req.item and req.engineer:
 				# Check if an assignment already exists for this requirement and engineer
@@ -29,7 +30,12 @@ class Sketch(Document):
 				)
 				
 				if not existing:
-					self.create_engineering_assignment(req)
+					assignment = self.create_engineering_assignment(req)
+					if assignment:
+						assignments_created += 1
+		
+		if assignments_created > 0:
+			frappe.logger().info(f"Created {assignments_created} engineering assignments for Sketch {self.name}")
 
 
 	def create_engineering_assignment(self, requirement):
@@ -114,4 +120,7 @@ def create_engineering_assignments(sketch_name):
 					if assignment:
 						created_count += 1
 	
+	if created_count > 0:
+		frappe.logger().info(f"Created {created_count} engineering assignments for Sketch {sketch_name}")
+		
 	return {"created": created_count}

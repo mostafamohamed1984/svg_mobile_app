@@ -36,7 +36,7 @@ frappe.ui.form.on('Engineering Task', {
             frm.set_value('end_date', frappe.datetime.nowdate());
             
             if (!frm.is_new()) {
-                frappe.show_alert(__('Updating parent Engineering Assignment...'));
+                console.log('Updating parent Engineering Assignment...');
             }
         }
         

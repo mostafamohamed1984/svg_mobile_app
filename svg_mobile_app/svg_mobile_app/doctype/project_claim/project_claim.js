@@ -58,72 +58,93 @@ function send_receipt_voucher_email(frm) {
 		indicator: 'blue'
 	});
 	
-	// First, get the print settings and format
-	frappe.call({
-		method: "frappe.client.get_value",
-		args: {
-			doctype: "Print Format",
-			filters: {
-				name: "Project Receipt Voucher"
-			},
-			fieldname: "name"
-		},
-		callback: function(r) {
-			if (!r.exc && r.message) {
-				let print_format = r.message.name;
-				
-				// Get customer email if available
-				let customer_email = "";
-				if (frm.doc.customer) {
-					frappe.db.get_value("Customer", frm.doc.customer, "email_id", function(value) {
-						if (value && value.email_id) {
-							customer_email = value.email_id;
-						}
-						
-						// Get doc metadata for email content
-						let receipt_number = frm.doc.name;
-						let customer_name = frm.doc.customer_name || frm.doc.customer;
-						let claim_amount = frm.doc.claim_amount;
-						
-						// Set up the email dialog with print attachment option
-						new frappe.views.CommunicationComposer({
-							doc: frm.doc,
-							frm: frm,
-							subject: __('Receipt Voucher: {0} - {1}', [receipt_number, customer_name]),
-							recipients: customer_email,
-							attach_document_print: true,
-							print_format: print_format,
-							message: __('Dear {0},\n\nPlease find attached the receipt voucher for the claim amount of {1}.\n\nRegards,\n{2}', 
-									[customer_name, frappe.format(claim_amount, {fieldtype: 'Currency'}), frappe.session.user_fullname]),
-							real_name: frappe.session.user_fullname
-						});
-						
-						// Hide the loading message
-						frappe.hide_msgprint();
-					});
-				} else {
-					// If no customer is set, just open the email dialog without a recipient
-					let receipt_number = frm.doc.name;
-					
-					new frappe.views.CommunicationComposer({
-						doc: frm.doc,
-						frm: frm,
-						subject: __('Receipt Voucher: {0}', [receipt_number]),
-						recipients: '',
-						attach_document_print: true,
-						print_format: print_format,
-						message: __('Please find attached the receipt voucher.\n\nRegards,\n{0}', [frappe.session.user_fullname]),
-						real_name: frappe.session.user_fullname
-					});
-					
-					// Hide the loading message
-					frappe.hide_msgprint();
-				}
-			} else {
-				frappe.msgprint(__("Print format 'Project Receipt Voucher' not found. Please check if it exists."));
+	// Get customer email if available
+	let customer_email = "";
+	if (frm.doc.customer) {
+		frappe.db.get_value("Customer", frm.doc.customer, "email_id", function(value) {
+			if (value && value.email_id) {
+				customer_email = value.email_id;
 			}
-		}
-	});
+			
+			// Get doc metadata for email content
+			let receipt_number = frm.doc.name;
+			let customer_name = frm.doc.customer_name || frm.doc.customer;
+			let claim_amount = frm.doc.claim_amount;
+			
+			// Set up the email dialog with print attachment option
+			let email_dialog = new frappe.views.CommunicationComposer({
+				doc: frm.doc,
+				frm: frm,
+				subject: __('Receipt Voucher: {0} - {1}', [receipt_number, customer_name]),
+				recipients: customer_email,
+				attach_document_print: true,
+				print_format: "Project Receipt Voucher",
+				message: __('Dear {0},\n\nPlease find attached the receipt voucher for the claim amount of {1}.\n\nRegards,\n{2}', 
+						[customer_name, frappe.format(claim_amount, {fieldtype: 'Currency'}), frappe.session.user_fullname]),
+				real_name: frappe.session.user_fullname
+			});
+			
+			// Force set the print format to Project Receipt Voucher after dialog is rendered
+			setTimeout(function() {
+				if (email_dialog.dialog) {
+					let print_format_field = email_dialog.dialog.fields_dict.select_print_format;
+					if (print_format_field) {
+						print_format_field.set_value("Project Receipt Voucher");
+						
+						// Make it obvious that this is where the receipt will come from
+						if (print_format_field.$wrapper) {
+							let $help = $(`<div class="help-box">
+								<p class="text-muted small">
+									${__('The Project Receipt Voucher will be automatically attached to this email.')}
+								</p>
+							</div>`);
+							print_format_field.$wrapper.append($help);
+						}
+					}
+				}
+			}, 500);
+			
+			// Hide the loading message
+			frappe.hide_msgprint();
+		});
+	} else {
+		// If no customer is set, just open the email dialog without a recipient
+		let receipt_number = frm.doc.name;
+		
+		let email_dialog = new frappe.views.CommunicationComposer({
+			doc: frm.doc,
+			frm: frm,
+			subject: __('Receipt Voucher: {0}', [receipt_number]),
+			recipients: '',
+			attach_document_print: true,
+			print_format: "Project Receipt Voucher",
+			message: __('Please find attached the receipt voucher.\n\nRegards,\n{0}', [frappe.session.user_fullname]),
+			real_name: frappe.session.user_fullname
+		});
+		
+		// Force set the print format to Project Receipt Voucher after dialog is rendered
+		setTimeout(function() {
+			if (email_dialog.dialog) {
+				let print_format_field = email_dialog.dialog.fields_dict.select_print_format;
+				if (print_format_field) {
+					print_format_field.set_value("Project Receipt Voucher");
+					
+					// Make it obvious that this is where the receipt will come from
+					if (print_format_field.$wrapper) {
+						let $help = $(`<div class="help-box">
+							<p class="text-muted small">
+								${__('The Project Receipt Voucher will be automatically attached to this email.')}
+							</p>
+						</div>`);
+						print_format_field.$wrapper.append($help);
+					}
+				}
+			}
+		}, 500);
+		
+		// Hide the loading message
+		frappe.hide_msgprint();
+	}
 }
 
 // Function to show signature dialog

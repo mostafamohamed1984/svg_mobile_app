@@ -393,7 +393,7 @@ function openEmailDialogWithAttachment(frm, fileDoc) {
 			let customer_name = frm.doc.customer_name || frm.doc.customer;
 			let claim_amount = frm.doc.claim_amount;
 			
-			// Open email dialog with the attachment
+			// Open email dialog WITH the file automatically attached
 			let email_dialog = new frappe.views.CommunicationComposer({
 				doc: frm.doc,
 				frm: frm,
@@ -412,7 +412,7 @@ function openEmailDialogWithAttachment(frm, fileDoc) {
 				]
 			});
 			
-			// Add a note explaining what's attached
+			// Add a note explaining the attachment
 			setTimeout(function() {
 				if (email_dialog.dialog) {
 					let $help = $(`<div class="help-box">
@@ -450,7 +450,7 @@ function openEmailDialogWithAttachment(frm, fileDoc) {
 			]
 		});
 		
-		// Add a note explaining what's attached
+		// Add a note explaining the attachment
 		setTimeout(function() {
 			if (email_dialog.dialog) {
 				let $help = $(`<div class="help-box">

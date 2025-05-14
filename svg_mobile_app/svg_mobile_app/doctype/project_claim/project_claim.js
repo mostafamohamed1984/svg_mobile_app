@@ -27,6 +27,13 @@ frappe.ui.form.on("Project Claim", {
 				show_signature_dialog(frm);
 			}).addClass('btn-info');
 		}
+		
+		// Add send receipt button if doc is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.add_custom_button(__('Email Receipt Voucher'), function() {
+				send_receipt_voucher_email(frm);
+			}, __('Actions')).addClass('btn-primary');
+		}
 	},
 	
 	reference_invoice: function(frm) {
@@ -42,6 +49,96 @@ frappe.ui.form.on("Project Claim", {
 		}
 	}
 });
+
+// Function to generate PDF and send via email
+function send_receipt_voucher_email(frm) {
+	// Show a loading message
+	frappe.show_alert({
+		message: __('Generating PDF...'),
+		indicator: 'blue'
+	});
+	
+	// First generate and download the PDF
+	frappe.call({
+		method: "frappe.utils.print_format.download_pdf",
+		args: {
+			doctype: frm.doctype,
+			name: frm.docname,
+			format: "Project Receipt Voucher",
+			_lang: frappe.boot.lang
+		},
+		callback: function(r) {
+			if(!r.exc) {
+				// Now that we have the PDF, construct a blob URL for it
+				let pdfData = r.message;
+				
+				// Create a blob from the PDF data
+				let blob = new Blob([pdfData], { type: 'application/pdf' });
+				let blobUrl = URL.createObjectURL(blob);
+				
+				// Set up email dialog fields
+				let customer_email = "";
+				if (frm.doc.customer) {
+					// Try to get customer email from Customer doctype
+					frappe.db.get_value("Customer", frm.doc.customer, "email_id", function(value) {
+						if (value && value.email_id) {
+							customer_email = value.email_id;
+						}
+						
+						// Get doc metadata for naming the file
+						let receipt_number = frm.doc.name;
+						let customer_name = frm.doc.customer_name || frm.doc.customer;
+						let claim_amount = frm.doc.claim_amount;
+						let filename = `Receipt_Voucher_${receipt_number}.pdf`;
+						
+						// Now show email dialog
+						new frappe.views.CommunicationComposer({
+							doc: frm.doc,
+							frm: frm,
+							subject: __('Receipt Voucher: {0} - {1}', [receipt_number, customer_name]),
+							recipients: customer_email,
+							attach_document_print: false,
+							message: __('Dear {0},\n\nPlease find attached the receipt voucher for the claim amount of {1}.\n\nRegards,\n{2}', 
+									[customer_name, frappe.format(claim_amount, {fieldtype: 'Currency'}), frappe.session.user_fullname]),
+							real_name: frappe.session.user_fullname,
+							attachments: [
+								{
+									file_url: blobUrl,
+									filename: filename
+								}
+							]
+						});
+					});
+				} else {
+					// If no customer is set, just open the email dialog without a recipient
+					let receipt_number = frm.doc.name;
+					let filename = `Receipt_Voucher_${receipt_number}.pdf`;
+					
+					new frappe.views.CommunicationComposer({
+						doc: frm.doc,
+						frm: frm,
+						subject: __('Receipt Voucher: {0}', [receipt_number]),
+						recipients: '',
+						attach_document_print: false,
+						message: __('Please find attached the receipt voucher.\n\nRegards,\n{0}', [frappe.session.user_fullname]),
+						real_name: frappe.session.user_fullname,
+						attachments: [
+							{
+								file_url: blobUrl,
+								filename: filename
+							}
+						]
+					});
+				}
+				
+				// Hide the loading message
+				frappe.hide_msgprint();
+			} else {
+				frappe.msgprint(__("Error generating PDF. Please try again."));
+			}
+		}
+	});
+}
 
 // Function to show signature dialog
 function show_signature_dialog(frm) {

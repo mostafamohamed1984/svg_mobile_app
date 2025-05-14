@@ -20,6 +20,13 @@ frappe.ui.form.on("Project Claim", {
 				show_bulk_invoice_dialog(frm);
 			}).addClass('btn-primary');
 		}
+		
+		// Add e-signature button if doc is not local and not submitted
+		if (!frm.doc.__islocal && frm.doc.docstatus === 0) {
+			frm.add_custom_button(__('Capture E-Signature'), function() {
+				show_signature_dialog(frm);
+			}).addClass('btn-info');
+		}
 	},
 	
 	reference_invoice: function(frm) {
@@ -35,6 +42,174 @@ frappe.ui.form.on("Project Claim", {
 		}
 	}
 });
+
+// Function to show signature dialog
+function show_signature_dialog(frm) {
+	if (!frm.doc.customer) {
+		frappe.msgprint(__('Please select a customer first.'));
+		return;
+	}
+	
+	// First check if a signature exists for this customer
+	frappe.call({
+		method: "frappe.client.get_list",
+		args: {
+			doctype: "Esign_signature",
+			filters: {
+				customer: frm.doc.customer,
+				docstatus: 1
+			},
+			fields: ["name", "sign_blob"]
+		},
+		callback: function(r) {
+			if (r.message && r.message.length > 0) {
+				// Signature exists, show it with option to create a new one
+				show_existing_signature_dialog(frm, r.message);
+			} else {
+				// No signature exists, show dialog to create one
+				show_create_signature_dialog(frm);
+			}
+		}
+	});
+}
+
+// Function to show existing signature
+function show_existing_signature_dialog(frm, signatures) {
+	// Create a dialog to display the existing signature
+	let dialog = new frappe.ui.Dialog({
+		title: __('Customer Signature'),
+		fields: [
+			{
+				fieldname: 'signature_html',
+				fieldtype: 'HTML'
+			},
+			{
+				fieldname: 'create_new',
+				fieldtype: 'Check',
+				label: __('Create New Signature'),
+				default: 0
+			}
+		],
+		primary_action_label: __('Proceed'),
+		primary_action: function() {
+			if (dialog.get_value('create_new')) {
+				dialog.hide();
+				show_create_signature_dialog(frm);
+			} else {
+				dialog.hide();
+			}
+		}
+	});
+	
+	// Display the signature in the HTML field
+	let html = `
+		<div style="padding: 15px;">
+			<h3>${__('Project Claim Receipt Preview')}</h3>
+			<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px;">
+				<p><strong>${__('Customer')}:</strong> ${frm.doc.customer_name || frm.doc.customer}</p>
+				<p><strong>${__('Claim Amount')}:</strong> ${frappe.format(frm.doc.claim_amount, {fieldtype: 'Currency'})}</p>
+				<p><strong>${__('Date')}:</strong> ${frm.doc.date}</p>
+				<p><strong>${__('Reference Invoice')}:</strong> ${frm.doc.reference_invoice}</p>
+				<p><strong>${__('Being')}:</strong> ${frm.doc.being || ''}</p>
+			</div>
+			<h4>${__('Existing Customer Signature')}</h4>
+			<div style="border: 1px solid #ddd; padding: 15px; text-align: center;">
+				<img src="${signatures[0].sign_blob}" style="max-width: 300px; max-height: 100px;" />
+			</div>
+		</div>
+	`;
+	
+	dialog.fields_dict.signature_html.$wrapper.html(html);
+	dialog.show();
+}
+
+// Function to create a new signature
+function show_create_signature_dialog(frm) {
+	// Create a dialog with signature pad
+	let dialog = new frappe.ui.Dialog({
+		title: __('Capture Customer Signature'),
+		fields: [
+			{
+				fieldname: 'preview_html',
+				fieldtype: 'HTML'
+			},
+			{
+				fieldname: 'signature_pad',
+				fieldtype: 'Signature',
+				label: __('Customer Signature'),
+				reqd: 1
+			},
+			{
+				fieldname: 'signature_name',
+				fieldtype: 'Data',
+				label: __('Signature Name'),
+				default: frm.doc.customer_name || frm.doc.customer,
+				reqd: 1
+			}
+		],
+		primary_action_label: __('Save Signature'),
+		primary_action: function() {
+			let signature_data = dialog.get_value('signature_pad');
+			let signature_name = dialog.get_value('signature_name');
+			
+			if (!signature_data) {
+				frappe.msgprint(__('Please draw a signature.'));
+				return;
+			}
+			
+			// Save the signature to Esign_signature doctype
+			frappe.call({
+				method: "frappe.client.insert",
+				args: {
+					doc: {
+						doctype: "Esign_signature",
+						sign_blob: signature_data,
+						sign_name: signature_name,
+						customer: frm.doc.customer,
+						user_name: frappe.session.user_fullname,
+						user_mail: frappe.session.user
+					}
+				},
+				callback: function(r) {
+					if (r.message) {
+						// Submit the signature
+						frappe.call({
+							method: "frappe.client.submit",
+							args: {
+								doctype: "Esign_signature",
+								name: r.message.name
+							},
+							callback: function() {
+								frappe.msgprint(__('Signature saved successfully!'));
+								dialog.hide();
+							}
+						});
+					} else {
+						frappe.msgprint(__('Error saving signature.'));
+					}
+				}
+			});
+		}
+	});
+	
+	// Display receipt preview
+	let preview_html = `
+		<div style="padding: 15px;">
+			<h3>${__('Project Claim Receipt Preview')}</h3>
+			<div style="border: 1px solid #ddd; padding: 15px; margin-bottom: 15px;">
+				<p><strong>${__('Customer')}:</strong> ${frm.doc.customer_name || frm.doc.customer}</p>
+				<p><strong>${__('Claim Amount')}:</strong> ${frappe.format(frm.doc.claim_amount, {fieldtype: 'Currency'})}</p>
+				<p><strong>${__('Date')}:</strong> ${frm.doc.date}</p>
+				<p><strong>${__('Reference Invoice')}:</strong> ${frm.doc.reference_invoice}</p>
+				<p><strong>${__('Being')}:</strong> ${frm.doc.being || ''}</p>
+			</div>
+			<p>${__('Please sign below to acknowledge receipt of the above amount:')}</p>
+		</div>
+	`;
+	
+	dialog.fields_dict.preview_html.$wrapper.html(preview_html);
+	dialog.show();
+}
 
 function show_bulk_invoice_dialog(frm) {
 	console.log("Opening bulk invoice dialog");

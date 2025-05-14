@@ -66,7 +66,7 @@ function send_receipt_voucher_email(frm) {
 			args: {
 				doctype: frm.doctype,
 				name: frm.docname,
-				format: print_format,
+				print_format: print_format,
 				print_settings: print_settings,
 				no_letterhead: 0,
 				_lang: frappe.boot.lang,

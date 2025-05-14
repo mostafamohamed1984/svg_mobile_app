@@ -172,12 +172,13 @@ function show_create_signature_dialog(frm) {
 				},
 				callback: function(r) {
 					if (r.message) {
-						// Submit the signature
+						// Submit the signature - FIXED: add doc parameter
 						frappe.call({
 							method: "frappe.client.submit",
 							args: {
 								doctype: "Esign_signature",
-								name: r.message.name
+								name: r.message.name,
+								doc: r.message  // Add the doc parameter that was missing
 							},
 							callback: function() {
 								frappe.msgprint(__('Signature saved successfully!'));

@@ -54,97 +54,145 @@ frappe.ui.form.on("Project Claim", {
 function send_receipt_voucher_email(frm) {
 	// Show a loading message
 	frappe.show_alert({
-		message: __('Preparing email...'),
+		message: __('Generating PDF, please wait...'),
 		indicator: 'blue'
 	});
 	
-	// Get customer email if available
-	let customer_email = "";
-	if (frm.doc.customer) {
-		frappe.db.get_value("Customer", frm.doc.customer, "email_id", function(value) {
-			if (value && value.email_id) {
-				customer_email = value.email_id;
+	// First generate and save the PDF to the document attachments
+	frappe.call({
+		method: "frappe.client.submit_request",
+		args: {
+			method: "frappe.www.printview.download_pdf",
+			args: {
+				doctype: frm.doctype,
+				name: frm.docname,
+				format: "Project Receipt Voucher",
+				no_letterhead: 0,
+				_lang: frappe.boot.lang,
+				with_attachments: 0,
+				as_attachment: 1  // Save as attachment
 			}
-			
-			// Get doc metadata for email content
-			let receipt_number = frm.doc.name;
-			let customer_name = frm.doc.customer_name || frm.doc.customer;
-			let claim_amount = frm.doc.claim_amount;
-			
-			// Set up the email dialog with print attachment option
-			let email_dialog = new frappe.views.CommunicationComposer({
-				doc: frm.doc,
-				frm: frm,
-				subject: __('Receipt Voucher: {0} - {1}', [receipt_number, customer_name]),
-				recipients: customer_email,
-				attach_document_print: true,
-				print_format: "Project Receipt Voucher",
-				message: __('Dear {0},\n\nPlease find attached the receipt voucher for the claim amount of {1}.\n\nRegards,\n{2}', 
-						[customer_name, frappe.format(claim_amount, {fieldtype: 'Currency'}), frappe.session.user_fullname]),
-				real_name: frappe.session.user_fullname
-			});
-			
-			// Force set the print format to Project Receipt Voucher after dialog is rendered
-			setTimeout(function() {
-				if (email_dialog.dialog) {
-					let print_format_field = email_dialog.dialog.fields_dict.select_print_format;
-					if (print_format_field) {
-						print_format_field.set_value("Project Receipt Voucher");
+		},
+		callback: function(r) {
+			if (r.message) {
+				// PDF has been saved, now get the attachment
+				frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "File",
+						filters: {
+							"attached_to_doctype": frm.doctype,
+							"attached_to_name": frm.docname,
+							"file_name": ["like", "%.pdf"]
+						},
+						fields: ["name", "file_url", "file_name"],
+						order_by: "creation desc",
+						limit_page_length: 1
+					},
+					callback: function(file_r) {
+						frappe.hide_msgprint();
 						
-						// Make it obvious that this is where the receipt will come from
-						if (print_format_field.$wrapper) {
-							let $help = $(`<div class="help-box">
-								<p class="text-muted small">
-									${__('The Project Receipt Voucher will be automatically attached to this email.')}
-								</p>
-							</div>`);
-							print_format_field.$wrapper.append($help);
+						if (file_r.message && file_r.message.length > 0) {
+							let file = file_r.message[0];
+							
+							// Get customer email if available
+							let customer_email = "";
+							if (frm.doc.customer) {
+								frappe.db.get_value("Customer", frm.doc.customer, "email_id", function(value) {
+									if (value && value.email_id) {
+										customer_email = value.email_id;
+									}
+									
+									// Get doc metadata for email content
+									let receipt_number = frm.doc.name;
+									let customer_name = frm.doc.customer_name || frm.doc.customer;
+									let claim_amount = frm.doc.claim_amount;
+									
+									// Now open the email dialog with the attachment
+									let email_dialog = new frappe.views.CommunicationComposer({
+										doc: frm.doc,
+										frm: frm,
+										subject: __('Receipt Voucher: {0} - {1}', [receipt_number, customer_name]),
+										recipients: customer_email,
+										attach_document_print: false,
+										message: __('Dear {0},\n\nPlease find attached the receipt voucher for the claim amount of {1}.\n\nRegards,\n{2}', 
+												[customer_name, frappe.format(claim_amount, {fieldtype: 'Currency'}), frappe.session.user_fullname]),
+										real_name: frappe.session.user_fullname,
+										attachments: [
+											{
+												"name": file.name,
+												"file_url": file.file_url,
+												"is_private": 1
+											}
+										]
+									});
+									
+									// Add a note explaining what's attached
+									setTimeout(function() {
+										if (email_dialog.dialog) {
+											let $help = $(`<div class="help-box">
+												<p class="text-muted small">
+													${__('The Project Receipt Voucher PDF has been generated and attached to this email.')}
+												</p>
+											</div>`);
+											
+											// Find the attachments section and add help text after it
+											let $attachments = email_dialog.dialog.$wrapper.find('.frappe-control[data-fieldname="attachments"]');
+											if ($attachments.length) {
+												$attachments.append($help);
+											}
+										}
+									}, 500);
+								});
+							} else {
+								// If no customer is set, just open the email dialog without a recipient
+								let receipt_number = frm.doc.name;
+								
+								let email_dialog = new frappe.views.CommunicationComposer({
+									doc: frm.doc,
+									frm: frm,
+									subject: __('Receipt Voucher: {0}', [receipt_number]),
+									recipients: '',
+									attach_document_print: false,
+									message: __('Please find attached the receipt voucher.\n\nRegards,\n{0}', [frappe.session.user_fullname]),
+									real_name: frappe.session.user_fullname,
+									attachments: [
+										{
+											"name": file.name,
+											"file_url": file.file_url,
+											"is_private": 1
+										}
+									]
+								});
+								
+								// Add a note explaining what's attached
+								setTimeout(function() {
+									if (email_dialog.dialog) {
+										let $help = $(`<div class="help-box">
+											<p class="text-muted small">
+												${__('The Project Receipt Voucher PDF has been generated and attached to this email.')}
+											</p>
+										</div>`);
+										
+										// Find the attachments section and add help text after it
+										let $attachments = email_dialog.dialog.$wrapper.find('.frappe-control[data-fieldname="attachments"]');
+										if ($attachments.length) {
+											$attachments.append($help);
+										}
+									}
+								}, 500);
+							}
+						} else {
+							frappe.msgprint(__("Could not find the generated PDF. Please try again."));
 						}
 					}
-				}
-			}, 500);
-			
-			// Hide the loading message
-			frappe.hide_msgprint();
-		});
-	} else {
-		// If no customer is set, just open the email dialog without a recipient
-		let receipt_number = frm.doc.name;
-		
-		let email_dialog = new frappe.views.CommunicationComposer({
-			doc: frm.doc,
-			frm: frm,
-			subject: __('Receipt Voucher: {0}', [receipt_number]),
-			recipients: '',
-			attach_document_print: true,
-			print_format: "Project Receipt Voucher",
-			message: __('Please find attached the receipt voucher.\n\nRegards,\n{0}', [frappe.session.user_fullname]),
-			real_name: frappe.session.user_fullname
-		});
-		
-		// Force set the print format to Project Receipt Voucher after dialog is rendered
-		setTimeout(function() {
-			if (email_dialog.dialog) {
-				let print_format_field = email_dialog.dialog.fields_dict.select_print_format;
-				if (print_format_field) {
-					print_format_field.set_value("Project Receipt Voucher");
-					
-					// Make it obvious that this is where the receipt will come from
-					if (print_format_field.$wrapper) {
-						let $help = $(`<div class="help-box">
-							<p class="text-muted small">
-								${__('The Project Receipt Voucher will be automatically attached to this email.')}
-							</p>
-						</div>`);
-						print_format_field.$wrapper.append($help);
-					}
-				}
+				});
+			} else {
+				frappe.hide_msgprint();
+				frappe.msgprint(__("Error generating PDF. Please try again."));
 			}
-		}, 500);
-		
-		// Hide the loading message
-		frappe.hide_msgprint();
-	}
+		}
+	});
 }
 
 // Function to show signature dialog

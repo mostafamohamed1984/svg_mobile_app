@@ -793,3 +793,46 @@ def get_available_invoice_balances(invoices):
 				frappe.logger().info(f"Scaled {item_code} by {scale_factor}: new available={result[invoice][item_code]['available_balance']}")
 	
 	return result
+
+@frappe.whitelist()
+def generate_receipt_pdf(doctype, docname):
+    """Generate a PDF from Project Receipt Voucher print format and attach it to the document"""
+    from frappe.utils.pdf import get_pdf
+    from frappe.utils import get_url, random_string
+    
+    try:
+        # Get the document
+        doc = frappe.get_doc(doctype, docname)
+        
+        # Get the HTML for the print format
+        html = frappe.get_print(doctype, docname, "Project Receipt Voucher", doc=doc)
+        
+        # Generate the PDF
+        pdf_data = get_pdf(html)
+        
+        # Generate a unique filename for the PDF
+        now = frappe.utils.now()
+        random_str = random_string(4)
+        filename = f"Receipt_Voucher_{docname.replace('/', '_')}_{random_str}.pdf"
+        
+        # Save as attachment
+        _file = frappe.get_doc({
+            "doctype": "File",
+            "file_name": filename,
+            "folder": "Home/Attachments",
+            "is_private": 1,
+            "content": pdf_data,
+            "attached_to_doctype": doctype,
+            "attached_to_name": docname
+        })
+        _file.insert(ignore_permissions=True)
+        
+        # Return the file details
+        return {
+            "name": _file.name,
+            "file_name": _file.file_name,
+            "file_url": _file.file_url
+        }
+    except Exception as e:
+        frappe.log_error(f"Failed to generate receipt PDF: {str(e)}", "Receipt PDF Generation")
+        return None

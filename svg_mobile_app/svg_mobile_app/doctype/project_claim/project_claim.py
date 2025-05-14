@@ -33,7 +33,7 @@ class ProjectClaim(Document):
 		self.update_invoice_claim_history(invoices)
 		
 		# Create journal entry instecreate_journal_entryad of directly updating outstanding amounts
-		je_name = self.(invoices)
+		je_name = self.create_journal_entry(invoices)
 		
 		# Update invoice outstanding amounts after journal entry creation
 		if je_name:

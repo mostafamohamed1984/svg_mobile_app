@@ -266,7 +266,8 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Created By",
-   "options": "User"
+   "options": "User",
+   "hidden": 1
   },
   {
    "fieldname": "signatures_section",

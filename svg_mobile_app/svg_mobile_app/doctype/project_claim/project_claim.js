@@ -54,10 +54,138 @@ frappe.ui.form.on("Project Claim", {
 function send_receipt_voucher_email(frm) {
 	// Show a loading message
 	frappe.show_alert({
-		message: __('Opening email dialog...'),
+		message: __('Generating receipt voucher PDF...'),
 		indicator: 'blue'
 	});
 	
+	// Get the original docname
+	var originalDocname = frm.docname;
+	// Create a modified version with RV- prefix
+	var rvDocname = originalDocname.replace('PC-', 'RV-');
+	
+	// Create a popup window to load and generate the PDF
+	var printWindow = window.open(
+		frappe.urllib.get_full_url(
+			'/printview?doctype=' + encodeURIComponent(frm.doctype) +
+			'&name=' + encodeURIComponent(frm.docname) +
+			'&trigger_print=1' +
+			'&format=' + encodeURIComponent('Project Receipt Voucher') +
+			'&no_letterhead=0' +
+			'&_lang=en'
+		),
+		'_blank'
+	);
+	
+	if (printWindow) {
+		// Wait for the print window to load
+		printWindow.addEventListener('load', function() {
+			try {
+				// Change the window title to match our RV naming
+				printWindow.document.title = rvDocname;
+				
+				// Add a script to save the PDF with our custom filename
+				var script = printWindow.document.createElement('script');
+				script.innerHTML = `
+					// Override the PDF filename when saving
+					if (window.frappe) {
+						const originalFn = window.frappe.get_pdf;
+						window.frappe.get_pdf = function(doctype, name, print_format, letterhead, opts) {
+							if (!opts) opts = {};
+							opts.filename = "${rvDocname}.pdf";
+							
+							// Also send a message back to the parent window when saved
+							const originalXhrOpen = window.XMLHttpRequest.prototype.open;
+							window.XMLHttpRequest.prototype.open = function() {
+								this.addEventListener('load', function() {
+									if (this.responseURL && this.responseURL.includes('/api/method/frappe.utils.weasyprint.download_pdf')) {
+										// PDF has been generated - send message to parent window
+										window.opener.postMessage({
+											message: 'pdf_generated',
+											filename: "${rvDocname}.pdf"
+										}, '*');
+									}
+								});
+								return originalXhrOpen.apply(this, arguments);
+							};
+							
+							return originalFn(doctype, name, print_format, letterhead, opts);
+						};
+					}
+					
+					// Automatically trigger PDF download after a short delay
+					setTimeout(function() {
+						if (window.frappe && window.frappe.get_pdf) {
+							window.frappe.get_pdf('${frm.doctype}', '${frm.docname}', 'Project Receipt Voucher', null);
+						}
+					}, 1000);
+				`;
+				printWindow.document.head.appendChild(script);
+			} catch (e) {
+				console.error("Error injecting script:", e);
+				openEmailDialog(); // Fall back to regular email dialog
+			}
+		});
+		
+		// Listen for message from popup window when PDF is generated
+		window.addEventListener('message', function(event) {
+			if (event.data && event.data.message === 'pdf_generated') {
+				// PDF has been generated, close the window and show email dialog
+				setTimeout(function() {
+					if (printWindow && !printWindow.closed) {
+						printWindow.close();
+					}
+					
+					// Now check if a file was created with this name pattern
+					checkForGeneratedPDF(rvDocname, function(fileDoc) {
+						if (fileDoc) {
+							// Found the file, open email dialog with it
+							openEmailDialogWithAttachment(frm, fileDoc);
+						} else {
+							// No file found, fall back to regular email
+							openEmailDialog(frm);
+						}
+					});
+				}, 2000);
+			}
+		});
+		
+		// Set a timeout to fallback if window doesn't respond
+		setTimeout(function() {
+			// If no response after 10 seconds, fall back to regular email
+			openEmailDialog(frm);
+		}, 10000);
+	} else {
+		frappe.msgprint(__("Could not open print window. Please check if pop-ups are blocked."));
+		openEmailDialog(frm);
+	}
+}
+
+// Function to check if a file was generated with the given name pattern
+function checkForGeneratedPDF(filename, callback) {
+	frappe.call({
+		method: "frappe.client.get_list",
+		args: {
+			doctype: "File",
+			filters: {
+				"file_name": ["like", filename + "%"],
+				"is_private": 1
+			},
+			fields: ["name", "file_url", "file_name"],
+			order_by: "creation desc",
+			limit_page_length: 1
+		},
+		callback: function(r) {
+			if (r.message && r.message.length > 0) {
+				callback(r.message[0]);
+			} else {
+				callback(null);
+			}
+		}
+	});
+}
+
+// Function to open email dialog with the specified file attachment
+function openEmailDialogWithAttachment(frm, fileDoc) {
 	// Get customer email if available
 	let customer_email = "";
 	if (frm.doc.customer) {
@@ -71,7 +199,98 @@ function send_receipt_voucher_email(frm) {
 			let customer_name = frm.doc.customer_name || frm.doc.customer;
 			let claim_amount = frm.doc.claim_amount;
 			
-			// Open email dialog with direct attachment of the print format
+			// Open email dialog with the attachment
+			let email_dialog = new frappe.views.CommunicationComposer({
+				doc: frm.doc,
+				frm: frm,
+				subject: __('Receipt Voucher: {0} - {1}', [receipt_number, customer_name]),
+				recipients: customer_email,
+				attach_document_print: false,
+				message: __('Dear {0},\n\nPlease find attached the receipt voucher for the claim amount of {1}.\n\nRegards,\n{2}', 
+						[customer_name, frappe.format(claim_amount, {fieldtype: 'Currency'}), frappe.session.user_fullname]),
+				real_name: frappe.session.user_fullname,
+				attachments: [
+					{
+						"name": fileDoc.name,
+						"file_url": fileDoc.file_url,
+						"is_private": 1
+					}
+				]
+			});
+			
+			// Add a note explaining what's attached
+			setTimeout(function() {
+				if (email_dialog.dialog) {
+					let $help = $(`<div class="help-box">
+						<p class="text-muted small">
+							${__('The Project Receipt Voucher PDF has been generated and attached to this email.')}
+						</p>
+					</div>`);
+					
+					// Find the attachments section and add help text after it
+					let $attachments = email_dialog.dialog.$wrapper.find('.frappe-control[data-fieldname="attachments"]');
+					if ($attachments.length) {
+						$attachments.append($help);
+					}
+				}
+			}, 500);
+		});
+	} else {
+		// If no customer is set, just open the email dialog without a recipient
+		let receipt_number = frm.doc.name;
+		
+		let email_dialog = new frappe.views.CommunicationComposer({
+			doc: frm.doc,
+			frm: frm,
+			subject: __('Receipt Voucher: {0}', [receipt_number]),
+			recipients: '',
+			attach_document_print: false,
+			message: __('Please find attached the receipt voucher.\n\nRegards,\n{0}', [frappe.session.user_fullname]),
+			real_name: frappe.session.user_fullname,
+			attachments: [
+				{
+					"name": fileDoc.name,
+					"file_url": fileDoc.file_url,
+					"is_private": 1
+				}
+			]
+		});
+		
+		// Add a note explaining what's attached
+		setTimeout(function() {
+			if (email_dialog.dialog) {
+				let $help = $(`<div class="help-box">
+					<p class="text-muted small">
+						${__('The Project Receipt Voucher PDF has been generated and attached to this email.')}
+					</p>
+				</div>`);
+				
+				// Find the attachments section and add help text after it
+				let $attachments = email_dialog.dialog.$wrapper.find('.frappe-control[data-fieldname="attachments"]');
+				if ($attachments.length) {
+					$attachments.append($help);
+				}
+			}
+		}, 500);
+	}
+}
+
+// Fallback function to open regular email dialog
+function openEmailDialog(frm) {
+	// Get customer email if available
+	let customer_email = "";
+	if (frm.doc.customer) {
+		frappe.db.get_value("Customer", frm.doc.customer, "email_id", function(value) {
+			if (value && value.email_id) {
+				customer_email = value.email_id;
+			}
+			
+			// Get doc metadata for email content
+			let receipt_number = frm.doc.name;
+			let customer_name = frm.doc.customer_name || frm.doc.customer;
+			let claim_amount = frm.doc.claim_amount;
+			
+			// Open email dialog with direct attachment
 			let email_dialog = new frappe.views.CommunicationComposer({
 				doc: frm.doc,
 				frm: frm,
@@ -89,7 +308,7 @@ function send_receipt_voucher_email(frm) {
 				if (email_dialog.dialog) {
 					let $help = $(`<div class="help-box">
 						<p class="text-muted small">
-							${__('The Project Receipt Voucher will be attached to this email.')}
+							${__('The Project Receipt Voucher is attached to this email.')}
 						</p>
 					</div>`);
 					
@@ -121,7 +340,7 @@ function send_receipt_voucher_email(frm) {
 			if (email_dialog.dialog) {
 				let $help = $(`<div class="help-box">
 					<p class="text-muted small">
-						${__('The Project Receipt Voucher will be attached to this email.')}
+						${__('The Project Receipt Voucher is attached to this email.')}
 					</p>
 				</div>`);
 				

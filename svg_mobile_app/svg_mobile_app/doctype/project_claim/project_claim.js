@@ -63,68 +63,149 @@ function send_receipt_voucher_email(frm) {
 	// Create a modified version with RV- prefix
 	var rvDocname = originalDocname.replace('PC-', 'RV-');
 	
-	// First make a server-side call to generate and attach the PDF
-	frappe.call({
-		method: "frappe.client.get_value",
-		args: {
-			doctype: "Print Format",
-			filters: {
-				name: "Project Receipt Voucher"
-			},
-			fieldname: "name"
-		},
-		callback: function(print_format_r) {
-			if (!print_format_r.message || !print_format_r.message.name) {
-				frappe.msgprint(__("Print Format 'Project Receipt Voucher' not found"));
-				openEmailDialog(frm);
-				return;
+	// Create a popup window to load and generate the PDF
+	var printWindow = window.open(
+		frappe.urllib.get_full_url(
+			'/printview?doctype=' + encodeURIComponent(frm.doctype) +
+			'&name=' + encodeURIComponent(frm.docname) +
+			'&format=' + encodeURIComponent('Project Receipt Voucher') +
+			'&no_letterhead=0' +
+			'&_lang=en'
+		),
+		'_blank'
+	);
+	
+	if (printWindow) {
+		// Wait for the print window to load
+		printWindow.addEventListener('load', function() {
+			try {
+				// Change the window title to match our RV naming
+				printWindow.document.title = rvDocname;
+				
+				// Add a script to save the PDF programmatically and attach it to the document
+				var script = printWindow.document.createElement('script');
+				script.innerHTML = `
+					// Function to attach PDF to the document
+					function attachPdfToDoc(pdfData) {
+						const filename = "${rvDocname}.pdf";
+						
+						// Create a FormData object to send the file
+						const formData = new FormData();
+						formData.append('file', new Blob([pdfData], {type: 'application/pdf'}), filename);
+						formData.append('doctype', "${frm.doctype}");
+						formData.append('docname', "${frm.docname}");
+						formData.append('is_private', 1);
+						
+						// Use XMLHttpRequest to upload the file
+						const xhr = new XMLHttpRequest();
+						xhr.open('POST', '/api/method/upload_file', true);
+						xhr.onload = function() {
+							if (xhr.status === 200) {
+								try {
+									const response = JSON.parse(xhr.responseText);
+									if (response.message) {
+										// Notify parent window of success
+										window.opener.postMessage({
+											message: 'pdf_attached',
+											filename: filename,
+											file_url: response.message.file_url,
+											name: response.message.name
+										}, '*');
+									}
+								} catch (e) {
+									console.error("Error parsing response:", e);
+								}
+							}
+						};
+						xhr.send(formData);
+					}
+					
+					// Override the print function to capture the PDF
+					if (window.frappe) {
+						const originalFn = window.frappe.get_pdf;
+						window.frappe.get_pdf = function(doctype, name, print_format, letterhead, opts) {
+							if (!opts) opts = {};
+							opts.filename = "${rvDocname}.pdf";
+							
+							// We need to override the download function
+							// to capture the PDF data
+							const originalDownloadPdf = window.frappe.download_pdf;
+							window.frappe.download_pdf = function(data, filename) {
+								// Convert base64 to binary
+								const binaryString = window.atob(data);
+								const bytes = new Uint8Array(binaryString.length);
+								for (let i = 0; i < binaryString.length; i++) {
+									bytes[i] = binaryString.charCodeAt(i);
+								}
+								
+								// Attach the PDF to the document
+								attachPdfToDoc(bytes.buffer);
+								
+								// Restore original function
+								window.frappe.download_pdf = originalDownloadPdf;
+							};
+							
+							// Call the original function
+							return originalFn(doctype, name, print_format, letterhead, opts);
+						};
+						
+						// Automatically trigger PDF download after a short delay
+						setTimeout(function() {
+							if (window.frappe.get_pdf) {
+								window.frappe.get_pdf('${frm.doctype}', '${frm.docname}', 'Project Receipt Voucher', null);
+							}
+						}, 1000);
+					}
+				`;
+				printWindow.document.head.appendChild(script);
+			} catch (e) {
+				console.error("Error injecting script:", e);
+				printWindow.close();
+				openEmailDialog(frm); // Fall back to regular email dialog
+			}
+		});
+		
+		// Listen for message from popup window when PDF is attached
+		window.addEventListener('message', function(event) {
+			if (event.data && event.data.message === 'pdf_attached') {
+				// PDF has been successfully attached, close the window
+				if (printWindow && !printWindow.closed) {
+					printWindow.close();
+				}
+				
+				// Create a file doc object from the message data
+				const fileDoc = {
+					name: event.data.name,
+					file_url: event.data.file_url,
+					file_name: event.data.filename,
+					is_private: 1
+				};
+				
+				// Open email dialog with the file
+				openEmailDialogWithAttachment(frm, fileDoc);
+			}
+		});
+		
+		// Set a timeout to fallback if window doesn't respond
+		setTimeout(function() {
+			// If no response after 10 seconds, fall back to regular email
+			if (printWindow && !printWindow.closed) {
+				printWindow.close();
 			}
 			
-			// Generate pdf server-side and attach to document
-			frappe.call({
-				method: "frappe.utils.print_format.download_pdf",
-				args: {
-					doctype: frm.doctype,
-					name: frm.docname,
-					print_format: "Project Receipt Voucher",
-					letterhead: frm.doc.letter_head || null,
-					_lang: "en",
-					as_download: false, // This should prevent download prompt
-					output_file_prefix: rvDocname // Use our custom prefix
-				},
-				callback: function(r) {
-					// Check if the file was created and attached
-					checkForGeneratedPDF(rvDocname, function(fileDoc) {
-						if (fileDoc) {
-							// Found the file, open email dialog with it
-							
-							frappe.show_alert({
-								message: __('PDF generated successfully, opening email...'),
-								indicator: 'green'
-							});
-							openEmailDialogWithAttachment(frm, fileDoc);
-						} else {
-							// Try alternative approach with a popup window
-							frappe.show_alert({
-								message: __('Trying alternative approach...'),
-								indicator: 'blue'
-							});
-							generatePDFWithPopup(frm, rvDocname);
-						}
-					});
-				},
-				error: function(r) {
-					console.error("Error generating PDF:", r);
-					// Try alternative approach with a popup window
-					frappe.show_alert({
-						message: __('Trying alternative approach...'),
-						indicator: 'blue'
-					});
-					generatePDFWithPopup(frm, rvDocname);
+			// Look for any PDF that might have been created
+			checkForGeneratedPDF(rvDocname, function(fileDoc) {
+				if (fileDoc) {
+					openEmailDialogWithAttachment(frm, fileDoc);
+				} else {
+					openEmailDialog(frm);
 				}
 			});
-		}
-	});
+		}, 12000);
+	} else {
+		frappe.msgprint(__("Could not open print window. Please check if pop-ups are blocked."));
+		openEmailDialog(frm);
+	}
 }
 
 // Function to generate PDF using popup window approach

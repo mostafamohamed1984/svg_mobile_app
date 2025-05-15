@@ -12,6 +12,10 @@ class ProjectClaim(Document):
 		self.validate_claim_items()
 	
 	def before_save(self):
+		# Set receiver based on current user if not already set
+		if not self.receiver:
+			self.set_receiver_from_user()
+		
 		# Check if we have multiple invoices in the description
 		if self.being and "Reference Invoices:" in self.being:
 			self.process_multiple_invoice_references()
@@ -21,6 +25,45 @@ class ProjectClaim(Document):
 			for item in self.claim_items:
 				if not getattr(item, 'invoice_reference', None):
 					item.invoice_reference = self.reference_invoice
+	
+	def set_receiver_from_user(self):
+		"""Set the receiver field based on the current user's visual identity"""
+		# Get current user
+		current_user = frappe.session.user
+		
+		# Check if there's a visual identity for this user with identity_for = "Receiver"
+		visual_identity = frappe.db.get_value(
+			"visual Identity", 
+			{"user": current_user, "identity_for": "Receiver"},
+			"name"
+		)
+		
+		if visual_identity:
+			self.receiver = visual_identity
+		else:
+			# Use default value if no visual identity found for the current user
+			self.receiver = self.get_default_receiver()
+	
+	def get_default_receiver(self):
+		"""Get the default receiver value"""
+		# Check if "Mahmoud Said" exists as a visual identity
+		default_identity = frappe.db.get_value(
+			"visual Identity",
+			{"name1": "Mahmoud Said", "identity_for": "Receiver"},
+			"name"
+		)
+		
+		if not default_identity:
+			# Create a default visual identity if it doesn't exist
+			default_doc = frappe.new_doc("visual Identity")
+			default_doc.name1 = "Mahmoud Said"
+			default_doc.identity_for = "Receiver"
+			default_doc.type = "Text"
+			default_doc.text = "Mahmoud Said"
+			default_doc.insert(ignore_permissions=True)
+			default_identity = default_doc.name
+		
+		return default_identity
 	
 	def on_submit(self):
 		# Get all involved invoices

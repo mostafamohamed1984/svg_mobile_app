@@ -47,6 +47,47 @@ frappe.ui.form.on("Project Claim", {
 				}
 			});
 		}
+	},
+	
+	onload: function(frm) {
+		// Check if it's a new document and receiver is not set
+		if (frm.doc.__islocal && !frm.doc.receiver) {
+			// Check if current user has a visual identity
+			frappe.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "visual Identity",
+					filters: {
+						user: frappe.session.user,
+						identity_for: "Receiver"
+					},
+					fieldname: "name"
+				},
+				callback: function(r) {
+					if (r.message && r.message.name) {
+						frm.set_value('receiver', r.message.name);
+					} else {
+						// Get default receiver
+						frappe.call({
+							method: "frappe.client.get_value",
+							args: {
+								doctype: "visual Identity",
+								filters: {
+									name1: "Mahmoud Said",
+									identity_for: "Receiver"
+								},
+								fieldname: "name"
+							},
+							callback: function(r) {
+								if (r.message && r.message.name) {
+									frm.set_value('receiver', r.message.name);
+								}
+							}
+						});
+					}
+				}
+			});
+		}
 	}
 });
 

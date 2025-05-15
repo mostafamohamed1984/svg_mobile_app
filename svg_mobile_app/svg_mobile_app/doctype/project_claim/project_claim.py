@@ -44,17 +44,29 @@ class ProjectClaim(Document):
 		
 		# Generate and attach PDF on submission using the existing print format
 		try:
-			from frappe.utils.pdf import get_pdf
-			from frappe.utils import random_string
+			# Use the built-in function that correctly handles all styles and assets
+			from frappe.utils.print_format import download_pdf
+			from frappe.utils import random_string, cstr
+			import os
 			
-			# Get the HTML from the print format
-			html = frappe.get_print("Project Claim", self.name, "Project Receipt Voucher", self)
+			# Determine the filename for the PDF
+			rv_docname = self.name.replace('PC-', 'RV-')
+			filename = f"{rv_docname}.pdf"
 			
-			# Generate PDF
-			pdf_data = get_pdf(html)
+			# Use the core download_pdf function to generate a properly formatted PDF
+			pdf_data = download_pdf(
+				doctype="Project Claim",
+				name=self.name,
+				format="Project Receipt Voucher",
+				as_download=False,
+				doc=self,
+				no_letterhead=False,
+				as_base64=True
+			)
 			
-			# Create a filename for the PDF
-			filename = f"Receipt_Voucher_{self.name.replace('/', '_')}_{random_string(4)}.pdf"
+			# Convert base64 to binary
+			import base64
+			binary_pdf = base64.b64decode(pdf_data)
 			
 			# Save as attachment to the document
 			_file = frappe.get_doc({
@@ -62,7 +74,7 @@ class ProjectClaim(Document):
 				"file_name": filename,
 				"folder": "Home/Attachments",
 				"is_private": 1,
-				"content": pdf_data,
+				"content": binary_pdf,
 				"attached_to_doctype": "Project Claim",
 				"attached_to_name": self.name
 			})

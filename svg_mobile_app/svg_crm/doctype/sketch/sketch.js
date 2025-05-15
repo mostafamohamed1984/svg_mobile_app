@@ -36,10 +36,7 @@ frappe.ui.form.on("Sketch", {
             // Preload options for all unique elec_and_mech values
             Promise.all(
                 elec_mech_values.map(name => fetch_elec_mech_options(frm, name))
-            ).then(() => {
-                // After loading all options, update the grid for all rows
-                update_elec_mech_options_for_all_rows(frm);
-            });
+            );
         }
         
         // Only add buttons if the document is saved
@@ -115,16 +112,6 @@ frappe.ui.form.on("Sketch", {
     
     sketch_requirements_remove: function(frm, cdt, cdn) {
         refresh_requirement_items(frm);
-    },
-    
-    // Listen to changes in the elec_and_mech_requirements table
-    elec_and_mech_requirements_add: function(frm, cdt, cdn) {
-        // When a new row is added, wait for the UI to update, then initialize
-        setTimeout(() => update_elec_mech_options_for_all_rows(frm), 500);
-    },
-    
-    elec_and_mech_requirements_remove: function(frm, cdt, cdn) {
-        update_elec_mech_options_for_all_rows(frm);
     }
 });
 
@@ -183,54 +170,6 @@ function fetch_elec_mech_options(frm, elec_mech_name) {
             }
         });
     });
-}
-
-// Function to update options for the entire elec_and_mech_requirements grid
-function update_elec_mech_options_for_all_rows(frm) {
-    if (!frm.doc.elec_and_mech_requirements || !frm.doc.elec_and_mech_requirements.length) return;
-    
-    // Create one master list of all possible options
-    let all_options = [];
-    
-    // Collect all unique options from the cache
-    Object.values(frm.elec_mech_options).forEach(options => {
-        options.forEach(option => {
-            if (!all_options.includes(option)) {
-                all_options.push(option);
-            }
-        });
-    });
-    
-    // Update the options field globally for the grid
-    if (all_options.length > 0) {
-        frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
-            'options',
-            'options',
-            ["\n"].concat(all_options)
-        );
-    }
-    
-    // Refresh the grid to show updated options
-    frm.fields_dict.elec_and_mech_requirements.grid.refresh();
-    
-    // Force the grid to update all rows' options - needed for table view
-    if (frm.fields_dict.elec_and_mech_requirements.grid.grid_rows) {
-        frm.fields_dict.elec_and_mech_requirements.grid.grid_rows.forEach(row => {
-            if (row.doc && row.doc.elec_and_mech) {
-                const specific_options = frm.elec_mech_options[row.doc.elec_and_mech] || [];
-                
-                // Update the options for this specific row's field if needed
-                if (specific_options.length > 0) {
-                    row.columns.forEach(column => {
-                        if (column.df && column.df.fieldname === 'options') {
-                            column.df.options = ["\n"].concat(specific_options);
-                            if (column.refresh) column.refresh();
-                        }
-                    });
-                }
-            }
-        });
-    }
 }
 
 // Function to refresh the status of all requirements based on tasks
@@ -308,42 +247,86 @@ frappe.ui.form.on("Elec and Mech Requirements", {
             frappe.model.set_value(cdt, cdn, 'options', '');
             
             // Fetch options from the selected elec_and_mech record
-            fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
-                // Update the options field with available choices
-                if (options && options.length) {
-                    // Update options for this specific row
-                    frappe.model.set_value(cdt, cdn, 'options', ''); // Clear first to trigger refresh
-                    
-                    // Update the grid docfield properties
-                    frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
-                        'options',
-                        'options', 
-                        ["\n"].concat(options)
-                    );
-                    
-                    // Then update for all rows to ensure the grid view is updated too
-                    update_elec_mech_options_for_all_rows(frm);
-                }
-            });
+            fetch_elec_mech_options(frm, row.elec_and_mech);
         }
     },
     
     form_render: function(frm, cdt, cdn) {
         var row = locals[cdt][cdn];
+        var grid_row = frm.fields_dict.elec_and_mech_requirements.grid.grid_rows_by_docname[cdn];
         
+        if (!grid_row) return;
+        
+        // Find the options field in the grid row
+        let options_field = null;
+        grid_row.columns.forEach(column => {
+            if (column.df && column.df.fieldname === 'options') {
+                options_field = column;
+            }
+        });
+        
+        if (!options_field || !options_field.$input) return;
+        
+        // Add autocomplete functionality to the options field
         if (row.elec_and_mech) {
-            // Fetch options for this specific row's elec_and_mech value
             fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
                 if (options && options.length) {
-                    // Update options for this specific row
-                    frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
-                        'options',
-                        'options',
-                        ["\n"].concat(options)
-                    );
-                    
-                    // Force grid refresh to show updated options
-                    frm.fields_dict.elec_and_mech_requirements.grid.refresh();
+                    // Setup autocomplete for the input
+                    if (!options_field.$input.data('awesomplete')) {
+                        options_field.$input.data('awesomplete', new Awesomplete(options_field.$input.get(0), {
+                            minChars: 0,
+                            list: options,
+                            filter: function(text, input) {
+                                return Awesomplete.FILTER_CONTAINS(text, input.match(/[^,]*$/)[0]);
+                            },
+                            replace: function(text) {
+                                options_field.$input.val(text);
+                                frappe.model.set_value(cdt, cdn, 'options', text);
+                            }
+                        }));
+                        
+                        // Show options on focus
+                        options_field.$input.on('focus', function() {
+                            if (options_field.$input.data('awesomplete')) {
+                                options_field.$input.data('awesomplete').evaluate();
+                            }
+                        });
+                    } else {
+                        // Update the list with new options
+                        options_field.$input.data('awesomplete').list = options;
+                    }
+                }
+            });
+        }
+    },
+    
+    // When editing directly in the grid
+    options: function(frm, cdt, cdn) {
+        var row = locals[cdt][cdn];
+        
+        if (row.elec_and_mech && !row.options) {
+            // Show suggestions when user starts typing in the options field
+            fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
+                if (options && options.length) {
+                    // Show a dialog with options to select from
+                    let d = new frappe.ui.Dialog({
+                        title: __('Select Option'),
+                        fields: [{
+                            label: __('Options'),
+                            fieldname: 'option',
+                            fieldtype: 'Select',
+                            options: ['\n'].concat(options)
+                        }],
+                        primary_action_label: __('Select'),
+                        primary_action: function() {
+                            let selected_option = d.get_value('option');
+                            if (selected_option) {
+                                frappe.model.set_value(cdt, cdn, 'options', selected_option);
+                            }
+                            d.hide();
+                        }
+                    });
+                    d.show();
                 }
             });
         }

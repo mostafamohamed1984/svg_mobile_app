@@ -23,7 +23,7 @@
   },
   {
    "fieldname": "options",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "label": "Options"
   }
  ],

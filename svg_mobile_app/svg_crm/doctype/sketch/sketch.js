@@ -24,6 +24,24 @@ frappe.ui.form.on("Sketch", {
         // Initialize the elec and mech options cache
         frm.elec_mech_options = {};
         
+        // Preload all elec_and_mech options for existing rows
+        if (frm.doc.elec_and_mech_requirements && frm.doc.elec_and_mech_requirements.length) {
+            // Get unique elec_and_mech values
+            const elec_mech_values = [...new Set(
+                frm.doc.elec_and_mech_requirements
+                .filter(row => row.elec_and_mech)
+                .map(row => row.elec_and_mech)
+            )];
+            
+            // Preload options for all unique elec_and_mech values
+            Promise.all(
+                elec_mech_values.map(name => fetch_elec_mech_options(frm, name))
+            ).then(() => {
+                // After loading all options, update the grid for all rows
+                update_elec_mech_options_for_all_rows(frm);
+            });
+        }
+        
         // Only add buttons if the document is saved
         if (!frm.is_new()) {
             // Add button to view all engineering assignments
@@ -97,6 +115,16 @@ frappe.ui.form.on("Sketch", {
     
     sketch_requirements_remove: function(frm, cdt, cdn) {
         refresh_requirement_items(frm);
+    },
+    
+    // Listen to changes in the elec_and_mech_requirements table
+    elec_and_mech_requirements_add: function(frm, cdt, cdn) {
+        // When a new row is added, wait for the UI to update, then initialize
+        setTimeout(() => update_elec_mech_options_for_all_rows(frm), 500);
+    },
+    
+    elec_and_mech_requirements_remove: function(frm, cdt, cdn) {
+        update_elec_mech_options_for_all_rows(frm);
     }
 });
 
@@ -155,6 +183,54 @@ function fetch_elec_mech_options(frm, elec_mech_name) {
             }
         });
     });
+}
+
+// Function to update options for the entire elec_and_mech_requirements grid
+function update_elec_mech_options_for_all_rows(frm) {
+    if (!frm.doc.elec_and_mech_requirements || !frm.doc.elec_and_mech_requirements.length) return;
+    
+    // Create one master list of all possible options
+    let all_options = [];
+    
+    // Collect all unique options from the cache
+    Object.values(frm.elec_mech_options).forEach(options => {
+        options.forEach(option => {
+            if (!all_options.includes(option)) {
+                all_options.push(option);
+            }
+        });
+    });
+    
+    // Update the options field globally for the grid
+    if (all_options.length > 0) {
+        frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
+            'options',
+            'options',
+            ["\n"].concat(all_options)
+        );
+    }
+    
+    // Refresh the grid to show updated options
+    frm.fields_dict.elec_and_mech_requirements.grid.refresh();
+    
+    // Force the grid to update all rows' options - needed for table view
+    if (frm.fields_dict.elec_and_mech_requirements.grid.grid_rows) {
+        frm.fields_dict.elec_and_mech_requirements.grid.grid_rows.forEach(row => {
+            if (row.doc && row.doc.elec_and_mech) {
+                const specific_options = frm.elec_mech_options[row.doc.elec_and_mech] || [];
+                
+                // Update the options for this specific row's field if needed
+                if (specific_options.length > 0) {
+                    row.columns.forEach(column => {
+                        if (column.df && column.df.fieldname === 'options') {
+                            column.df.options = ["\n"].concat(specific_options);
+                            if (column.refresh) column.refresh();
+                        }
+                    });
+                }
+            }
+        });
+    }
 }
 
 // Function to refresh the status of all requirements based on tasks
@@ -235,15 +311,18 @@ frappe.ui.form.on("Elec and Mech Requirements", {
             fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
                 // Update the options field with available choices
                 if (options && options.length) {
-                    // Update the options for this specific row
+                    // Update options for this specific row
+                    frappe.model.set_value(cdt, cdn, 'options', ''); // Clear first to trigger refresh
+                    
+                    // Update the grid docfield properties
                     frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
                         'options',
-                        'options',
+                        'options', 
                         ["\n"].concat(options)
                     );
                     
-                    // Force grid refresh to show updated options
-                    frm.fields_dict.elec_and_mech_requirements.grid.refresh();
+                    // Then update for all rows to ensure the grid view is updated too
+                    update_elec_mech_options_for_all_rows(frm);
                 }
             });
         }
@@ -256,7 +335,7 @@ frappe.ui.form.on("Elec and Mech Requirements", {
             // Fetch options for this specific row's elec_and_mech value
             fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
                 if (options && options.length) {
-                    // Update the options field with available choices
+                    // Update options for this specific row
                     frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
                         'options',
                         'options',

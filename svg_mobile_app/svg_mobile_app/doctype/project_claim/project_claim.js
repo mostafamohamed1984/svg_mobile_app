@@ -27,6 +27,13 @@ frappe.ui.form.on("Project Claim", {
 				show_signature_dialog(frm);
 			}).addClass('btn-info');
 		}
+		
+		// Add email button if doc is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.add_custom_button(__('Send Receipt Email'), function() {
+				show_email_dialog(frm);
+			}).addClass('btn-primary');
+		}
 	},
 	
 	reference_invoice: function(frm) {
@@ -37,6 +44,47 @@ frappe.ui.form.on("Project Claim", {
 				doc: frm.doc,
 				callback: function(r) {
 					frm.refresh_field('claim_items');
+				}
+			});
+		}
+	},
+	
+	onload: function(frm) {
+		// Check if it's a new document and receiver is not set
+		if (frm.doc.__islocal && !frm.doc.receiver) {
+			// Check if current user has a visual identity
+			frappe.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "visual Identity",
+					filters: {
+						user: frappe.session.user,
+						identity_for: "Receiver"
+					},
+					fieldname: "name"
+				},
+				callback: function(r) {
+					if (r.message && r.message.name) {
+						frm.set_value('receiver', r.message.name);
+					} else {
+						// Get default receiver
+						frappe.call({
+							method: "frappe.client.get_value",
+							args: {
+								doctype: "visual Identity",
+								filters: {
+									name1: "Mahmoud Said",
+									identity_for: "Receiver"
+								},
+								fieldname: "name"
+							},
+							callback: function(r) {
+								if (r.message && r.message.name) {
+									frm.set_value('receiver', r.message.name);
+								}
+							}
+						});
+					}
 				}
 			});
 		}
@@ -1674,4 +1722,250 @@ function create_bulk_project_claim(frm, dialog) {
 			}
 		});
 	}
+}
+
+// Function to show email dialog with attachment
+function show_email_dialog(frm) {
+	// First get attachment details from the server
+	frappe.call({
+		method: "frappe.client.get_list",
+		args: {
+			doctype: "File",
+			filters: {
+				"attached_to_doctype": "Project Claim",
+				"attached_to_name": frm.doc.name,
+				"file_name": ["like", "RV-%"]
+			},
+			fields: ["name", "file_name", "file_url"],
+			limit_page_length: 1
+		},
+		callback: function(r) {
+			if (r.message && r.message.length > 0) {
+				const attachment = r.message[0];
+				
+				// Get user info
+				const user_fullname = frappe.session.user_fullname;
+				const user_email = frappe.session.user_email || ''; // Fallback, but don't use it automatically
+				
+				// Generate email subject
+				const subject = `Receipt Voucher for ${frm.doc.name}`;
+				
+				// Generate email body
+				const body = `Dear Customer,
+
+Please find attached the receipt voucher for ${frm.doc.name}. 
+<br>
+<br>
+Amount: ${frm.doc.claim_amount}
+<br>
+<br>
+Being: ${frm.doc.being || ""}
+<br>
+<br>
+Thank you for your business.
+<br>
+Regards,
+<br>
+${user_fullname}`;
+
+				// First check if the user has email accounts configured
+				frappe.call({
+					method: "frappe.client.get_list",
+					args: {
+						doctype: "Email Account",
+						filters: {
+							"enable_outgoing": 1,
+						},
+						fields: ["email_id", "name"]
+					},
+					callback: function(result) {
+						let email_accounts = result.message || [];
+						let sender_field;
+						
+						if (email_accounts.length === 0) {
+							// No email accounts available - make sender editable
+							sender_field = {
+								label: __("From"),
+								fieldname: "sender",
+								fieldtype: "Data",
+								description: __("No email accounts configured. Please enter a valid email address."),
+								default: '', // Don't default to user email, leave blank
+								read_only: 0 // Make it editable
+							};
+						} else if (email_accounts.length === 1) {
+							// Only one email account, use it as default but allow editing
+							sender_field = {
+								label: __("From"),
+								fieldname: "sender",
+								fieldtype: "Data",
+								default: email_accounts[0].email_id,
+								read_only: 0 // Make it editable
+							};
+						} else {
+							// Multiple accounts, let user choose or enter their own
+							let options = email_accounts.map(account => account.email_id);
+							options.push("Other..."); // Add option for custom entry
+							
+							sender_field = {
+								label: __("From"),
+								fieldname: "sender_select",
+								fieldtype: "Select",
+								options: options,
+								default: options[0],
+								change: function() {
+									let value = email_dialog.get_value('sender_select');
+									if (value === "Other...") {
+										// Show the custom input field
+										email_dialog.set_df_property('sender_custom', 'hidden', 0);
+										email_dialog.set_value('sender_custom', '');
+									} else {
+										// Hide the custom input field
+										email_dialog.set_df_property('sender_custom', 'hidden', 1);
+									}
+								}
+							};
+						}
+						
+						// Fields array to use for the dialog
+						let dialog_fields = [];
+						
+						// Add sender fields
+						if (email_accounts.length >= 2) {
+							// For multiple accounts, we need both the selector and custom field
+							dialog_fields.push(sender_field);
+							dialog_fields.push({
+								label: __("Custom Email Address"),
+								fieldname: "sender_custom",
+								fieldtype: "Data",
+								hidden: 1 // Initially hidden
+							});
+						} else {
+							// For single or no account, just use the simple field
+							dialog_fields.push(sender_field);
+						}
+						
+						// Add remaining fields
+						dialog_fields = dialog_fields.concat([
+							{
+								label: __("To"),
+								fieldname: "recipients",
+								fieldtype: "Data",
+								reqd: 1
+							},
+							{
+								label: __("CC"),
+								fieldname: "cc",
+								fieldtype: "Data"
+							},
+							{
+								label: __("Subject"),
+								fieldname: "subject",
+								fieldtype: "Data",
+								default: subject,
+								reqd: 1
+							},
+							{
+								label: __("Message"),
+								fieldname: "message",
+								fieldtype: "Text Editor",
+								default: body,
+								reqd: 1
+							},
+							{
+								label: __("Attachments"),
+								fieldname: "attachments_section",
+								fieldtype: "Section Break"
+							},
+							{
+								label: __("Receipt Voucher PDF"),
+								fieldname: "attachment_html",
+								fieldtype: "HTML"
+							}
+						]);
+						
+						// Create the email dialog
+						const email_dialog = new frappe.ui.Dialog({
+							title: __("Send Email"),
+							fields: dialog_fields,
+							primary_action_label: __("Send"),
+							primary_action: function(values) {
+								// Get the actual sender value based on our field setup
+								let sender = '';
+								
+								if (email_accounts.length >= 2) {
+									// For multiple accounts, check if "Other..." is selected
+									if (values.sender_select === "Other...") {
+										sender = values.sender_custom;
+									} else {
+										sender = values.sender_select;
+									}
+								} else {
+									// For single or no account, use the simple field
+									sender = values.sender;
+								}
+								
+								// Validate sender
+								if (!sender) {
+									frappe.msgprint(__("Please enter a valid email address in the From field."));
+									return;
+								}
+								
+								// Now we have the sender, proceed with sending
+								frappe.call({
+									method: "frappe.core.doctype.communication.email.make",
+									args: {
+										sender: sender,
+										recipients: values.recipients,
+										cc: values.cc,
+										subject: values.subject,
+										content: values.message,
+										doctype: "Project Claim",
+										name: frm.doc.name,
+										send_email: 1,
+										send_me_a_copy: 0,
+										attachments: [attachment.name]
+									},
+									callback: function(r) {
+										if (!r.exc) {
+											email_dialog.hide();
+											frappe.show_alert({
+												message: __("Email sent successfully"),
+												indicator: 'green'
+											}, 5);
+										} else {
+											// Show error message
+											frappe.msgprint({
+												title: __("Email Error"),
+												indicator: 'red',
+												message: __("Failed to send email. Please check if your email address is valid and properly configured.")
+											});
+										}
+									}
+								});
+							}
+						});
+						
+						// Render the attachment preview
+						const attachment_html = `
+							<div style="display: flex; align-items: center; padding: 8px; border: 1px solid #d1d8dd; margin-top: 10px; border-radius: 5px;">
+								<div style="margin-right: 8px;">
+									<input type="checkbox" checked disabled>
+								</div>
+								<div>
+									<div style="font-weight: bold;">${attachment.file_name}</div>
+									<div style="color: #8d99a6; font-size: 12px;">PDF Document</div>
+								</div>
+							</div>
+						`;
+						email_dialog.fields_dict.attachment_html.$wrapper.html(attachment_html);
+						
+						// Show the dialog
+						email_dialog.show();
+					}
+				});
+			} else {
+				frappe.msgprint(__("No receipt voucher PDF found. Please make sure the document is submitted."));
+			}
+		}
+	});
 }

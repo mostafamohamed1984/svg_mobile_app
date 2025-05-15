@@ -12,6 +12,10 @@ class ProjectClaim(Document):
 		self.validate_claim_items()
 	
 	def before_save(self):
+		# Set receiver based on current user if not already set
+		if not self.receiver:
+			self.set_receiver_from_user()
+		
 		# Check if we have multiple invoices in the description
 		if self.being and "Reference Invoices:" in self.being:
 			self.process_multiple_invoice_references()
@@ -21,6 +25,135 @@ class ProjectClaim(Document):
 			for item in self.claim_items:
 				if not getattr(item, 'invoice_reference', None):
 					item.invoice_reference = self.reference_invoice
+	
+	@frappe.whitelist()
+	def update_claim_items_balance(self):
+		"""Update the current balance for each item in the claim items table"""
+		if not self.reference_invoice:
+			return
+		
+		# Check if we have multiple invoice references
+		invoices = [self.reference_invoice]
+		if self.invoice_references:
+			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+			invoices.extend(additional_invoices)
+		
+		frappe.logger().debug(f"Updating claim items balance for {self.name}, invoices: {invoices}")
+		
+		# Get all items from the referenced invoices
+		items_data = frappe.db.sql("""
+			SELECT 
+				parent as invoice,
+				item_code,
+				amount
+			FROM `tabSales Invoice Item`
+			WHERE parent IN %s
+		""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+		
+		# Create a map of item totals by invoice and item
+		item_invoice_map = {}
+		for item in items_data:
+			invoice = item.invoice
+			item_code = item.item_code
+			if invoice not in item_invoice_map:
+				item_invoice_map[invoice] = {}
+			item_invoice_map[invoice][item_code] = flt(item.amount)
+		
+		# Also create a global map for totals across all invoices
+		item_total_map = {}
+		for item in items_data:
+			if item.item_code not in item_total_map:
+				item_total_map[item.item_code] = 0
+			item_total_map[item.item_code] += flt(item.amount)
+		
+		# Get all claims that have been submitted for these items, except this one
+		previous_claims = frappe.db.sql("""
+			SELECT 
+				ci.invoice_reference as invoice,
+				ci.item, 
+				SUM(ci.amount) as claimed_amount
+			FROM 
+				`tabClaim Items` ci
+				JOIN `tabProject Claim` pc ON ci.parent = pc.name
+			WHERE 
+				ci.invoice_reference IN %s
+				AND pc.docstatus = 1
+				AND pc.name != %s
+			GROUP BY 
+				ci.invoice_reference, ci.item
+		""", [
+			tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
+			self.name or ""
+		], as_dict=True)
+		
+		# Create a map of claimed amounts by invoice and item
+		claimed_map = {}
+		for claim in previous_claims:
+			invoice = claim.invoice
+			item_code = claim.item
+			if invoice not in claimed_map:
+				claimed_map[invoice] = {}
+			claimed_map[invoice][item_code] = flt(claim.claimed_amount)
+		
+		# Calculate available balance for each item in our claim
+		for item in self.claim_items:
+			invoice_ref = getattr(item, 'invoice_reference', None)
+			item_code = item.item
+			
+			if invoice_ref and invoice_ref in item_invoice_map and item_code in item_invoice_map[invoice_ref]:
+				# We have a specific invoice reference, calculate based on that
+				original_amount = item_invoice_map[invoice_ref][item_code]
+				claimed_amount = claimed_map.get(invoice_ref, {}).get(item_code, 0)
+				available_balance = max(0, original_amount - claimed_amount)
+				frappe.logger().debug(f"Item {item_code} in invoice {invoice_ref}: original={original_amount}, claimed={claimed_amount}, available={available_balance}")
+			else:
+				# No specific invoice reference, calculate across all invoices
+				original_amount = item_total_map.get(item_code, 0)
+				claimed_amount = sum(inv_map.get(item_code, 0) for inv_map in claimed_map.values())
+				available_balance = max(0, original_amount - claimed_amount)
+				frappe.logger().debug(f"Item {item_code} (global): original={original_amount}, claimed={claimed_amount}, available={available_balance}")
+			
+			# Set the current balance
+			item.current_balance = available_balance
+	
+	def set_receiver_from_user(self):
+		"""Set the receiver field based on the current user's visual identity"""
+		# Get current user
+		current_user = frappe.session.user
+		
+		# Check if there's a visual identity for this user with identity_for = "Receiver"
+		visual_identity = frappe.db.get_value(
+			"visual Identity", 
+			{"user": current_user, "identity_for": "Receiver"},
+			"name"
+		)
+		
+		if visual_identity:
+			self.receiver = visual_identity
+		else:
+			# Use default value if no visual identity found for the current user
+			self.receiver = self.get_default_receiver()
+	
+	def get_default_receiver(self):
+		"""Get the default receiver value"""
+		# Check if "Mahmoud Said" exists as a visual identity
+		default_identity = frappe.db.get_value(
+			"visual Identity",
+			{"name1": "Mahmoud Said", "identity_for": "Receiver"},
+			"name"
+		)
+		
+		if not default_identity:
+			# Create a default visual identity if it doesn't exist
+			default_doc = frappe.new_doc("visual Identity")
+			default_doc.name1 = "Mahmoud Said"
+			default_doc.identity_for = "Receiver"
+			default_doc.type = "Text"
+			default_doc.text = "Mahmoud Said"
+			default_doc.insert(ignore_permissions=True)
+			default_identity = default_doc.name
+		
+		return default_identity
 	
 	def on_submit(self):
 		# Get all involved invoices
@@ -44,29 +177,24 @@ class ProjectClaim(Document):
 		
 		# Generate and attach PDF on submission using the existing print format
 		try:
-			# Use the built-in function that correctly handles all styles and assets
-			from frappe.utils.print_format import download_pdf
-			from frappe.utils import random_string, cstr
 			import os
+			from frappe.utils.pdf import get_pdf
+			from frappe.utils import random_string
 			
-			# Determine the filename for the PDF
+			# Generate a unique RV- prefixed name
 			rv_docname = self.name.replace('PC-', 'RV-')
 			filename = f"{rv_docname}.pdf"
 			
-			# Use the core download_pdf function to generate a properly formatted PDF
-			pdf_data = download_pdf(
+			# Get HTML content for the print format
+			html = frappe.get_print(
 				doctype="Project Claim",
 				name=self.name,
-				format="Project Receipt Voucher",
-				as_download=False,
-				doc=self,
-				no_letterhead=False,
-				as_base64=True
+				print_format="Project Receipt Voucher",
+				doc=self
 			)
 			
-			# Convert base64 to binary
-			import base64
-			binary_pdf = base64.b64decode(pdf_data)
+			# Convert to PDF
+			pdf_data = get_pdf(html)
 			
 			# Save as attachment to the document
 			_file = frappe.get_doc({
@@ -74,7 +202,7 @@ class ProjectClaim(Document):
 				"file_name": filename,
 				"folder": "Home/Attachments",
 				"is_private": 1,
-				"content": binary_pdf,
+				"content": pdf_data,
 				"attached_to_doctype": "Project Claim",
 				"attached_to_name": self.name
 			})
@@ -259,96 +387,6 @@ class ProjectClaim(Document):
 			
 		if flt(total_ratio, 2) > 100:
 			frappe.throw(f"Total ratio ({total_ratio:.2f}%) exceeds 100%")
-	
-	@frappe.whitelist()
-	def update_claim_items_balance(self):
-		"""Update the current balance for each item in the claim items table"""
-		if not self.reference_invoice:
-			return
-		
-		# Check if we have multiple invoice references
-		invoices = [self.reference_invoice]
-		if self.invoice_references:
-			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
-			invoices.extend(additional_invoices)
-		
-		frappe.logger().debug(f"Updating claim items balance for {self.name}, invoices: {invoices}")
-		
-		# Get all items from the referenced invoices
-		items_data = frappe.db.sql("""
-			SELECT 
-				parent as invoice,
-				item_code,
-				amount
-			FROM `tabSales Invoice Item`
-			WHERE parent IN %s
-		""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
-		
-		# Create a map of item totals by invoice and item
-		item_invoice_map = {}
-		for item in items_data:
-			invoice = item.invoice
-			item_code = item.item_code
-			if invoice not in item_invoice_map:
-				item_invoice_map[invoice] = {}
-			item_invoice_map[invoice][item_code] = flt(item.amount)
-		
-		# Also create a global map for totals across all invoices
-		item_total_map = {}
-		for item in items_data:
-			if item.item_code not in item_total_map:
-				item_total_map[item.item_code] = 0
-			item_total_map[item.item_code] += flt(item.amount)
-		
-		# Get all claims that have been submitted for these items, except this one
-		previous_claims = frappe.db.sql("""
-			SELECT 
-				ci.invoice_reference as invoice,
-				ci.item, 
-				SUM(ci.amount) as claimed_amount
-			FROM 
-				`tabClaim Items` ci
-				JOIN `tabProject Claim` pc ON ci.parent = pc.name
-			WHERE 
-				ci.invoice_reference IN %s
-				AND pc.docstatus = 1
-				AND pc.name != %s
-			GROUP BY 
-				ci.invoice_reference, ci.item
-		""", [
-			tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
-			self.name or ""
-		], as_dict=True)
-		
-		# Create a map of claimed amounts by invoice and item
-		claimed_map = {}
-		for claim in previous_claims:
-			invoice = claim.invoice
-			item_code = claim.item
-			if invoice not in claimed_map:
-				claimed_map[invoice] = {}
-			claimed_map[invoice][item_code] = flt(claim.claimed_amount)
-		
-		# Calculate available balance for each item in our claim
-		for item in self.claim_items:
-			invoice_ref = getattr(item, 'invoice_reference', None)
-			item_code = item.item
-			
-			if invoice_ref and invoice_ref in item_invoice_map and item_code in item_invoice_map[invoice_ref]:
-				# We have a specific invoice reference, calculate based on that
-				original_amount = item_invoice_map[invoice_ref][item_code]
-				claimed_amount = claimed_map.get(invoice_ref, {}).get(item_code, 0)
-				available_balance = max(0, original_amount - claimed_amount)
-				frappe.logger().debug(f"Item {item_code} in invoice {invoice_ref}: original={original_amount}, claimed={claimed_amount}, available={available_balance}")
-			else:
-				# No specific invoice reference, calculate across all invoices
-				original_amount = item_total_map.get(item_code, 0)
-				claimed_amount = sum(inv_map.get(item_code, 0) for inv_map in claimed_map.values())
-				available_balance = max(0, original_amount - claimed_amount)
-				frappe.logger().debug(f"Item {item_code} (global): original={original_amount}, claimed={claimed_amount}, available={available_balance}")
-			
-			# Set the current balance
-			item.current_balance = available_balance
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""

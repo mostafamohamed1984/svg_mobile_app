@@ -27,6 +27,13 @@ frappe.ui.form.on("Project Claim", {
 				show_signature_dialog(frm);
 			}).addClass('btn-info');
 		}
+		
+		// Add email button if doc is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.add_custom_button(__('Send Receipt Email'), function() {
+				show_email_dialog(frm);
+			}).addClass('btn-primary');
+		}
 	},
 	
 	reference_invoice: function(frm) {
@@ -1674,4 +1681,142 @@ function create_bulk_project_claim(frm, dialog) {
 			}
 		});
 	}
+}
+
+// Function to show email dialog with attachment
+function show_email_dialog(frm) {
+	// First get attachment details from the server
+	frappe.call({
+		method: "frappe.client.get_list",
+		args: {
+			doctype: "File",
+			filters: {
+				"attached_to_doctype": "Project Claim",
+				"attached_to_name": frm.doc.name,
+				"file_name": ["like", "RV-%"]
+			},
+			fields: ["name", "file_name", "file_url"],
+			limit_page_length: 1
+		},
+		callback: function(r) {
+			if (r.message && r.message.length > 0) {
+				const attachment = r.message[0];
+				
+				// Get current user's email
+				const user_email = frappe.session.user_email;
+				const user_fullname = frappe.session.user_fullname;
+				
+				// Generate email subject
+				const subject = `Receipt Voucher for ${frm.doc.name}`;
+				
+				// Generate email body
+				const body = `Dear Customer,
+
+Please find attached the receipt voucher for ${frm.doc.name}.
+
+Amount: ${frm.doc.claim_amount}
+Being: ${frm.doc.being || ""}
+
+Thank you for your business.
+
+Regards,
+${user_fullname}`;
+				
+				// Create the email dialog
+				const email_dialog = new frappe.ui.Dialog({
+					title: __("Send Email"),
+					fields: [
+						{
+							label: __("From"),
+							fieldname: "sender",
+							fieldtype: "Data",
+							default: user_email,
+							read_only: 1
+						},
+						{
+							label: __("To"),
+							fieldname: "recipients",
+							fieldtype: "Data",
+							reqd: 1
+						},
+						{
+							label: __("CC"),
+							fieldname: "cc",
+							fieldtype: "Data"
+						},
+						{
+							label: __("Subject"),
+							fieldname: "subject",
+							fieldtype: "Data",
+							default: subject,
+							reqd: 1
+						},
+						{
+							label: __("Message"),
+							fieldname: "message",
+							fieldtype: "Text Editor",
+							default: body,
+							reqd: 1
+						},
+						{
+							label: __("Attachments"),
+							fieldname: "attachments_section",
+							fieldtype: "Section Break"
+						},
+						{
+							label: __("Receipt Voucher PDF"),
+							fieldname: "attachment_html",
+							fieldtype: "HTML"
+						}
+					],
+					primary_action_label: __("Send"),
+					primary_action: function(values) {
+						frappe.call({
+							method: "frappe.core.doctype.communication.email.make",
+							args: {
+								recipients: values.recipients,
+								cc: values.cc,
+								subject: values.subject,
+								content: values.message,
+								doctype: "Project Claim",
+								name: frm.doc.name,
+								send_email: 1,
+								send_me_a_copy: 0,
+								attachments: [attachment.name]
+							},
+							callback: function(r) {
+								if (!r.exc) {
+									email_dialog.hide();
+									frappe.show_alert({
+										message: __("Email sent successfully"),
+										indicator: 'green'
+									}, 5);
+								}
+							}
+						});
+					}
+				});
+				
+				// Render the attachment preview
+				const attachment_html = `
+					<div style="display: flex; align-items: center; padding: 8px; border: 1px solid #d1d8dd; margin-top: 10px; border-radius: 5px;">
+						<div style="margin-right: 8px;">
+							<input type="checkbox" checked disabled>
+						</div>
+						<div>
+							<div style="font-weight: bold;">${attachment.file_name}</div>
+							<div style="color: #8d99a6; font-size: 12px;">PDF Document</div>
+						</div>
+					</div>
+				`;
+				email_dialog.fields_dict.attachment_html.$wrapper.html(attachment_html);
+				
+				// Show the dialog
+				email_dialog.show();
+				
+			} else {
+				frappe.msgprint(__("No receipt voucher PDF found. Please make sure the document is submitted."));
+			}
+		}
+	});
 }

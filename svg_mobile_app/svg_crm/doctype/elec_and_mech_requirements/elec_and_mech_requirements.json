@@ -1,0 +1,42 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-05-15 12:45:15.463983",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_bkgo",
+  "elec_and_mech",
+  "options"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_bkgo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "elec_and_mech",
+   "fieldtype": "Link",
+   "label": "Elec and Mech",
+   "options": "Elec and mech"
+  },
+  {
+   "fieldname": "options",
+   "fieldtype": "Select",
+   "label": "Options"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-05-15 12:46:23.749130",
+ "modified_by": "Administrator",
+ "module": "SVG CRM",
+ "name": "Elec and Mech Requirements",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

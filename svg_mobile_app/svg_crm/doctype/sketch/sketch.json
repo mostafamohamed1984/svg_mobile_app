@@ -66,7 +66,11 @@
   "comments_tab",
   "notes_html",
   "notes",
-  "connections_tab"
+  "connections_tab",
+  "client_requirements_tab",
+  "additional_notes",
+  "sketch_notes",
+  "elec_and_mech_requirements"
  ],
  "fields": [
   {
@@ -299,6 +303,28 @@
    "in_standard_filter": 1,
    "label": "Status",
    "options": "\nWarm Lead\nHot Lead\nConverted\nNot Interested\nCold Lead"
+  },
+  {
+   "fieldname": "client_requirements_tab",
+   "fieldtype": "Tab Break",
+   "label": "Client Requirements"
+  },
+  {
+   "fieldname": "additional_notes",
+   "fieldtype": "Text Editor",
+   "label": "Additional Notes"
+  },
+  {
+   "fieldname": "sketch_notes",
+   "fieldtype": "Table",
+   "label": "Sketch Notes",
+   "options": "Sketch Notes"
+  },
+  {
+   "fieldname": "elec_and_mech_requirements",
+   "fieldtype": "Table",
+   "label": "Elec and Mech Requirements",
+   "options": "Elec and Mech Requirements"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -312,7 +338,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-05-12 17:24:55.445241",
+ "modified": "2025-05-15 12:46:57.842537",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Sketch",

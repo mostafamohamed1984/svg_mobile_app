@@ -55,16 +55,6 @@
    "label": "Main Details"
   },
   {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Project Claim",
-   "print_hide": 1,
-   "read_only": 1,
-   "search_index": 1
-  },
-  {
    "fieldname": "naming_series",
    "fieldtype": "Select",
    "label": "Serial",
@@ -78,6 +68,14 @@
    "label": "Customer",
    "options": "Customer",
    "reqd": 1
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Customer Name",
+   "read_only": 1
   },
   {
    "fieldname": "party_account",
@@ -116,6 +114,33 @@
   {
    "fieldname": "column_break_udiq",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "for_project",
+   "fieldtype": "Link",
+   "label": "For Project",
+   "options": "Project Contractors",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "for_project.project_name",
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project Name",
+   "read_only": 1
+  },
+  {
+   "description": "All projects associated with this bulk claim",
+   "fieldname": "project_references",
+   "fieldtype": "Small Text",
+   "label": "All Projects",
+   "read_only": 1
   },
   {
    "allow_on_submit": 1,
@@ -166,7 +191,6 @@
    "fieldtype": "Link",
    "label": "Receiving Account",
    "options": "Account",
-   "read_only": 1,
    "reqd": 1
   },
   {
@@ -217,24 +241,15 @@
    "read_only": 1
   },
   {
-   "fieldname": "for_project",
-   "fieldtype": "Link",
-   "label": "For Project",
-   "options": "Project Contractors",
-   "read_only": 1
+   "fieldname": "invoiced_items_section",
+   "fieldtype": "Section Break",
+   "label": "Invoiced items"
   },
   {
-   "description": "All projects associated with this bulk claim",
-   "fieldname": "project_references",
-   "fieldtype": "Small Text",
-   "label": "All Projects",
-   "read_only": 1
-  },
-  {
-   "default": "Today",
-   "fieldname": "date",
-   "fieldtype": "Date",
-   "label": "Date"
+   "fieldname": "claim_items",
+   "fieldtype": "Table",
+   "label": "Claim Items",
+   "options": "Claim Items"
   },
   {
    "fieldname": "section_break_lvpq",
@@ -244,29 +259,6 @@
    "fieldname": "being",
    "fieldtype": "Small Text",
    "label": "Being"
-  },
-  {
-   "fetch_from": "customer.customer_name",
-   "fieldname": "customer_name",
-   "fieldtype": "Data",
-   "in_standard_filter": 1,
-   "label": "Customer Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "for_project.project_name",
-   "fieldname": "project_name",
-   "fieldtype": "Data",
-   "label": "Project Name",
-   "read_only": 1
-  },
-  {
-   "default": "__user",
-   "fieldname": "created_by",
-   "fieldtype": "Link",
-   "in_standard_filter": 1,
-   "label": "Created By",
-   "options": "User"
   },
   {
    "fieldname": "signatures_section",
@@ -305,24 +297,32 @@
    "fieldtype": "Section Break"
   },
   {
-   "fieldname": "invoiced_items_section",
-   "fieldtype": "Section Break",
-   "label": "Invoiced items"
+   "default": "__user",
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
   },
   {
-   "fieldname": "claim_items",
-   "fieldtype": "Table",
-   "label": "Claim Items",
-   "options": "Claim Items"
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Orbit Claim",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-13 10:16:31.571055",
+ "modified": "2025-05-07 17:25:22.881361",
  "modified_by": "Administrator",
- "module": "Svg Mobile App",
- "name": "Project Claim",
+ "module": "SVG CRM",
+ "name": "Orbit Claim",
  "naming_rule": "By \"Naming Series\" field",
  "owner": "Administrator",
  "permissions": [

@@ -31,6 +31,8 @@
   "naming_series",
   "date",
   "deal_type",
+  "old_serial",
+  "status",
   "column_break_mg8t",
   "sketch_number",
   "lead_source",
@@ -161,6 +163,8 @@
   {
    "fieldname": "lead_source",
    "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Lead Source",
    "options": "Lead Source"
   },
@@ -280,6 +284,21 @@
    "fieldtype": "Select",
    "label": "Stage",
    "options": "Lead\nProspect\nOpportunity"
+  },
+  {
+   "fieldname": "old_serial",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Old Serial"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "\nWarm Lead\nHot Lead\nConverted\nNot Interested\nCold Lead"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -293,7 +312,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-04-27 15:02:09.960590",
+ "modified": "2025-05-12 17:24:55.445241",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Sketch",

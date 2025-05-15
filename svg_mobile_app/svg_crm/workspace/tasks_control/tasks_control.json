@@ -1,0 +1,56 @@
+{
+ "charts": [
+  {
+   "chart_name": "Daily Tasks Tracking",
+   "label": "Daily Tasks Tracking"
+  }
+ ],
+ "content": "[{\"id\":\"NCk5S5O2zn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Tasks Control</span>\",\"col\":12}},{\"id\":\"jZiVtBigcw\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"KZaQi5E6YN\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Working Tasks\",\"col\":4}},{\"id\":\"HLyBMEPWt5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Completed Tasks\",\"col\":4}},{\"id\":\"UFlmIDfIA0\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Daily Tasks Tracking\",\"col\":12}},{\"id\":\"CMJgOmFk4G\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Leaders Tasks\",\"col\":12}},{\"id\":\"6GFHexW7hE\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Teams Daily Work\",\"col\":12}}]",
+ "creation": "2025-02-27 15:05:39.651663",
+ "custom_blocks": [
+  {
+   "custom_block_name": "Leaders Tasks",
+   "label": "Leaders Tasks"
+  },
+  {
+   "custom_block_name": "Teams Daily Work",
+   "label": "Teams Daily Work"
+  }
+ ],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "clipboard",
+ "idx": 2,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Tasks Control",
+ "links": [],
+ "modified": "2025-05-13 10:17:35.787751",
+ "modified_by": "Administrator",
+ "module": "SVG CRM",
+ "name": "Tasks Control",
+ "number_cards": [
+  {
+   "label": "Open Tasks",
+   "number_card_name": "Open Tasks"
+  },
+  {
+   "label": "Working Tasks",
+   "number_card_name": "Working Tasks"
+  },
+  {
+   "label": "Completed Tasks",
+   "number_card_name": "Completed Tasks"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 36.0,
+ "shortcuts": [],
+ "title": "Tasks Control"
+}

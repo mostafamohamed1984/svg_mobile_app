@@ -20,6 +20,9 @@ frappe.ui.form.on("Sketch", {
                 }
             });
         }
+
+        // Initialize the elec and mech options cache
+        frm.elec_mech_options = {};
         
         // Only add buttons if the document is saved
         if (!frm.is_new()) {
@@ -120,6 +123,40 @@ function refresh_requirement_items(frm) {
     frm.fields_dict.sketch_engineering_tasks.grid.refresh();
 }
 
+// Function to fetch elec_and_mech_info options for a given elec_and_mech docname
+function fetch_elec_mech_options(frm, elec_mech_name) {
+    if (!elec_mech_name) return Promise.resolve([]);
+    
+    // If options are already cached, return them
+    if (frm.elec_mech_options[elec_mech_name]) {
+        return Promise.resolve(frm.elec_mech_options[elec_mech_name]);
+    }
+    
+    // Otherwise, fetch options from the server
+    return new Promise((resolve) => {
+        frappe.call({
+            method: 'frappe.client.get',
+            args: {
+                doctype: 'Elec and mech',
+                name: elec_mech_name
+            },
+            callback: function(r) {
+                if (r.message && r.message.elec_and_mech_info) {
+                    // Extract names from elec_and_mech_info child table
+                    const options = r.message.elec_and_mech_info.map(info => info.name1);
+                    
+                    // Cache the options for future use
+                    frm.elec_mech_options[elec_mech_name] = options;
+                    
+                    resolve(options);
+                } else {
+                    resolve([]);
+                }
+            }
+        });
+    });
+}
+
 // Function to refresh the status of all requirements based on tasks
 function refresh_requirement_statuses(frm) {
     frappe.call({
@@ -181,6 +218,55 @@ frappe.ui.form.on("Sketch Engineering Tasks", {
         var row = locals[cdt][cdn];
         if (row.engineering_task) {
             frappe.set_route("Form", "Engineering Task", row.engineering_task);
+        }
+    }
+});
+
+// Add event handlers for the elec_and_mech_requirements child table
+frappe.ui.form.on("Elec and Mech Requirements", {
+    elec_and_mech: function(frm, cdt, cdn) {
+        var row = locals[cdt][cdn];
+        
+        if (row.elec_and_mech) {
+            // Clear the options field while loading
+            frappe.model.set_value(cdt, cdn, 'options', '');
+            
+            // Fetch options from the selected elec_and_mech record
+            fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
+                // Update the options field with available choices
+                if (options && options.length) {
+                    // Update the options for this specific row
+                    frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
+                        'options',
+                        'options',
+                        ["\n"].concat(options)
+                    );
+                    
+                    // Force grid refresh to show updated options
+                    frm.fields_dict.elec_and_mech_requirements.grid.refresh();
+                }
+            });
+        }
+    },
+    
+    form_render: function(frm, cdt, cdn) {
+        var row = locals[cdt][cdn];
+        
+        if (row.elec_and_mech) {
+            // Fetch options for this specific row's elec_and_mech value
+            fetch_elec_mech_options(frm, row.elec_and_mech).then(options => {
+                if (options && options.length) {
+                    // Update the options field with available choices
+                    frm.fields_dict.elec_and_mech_requirements.grid.update_docfield_property(
+                        'options',
+                        'options',
+                        ["\n"].concat(options)
+                    );
+                    
+                    // Force grid refresh to show updated options
+                    frm.fields_dict.elec_and_mech_requirements.grid.refresh();
+                }
+            });
         }
     }
 });

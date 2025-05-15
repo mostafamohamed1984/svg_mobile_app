@@ -1712,14 +1712,19 @@ function show_email_dialog(frm) {
 				// Generate email body
 				const body = `Dear Customer,
 
-Please find attached the receipt voucher for ${frm.doc.name}.
-
+Please find attached the receipt voucher for ${frm.doc.name}. 
+<br>
+<br>
 Amount: ${frm.doc.claim_amount}
+<br>
+<br>
 Being: ${frm.doc.being || ""}
-
+<br>
+<br>
 Thank you for your business.
-
+<br>
 Regards,
+<br>
 ${user_fullname}`;
 
 				// First check if the user has email accounts configured

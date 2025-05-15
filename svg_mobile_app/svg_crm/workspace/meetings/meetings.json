@@ -63,9 +63,9 @@
    "type": "Link"
   }
  ],
- "modified": "2025-02-27 15:01:00.697972",
+ "modified": "2025-05-13 10:17:12.155867",
  "modified_by": "Administrator",
- "module": "Svg Mobile App",
+ "module": "SVG CRM",
  "name": "Meetings",
  "number_cards": [
   {
@@ -99,7 +99,7 @@
    "role": "Operation"
   }
  ],
- "sequence_id": 50,
+ "sequence_id": 22.0,
  "shortcuts": [],
  "title": "Meetings"
 }

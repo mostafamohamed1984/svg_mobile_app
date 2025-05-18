@@ -1628,8 +1628,20 @@ function create_bulk_project_claim(frm, dialog) {
 			set_value_quietly('being', being_text);
 			set_value_quietly('reference_invoice', primary_invoice);
 			set_value_quietly('invoice_references', invoice_names.join(", "));
-			set_value_quietly('tax_amount', tax_amount);
+			
+			// Calculate total tax amount from all claim items
+			let total_tax_amount = 0;
+			filtered_claim_items.forEach(item => {
+				total_tax_amount += flt(item.tax_amount || 0);
+			});
+			
+			// Get the tax rate (should be the same for all items)
+			let tax_ratio = filtered_claim_items.length > 0 ? filtered_claim_items[0].tax_rate : 0;
+			
+			// Set tax fields
+			set_value_quietly('tax_amount', total_tax_amount);
 			set_value_quietly('tax_ratio', tax_ratio);
+			
 			// Store key values to ensure they aren't lost
 			let saved_values = {
 				customer: dialog.get_value('customer'),

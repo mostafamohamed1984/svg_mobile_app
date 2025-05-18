@@ -1628,7 +1628,8 @@ function create_bulk_project_claim(frm, dialog) {
 			set_value_quietly('being', being_text);
 			set_value_quietly('reference_invoice', primary_invoice);
 			set_value_quietly('invoice_references', invoice_names.join(", "));
-			
+			set_value_quietly('tax_amount', total_tax_amount);
+			set_value_quietly('tax_ratio', tax_ratio);
 			// Store key values to ensure they aren't lost
 			let saved_values = {
 				customer: dialog.get_value('customer'),

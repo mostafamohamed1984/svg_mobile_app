@@ -1684,8 +1684,8 @@ function create_bulk_project_claim(frm, dialog) {
 }
 }
 
-// Function to show email dialog with attachment 
-function show_email_dialog(frm) {
+// Function to show email dialog with attachment
+window.show_email_dialog = function(frm) {
 	// First get attachment details from the server
 	frappe.call({
 		method: "frappe.client.get_list",
@@ -1929,3 +1929,4 @@ ${user_fullname}`;
 		}
 	});
 }
+

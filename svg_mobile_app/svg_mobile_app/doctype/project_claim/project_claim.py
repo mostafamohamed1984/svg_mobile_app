@@ -474,8 +474,25 @@ class ProjectClaim(Document):
 				invoice_claim_amounts[invoice] = even_share
 				frappe.logger().debug(f"Distributed even share {even_share} to invoice {invoice}")
 		
+		# Calculate tax amounts for each invoice
+		invoice_tax_amounts = {}
+		for invoice, claim_amount in invoice_claim_amounts.items():
+			# Calculate tax for this invoice based on its items
+			tax_amount = 0
+			for item in self.claim_items:
+				if hasattr(item, 'invoice_reference') and item.invoice_reference == invoice:
+					tax_amount += flt(item.tax_amount or 0)
+			
+			# If we couldn't get tax from items, calculate based on document tax_ratio
+			if tax_amount == 0 and self.tax_ratio:
+				tax_amount = flt(claim_amount) * flt(self.tax_ratio) / 100
+			
+			invoice_tax_amounts[invoice] = tax_amount
+			frappe.logger().debug(f"Calculated tax amount for invoice {invoice}: {tax_amount}")
+		
 		# Log what we determined for each invoice
 		frappe.logger().info(f"Final claim amounts per invoice: {invoice_claim_amounts}")
+		frappe.logger().info(f"Final tax amounts per invoice: {invoice_tax_amounts}")
 		frappe.logger().info(f"Total determined: {sum(invoice_claim_amounts.values())}, Claim amount: {self.claim_amount}")
 		
 		# Update each invoice's outstanding amount
@@ -484,13 +501,16 @@ class ProjectClaim(Document):
 				# Get current outstanding amount
 				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
 				
-				# Make sure we're reducing by a positive amount
-				claim_reduction = abs(claim_amount)
+				# Get tax amount for this invoice
+				tax_amount = invoice_tax_amounts.get(invoice, 0)
+				
+				# Make sure we're reducing by a positive amount (including tax)
+				claim_reduction = abs(claim_amount) + abs(tax_amount)
 				
 				# Calculate new outstanding amount (ensure it doesn't go below zero)
 				new_outstanding = max(0, flt(current_outstanding) - flt(claim_reduction))
 				
-				frappe.logger().info(f"Invoice {invoice}: Current outstanding={current_outstanding}, Reduction={claim_reduction}, New outstanding={new_outstanding}")
+				frappe.logger().info(f"Invoice {invoice}: Current outstanding={current_outstanding}, Claim={claim_amount}, Tax={tax_amount}, Total reduction={claim_reduction}, New outstanding={new_outstanding}")
 				
 				# Update the invoice
 				frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)

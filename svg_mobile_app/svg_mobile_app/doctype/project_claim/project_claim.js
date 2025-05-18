@@ -1682,7 +1682,7 @@ function create_bulk_project_claim(frm, dialog) {
 		}
 	});
 }
-
+}
 // Function to show email dialog with attachment
 function show_email_dialog(frm) {
 	// First get attachment details from the server
@@ -1927,5 +1927,4 @@ ${user_fullname}`;
 			}
 		}
 	});
-}
 }

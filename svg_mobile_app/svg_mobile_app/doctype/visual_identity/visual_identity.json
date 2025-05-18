@@ -13,6 +13,7 @@
   "text",
   "image_preview",
   "column_break_pdwx",
+  "company",
   "type",
   "identity_for"
  ],
@@ -71,11 +72,18 @@
   {
    "fieldname": "column_break_pdwx",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-09 22:59:56.810827",
+ "modified": "2025-05-18 09:52:56.092830",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "visual Identity",

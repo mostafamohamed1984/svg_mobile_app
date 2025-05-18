@@ -266,8 +266,7 @@
    "fieldtype": "Link",
    "in_standard_filter": 1,
    "label": "Created By",
-   "options": "User",
-   "hidden": 1
+   "options": "User"
   },
   {
    "fieldname": "signatures_section",
@@ -320,7 +319,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-13 10:16:31.571055",
+ "modified": "2025-05-17 12:13:15.486139",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Claim",

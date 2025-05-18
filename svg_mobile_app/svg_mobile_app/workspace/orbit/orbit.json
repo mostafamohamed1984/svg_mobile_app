@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"BD3YV1LUgX\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Orbit</span>\",\"col\":12}},{\"id\":\"UEz-NczP4G\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Masters\",\"col\":4}},{\"id\":\"SRTM_EGfAX\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Transactions\",\"col\":4}},{\"id\":\"9mxaPUuvbV\",\"type\":\"card\",\"data\":{\"card_name\":\"Relations\",\"col\":4}},{\"id\":\"Xos9PSEK5s\",\"type\":\"card\",\"data\":{\"card_name\":\"Advances and Claims\",\"col\":4}}]",
+ "content": "[{\"id\":\"BD3YV1LUgX\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Orbit</span>\",\"col\":12}},{\"id\":\"UEz-NczP4G\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Masters\",\"col\":4}},{\"id\":\"SRTM_EGfAX\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Transactions\",\"col\":4}},{\"id\":\"9mxaPUuvbV\",\"type\":\"card\",\"data\":{\"card_name\":\"Relations\",\"col\":4}},{\"id\":\"Xos9PSEK5s\",\"type\":\"card\",\"data\":{\"card_name\":\"Advances and Claims\",\"col\":4}},{\"id\":\"ggtffs26q0\",\"type\":\"card\",\"data\":{\"card_name\":\"Items Management\",\"col\":4}}]",
  "creation": "2025-03-17 23:14:46.506492",
  "custom_blocks": [],
  "docstatus": 0,
@@ -65,8 +65,8 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Accounting Transactions",
-   "link_count": 6,
+   "label": "Items Management",
+   "link_count": 2,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -74,12 +74,31 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Payment Entry",
+   "label": "Add New Item",
    "link_count": 0,
-   "link_to": "Payment Entry",
+   "link_to": "Item",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Pricing",
+   "link_count": 0,
+   "link_to": "Price List",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Accounting Transactions",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
    "hidden": 0,
@@ -135,7 +154,7 @@
    "hidden": 0,
    "is_query_report": 0,
    "label": "Advances and Claims",
-   "link_count": 3,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -173,6 +192,16 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Payment Entry",
+   "link_count": 0,
+   "link_to": "Payment Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Relations",
    "link_count": 4,
    "link_type": "DocType",
@@ -202,7 +231,7 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "visual Identity",
+   "label": "Internal Signatures",
    "link_count": 0,
    "link_to": "visual Identity",
    "link_type": "DocType",
@@ -220,7 +249,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-13 13:13:25.755297",
+ "modified": "2025-05-17 02:49:07.886474",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Orbit",

@@ -1,41 +1,36 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-05-15 12:45:15.463983",
+ "creation": "2025-05-15 13:37:27.675879",
  "doctype": "DocType",
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "section_break_bkgo",
-  "elec_and_mech",
-  "options"
+  "items",
+  "amount"
  ],
  "fields": [
   {
-   "fieldname": "section_break_bkgo",
-   "fieldtype": "Section Break"
-  },
-  {
-   "fieldname": "elec_and_mech",
+   "fieldname": "items",
    "fieldtype": "Link",
    "in_list_view": 1,
-   "label": "Elec and Mech",
-   "options": "Elec and mech"
+   "label": "Items",
+   "options": "Item"
   },
   {
-   "fieldname": "options",
-   "fieldtype": "Select",
+   "fieldname": "amount",
+   "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Options"
+   "label": "Amount"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-05-15 14:31:46.723045",
+ "modified": "2025-05-15 13:39:01.267964",
  "modified_by": "Administrator",
  "module": "SVG CRM",
- "name": "Elec and Mech Requirements",
+ "name": "Estimated Cost",
  "owner": "Administrator",
  "permissions": [],
  "sort_field": "modified",

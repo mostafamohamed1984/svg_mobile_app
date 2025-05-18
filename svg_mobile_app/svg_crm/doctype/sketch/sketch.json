@@ -54,23 +54,29 @@
   "project_details_tab",
   "project_category",
   "project_type",
+  "land_number",
+  "building_area",
+  "wall_length",
   "column_break_hzzr",
   "project_status",
   "priority",
   "items_tab",
   "sketch_requirements",
   "sketch_engineering_tasks",
+  "client_requirements_tab",
+  "owner_requirements",
+  "sketch_notes",
+  "elec_and_mech_requirements",
+  "additional_notes",
+  "cost_estimation_tab",
+  "estimated_cost",
   "follow_up_tab",
   "follow_up_html",
   "sketch_follow_up",
   "comments_tab",
   "notes_html",
   "notes",
-  "connections_tab",
-  "client_requirements_tab",
-  "additional_notes",
-  "sketch_notes",
-  "elec_and_mech_requirements"
+  "connections_tab"
  ],
  "fields": [
   {
@@ -317,14 +323,46 @@
   {
    "fieldname": "sketch_notes",
    "fieldtype": "Table",
-   "label": "Sketch Notes",
+   "label": "Specifications",
    "options": "Sketch Notes"
   },
   {
    "fieldname": "elec_and_mech_requirements",
    "fieldtype": "Table",
-   "label": "Elec and Mech Requirements",
+   "label": "Electronic and Mechanical Requirements",
    "options": "Elec and Mech Requirements"
+  },
+  {
+   "fieldname": "owner_requirements",
+   "fieldtype": "Table",
+   "label": "Owner Requirements",
+   "options": "Owner Requirements"
+  },
+  {
+   "fieldname": "estimated_cost",
+   "fieldtype": "Table",
+   "label": "Estimated Cost",
+   "options": "Estimated Cost"
+  },
+  {
+   "fieldname": "land_number",
+   "fieldtype": "Data",
+   "label": "Land Number"
+  },
+  {
+   "fieldname": "building_area",
+   "fieldtype": "Data",
+   "label": "Building Area"
+  },
+  {
+   "fieldname": "wall_length",
+   "fieldtype": "Data",
+   "label": "Wall Length"
+  },
+  {
+   "fieldname": "cost_estimation_tab",
+   "fieldtype": "Tab Break",
+   "label": "Cost Estimation"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -338,7 +376,7 @@
    "link_fieldname": "reference_name"
   }
  ],
- "modified": "2025-05-15 12:46:57.842537",
+ "modified": "2025-05-15 14:44:57.294298",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Sketch",

@@ -115,6 +115,8 @@ class ProjectClaim(Document):
 			
 			# Set the current balance
 			item.current_balance = available_balance
+			
+		return {"status": "success"}
 	
 	def set_receiver_from_user(self):
 		"""Set the receiver field based on the current user's visual identity"""

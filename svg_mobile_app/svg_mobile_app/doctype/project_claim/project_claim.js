@@ -6,7 +6,7 @@ frappe.ui.form.on("Project Claim", {
 		// Update current balance in claim items
 		if (frm.doc.reference_invoice && frm.doc.claim_items && frm.doc.claim_items.length > 0) {
 			frm.call({
-				method: "update_claim_items_balance",
+				method: "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.update_claim_items_balance",
 				doc: frm.doc,
 				callback: function(r) {
 					frm.refresh_field('claim_items');
@@ -40,7 +40,7 @@ frappe.ui.form.on("Project Claim", {
 		// Update current balance when reference invoice is changed
 		if (frm.doc.reference_invoice && frm.doc.claim_items && frm.doc.claim_items.length > 0) {
 			frm.call({
-				method: "update_claim_items_balance",
+				method: "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.update_claim_items_balance",
 				doc: frm.doc,
 				callback: function(r) {
 					frm.refresh_field('claim_items');
@@ -1682,7 +1682,7 @@ function create_bulk_project_claim(frm, dialog) {
 		}
 	});
 }
-}
+
 // Function to show email dialog with attachment
 function show_email_dialog(frm) {
 	// First get attachment details from the server
@@ -1927,4 +1927,5 @@ ${user_fullname}`;
 			}
 		}
 	});
+}
 }

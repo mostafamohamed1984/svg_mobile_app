@@ -674,15 +674,15 @@ class ProjectClaim(Document):
 		je.total_credit = total_credit
 		
 		try:
-		    je.insert()
-		    je.submit()
-		    
-		    # Update claim status to Reconciled
-		    self.db_set("status", "Reconciled")
-		    
-		    frappe.msgprint(f"Journal Entry {je.name} created and Project Claim marked as Reconciled")
+			je.insert()
+			je.submit()
+			
+			# Update claim status to Reconciled
+			self.db_set("status", "Reconciled")
+			
+			frappe.msgprint(f"Journal Entry {je.name} created and Project Claim marked as Reconciled")
 		except Exception as e:
-		    frappe.throw(f"Failed to create Journal Entry: {str(e)}")
+			frappe.throw(f"Failed to create Journal Entry: {str(e)}")
 		
 		return je.name
 
@@ -752,6 +752,21 @@ def get_available_invoice_balances(invoices):
 		FROM `tabSales Invoice Item`
 		WHERE parent IN %s
 	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+	
+	# Get tax information for these invoices
+	tax_data = frappe.db.sql("""
+		SELECT 
+			parent as invoice,
+			rate
+		FROM `tabSales Taxes and Charges`
+		WHERE parent IN %s
+		ORDER BY idx ASC
+	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+	
+	# Map tax rates by invoice
+	invoice_tax_rates = {}
+	for tax_entry in tax_data:
+		invoice_tax_rates[tax_entry.invoice] = flt(tax_entry.rate)
 	
 	# Group items by invoice
 	result = {}
@@ -871,5 +886,11 @@ def get_available_invoice_balances(invoices):
 			for item_code in result[invoice]:
 				result[invoice][item_code]['available_balance'] *= scale_factor
 				frappe.logger().info(f"Scaled {item_code} by {scale_factor}: new available={result[invoice][item_code]['available_balance']}")
+	
+	# Add tax rate to each item's data - AFTER balance calculations are done
+	for invoice in result:
+		tax_rate = invoice_tax_rates.get(invoice, 0)
+		for item_code in result[invoice]:
+			result[invoice][item_code]['tax_rate'] = tax_rate
 	
 	return result

@@ -10,6 +10,8 @@
   "amount",
   "ratio",
   "current_balance",
+  "tax_rate",
+  "tax_amount",
   "unearned_account",
   "revenue_account",
   "invoice_reference",
@@ -41,6 +43,18 @@
    "in_list_view": 1,
    "label": "Current Balance",
    "read_only": 1
+  },
+  {
+   "fieldname": "tax_rate",
+   "fieldtype": "Percent",
+   "label": "Tax Rate",
+   "default": 0
+  },
+  {
+   "fieldname": "tax_amount",
+   "fieldtype": "Currency",
+   "label": "Tax Amount",
+   "default": 0
   },
   {
    "fieldname": "unearned_account",

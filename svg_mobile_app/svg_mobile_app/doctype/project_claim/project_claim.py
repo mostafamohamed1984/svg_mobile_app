@@ -632,19 +632,37 @@ class ProjectClaim(Document):
 			'debit_in_account_currency': claim_amount
 		})
 		
-		# Add tax debit if applicable
+		# Add entries for each claim item
+		for item in self.claim_items:
+			item_amount = flt(item.amount)
+			
+			# Debit unearned account
+			if hasattr(item, 'unearned_account') and item.unearned_account:
+				accounts.append({
+					'account': item.unearned_account,
+					'debit_in_account_currency': item_amount
+				})
+			
+			# Credit revenue account
+			if hasattr(item, 'revenue_account') and item.revenue_account:
+				accounts.append({
+					'account': item.revenue_account,
+					'credit_in_account_currency': item_amount
+				})
+		
+		# Add tax row if applicable
 		if tax_amount > 0 and hasattr(self, 'tax_account') and self.tax_account:
 			accounts.append({
 				'account': self.tax_account,
 				'debit_in_account_currency': tax_amount
 			})
 			
-		# Skip item-specific entries for multi-invoice claims to avoid double counting
-		# because we've already debited the receiving account for the full claim amount
-		
-		# Verify the totals balance
+		# Verify and fix balance if needed
 		total_debit = sum(account.get('debit_in_account_currency', 0) for account in accounts)
 		total_credit = sum(account.get('credit_in_account_currency', 0) for account in accounts)
+		
+		# Log the totals
+		frappe.logger().info(f"Before balance check: Total Debit={total_debit}, Total Credit={total_credit}")
 		
 		if abs(total_debit - total_credit) > 0.01:
 			frappe.throw(f"Journal Entry is not balanced. Debit: {total_debit}, Credit: {total_credit}")

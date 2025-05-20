@@ -582,6 +582,7 @@ class ProjectClaim(Document):
 		
 		claim_amount = flt(self.claim_amount)
 		tax_amount = flt(self.tax_amount or 0)
+		total_amount = claim_amount  # Total amount including tax
 		
 		# Parse the being field to extract invoice-specific claim amounts
 		import re
@@ -617,7 +618,7 @@ class ProjectClaim(Document):
 		
 		# If we couldn't parse amounts, distribute evenly
 		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-			even_share = flt(claim_amount) / len(invoices)
+			even_share = flt(total_amount) / len(invoices)
 			for invoice in invoices:
 				invoice_claim_amounts[invoice] = even_share
 		
@@ -639,10 +640,10 @@ class ProjectClaim(Document):
 					# Removed the reference to the Sales Invoice to avoid double impact
 				})
 		
-		# Debit receiving account (full claim amount minus tax)
+		# Debit receiving account (full claim amount including tax)
 		accounts.append({
 			'account': self.receiving_account,
-			'debit_in_account_currency': claim_amount - tax_amount
+			'debit_in_account_currency': claim_amount
 		})
 		
 		# Add entries for each claim item

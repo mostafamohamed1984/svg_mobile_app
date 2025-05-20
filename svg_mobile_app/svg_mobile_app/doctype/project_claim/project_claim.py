@@ -580,67 +580,61 @@ class ProjectClaim(Document):
 		# Get company from the reference invoice since it's not in the Project Claim
 		default_company = frappe.db.get_value("Sales Invoice", self.reference_invoice, "company") or frappe.defaults.get_user_default('company')
 		
+		# Calculate base claim amount and tax amount
 		claim_amount = flt(self.claim_amount)
-		tax_amount = flt(self.tax_amount or 0)
-		total_amount = claim_amount  # Total amount including tax
+		
+		# Validate and calculate total tax amount from claim items directly
+		tax_amount = 0
+		for item in self.claim_items:
+			tax_amount += flt(item.tax_amount or 0)
+		
+		# Total amount including tax
+		total_with_tax = claim_amount + tax_amount
+		
+		# Log the calculation for debugging
+		frappe.logger().info(f"Journal Entry: Claim Amount={claim_amount}, Tax Amount={tax_amount}, Total={total_with_tax}")
 		
 		# Parse the being field to extract invoice-specific claim amounts
 		import re
 		
 		# Map to track claim amounts per invoice
 		invoice_claim_amounts = {}
+		invoice_tax_amounts = {}
 		
 		# Initialize with zero
 		for invoice in invoices:
 			invoice_claim_amounts[invoice] = 0
+			invoice_tax_amounts[invoice] = 0
 		
-		# Parse the being field to extract invoice-specific amounts
-		if self.being:
-			lines = self.being.split('\n')
-			current_invoice = None
-			
-			for line in lines:
-				# Check for invoice line pattern
-				invoice_match = re.search(r'- ([\w\d-]+)', line)
-				if invoice_match:
-					current_invoice = invoice_match.group(1).strip()
-				
-				# Check for total claimed line pattern
-				if current_invoice and 'Total Claimed:' in line:
-					amount_match = re.search(r'Total Claimed: [^0-9]*([0-9,.]+)', line)
-					if amount_match:
-						amount_text = amount_match.group(1).replace(',', '')
-						try:
-							claim_amount_per_invoice = float(amount_text)
-							invoice_claim_amounts[current_invoice] = claim_amount_per_invoice
-						except (ValueError, KeyError):
-							pass  # Ignore if we can't parse the amount
-		
-		# If we couldn't parse amounts, distribute evenly
-		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-			even_share = flt(total_amount) / len(invoices)
-			for invoice in invoices:
-				invoice_claim_amounts[invoice] = even_share
+		# Calculate tax amount per invoice based on claim items
+		for item in self.claim_items:
+			if hasattr(item, 'invoice_reference') and item.invoice_reference in invoices:
+				invoice = item.invoice_reference
+				invoice_claim_amounts[invoice] = invoice_claim_amounts.get(invoice, 0) + flt(item.amount)
+				invoice_tax_amounts[invoice] = invoice_tax_amounts.get(invoice, 0) + flt(item.tax_amount or 0)
 		
 		# Prepare accounts array
 		accounts = []
 		
-		# Add entry for each invoice with their specific amount but WITHOUT reference to avoid double impact
-		for invoice, invoice_amount in invoice_claim_amounts.items():
-			if invoice_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
+		# Add entry for each invoice with their specific amount INCLUDING tax
+		for invoice in invoices:
+			base_amount = invoice_claim_amounts.get(invoice, 0)
+			tax_amount_per_invoice = invoice_tax_amounts.get(invoice, 0)
+			total_amount_per_invoice = base_amount + tax_amount_per_invoice
+			
+			if total_amount_per_invoice > 0 and frappe.db.exists("Sales Invoice", invoice):
 				# Get customer from the invoice
 				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
 				
-				# Credit customer account for this invoice's portion - but without referencing the invoice
+				# Credit customer account for this invoice's portion including tax
 				accounts.append({
 					'account': self.party_account,
 					'party_type': 'Customer',
 					'party': customer or self.customer,
-					'credit_in_account_currency': invoice_amount
-					# Removed the reference to the Sales Invoice to avoid double impact
+					'credit_in_account_currency': total_amount_per_invoice
 				})
 		
-		# Debit receiving account (full claim amount including tax)
+		# Debit receiving account (amount excluding tax)
 		accounts.append({
 			'account': self.receiving_account,
 			'debit_in_account_currency': claim_amount
@@ -648,9 +642,6 @@ class ProjectClaim(Document):
 		
 		# Add entries for each claim item
 		for item in self.claim_items:
-			# Instead of using the ratio to calculate amount, use the original stored amount directly
-			# item_ratio = flt(item.ratio) / 100
-			# item_amount = claim_amount * item_ratio
 			item_amount = flt(item.amount)
 			
 			# Debit unearned account

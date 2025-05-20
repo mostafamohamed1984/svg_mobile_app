@@ -580,49 +580,41 @@ class ProjectClaim(Document):
 		# Get company from the reference invoice since it's not in the Project Claim
 		default_company = frappe.db.get_value("Sales Invoice", self.reference_invoice, "company") or frappe.defaults.get_user_default('company')
 		
-		# Calculate base claim amount and tax amount
-		claim_amount = flt(self.claim_amount)
-		
-		# Validate and calculate total tax amount from claim items directly
+		# Calculate base claim amount and tax amount directly from claim items
+		claim_amount = 0
 		tax_amount = 0
+		
 		for item in self.claim_items:
+			claim_amount += flt(item.amount)
 			tax_amount += flt(item.tax_amount or 0)
 		
-		# Total amount including tax
-		total_with_tax = claim_amount + tax_amount
-		
 		# Log the calculation for debugging
-		frappe.logger().info(f"Journal Entry: Claim Amount={claim_amount}, Tax Amount={tax_amount}, Total={total_with_tax}")
-		
-		# Parse the being field to extract invoice-specific claim amounts
-		import re
+		frappe.logger().info(f"Journal Entry: Claim Amount={claim_amount}, Tax Amount={tax_amount}, Total={claim_amount + tax_amount}")
 		
 		# Map to track claim amounts per invoice
 		invoice_claim_amounts = {}
 		invoice_tax_amounts = {}
 		
-		# Initialize with zero
-		for invoice in invoices:
-			invoice_claim_amounts[invoice] = 0
-			invoice_tax_amounts[invoice] = 0
-		
-		# Calculate tax amount per invoice based on claim items
+		# Calculate amounts per invoice based on claim items
 		for item in self.claim_items:
-			if hasattr(item, 'invoice_reference') and item.invoice_reference in invoices:
+			if hasattr(item, 'invoice_reference') and item.invoice_reference:
 				invoice = item.invoice_reference
-				invoice_claim_amounts[invoice] = invoice_claim_amounts.get(invoice, 0) + flt(item.amount)
-				invoice_tax_amounts[invoice] = invoice_tax_amounts.get(invoice, 0) + flt(item.tax_amount or 0)
+				if invoice not in invoice_claim_amounts:
+					invoice_claim_amounts[invoice] = 0
+					invoice_tax_amounts[invoice] = 0
+					
+				invoice_claim_amounts[invoice] += flt(item.amount)
+				invoice_tax_amounts[invoice] += flt(item.tax_amount or 0)
 		
 		# Prepare accounts array
 		accounts = []
 		
 		# Add entry for each invoice with their specific amount INCLUDING tax
-		for invoice in invoices:
-			base_amount = invoice_claim_amounts.get(invoice, 0)
-			tax_amount_per_invoice = invoice_tax_amounts.get(invoice, 0)
-			total_amount_per_invoice = base_amount + tax_amount_per_invoice
-			
-			if total_amount_per_invoice > 0 and frappe.db.exists("Sales Invoice", invoice):
+		for invoice, base_amount in invoice_claim_amounts.items():
+			if invoice in invoices and base_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
+				tax_amount_per_invoice = invoice_tax_amounts.get(invoice, 0)
+				total_amount_per_invoice = base_amount + tax_amount_per_invoice
+				
 				# Get customer from the invoice
 				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
 				
@@ -640,30 +632,15 @@ class ProjectClaim(Document):
 			'debit_in_account_currency': claim_amount
 		})
 		
-		# Add entries for each claim item
-		for item in self.claim_items:
-			item_amount = flt(item.amount)
-			
-			# Debit unearned account
-			if hasattr(item, 'unearned_account') and item.unearned_account:
-				accounts.append({
-					'account': item.unearned_account,
-					'debit_in_account_currency': item_amount
-				})
-			
-			# Credit revenue account
-			if hasattr(item, 'revenue_account') and item.revenue_account:
-				accounts.append({
-					'account': item.revenue_account,
-					'credit_in_account_currency': item_amount
-				})
-		
-		# Add tax row if applicable
+		# Add tax debit if applicable
 		if tax_amount > 0 and hasattr(self, 'tax_account') and self.tax_account:
 			accounts.append({
 				'account': self.tax_account,
 				'debit_in_account_currency': tax_amount
 			})
+			
+		# Skip item-specific entries for multi-invoice claims to avoid double counting
+		# because we've already debited the receiving account for the full claim amount
 		
 		# Verify the totals balance
 		total_debit = sum(account.get('debit_in_account_currency', 0) for account in accounts)

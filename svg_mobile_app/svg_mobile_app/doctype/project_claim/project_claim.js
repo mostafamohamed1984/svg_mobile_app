@@ -345,6 +345,18 @@ function show_bulk_invoice_dialog(frm) {
 				label: __('Total Claim Amount'),
 				fieldtype: 'Currency',
 				read_only: 1
+			},
+			{
+				fieldname: 'include_taxes',
+				label: __('Include Taxes'),
+				fieldtype: 'Check',
+				default: 1,
+				onchange: function() {
+					// Refresh the items preview when tax inclusion setting changes
+					if (dialog.selected_invoices && dialog.selected_invoices.size > 0) {
+						update_items_preview(dialog);
+					}
+				}
 			}
 		],
 		primary_action_label: __('Create Project Claim'),
@@ -432,8 +444,9 @@ function show_bulk_invoice_dialog(frm) {
 			// Update the amount directly and recalculate ratios internally (hidden from user)
 			invoice_items[idx].claim_amount = value;
 			
-			// Calculate and update tax amount
-			const tax_amount = flt(value * tax_rate / 100);
+			// Calculate and update tax amount based on include_taxes setting
+			const include_taxes = dialog.get_value('include_taxes');
+			const tax_amount = include_taxes ? flt(value * tax_rate / 100) : 0;
 			invoice_items[idx].tax_amount = tax_amount;
 			
 			// Update tax amount display
@@ -936,8 +949,9 @@ function update_items_preview(dialog) {
 						
 						item.claim_amount = saved_amount || 0;
 						
-						// Calculate tax amount based on claim amount and tax rate
-						item.tax_amount = flt(item.claim_amount * item.tax_rate / 100);
+						// Calculate tax amount based on claim amount, tax rate, and include_taxes setting
+						const include_taxes = dialog.get_value('include_taxes');
+						item.tax_amount = include_taxes ? flt(item.claim_amount * item.tax_rate / 100) : 0;
 					});
 					
 					// Group items by invoice
@@ -1042,8 +1056,10 @@ function update_items_preview(dialog) {
 							
 							// Get tax rate from the item data
 							let tax_rate = item.tax_rate || 0;
-							// Calculate tax amount - tax is ADDITIONAL to the claim amount, not subtracted from it
-							let tax_amount = flt(item.claim_amount * tax_rate / 100);
+							// Check if taxes should be included
+							const include_taxes = dialog.get_value('include_taxes');
+							// Calculate tax amount based on include_taxes setting
+							let tax_amount = include_taxes ? flt(item.claim_amount * tax_rate / 100) : 0;
 							
 							total_amount += flt(item.claim_amount);
 							total_tax += tax_amount;
@@ -1394,9 +1410,10 @@ function create_bulk_project_claim(frm, dialog) {
 				// Round to 2 decimal places to avoid floating-point precision issues
 				allocated_amount = Math.round(allocated_amount * 100) / 100;
 				
-				// Get the tax rate and calculate tax amount
+				// Get the tax rate and calculate tax amount based on include_taxes setting
 				let tax_rate = flt(item.tax_rate || 0);
-				let tax_amount = flt(allocated_amount * tax_rate / 100);
+				const include_taxes = dialog.get_value('include_taxes');
+				let tax_amount = include_taxes ? flt(allocated_amount * tax_rate / 100) : 0;
 				
 				// Add to total
 				total_claim_amount += allocated_amount;

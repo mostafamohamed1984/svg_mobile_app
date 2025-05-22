@@ -292,7 +292,7 @@ def mark_attendance(employee_id, lat, long, distance, action="check-in"):
             SELECT name
             FROM `tabAttendance Request`
             WHERE employee = %s
-              AND docstatus = 1
+              AND docstatus != 2
               AND %s BETWEEN from_date AND to_date
               AND reason = 'Work From Home'
             """,
@@ -996,10 +996,7 @@ def get_announcements(employee_id):
     """
     announcements = frappe.db.sql(query, (employee_id,), as_dict=True)
 
-    # Process body_mail to handle multi-line HTML
-    for announcement in announcements:
-        announcement["body_mail"] = extract_text_from_html(announcement.get("body_mail", ""))
-
+    # Return raw HTML content instead of extracting text
     return {
         "status": "success",
         "data": announcements,
@@ -1013,4 +1010,204 @@ def extract_text_from_html(html_content):
     soup = BeautifulSoup(html_content, "html.parser")
     text = soup.get_text(separator="\n")  # Preserve line breaks
     return text.strip()
+
+@frappe.whitelist(allow_guest=False)
+def check_approval_screen_access(employee_id):
+    """Check if user has access to approval screen based on role"""
+    try:
+        # Get employee details and user
+        employee = frappe.get_doc("Employee", employee_id)
+        user = frappe.get_value("Employee", employee_id, "user_id")
+        
+        if not user:
+            return {"status": "fail", "message": _("User not linked to employee")}
+        
+        # Check if user has HR or Manager role
+        roles = frappe.get_roles(user)
+        is_direct_manager = "Direct Manager" in roles
+        has_reports = employee.reports_to and len(frappe.get_all("Employee", {"reports_to": employee_id})) > 0
+        is_manager = is_direct_manager or has_reports
+        has_access = "HR Manager" in roles or "HR User" in roles or is_manager
+        
+        return {
+            "status": "success",
+            "has_access": has_access,
+            "is_hr": "HR Manager" in roles or "HR User" in roles,
+            "is_manager": is_manager,
+            "is_direct_manager": is_direct_manager,
+            "has_reports": has_reports
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Check Approval Access Error")
+        return {"status": "fail", "message": str(e)}
+
+
+@frappe.whitelist(allow_guest=False)
+def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only=1):
+    """Get pending requests for employees reporting to this manager/HR"""
+    try:
+        # Check if user is HR or manager
+        access_check = check_approval_screen_access(employee_id)
+        if not access_check.get("has_access"):
+            return {"status": "fail", "message": _("You don't have permission to access this data")}
+        
+        # Get employees reporting to this manager
+        filters = []
+        is_hr = access_check.get("is_hr")
+        is_direct_manager = access_check.get("is_direct_manager")
+        has_reports = access_check.get("has_reports")
+        
+        if not is_hr:
+            if has_reports:
+                # For managers with direct reports, only show those employees
+                reporting_employees = frappe.get_all("Employee", 
+                    filters={"reports_to": employee_id},
+                    pluck="name"
+                )
+                if not reporting_employees:
+                    return {"status": "success", "data": []}
+                filters.append(["employee", "in", reporting_employees])
+            elif is_direct_manager:
+                # For direct managers without specific reports, get department members
+                employee = frappe.get_doc("Employee", employee_id)
+                if employee.department:
+                    dept_employees = frappe.get_all("Employee",
+                        filters={"department": employee.department},
+                        pluck="name"
+                    )
+                    if not dept_employees:
+                        return {"status": "success", "data": []}
+                    filters.append(["employee", "in", dept_employees])
+                else:
+                    return {"status": "success", "data": []}
+        
+        # Add date filters if provided
+        if from_date and to_date:
+            filters.append(["creation", "between", [from_date, to_date]])
+        elif from_date:
+            filters.append(["creation", ">=", from_date])
+        elif to_date:
+            filters.append(["creation", "<=", to_date])
+        
+        # Add status filter for pending requests
+        if pending_only:
+            leave_filters = filters + [["status", "=", "Open"]]
+            shift_filters = filters + [["status", "=", "Draft"]]
+            overtime_filters = filters + [["status", "=", "Open"]]
+        else:
+            leave_filters = filters.copy()
+            shift_filters = filters.copy()
+            overtime_filters = filters.copy()
+        
+        # Get leave applications
+        leave_requests = frappe.get_all(
+            "Leave Application",
+            filters=leave_filters,
+            fields=["name", "employee", "employee_name", "from_date", "to_date", 
+                    "leave_type as request_type", "status", "description as reason", 
+                    "creation", "doctype"],
+            order_by="creation desc"
+        )
+        
+        # Get shift requests
+        shift_requests = frappe.get_all(
+            "Shift Request",
+            filters=shift_filters,
+            fields=["name", "employee", "employee_name", "from_date", "to_date", 
+                    "shift_type as request_type", "status", "explanation as reason",
+                    "creation", "doctype"],
+            order_by="creation desc"
+        )
+        
+        # Get overtime requests
+        overtime_requests = frappe.get_all(
+            "Overtime Request",
+            filters=overtime_filters,
+            fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
+                    "day_of_overtime as to_date", "'Overtime' as request_type", 
+                    "status", "reason", "creation", "doctype"],
+            order_by="creation desc"
+        )
+        
+        # Combine all requests
+        all_requests = leave_requests + shift_requests + overtime_requests
+        
+        # Sort by creation date
+        all_requests.sort(key=lambda x: x.get("creation", ""), reverse=True)
+        
+        return {
+            "status": "success",
+            "data": all_requests
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Pending Requests Error")
+        return {"status": "fail", "message": str(e)}
+
+
+@frappe.whitelist(allow_guest=False)
+def update_request_status(employee_id, request_name, doctype, status, reason=None):
+    """Update the status of a request (Leave Application, Shift Request, Overtime Request)"""
+    try:
+        # Check if user has permission to approve/reject
+        access_check = check_approval_screen_access(employee_id)
+        if not access_check.get("has_access"):
+            return {"status": "fail", "message": _("You don't have permission to update this request")}
+        
+        # Get the request document
+        doc = frappe.get_doc(doctype, request_name)
+        
+        # For managers, verify they are the manager of the employee in the request
+        if not access_check.get("is_hr"):
+            employee = frappe.get_doc("Employee", doc.employee)
+            if employee.reports_to != employee_id:
+                return {"status": "fail", "message": _("You can only update requests for your direct reports")}
+        
+        # Update status based on doctype
+        if doctype == "Leave Application":
+            # Status values: Open, Approved, Rejected
+            if status.lower() == "approved":
+                doc.status = "Approved"
+                doc.docstatus = 1  # Submit the document
+            elif status.lower() == "rejected":
+                doc.status = "Rejected"
+                doc.docstatus = 1  # Submit the document
+                if reason:
+                    doc.remark = reason
+        
+        elif doctype == "Shift Request":
+            # Status values: Draft, Submitted, Approved, Rejected
+            if status.lower() == "approved":
+                doc.status = "Approved"
+                doc.docstatus = 1  # Submit the document
+            elif status.lower() == "rejected":
+                doc.status = "Rejected"
+                doc.docstatus = 1  # Submit the document
+                if reason:
+                    doc.explanation = reason
+        
+        elif doctype == "Overtime Request":
+            # Status values: Open, Approved, Rejected
+            if status.lower() == "approved":
+                doc.status = "Approved"
+                doc.docstatus = 1  # Submit the document
+            elif status.lower() == "rejected":
+                doc.status = "Rejected"
+                doc.docstatus = 1  # Submit the document
+                if reason:
+                    doc.reason = reason
+        
+        doc.save()
+        frappe.db.commit()
+        
+        return {
+            "status": "success",
+            "message": _("Request status updated successfully"),
+            "data": {
+                "name": doc.name,
+                "status": doc.status
+            }
+        }
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Update Request Status Error")
+        return {"status": "fail", "message": str(e)}
 

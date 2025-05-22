@@ -20,6 +20,7 @@
   "sales_invoice_created",
   "project_items_section",
   "items",
+  "total_amount",
   "section_break_a2ic",
   "details",
   "created_by",
@@ -137,6 +138,11 @@
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company"
+  },
+  {
+   "fieldname": "total_amount",
+   "fieldtype": "Data",
+   "label": "Total Amount"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -147,7 +153,7 @@
    "link_fieldname": "custom_for_project"
   }
  ],
- "modified": "2025-05-18 09:42:31.249018",
+ "modified": "2025-05-20 12:45:11.116916",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",
@@ -171,6 +177,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "project_name,customer_name,customer",
  "sort_field": "modified",
  "sort_order": "DESC",

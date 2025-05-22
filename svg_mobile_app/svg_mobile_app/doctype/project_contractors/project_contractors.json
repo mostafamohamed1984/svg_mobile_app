@@ -20,7 +20,13 @@
   "sales_invoice_created",
   "project_items_section",
   "items",
+  "fees_and_deposits_items_section",
+  "fees_and_deposits",
+  "section_break_xsme",
   "total_amount",
+  "total_fees",
+  "column_break_gvsf",
+  "total_project_amount",
   "section_break_a2ic",
   "details",
   "created_by",
@@ -143,6 +149,35 @@
    "fieldname": "total_amount",
    "fieldtype": "Data",
    "label": "Total Amount"
+  },
+  {
+   "fieldname": "fees_and_deposits_items_section",
+   "fieldtype": "Section Break",
+   "label": "Fees and Deposits Items"
+  },
+  {
+   "fieldname": "fees_and_deposits",
+   "fieldtype": "Table",
+   "label": "Fees and Deposits",
+   "options": "Fees and Deposits"
+  },
+  {
+   "fieldname": "total_fees",
+   "fieldtype": "Currency",
+   "label": "Total Fees"
+  },
+  {
+   "fieldname": "total_project_amount",
+   "fieldtype": "Data",
+   "label": "Total Project Amount"
+  },
+  {
+   "fieldname": "section_break_xsme",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_gvsf",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -153,7 +188,7 @@
    "link_fieldname": "custom_for_project"
   }
  ],
- "modified": "2025-05-20 12:45:11.116916",
+ "modified": "2025-05-22 13:55:56.535571",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",

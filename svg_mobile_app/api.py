@@ -1024,14 +1024,18 @@ def check_approval_screen_access(employee_id):
         
         # Check if user has HR or Manager role
         roles = frappe.get_roles(user)
-        is_manager = employee.reports_to and len(frappe.get_all("Employee", {"reports_to": employee_id})) > 0
+        is_direct_manager = "Direct Manager" in roles
+        has_reports = employee.reports_to and len(frappe.get_all("Employee", {"reports_to": employee_id})) > 0
+        is_manager = is_direct_manager or has_reports
         has_access = "HR Manager" in roles or "HR User" in roles or is_manager
         
         return {
             "status": "success",
             "has_access": has_access,
             "is_hr": "HR Manager" in roles or "HR User" in roles,
-            "is_manager": is_manager
+            "is_manager": is_manager,
+            "is_direct_manager": is_direct_manager,
+            "has_reports": has_reports
         }
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Check Approval Access Error")
@@ -1050,16 +1054,32 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
         # Get employees reporting to this manager
         filters = []
         is_hr = access_check.get("is_hr")
+        is_direct_manager = access_check.get("is_direct_manager")
+        has_reports = access_check.get("has_reports")
         
         if not is_hr:
-            # For managers, only show direct reports
-            reporting_employees = frappe.get_all("Employee", 
-                filters={"reports_to": employee_id},
-                pluck="name"
-            )
-            if not reporting_employees:
-                return {"status": "success", "data": []}
-            filters.append(["employee", "in", reporting_employees])
+            if has_reports:
+                # For managers with direct reports, only show those employees
+                reporting_employees = frappe.get_all("Employee", 
+                    filters={"reports_to": employee_id},
+                    pluck="name"
+                )
+                if not reporting_employees:
+                    return {"status": "success", "data": []}
+                filters.append(["employee", "in", reporting_employees])
+            elif is_direct_manager:
+                # For direct managers without specific reports, get department members
+                employee = frappe.get_doc("Employee", employee_id)
+                if employee.department:
+                    dept_employees = frappe.get_all("Employee",
+                        filters={"department": employee.department},
+                        pluck="name"
+                    )
+                    if not dept_employees:
+                        return {"status": "success", "data": []}
+                    filters.append(["employee", "in", dept_employees])
+                else:
+                    return {"status": "success", "data": []}
         
         # Add date filters if provided
         if from_date and to_date:

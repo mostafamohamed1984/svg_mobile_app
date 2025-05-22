@@ -9,7 +9,8 @@
   "item",
   "rate",
   "invoiced",
-  "addition_date"
+  "addition_date",
+  "sales_invoice"
  ],
  "fields": [
   {
@@ -38,6 +39,14 @@
    "fieldname": "addition_date",
    "fieldtype": "Date",
    "label": "Addition Date"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,

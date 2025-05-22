@@ -7,7 +7,8 @@
  "engine": "InnoDB",
  "field_order": [
   "item",
-  "rate"
+  "rate",
+  "sales_invoice"
  ],
  "fields": [
   {
@@ -22,6 +23,14 @@
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Rate"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "sales_invoice",
+   "fieldtype": "Link",
+   "label": "Sales Invoice",
+   "options": "Sales Invoice",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

@@ -186,7 +186,7 @@ def create_employee_advances(project_contractors, advances):
     
     # Create Employee Advances
     created_advances = []
-    updated_fees_and_deposits = []
+    updated_fees_and_deposits = {}  # Use a dict to track updates by item
     
     for advance_data in advances:
         try:
@@ -243,13 +243,16 @@ def create_employee_advances(project_contractors, advances):
                 # Find the index of this item in the fees_and_deposits table
                 for i, fee_item in enumerate(project_contractors_doc.fees_and_deposits):
                     if fee_item.item == item:
-                        # Update the fees_and_deposits table
-                        updated_fees_and_deposits.append({
-                            "idx": i,
-                            "item": item,
-                            "employee_advance": employee_advance.name,
-                            "project_claim": project_claim
-                        })
+                        # Add to the updated_fees_and_deposits tracking
+                        if item not in updated_fees_and_deposits:
+                            updated_fees_and_deposits[item] = {
+                                "idx": i,
+                                "item": item,
+                                "employee_advances": [employee_advance.name],
+                                "project_claim": project_claim
+                            }
+                        else:
+                            updated_fees_and_deposits[item]["employee_advances"].append(employee_advance.name)
                         break
             
             frappe.db.commit()
@@ -260,7 +263,7 @@ def create_employee_advances(project_contractors, advances):
     
     # Update the fees_and_deposits table to mark items as having had advances created
     if updated_fees_and_deposits:
-        update_fees_and_deposits(project_contractors, updated_fees_and_deposits)
+        update_fees_and_deposits(project_contractors, list(updated_fees_and_deposits.values()))
     
     return {
         "status": "success", 
@@ -298,7 +301,7 @@ def update_fees_and_deposits(project_contractors, updated_items):
     Args:
         project_contractors (str): Name of the Project Contractors document
         updated_items (list): List of dictionaries containing item details to update
-            Each dict should have: idx, item, employee_advance, project_claim
+            Each dict should have: idx, item, employee_advances, project_claim
     """
     # Get the Project Contractors document
     doc = frappe.get_doc("Project Contractors", project_contractors)
@@ -310,7 +313,12 @@ def update_fees_and_deposits(project_contractors, updated_items):
             fee_item = doc.fees_and_deposits[idx]
             if fee_item.item == update_item.get("item"):
                 fee_item.employee_advance_created = 1
-                fee_item.employee_advance = update_item.get("employee_advance")
+                # Store the first advance for backward compatibility
+                if update_item.get("employee_advances") and len(update_item.get("employee_advances")) > 0:
+                    fee_item.employee_advance = update_item.get("employee_advances")[0]
+                # Store all advances as a comma-separated list in a custom field if it exists
+                if hasattr(fee_item, "employee_advances") and update_item.get("employee_advances"):
+                    fee_item.employee_advances = ",".join(update_item.get("employee_advances"))
                 fee_item.project_claim = update_item.get("project_claim")
     
     # Save the document

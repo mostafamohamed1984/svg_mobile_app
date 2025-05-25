@@ -1,0 +1,29 @@
+{
+  "custom_fields": [],
+  "custom_perms": [],
+  "doctype": "Project Contractors",
+  "links": [
+    {
+      "creation": "2025-05-25 14:00:00.000000",
+      "custom": 1,
+      "docstatus": 0,
+      "group": "References",
+      "hidden": 0,
+      "icon": null,
+      "is_child_table": 0,
+      "link_doctype": "Employee Advance",
+      "link_fieldname": "project_contractors_reference",
+      "modified": "2025-05-25 14:00:00.000000",
+      "modified_by": "Administrator",
+      "name": "Project Contractors-Employee Advance",
+      "owner": "Administrator",
+      "parent": "Project Contractors",
+      "parent_doctype": null,
+      "parentfield": "links",
+      "parenttype": "DocType",
+      "table_fieldname": null
+    }
+  ],
+  "property_setters": [],
+  "sync_on_migrate": 1
+} 

@@ -221,7 +221,10 @@ function create_employee_advances(frm, eligible_items) {
                 placeholder: 'Amount',
                 reqd: true,
                 default: 0,
+                precision: 2,  // Ensure precision is set to 2 decimal places
                 change: function() {
+                    // Log the value for debugging
+                    console.log("Amount changed:", this.value, "Parsed:", parseFloat(this.value));
                     updateTotalAllocated(idx);
                 }
             },
@@ -247,16 +250,35 @@ function create_employee_advances(frm, eligible_items) {
         
         // Sum up all amounts for this item
         employeeEntries[idx].forEach(entry => {
-            const amountField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.amount-field-container-${entry.id} input`);
-            const amount = parseFloat(amountField.val()) || 0;
+            // Try to get the value directly from the control object if possible
+            let amount = 0;
+            const amountFieldContainer = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.amount-field-container-${entry.id}`);
+            
+            // First try to get the frappe control instance
+            const controlInstance = amountFieldContainer.find('input').data('fieldobj');
+            if (controlInstance && typeof controlInstance.get_value === 'function') {
+                // If we have the control instance, get its value directly
+                amount = flt(controlInstance.get_value());
+                console.log("Got amount from control:", amount);
+            } else {
+                // Fallback to parsing the input value
+                const amountField = amountFieldContainer.find('input');
+                const rawValue = amountField.val();
+                // Parse the value, handling any locale-specific formatting
+                amount = flt(rawValue);
+                console.log("Got amount from input:", rawValue, "parsed:", amount);
+            }
+            
             entry.amount = amount;
             totalAllocated += amount;
         });
         
+        console.log("Total calculated:", totalAllocated);
+        
         // Update the total display
         const totalElement = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.total-allocated[data-idx="${idx}"]`);
-        const formattedAmount = frappe.format(totalAllocated, {fieldtype: 'Currency'});
-        // Remove any HTML tags that might be causing issues
+        // Format using flt for consistent handling
+        const formattedAmount = format_currency(totalAllocated, frappe.defaults.get_default('currency'));
         totalElement.text(formattedAmount.replace(/<[^>]*>/g, ''));
         
         // Update progress bar
@@ -320,15 +342,31 @@ function create_employee_advances(frm, eligible_items) {
         
         pending_items.forEach((item, idx) => {
             employeeEntries[idx].forEach(entry => {
+                // Get the employee value
                 const employeeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.employee-field-container-${entry.id} input`);
-                const amountField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.amount-field-container-${entry.id} input`);
-                const purposeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.purpose-input[data-entry-id="${entry.id}"]`);
-                
                 const employee = employeeField.val();
-                const amount = parseFloat(amountField.val()) || 0;
+                
+                // Get the amount using the same approach as in updateTotalAllocated
+                let amount = 0;
+                const amountFieldContainer = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.amount-field-container-${entry.id}`);
+                
+                // First try to get the frappe control instance
+                const controlInstance = amountFieldContainer.find('input').data('fieldobj');
+                if (controlInstance && typeof controlInstance.get_value === 'function') {
+                    // If we have the control instance, get its value directly
+                    amount = flt(controlInstance.get_value());
+                } else {
+                    // Fallback to parsing the input value
+                    const amountField = amountFieldContainer.find('input');
+                    amount = flt(amountField.val());
+                }
+                
+                // Get the purpose
+                const purposeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.purpose-input[data-entry-id="${entry.id}"]`);
                 const purpose = purposeField.val() || `Advance for ${item.item}`;
                 
                 if (employee && amount > 0) {
+                    console.log(`Creating advance for employee ${employee} with amount ${amount}`);
                     advances_to_create.push({
                         employee: employee,
                         purpose: purpose,
@@ -345,6 +383,8 @@ function create_employee_advances(frm, eligible_items) {
             frappe.msgprint(__('No valid advances to create. Please add employees and specify amounts.'));
             return;
         }
+        
+        console.log("Advances to create:", advances_to_create);
         
         // Create the employee advances
         frappe.call({

@@ -135,7 +135,7 @@ function create_employee_advances(frm, eligible_items) {
                             <tfoot>
                                 <tr>
                                     <td>${__('Total Allocated:')}</td>
-                                    <td class="total-allocated" data-idx="${idx}">0.00</td>
+                                    <td class="total-allocated text-right" data-idx="${idx}">0.00</td>
                                     <td colspan="2">
                                         <div class="progress">
                                             <div class="progress-bar" role="progressbar" data-idx="${idx}" 
@@ -255,7 +255,9 @@ function create_employee_advances(frm, eligible_items) {
         
         // Update the total display
         const totalElement = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.total-allocated[data-idx="${idx}"]`);
-        totalElement.text(frappe.format(totalAllocated, {fieldtype: 'Currency'}));
+        const formattedAmount = frappe.format(totalAllocated, {fieldtype: 'Currency'});
+        // Remove any HTML tags that might be causing issues
+        totalElement.text(formattedAmount.replace(/<[^>]*>/g, ''));
         
         // Update progress bar
         const percentage = item.rate > 0 ? Math.min(100, (totalAllocated / item.rate) * 100) : 0;

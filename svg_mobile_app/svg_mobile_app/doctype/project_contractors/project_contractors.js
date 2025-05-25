@@ -319,10 +319,15 @@ function create_employee_advances(frm, eligible_items) {
     function create_advances_from_dialog(frm, dialog, values, pending_items) {
         // Collect data from the dialog
         let advances_to_create = [];
+        let validation_errors = [];
+        
+        // Group by item to check total amounts
+        const totals_by_item = {};
         
         pending_items.forEach((item, idx) => {
             // Get the max amount from the remaining amount, claimed amount, or rate (in that order of preference)
             const maxAmount = flt(item.remaining_amount || item.claimed_amount || item.rate);
+            let totalForItem = 0;
             
             employeeEntries[idx].forEach(entry => {
                 // Get the employee value
@@ -348,11 +353,8 @@ function create_employee_advances(frm, eligible_items) {
                 const purposeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.purpose-input[data-entry-id="${entry.id}"]`);
                 const purpose = purposeField.val() || `Advance for ${item.item}`;
                 
-                // Validate that the amount doesn't exceed the remaining amount
-                if (amount > maxAmount) {
-                    frappe.msgprint(__(`Amount for ${item.item} exceeds the available amount. Reducing to ${format_currency(maxAmount)}.`));
-                    amount = maxAmount;
-                }
+                // Add to the total for this item
+                totalForItem += amount;
                 
                 if (employee && amount > 0) {
                     console.log(`Creating advance for employee ${employee} with amount ${amount}`);
@@ -366,7 +368,22 @@ function create_employee_advances(frm, eligible_items) {
                     });
                 }
             });
+            
+            // Validate total amount for this item
+            if (totalForItem > maxAmount) {
+                validation_errors.push(`Total amount for ${item.item} (${format_currency(totalForItem)}) exceeds the available amount (${format_currency(maxAmount)}).`);
+            }
         });
+        
+        // Check for validation errors
+        if (validation_errors.length > 0) {
+            frappe.msgprint({
+                title: __('Validation Error'),
+                indicator: 'red',
+                message: validation_errors.join('<br>')
+            });
+            return;
+        }
         
         if (advances_to_create.length === 0) {
             frappe.msgprint(__('No valid advances to create. Please add employees and specify amounts.'));

@@ -151,37 +151,36 @@ def check_project_claims_for_advances(project_contractors, include_partial_advan
         is_eligible = False
         
         if item.item in item_claim_map:
+            # Calculate total amount of advances already created
+            total_advanced = 0
+            if hasattr(item, "employee_advances") and item.employee_advances:
+                advances = item.employee_advances.split(",")
+                for advance_name in advances:
+                    advance_amount = frappe.get_value("Employee Advance", advance_name, "advance_amount")
+                    if advance_amount:
+                        total_advanced += float(advance_amount)
+            
+            # Get the claimed amount
+            claimed_amount = item_claim_map[item.item]["claimed_amount"]
+            
+            # Calculate remaining amount
+            remaining_amount = claimed_amount - total_advanced
+            
             # Check if the item has no advances or only partial advances
             if not item.employee_advance_created:
                 is_eligible = True
-            elif include_partial_advances:
-                # Calculate total amount of advances already created
-                total_advanced = 0
-                if hasattr(item, "employee_advances") and item.employee_advances:
-                    advances = item.employee_advances.split(",")
-                    for advance_name in advances:
-                        advance_amount = frappe.get_value("Employee Advance", advance_name, "advance_amount")
-                        if advance_amount:
-                            total_advanced += float(advance_amount)
-                
-                # Get the claimed amount
-                claimed_amount = item_claim_map[item.item]["claimed_amount"]
-                
-                # If total advanced is less than claimed amount, it's eligible for more advances
-                if total_advanced < claimed_amount:
-                    is_eligible = True
-                    
-                    # Add remaining amount info
-                    item_claim_map[item.item]["remaining_amount"] = claimed_amount - total_advanced
+            elif include_partial_advances and remaining_amount > 0:
+                is_eligible = True
             
             if is_eligible:
                 # Add to eligible items with additional claim info
                 eligible_items.append({
                     "item": item.item,
                     "rate": item.rate,  # Original rate from fees and deposits
-                    "claimed_amount": item_claim_map[item.item]["claimed_amount"],  # Amount claimed in Project Claim
+                    "claimed_amount": claimed_amount,  # Amount claimed in Project Claim
                     "invoice_reference": item_claim_map[item.item].get("invoice_reference"),
-                    "remaining_amount": item_claim_map[item.item].get("remaining_amount")
+                    "remaining_amount": remaining_amount,
+                    "total_advanced": total_advanced
                 })
     
     return {
@@ -198,7 +197,7 @@ def create_employee_advances(project_contractors, advances):
     Args:
         project_contractors (str): Name of the Project Contractors document
         advances (list): List of dictionaries containing advance details
-            Each dict should have: employee, purpose, advance_amount, item, project_claim
+            Each dict should have: employee, purpose, advance_amount, item
     
     Returns:
         dict: Status and list of created Employee Advance documents
@@ -226,78 +225,132 @@ def create_employee_advances(project_contractors, advances):
     # Get company currency
     company_currency = frappe.get_cached_value('Company', company, 'default_currency')
     
+    # Group advances by item to check total amounts
+    advances_by_item = {}
+    for advance_data in advances:
+        item_code = advance_data.get("item")
+        if item_code not in advances_by_item:
+            advances_by_item[item_code] = []
+        advances_by_item[item_code].append(advance_data)
+    
     # Create Employee Advances
     created_advances = []
     updated_fees_and_deposits = {}
     
-    for advance_data in advances:
-        try:
-            # Create Employee Advance
-            employee_advance = frappe.new_doc("Employee Advance")
-            employee_advance.employee = advance_data.get("employee")
-            employee_advance.purpose = advance_data.get("purpose")
-            employee_advance.advance_amount = advance_data.get("advance_amount")
-            employee_advance.posting_date = frappe.utils.today()
-            employee_advance.company = company
-            employee_advance.advance_account = default_advance_account
+    # Process each item
+    for item_code, item_advances in advances_by_item.items():
+        # Get the claimed amount for this item
+        claimed_amount = get_claimed_amount_for_item(item_code)
+        if not claimed_amount:
+            # If no claimed amount, get the rate from the fees and deposits table
+            for fee_item in project_contractors_doc.fees_and_deposits:
+                if fee_item.item == item_code:
+                    claimed_amount = fee_item.rate
+                    break
+        
+        if not claimed_amount:
+            frappe.msgprint(f"Could not determine claimed amount for item {item_code}. Skipping.")
+            continue
+        
+        # Get existing advances for this item
+        existing_advances_total = 0
+        for fee_item in project_contractors_doc.fees_and_deposits:
+            if fee_item.item == item_code and hasattr(fee_item, "employee_advances") and fee_item.employee_advances:
+                advances = fee_item.employee_advances.split(",")
+                for advance_name in advances:
+                    advance_amount = frappe.get_value("Employee Advance", advance_name, "advance_amount")
+                    if advance_amount:
+                        existing_advances_total += float(advance_amount)
+        
+        # Calculate total new advances for this item
+        new_advances_total = sum(float(adv.get("advance_amount", 0)) for adv in item_advances)
+        
+        # Check if total advances would exceed claimed amount
+        if existing_advances_total + new_advances_total > claimed_amount:
+            remaining_amount = claimed_amount - existing_advances_total
+            if remaining_amount <= 0:
+                frappe.msgprint(f"Cannot create more advances for item {item_code}. Maximum claimed amount ({claimed_amount}) already reached.")
+                continue
             
-            # Set currency and exchange rate to prevent errors
-            if frappe.get_meta("Employee Advance").has_field("currency"):
-                employee_advance.currency = company_currency
+            frappe.msgprint(f"Total advances for item {item_code} would exceed claimed amount. Reducing to {remaining_amount}.")
             
-            if frappe.get_meta("Employee Advance").has_field("exchange_rate"):
-                # Check if we need to set an exchange rate
-                advance_currency = getattr(employee_advance, "currency", company_currency)
-                if advance_currency != company_currency:
-                    # Try to get exchange rate from Currency Exchange
-                    exchange_rate = get_exchange_rate(advance_currency, company_currency)
-                    if not exchange_rate or exchange_rate == 0:
-                        # If exchange rate is not found or is zero, set a default value
-                        exchange_rate = 1.0
-                        frappe.msgprint(f"Exchange rate for {advance_currency} to {company_currency} not found. Using default rate of 1.0")
-                    
-                    employee_advance.exchange_rate = exchange_rate
-                else:
-                    # Same currency, use exchange rate 1
-                    employee_advance.exchange_rate = 1.0
-            
-            # Add custom fields if they exist
-            if frappe.get_meta("Employee Advance").has_field("custom_type"):
-                employee_advance.custom_type = "Advance"
-                
-            # Add reference to Project Contractors
-            if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
-                employee_advance.project_contractors_reference = project_contractors
-            
-            # Add reference to the specific item
-            if frappe.get_meta("Employee Advance").has_field("item_reference"):
-                employee_advance.item_reference = advance_data.get("item")
-            
-            # Save the Employee Advance
-            employee_advance.insert()
-            
-            # Submit the advance if possible
+            # Adjust advance amounts to fit within remaining amount
+            adjustment_factor = remaining_amount / new_advances_total
+            for adv in item_advances:
+                adv["advance_amount"] = float(adv.get("advance_amount", 0)) * adjustment_factor
+        
+        # Create advances for this item
+        for advance_data in item_advances:
             try:
-                employee_advance.submit()
+                # Skip if advance amount is too small
+                if float(advance_data.get("advance_amount", 0)) < 0.01:
+                    continue
+                
+                # Create Employee Advance
+                employee_advance = frappe.new_doc("Employee Advance")
+                employee_advance.employee = advance_data.get("employee")
+                employee_advance.purpose = advance_data.get("purpose")
+                employee_advance.advance_amount = advance_data.get("advance_amount")
+                employee_advance.posting_date = frappe.utils.today()
+                employee_advance.company = company
+                employee_advance.advance_account = default_advance_account
+                
+                # Set currency and exchange rate to prevent errors
+                if frappe.get_meta("Employee Advance").has_field("currency"):
+                    employee_advance.currency = company_currency
+                
+                if frappe.get_meta("Employee Advance").has_field("exchange_rate"):
+                    # Check if we need to set an exchange rate
+                    advance_currency = getattr(employee_advance, "currency", company_currency)
+                    if advance_currency != company_currency:
+                        # Try to get exchange rate from Currency Exchange
+                        exchange_rate = get_exchange_rate(advance_currency, company_currency)
+                        if not exchange_rate or exchange_rate == 0:
+                            # If exchange rate is not found or is zero, set a default value
+                            exchange_rate = 1.0
+                            frappe.msgprint(f"Exchange rate for {advance_currency} to {company_currency} not found. Using default rate of 1.0")
+                        
+                        employee_advance.exchange_rate = exchange_rate
+                    else:
+                        # Same currency, use exchange rate 1
+                        employee_advance.exchange_rate = 1.0
+                
+                # Add custom fields if they exist
+                if frappe.get_meta("Employee Advance").has_field("custom_type"):
+                    employee_advance.custom_type = "Advance"
+                    
+                # Add reference to Project Contractors
+                if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
+                    employee_advance.project_contractors_reference = project_contractors
+                
+                # Add reference to the specific item
+                if frappe.get_meta("Employee Advance").has_field("item_reference"):
+                    employee_advance.item_reference = item_code
+                
+                # Save the Employee Advance
+                employee_advance.insert()
+                
+                # Submit the advance if possible
+                try:
+                    employee_advance.submit()
+                except Exception as e:
+                    frappe.log_error(f"Error submitting Employee Advance: {str(e)}")
+                    frappe.msgprint(f"Employee Advance {employee_advance.name} created but could not be submitted automatically.")
+                
+                created_advances.append(employee_advance.name)
+                
+                # Update the fees_and_deposits tracking
+                if item_code not in updated_fees_and_deposits:
+                    updated_fees_and_deposits[item_code] = {
+                        "item": item_code,
+                        "employee_advances": [employee_advance.name]
+                    }
+                else:
+                    updated_fees_and_deposits[item_code]["employee_advances"].append(employee_advance.name)
+                
             except Exception as e:
-                frappe.log_error(f"Error submitting Employee Advance: {str(e)}")
-                frappe.msgprint(f"Employee Advance {employee_advance.name} created but could not be submitted automatically.")
-            
-            created_advances.append(employee_advance.name)
-            
-            # Update the fees_and_deposits table to mark this item as having an employee advance created
-            item_code = advance_data.get("item")
-            if item_code not in updated_fees_and_deposits:
-                updated_fees_and_deposits[item_code] = {
-                    "item": item_code,
-                    "employee_advances": [employee_advance.name]
-                }
-            else:
-                updated_fees_and_deposits[item_code]["employee_advances"].append(employee_advance.name)
-            
-        except Exception as e:
-            frappe.log_error(message=f"Error creating employee advance: {str(e)}", title="Create Employee Advance Error")
-            frappe.msgprint(f"Error creating advance for {advance_data.get('employee')}: {str(e)}")
+                frappe.log_error(message=f"Error creating employee advance: {str(e)}", title="Create Employee Advance Error")
+                frappe.msgprint(f"Error creating advance for {advance_data.get('employee')}: {str(e)}")
     
     # Update the Project Contractors document with employee advance references
     if updated_fees_and_deposits:
@@ -366,19 +419,19 @@ def update_fees_and_deposits(project_contractors, updated_items):
             # Combine existing and new advances, removing duplicates
             all_advances = list(set(existing_advances + advances_list))
             
-            # Only mark as completed if the total advance amount meets or exceeds the claimed amount
-            claimed_amount = 0
+            # Calculate total advanced amount
             total_advanced = 0
-            
-            # If claimed amount is still 0, fall back to the original rate
-            if not claimed_amount:
-                claimed_amount = fee_item.rate
-            
-            # Calculate total advance amount
             for advance_name in all_advances:
                 advance = frappe.get_value("Employee Advance", advance_name, "advance_amount")
                 if advance:
                     total_advanced += float(advance)
+            
+            # Get the claimed amount from Project Claims
+            claimed_amount = get_claimed_amount_for_item(fee_item.item)
+            
+            # If no claimed amount found, fall back to the original rate
+            if not claimed_amount:
+                claimed_amount = fee_item.rate
             
             # Store the first advance for backward compatibility
             if advances_list and len(advances_list) > 0:
@@ -397,6 +450,32 @@ def update_fees_and_deposits(project_contractors, updated_items):
     
     # Save the document
     doc.save()
+
+def get_claimed_amount_for_item(item_code):
+    """
+    Get the total claimed amount for an item from all Project Claims
+    
+    Args:
+        item_code (str): Item code to search for
+        
+    Returns:
+        float: Total claimed amount for the item
+    """
+    claim_items = frappe.get_all(
+        "Claim Items",
+        filters={
+            "item": item_code,
+            "parenttype": "Project Claim",
+            "parent": ["in", frappe.get_all("Project Claim", filters={"docstatus": 1}, pluck="name")]
+        },
+        fields=["amount"]
+    )
+    
+    total_claimed = 0
+    for claim_item in claim_items:
+        total_claimed += claim_item.amount
+    
+    return total_claimed
 
 def get_default_advance_account(company):
     """

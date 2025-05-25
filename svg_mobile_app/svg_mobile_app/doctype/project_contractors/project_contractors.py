@@ -201,6 +201,9 @@ def create_employee_advances(project_contractors, advances):
     if not default_advance_account:
         return {"status": "error", "message": f"No default advance account found for company {company}"}
     
+    # Get company currency
+    company_currency = frappe.get_cached_value('Company', company, 'default_currency')
+    
     # Create Employee Advances
     created_advances = []
     updated_fees_and_deposits = {}  # Use a dict to track updates by item
@@ -223,6 +226,26 @@ def create_employee_advances(project_contractors, advances):
             employee_advance.posting_date = frappe.utils.today()
             employee_advance.company = company
             employee_advance.advance_account = default_advance_account
+            
+            # Set currency and exchange rate to prevent errors
+            if frappe.get_meta("Employee Advance").has_field("currency"):
+                employee_advance.currency = company_currency
+            
+            if frappe.get_meta("Employee Advance").has_field("exchange_rate"):
+                # Check if we need to set an exchange rate
+                advance_currency = getattr(employee_advance, "currency", company_currency)
+                if advance_currency != company_currency:
+                    # Try to get exchange rate from Currency Exchange
+                    exchange_rate = get_exchange_rate(advance_currency, company_currency)
+                    if not exchange_rate or exchange_rate == 0:
+                        # If exchange rate is not found or is zero, set a default value
+                        exchange_rate = 1.0
+                        frappe.msgprint(f"Exchange rate for {advance_currency} to {company_currency} not found. Using default rate of 1.0")
+                    
+                    employee_advance.exchange_rate = exchange_rate
+                else:
+                    # Same currency, use exchange rate 1
+                    employee_advance.exchange_rate = 1.0
             
             # Add custom fields if they exist
             if frappe.get_meta("Employee Advance").has_field("custom_type"):
@@ -387,3 +410,48 @@ def get_default_advance_account(company):
             default_account = accounts[0].name
     
     return default_account
+
+def get_exchange_rate(from_currency, to_currency):
+    """
+    Get exchange rate between two currencies
+    
+    Args:
+        from_currency (str): From Currency
+        to_currency (str): To Currency
+    
+    Returns:
+        float: Exchange rate or 1.0 if not found
+    """
+    try:
+        # Try to get the exchange rate from Currency Exchange
+        exchange_rate = frappe.db.get_value(
+            "Currency Exchange",
+            {
+                "from_currency": from_currency,
+                "to_currency": to_currency,
+                "date": ["<=", frappe.utils.today()]
+            },
+            "exchange_rate",
+            order_by="date desc"
+        )
+        
+        if not exchange_rate:
+            # Try the reverse rate
+            reverse_rate = frappe.db.get_value(
+                "Currency Exchange",
+                {
+                    "from_currency": to_currency,
+                    "to_currency": from_currency,
+                    "date": ["<=", frappe.utils.today()]
+                },
+                "exchange_rate",
+                order_by="date desc"
+            )
+            
+            if reverse_rate:
+                exchange_rate = 1.0 / float(reverse_rate)
+        
+        return float(exchange_rate) if exchange_rate else 1.0
+    except Exception as e:
+        frappe.log_error(f"Error getting exchange rate: {str(e)}")
+        return 1.0

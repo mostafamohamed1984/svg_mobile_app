@@ -61,10 +61,29 @@ frappe.form.link_formatters['Project Contractors'] = function(value, doc) {
 // Function to create Employee Advances from fees and deposits
 function create_employee_advances(frm, eligible_items) {
     // Filter out items that already have Employee Advances created
+    const pendingItemCodes = eligible_items.map(item => typeof item === 'object' ? item.item : item);
+    
+    // Convert eligible_items to a map for easy access
+    const eligibleItemsMap = {};
+    eligible_items.forEach(item => {
+        if (typeof item === 'object') {
+            eligibleItemsMap[item.item] = item;
+        }
+    });
+    
     const pending_items = frm.doc.fees_and_deposits.filter(item => {
         // Check if this item is in the eligible_items list
-        return !item.employee_advance_created && 
-               eligible_items.includes(item.item);
+        const isEligible = !item.employee_advance_created && 
+               pendingItemCodes.includes(item.item);
+        
+        // If eligible, enhance the item with claimed amount from eligibleItemsMap
+        if (isEligible && eligibleItemsMap[item.item]) {
+            item.claimed_amount = eligibleItemsMap[item.item].claimed_amount;
+            item.project_claim = eligibleItemsMap[item.item].project_claim;
+            item.invoice_reference = eligibleItemsMap[item.item].invoice_reference;
+        }
+        
+        return isEligible;
     });
     
     if (pending_items.length === 0) {
@@ -96,7 +115,8 @@ function create_employee_advances(frm, eligible_items) {
                 <thead>
                     <tr>
                         <th>${__('Item')}</th>
-                        <th>${__('Total Rate')}</th>
+                        <th>${__('Original Rate')}</th>
+                        <th>${__('Claimed Amount')}</th>
                         <th>${__('Project Claim')}</th>
                         <th>${__('Actions')}</th>
                     </tr>
@@ -110,6 +130,7 @@ function create_employee_advances(frm, eligible_items) {
             <tr data-idx="${idx}">
                 <td>${item.item}</td>
                 <td>${frappe.format(item.rate, {fieldtype: 'Currency'})}</td>
+                <td>${frappe.format(item.claimed_amount || item.rate, {fieldtype: 'Currency'})}</td>
                 <td>${item.project_claim || ''}</td>
                 <td>
                     <button class="btn btn-sm btn-primary add-employee" data-idx="${idx}">
@@ -118,7 +139,7 @@ function create_employee_advances(frm, eligible_items) {
                 </td>
             </tr>
             <tr class="employee-entries-row" data-idx="${idx}">
-                <td colspan="4" class="p-0">
+                <td colspan="5" class="p-0">
                     <div class="employee-entries" data-idx="${idx}">
                         <table class="table table-bordered mb-0">
                             <thead>
@@ -281,8 +302,9 @@ function create_employee_advances(frm, eligible_items) {
         const formattedAmount = format_currency(totalAllocated, frappe.defaults.get_default('currency'));
         totalElement.text(formattedAmount.replace(/<[^>]*>/g, ''));
         
-        // Update progress bar
-        const percentage = item.rate > 0 ? Math.min(100, (totalAllocated / item.rate) * 100) : 0;
+        // Use the claimed amount for the percentage calculation
+        const maxAmount = flt(item.claimed_amount || item.rate);
+        const percentage = maxAmount > 0 ? Math.min(100, (totalAllocated / maxAmount) * 100) : 0;
         const progressBar = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.progress-bar[data-idx="${idx}"]`);
         progressBar.css('width', `${percentage}%`);
         progressBar.attr('aria-valuenow', percentage);
@@ -341,6 +363,9 @@ function create_employee_advances(frm, eligible_items) {
         let advances_to_create = [];
         
         pending_items.forEach((item, idx) => {
+            // Get the max amount from the claimed amount (or fall back to rate if not available)
+            const maxAmount = flt(item.claimed_amount || item.rate);
+            
             employeeEntries[idx].forEach(entry => {
                 // Get the employee value
                 const employeeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.employee-field-container-${entry.id} input`);
@@ -365,15 +390,22 @@ function create_employee_advances(frm, eligible_items) {
                 const purposeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.purpose-input[data-entry-id="${entry.id}"]`);
                 const purpose = purposeField.val() || `Advance for ${item.item}`;
                 
+                // Validate that the amount doesn't exceed the claimed amount
+                if (amount > maxAmount) {
+                    frappe.msgprint(__(`Amount for ${item.item} exceeds the claimed amount. Reducing to ${format_currency(maxAmount)}.`));
+                    amount = maxAmount;
+                }
+                
                 if (employee && amount > 0) {
-                    console.log(`Creating advance for employee ${employee} with amount ${amount}`);
+                    console.log(`Creating advance for employee ${employee} with amount ${amount}, project_claim: ${item.project_claim}`);
                     advances_to_create.push({
                         employee: employee,
                         purpose: purpose,
                         advance_amount: amount,
                         item: item.item,
                         project_contractors: frm.doc.name,
-                        project_claim: item.project_claim || null
+                        project_claim: item.project_claim || null,
+                        invoice_reference: item.invoice_reference || null
                     });
                 }
             });

@@ -59,7 +59,7 @@ def check_project_claims_for_advances(project_contractors):
         project_contractors (str): Name of the Project Contractors document
     
     Returns:
-        dict: Status and list of eligible items
+        dict: Status and list of eligible items with their claimed amounts
     """
     # Get the Project Contractors document
     project_contractors_doc = frappe.get_doc("Project Contractors", project_contractors)
@@ -116,21 +116,30 @@ def check_project_claims_for_advances(project_contractors):
             "has_eligible_items": False
         }
     
-    # Get all claim items from these Project Claims
+    # Get all claim items from these Project Claims with their amounts
     claim_items = frappe.get_all(
         "Claim Items",
         filters={
             "parent": ["in", project_claims],
             "parenttype": "Project Claim"
         },
-        fields=["item", "invoice_reference", "parent"]
+        fields=["item", "amount", "invoice_reference", "parent"]
     )
     
-    # Create a map of items to their Project Claims
+    # Create a map of items to their Project Claims and claimed amounts
     item_claim_map = {}
     for claim_item in claim_items:
         if claim_item.item not in item_claim_map:
-            item_claim_map[claim_item.item] = claim_item.parent
+            item_claim_map[claim_item.item] = {
+                "project_claim": claim_item.parent,
+                "claimed_amount": claim_item.amount,
+                "invoice_reference": claim_item.invoice_reference
+            }
+        else:
+            # If there are multiple claims for the same item, use the most recent one
+            # This is a simplification - in a real scenario, you might want to sum up amounts
+            # or implement more complex logic based on your business requirements
+            item_claim_map[claim_item.item]["claimed_amount"] += claim_item.amount
     
     # Check which fees and deposits items have Project Claims but don't have Employee Advances created
     eligible_items = []
@@ -138,8 +147,16 @@ def check_project_claims_for_advances(project_contractors):
     for item in project_contractors_doc.fees_and_deposits:
         if not item.employee_advance_created and item.item in item_claim_map:
             # Update the item with the Project Claim reference
-            item.project_claim = item_claim_map[item.item]
-            eligible_items.append(item.item)
+            item.project_claim = item_claim_map[item.item]["project_claim"]
+            
+            # Add to eligible items with additional claim info
+            eligible_items.append({
+                "item": item.item,
+                "rate": item.rate,  # Original rate from fees and deposits
+                "claimed_amount": item_claim_map[item.item]["claimed_amount"],  # Amount claimed in Project Claim
+                "project_claim": item_claim_map[item.item]["project_claim"],
+                "invoice_reference": item_claim_map[item.item].get("invoice_reference")
+            })
     
     # Save the document to update the Project Claim references
     if eligible_items:

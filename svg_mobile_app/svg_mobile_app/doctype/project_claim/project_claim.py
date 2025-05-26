@@ -903,3 +903,25 @@ def get_available_invoice_balances(invoices):
 			result[invoice][item_code]['tax_rate'] = tax_rate
 	
 	return result
+
+# Add a static method to be called from JavaScript
+@frappe.whitelist()
+def create_journal_entry_from_claim(claim_name):
+	"""Create a journal entry from a Project Claim directly from client script"""
+	if not claim_name:
+		frappe.throw("Project Claim name is required")
+		
+	# Get the claim document
+	claim = frappe.get_doc("Project Claim", claim_name)
+	
+	# Get all involved invoices
+	invoices = [claim.reference_invoice]
+	if claim.invoice_references:
+		additional_invoices = [inv.strip() for inv in claim.invoice_references.split(',') if inv.strip()]
+		invoices.extend(additional_invoices)
+	
+	# Create the journal entry
+	je_name = claim.create_journal_entry(invoices)
+	
+	# Return the journal entry name
+	return je_name

@@ -69,8 +69,8 @@ function switch_payment_mode(frm, target_mode) {
                                     return;
                                 }
                                 
-                                // Update the payment mode and status of Project Claim
-                                update_project_claim(frm, target_mode);
+                                // Update the payment mode of Project Claim
+                                update_project_claim_and_create_journal_entry(frm, target_mode, journal_entry);
                             }
                         });
                     } else {
@@ -85,7 +85,7 @@ function switch_payment_mode(frm, target_mode) {
     );
 }
 
-function update_project_claim(frm, target_mode) {
+function update_project_claim_and_create_journal_entry(frm, target_mode, old_journal_entry) {
     // Update the payment mode on the Project Claim
     frappe.call({
         method: "frappe.client.set_value",
@@ -93,8 +93,7 @@ function update_project_claim(frm, target_mode) {
             doctype: "Project Claim",
             name: frm.doc.name,
             fieldname: {
-                "mode_of_payment": target_mode,
-                "status": "Unreconciled"  // Reset status to allow creation of new journal entry
+                "mode_of_payment": target_mode
             }
         },
         callback: function(response) {
@@ -103,19 +102,29 @@ function update_project_claim(frm, target_mode) {
                 return;
             }
             
-            // Reload the document to show updated values
-            frm.reload_doc();
-            
-            // Make sure mode_of_payment is read-only
-            setTimeout(function() {
-                frm.set_df_property('mode_of_payment', 'read_only', 1);
-                frm.refresh_field('mode_of_payment');
-                
-                frappe.show_alert({
-                    message: __(`Payment mode switched to ${target_mode} and is now read-only. Please click "Make Journal Entry" to create a new entry.`),
-                    indicator: 'green'
-                });
-            }, 1000);
+            // Now create a new journal entry automatically
+            frappe.call({
+                method: "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.create_journal_entry_from_claim",
+                args: {
+                    claim_name: frm.doc.name
+                },
+                callback: function(r) {
+                    if (r.exc) {
+                        frappe.msgprint(__("Error creating new Journal Entry: ") + r.exc);
+                        return;
+                    }
+                    
+                    if (r.message) {
+                        // Reload the document to show updated values
+                        frm.reload_doc();
+                        
+                        frappe.show_alert({
+                            message: __(`Payment mode switched to ${target_mode} and new Journal Entry ${r.message} created successfully.`),
+                            indicator: 'green'
+                        });
+                    }
+                }
+            });
         }
     });
 } 

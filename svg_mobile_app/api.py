@@ -1105,9 +1105,13 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             filters=leave_filters,
             fields=["name", "employee", "employee_name", "from_date", "to_date", 
                     "leave_type as request_type", "status", "description as reason", 
-                    "creation", "doctype"],
+                    "creation"],
             order_by="creation desc"
         )
+        
+        # Add doctype information
+        for request in leave_requests:
+            request["doctype"] = "Leave Application"
         
         # Get shift requests
         shift_requests = frappe.get_all(
@@ -1115,9 +1119,13 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             filters=shift_filters,
             fields=["name", "employee", "employee_name", "from_date", "to_date", 
                     "shift_type as request_type", "status", "explanation as reason",
-                    "creation", "doctype"],
+                    "creation"],
             order_by="creation desc"
         )
+        
+        # Add doctype information
+        for request in shift_requests:
+            request["doctype"] = "Shift Request"
         
         # Get overtime requests
         overtime_requests = frappe.get_all(
@@ -1125,9 +1133,13 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             filters=overtime_filters,
             fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
                     "day_of_overtime as to_date", "'Overtime' as request_type", 
-                    "status", "reason", "creation", "doctype"],
+                    "status", "reason", "creation"],
             order_by="creation desc"
         )
+        
+        # Add doctype information
+        for request in overtime_requests:
+            request["doctype"] = "Overtime Request"
         
         # Combine all requests
         all_requests = leave_requests + shift_requests + overtime_requests

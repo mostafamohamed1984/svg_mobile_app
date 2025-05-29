@@ -750,9 +750,13 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                     "to_date": end_date,
                     "custom_excuse_hours": excuse_time,
                     "status": "Draft",
-                    "explanation": reason or _("No explanation provided"),
                 })
                 shift_request.insert()
+                
+                # Add reason as a comment since explanation field doesn't exist
+                if reason:
+                    frappe.add_comment("Comment", shift_request.name, text=f"Reason: {reason or 'No explanation provided'}", comment_by=frappe.session.user)
+                
                 return {
                     "status": "success",
                     "message": _("Shift request created successfully"),
@@ -767,9 +771,13 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                     "from_date": start_date,
                     "to_date": end_date,
                     "status": "Draft",
-                    "explanation": reason or _("No explanation provided"),
                 })
                 shift_request.insert()
+                
+                # Add reason as a comment since explanation field doesn't exist
+                if reason:
+                    frappe.add_comment("Comment", shift_request.name, text=f"Reason: {reason or 'No explanation provided'}", comment_by=frappe.session.user)
+                
                 return {
                     "status": "success",
                     "message": _("Shift request created successfully"),
@@ -1118,14 +1126,15 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             "Shift Request",
             filters=shift_filters,
             fields=["name", "employee", "employee_name", "from_date", "to_date", 
-                    "shift_type as request_type", "status", "explanation as reason",
+                    "shift_type as request_type", "status", 
                     "creation"],
             order_by="creation desc"
         )
         
-        # Add doctype information
+        # Add doctype information and a default reason
         for request in shift_requests:
             request["doctype"] = "Shift Request"
+            request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
         
         # Get overtime requests
         overtime_requests = frappe.get_all(
@@ -1194,8 +1203,9 @@ def update_request_status(employee_id, request_name, doctype, status, reason=Non
             elif status.lower() == "rejected":
                 doc.status = "Rejected"
                 doc.docstatus = 1  # Submit the document
+                # Store the reason in a custom comment since explanation field doesn't exist
                 if reason:
-                    doc.explanation = reason
+                    frappe.add_comment("Comment", doc.name, text=f"Rejection reason: {reason}", comment_by=frappe.session.user)
         
         elif doctype == "Overtime Request":
             # Status values: Open, Approved, Rejected

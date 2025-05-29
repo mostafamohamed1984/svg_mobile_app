@@ -53,7 +53,7 @@
    "link_count": 0,
    "link_to": "task-assignment-view",
    "link_type": "Page",
-   "onboard": 0,
+   "onboard": 1,
    "type": "Link"
   },
   {
@@ -164,6 +164,7 @@
    "doc_view": "",
    "label": "Task Assignment View",
    "link_to": "task-assignment-view",
+   "route_options": {},
    "type": "Page"
   }
  ],

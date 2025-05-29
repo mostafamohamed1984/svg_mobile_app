@@ -41,8 +41,8 @@ frappe.ui.form.on("Team Tasks", {
 
 // Configure default Kanban view
 frappe.listview_settings['Team Tasks'] = {
-	// Set default view to Kanban if needed
-	// default_view: "Kanban",
+	// Force default view to Kanban
+	default_view: "Kanban",
 	
 	// Kanban specific settings
 	get_indicator: function(doc) {
@@ -57,15 +57,13 @@ frappe.listview_settings['Team Tasks'] = {
 		};
 		return [__(doc.status), status_colors[doc.status], "status,=," + doc.status];
 	},
-	
-	// Kanban settings
-	kanban_board_filters: [
-		["reference_doctype", "=", "Team Tasks"]
-	]
 };
 
-// Add custom filter for task_type if still needed
+// Setup status-based Kanban board when the list view loads
 frappe.listview_settings['Team Tasks'].onload = function(listview) {
+	// Check if we need to create a status-based Kanban board
+	createStatusKanbanBoard();
+	
 	// Add task_type filter
 	listview.page.add_field({
 		fieldtype: 'Select',
@@ -73,7 +71,11 @@ frappe.listview_settings['Team Tasks'].onload = function(listview) {
 		label: 'Task Type',
 		options: '\nHourly\nDaily\nweekly\nMonthly\nAssigned',
 		onchange: function() {
-			listview.filter_area.add([[listview.doctype, 'task_type', '=', this.value]]);
+			if (this.value) {
+				listview.filter_area.add([[listview.doctype, 'task_type', '=', this.value]]);
+			} else {
+				listview.filter_area.remove(listview.doctype, 'task_type');
+			}
 			listview.refresh();
 		}
 	});
@@ -93,3 +95,49 @@ frappe.listview_settings['Team Tasks'].onload = function(listview) {
 		}
 	});
 };
+
+// Function to create a status-based Kanban board
+function createStatusKanbanBoard() {
+	frappe.call({
+		method: 'frappe.client.get_list',
+		args: {
+			doctype: 'Kanban Board',
+			filters: {
+				'reference_doctype': 'Team Tasks',
+				'name': ['like', '%Status%']
+			}
+		},
+		callback: function(r) {
+			if (!r.message || r.message.length === 0) {
+				// Create a new status-based Kanban board
+				frappe.call({
+					method: 'frappe.client.insert',
+					args: {
+						doc: {
+							'doctype': 'Kanban Board',
+							'name': 'Team Tasks Status Board',
+							'reference_doctype': 'Team Tasks',
+							'field_name': 'status',
+							'columns': [
+								{ 'column_name': 'Open', 'status': 'Open', 'indicator': 'blue' },
+								{ 'column_name': 'Working', 'status': 'Working', 'indicator': 'orange' },
+								{ 'column_name': 'Pending Review', 'status': 'Pending Review', 'indicator': 'purple' },
+								{ 'column_name': 'Overdue', 'status': 'Overdue', 'indicator': 'red' },
+								{ 'column_name': 'Completed', 'status': 'Completed', 'indicator': 'green' },
+								{ 'column_name': 'Cancelled', 'status': 'Cancelled', 'indicator': 'gray' }
+							]
+						}
+					},
+					callback: function(r) {
+						if (r.message) {
+							// Refresh the page to show the new Kanban board
+							setTimeout(function() {
+								window.location.reload();
+							}, 2000);
+						}
+					}
+				});
+			}
+		}
+	});
+}

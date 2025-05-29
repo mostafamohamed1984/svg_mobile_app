@@ -5,7 +5,7 @@
    "label": "Tasks Status Distribution"
   }
  ],
- "content": "[{\"id\":\"NCk5S5O2zn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Task Hierarchy</span>\",\"col\":12}},{\"id\":\"jZiVtBigcw\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"KZaQi5E6YN\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"HLyBMEPWt5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"6GFHexW7hE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Project Tasks Tree\",\"col\":3}},{\"id\":\"CMJgOmFk4G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team Tasks\",\"col\":3}},{\"id\":\"UFlmIDfIA0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Project Task\",\"col\":3}},{\"id\":\"TAV123456\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task Assignment View\",\"col\":3}},{\"id\":\"Mz4KjeFk3G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"K8wBhL2mT9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\">Task Views</span>\",\"col\":12}},{\"id\":\"P3QnWmR8s7\",\"type\":\"card\",\"data\":{\"card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"L6jTvB9z2K\",\"type\":\"card\",\"data\":{\"card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"D5sRpC7y1F\",\"type\":\"card\",\"data\":{\"card_name\":\"Task Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"NCk5S5O2zn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Task Hierarchy</span>\",\"col\":12}},{\"id\":\"jZiVtBigcw\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"KZaQi5E6YN\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"HLyBMEPWt5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"6GFHexW7hE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Project Tasks Tree\",\"col\":3}},{\"id\":\"CMJgOmFk4G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team Tasks\",\"col\":3}},{\"id\":\"UFlmIDfIA0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Project Task\",\"col\":3}},{\"id\":\"TAV123456\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task Assignment View\",\"col\":3}},{\"id\":\"Mz4KjeFk3G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"K8wBhL2mT9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\">Task Views</span>\",\"col\":12}},{\"id\":\"P3QnWmR8s7\",\"type\":\"card\",\"data\":{\"card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"L6jTvB9z2K\",\"type\":\"card\",\"data\":{\"card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"D5sRpC7y1F\",\"type\":\"card\",\"data\":{\"card_name\":\"Task Reports\",\"col\":4}},{\"id\":\"NEW_DIRECT_LINK\",\"type\":\"link\",\"data\":{\"label\":\"Task Assignment View\",\"link_to\":\"task-assignment-view\",\"link_type\":\"Page\",\"col\":12}}]",
  "creation": "2025-05-29 17:30:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
@@ -120,15 +120,31 @@
  "number_cards": [
   {
    "label": "Project Tasks",
-   "number_card_name": "Project Tasks"
+   "number_card_name": "Project Tasks",
+   "doctype": "Project Tasks",
+   "function": "Count",
+   "is_public": 1,
+   "show_percentage_stats": 1,
+   "stats_time_interval": "Monthly"
   },
   {
    "label": "Team Tasks",
-   "number_card_name": "Team Tasks"
+   "number_card_name": "Team Tasks",
+   "doctype": "Team Tasks",
+   "function": "Count",
+   "is_public": 1,
+   "show_percentage_stats": 1,
+   "stats_time_interval": "Monthly"
   },
   {
    "label": "Open Tasks",
-   "number_card_name": "Open Tasks"
+   "number_card_name": "Open Tasks",
+   "filters_json": "{\"status\": \"Open\"}",
+   "doctype": "Team Tasks",
+   "function": "Count",
+   "is_public": 1,
+   "show_percentage_stats": 1,
+   "stats_time_interval": "Monthly"
   }
  ],
  "owner": "Administrator",
@@ -164,7 +180,6 @@
    "doc_view": "",
    "label": "Task Assignment View",
    "link_to": "task-assignment-view",
-   "route_options": {},
    "type": "Page"
   }
  ],

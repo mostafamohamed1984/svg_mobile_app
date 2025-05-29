@@ -150,13 +150,13 @@ doc_events = {
 
 scheduler_events = {
     "hourly": [
-        "svg_mobile_app.server_scripts.run_hourly_tasks",
+        "svg_mobile_app.server_scripts.run_hourly_tasks.execute",
     ],
     "daily": [
         "svg_mobile_app.svg_mobile_app.doctype.issue_requirements_reminders.issue_requirements_reminders.process_scheduled_reminders",
-        "svg_mobile_app.server_scripts.run_daily_tasks",
-        "svg_mobile_app.server_scripts.run_weekly_tasks", 
-        "svg_mobile_app.server_scripts.run_monthly_tasks"
+        "svg_mobile_app.server_scripts.run_daily_tasks.execute", 
+        "svg_mobile_app.server_scripts.run_weekly_tasks.execute", 
+        "svg_mobile_app.server_scripts.run_monthly_tasks.execute"
     ]
 }
 

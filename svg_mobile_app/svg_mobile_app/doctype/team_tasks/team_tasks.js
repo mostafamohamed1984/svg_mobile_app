@@ -9,7 +9,33 @@
 
 frappe.ui.form.on("Team Tasks", {
 	refresh(frm) {
-		// Add any form-level logic here
+		// Add pause/resume buttons for recurring tasks
+		if (["Hourly", "Daily", "weekly", "Monthly"].includes(frm.doc.task_type)) {
+			if (!frm.doc.is_paused) {
+				frm.add_custom_button(__('Pause Scheduling'), function() {
+					frappe.confirm(
+						__('This will pause automatic updates for this recurring task. Continue?'),
+						function() {
+							frm.set_value('is_paused', 1);
+							frm.save();
+							frappe.show_alert({
+								message: __('Task scheduling paused'),
+								indicator: 'orange'
+							}, 3);
+						}
+					);
+				}, __('Scheduling'));
+			} else {
+				frm.add_custom_button(__('Resume Scheduling'), function() {
+					frm.set_value('is_paused', 0);
+					frm.save();
+					frappe.show_alert({
+						message: __('Task scheduling resumed'),
+						indicator: 'green'
+					}, 3);
+				}, __('Scheduling'));
+			}
+		}
 	},
 });
 
@@ -48,6 +74,21 @@ frappe.listview_settings['Team Tasks'].onload = function(listview) {
 		options: '\nHourly\nDaily\nweekly\nMonthly\nAssigned',
 		onchange: function() {
 			listview.filter_area.add([[listview.doctype, 'task_type', '=', this.value]]);
+			listview.refresh();
+		}
+	});
+	
+	// Add paused status filter
+	listview.page.add_field({
+		fieldtype: 'Check',
+		fieldname: 'is_paused',
+		label: 'Show Paused Tasks',
+		onchange: function() {
+			if (this.value) {
+				listview.filter_area.add([[listview.doctype, 'is_paused', '=', 1]]);
+			} else {
+				listview.filter_area.remove(listview.doctype, 'is_paused');
+			}
 			listview.refresh();
 		}
 	});

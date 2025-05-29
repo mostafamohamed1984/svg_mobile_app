@@ -113,6 +113,13 @@
    "fieldname": "employee_name",
    "fieldtype": "Data",
    "label": "Employee Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_paused",
+   "fieldtype": "Check",
+   "label": "Paused",
+   "description": "When checked, this task will be excluded from automatic status updates by the scheduler"
   }
  ],
  "index_web_pages_for_search": 1,

@@ -5,16 +5,19 @@
    "label": "Tasks Status Distribution"
   }
  ],
- "content": "[{\"id\":\"NCk5S5O2zn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Task Hierarchy</span>\",\"col\":12}},{\"id\":\"jZiVtBigcw\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"KZaQi5E6YN\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"HLyBMEPWt5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"6GFHexW7hE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Project Tasks Tree\",\"col\":3}},{\"id\":\"CMJgOmFk4G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team Tasks\",\"col\":3}},{\"id\":\"UFlmIDfIA0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Project Task\",\"col\":3}},{\"id\":\"TAV123456\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task Assignment View\",\"col\":3}},{\"id\":\"Mz4KjeFk3G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"K8wBhL2mT9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\">Task Views</span>\",\"col\":12}},{\"id\":\"P3QnWmR8s7\",\"type\":\"card\",\"data\":{\"card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"L6jTvB9z2K\",\"type\":\"card\",\"data\":{\"card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"D5sRpC7y1F\",\"type\":\"card\",\"data\":{\"card_name\":\"Task Reports\",\"col\":4}}]",
+ "content": "[{\"id\":\"header_main\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Task Hierarchy</span>\",\"col\":12}},{\"id\":\"card_project_tasks\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"card_team_tasks\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"card_open_tasks\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"shortcut_project_tree\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Project Tasks Tree\",\"col\":3}},{\"id\":\"shortcut_team_tasks\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team Tasks\",\"col\":3}},{\"id\":\"shortcut_create_task\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Project Task\",\"col\":3}},{\"id\":\"shortcut_assignment_view\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Task Assignment View\",\"col\":3}},{\"id\":\"spacer_1\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"header_views\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\">Task Views</span>\",\"col\":12}},{\"id\":\"section_project_tasks\",\"type\":\"card\",\"data\":{\"card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"section_team_tasks\",\"type\":\"card\",\"data\":{\"card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"section_task_reports\",\"type\":\"card\",\"data\":{\"card_name\":\"Task Reports\",\"col\":4}}]",
  "creation": "2025-05-29 17:30:00.000000",
  "custom_blocks": [],
  "docstatus": 0,
  "doctype": "Workspace",
+ "extends": null,
+ "extends_another_page": 0,
  "for_user": "",
  "hide_custom": 0,
  "icon": "hierarchy",
  "idx": 3,
  "indicator_color": "blue",
+ "is_default": 0,
  "is_hidden": 0,
  "label": "Task Hierarchy",
  "links": [
@@ -53,7 +56,7 @@
    "link_count": 0,
    "link_to": "task-assignment-view",
    "link_type": "Page",
-   "onboard": 1,
+   "onboard": 0,
    "type": "Link"
   },
   {
@@ -113,7 +116,7 @@
    "type": "Link"
   }
  ],
- "modified": "2025-05-29 18:30:00.000000",
+ "modified": "2025-05-29 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Task Hierarchy",

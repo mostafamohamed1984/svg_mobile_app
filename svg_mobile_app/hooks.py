@@ -44,7 +44,9 @@ app_license = "mit"
 
 # include js in doctype views
 # doctype_js = {"doctype" : "public/js/doctype.js"}
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_list_js = {
+    "Team Tasks": "svg_mobile_app/doctype/team_tasks/team_tasks.js"
+}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -147,8 +149,14 @@ doc_events = {
 # ---------------
 
 scheduler_events = {
+    "hourly": [
+        "svg_mobile_app.server_scripts.run_hourly_tasks",
+    ],
     "daily": [
-        "svg_mobile_app.svg_mobile_app.doctype.issue_requirements_reminders.issue_requirements_reminders.process_scheduled_reminders"
+        "svg_mobile_app.svg_mobile_app.doctype.issue_requirements_reminders.issue_requirements_reminders.process_scheduled_reminders",
+        "svg_mobile_app.server_scripts.run_daily_tasks",
+        "svg_mobile_app.server_scripts.run_weekly_tasks", 
+        "svg_mobile_app.server_scripts.run_monthly_tasks"
     ]
 }
 

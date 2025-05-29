@@ -91,7 +91,7 @@
    "fieldname": "task_type",
    "fieldtype": "Select",
    "label": "Task Type",
-   "options": "\nDaily\nweekly\nMonthly\nAssigned"
+   "options": "\nHourly\nDaily\nweekly\nMonthly\nAssigned"
   },
   {
    "fieldname": "due_date",

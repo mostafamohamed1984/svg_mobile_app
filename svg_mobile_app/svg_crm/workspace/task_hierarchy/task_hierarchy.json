@@ -1,0 +1,154 @@
+{
+ "charts": [
+  {
+   "chart_name": "Tasks Status Distribution",
+   "label": "Tasks Status Distribution"
+  }
+ ],
+ "content": "[{\"id\":\"NCk5S5O2zn\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Task Hierarchy</span>\",\"col\":12}},{\"id\":\"jZiVtBigcw\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"KZaQi5E6YN\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"HLyBMEPWt5\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Open Tasks\",\"col\":4}},{\"id\":\"6GFHexW7hE\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Project Tasks Tree\",\"col\":4}},{\"id\":\"CMJgOmFk4G\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"UFlmIDfIA0\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Create Project Task\",\"col\":4}},{\"id\":\"Mz4KjeFk3G\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"K8wBhL2mT9\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h5\\\">Task Views</span>\",\"col\":12}},{\"id\":\"P3QnWmR8s7\",\"type\":\"card\",\"data\":{\"card_name\":\"Project Tasks\",\"col\":4}},{\"id\":\"L6jTvB9z2K\",\"type\":\"card\",\"data\":{\"card_name\":\"Team Tasks\",\"col\":4}},{\"id\":\"D5sRpC7y1F\",\"type\":\"card\",\"data\":{\"card_name\":\"Task Reports\",\"col\":4}}]",
+ "creation": "2025-05-29 17:30:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "hierarchy",
+ "idx": 3,
+ "indicator_color": "blue",
+ "is_hidden": 0,
+ "label": "Task Hierarchy",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Project Tasks",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Project Tasks Tree",
+   "link_count": 0,
+   "link_to": "Project Tasks",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Project Task",
+   "link_count": 0,
+   "link_to": "Project Tasks",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Tasks",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Team Tasks Kanban",
+   "link_count": 0,
+   "link_to": "Team Tasks",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Team Task",
+   "link_count": 0,
+   "link_to": "Team Tasks",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Task Reports",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Task Status Summary",
+   "link_count": 0,
+   "link_to": "Task Status Summary",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Task Assignment Analysis",
+   "link_count": 0,
+   "link_to": "Task Assignment Analysis",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-05-29 17:30:00.000000",
+ "modified_by": "Administrator",
+ "module": "SVG CRM",
+ "name": "Task Hierarchy",
+ "number_cards": [
+  {
+   "label": "Project Tasks",
+   "number_card_name": "Project Tasks"
+  },
+  {
+   "label": "Team Tasks",
+   "number_card_name": "Team Tasks"
+  },
+  {
+   "label": "Open Tasks",
+   "number_card_name": "Open Tasks"
+  }
+ ],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 37.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "Tree",
+   "label": "Project Tasks Tree",
+   "link_to": "Project Tasks",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "Kanban",
+   "label": "Team Tasks",
+   "link_to": "Team Tasks",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "New",
+   "label": "Create Project Task",
+   "link_to": "Project Tasks",
+   "type": "DocType"
+  }
+ ],
+ "title": "Task Hierarchy"
+} 

@@ -1,0 +1,17 @@
+def update_monthly_tasks():
+    today = frappe.utils.today()  
+    one_month_ago = frappe.utils.add_months(today, -1)  
+
+    tasks = frappe.get_all(
+        'Team Tasks', 
+        filters={'task_type': 'Monthly', 'due_date': ['<=', one_month_ago]}, 
+        fields=['name', 'due_date']
+    )
+
+    for task in tasks:
+        task_doc = frappe.get_doc('Team Tasks', task['name'])
+        task_doc.status = 'Open'  
+        task_doc.due_date = today  
+        task_doc.save()
+
+update_monthly_tasks()

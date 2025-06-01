@@ -61,122 +61,6 @@ frappe.listview_settings['Team Tasks'] = {
 			"Cancelled": "gray"
 		};
 		return [__(doc.status), status_colors[doc.status], "status,=," + doc.status];
-	},
-
-	// Custom Kanban card formatting
-	formatters: {
-		subject: function(value, field, doc) {
-			// Custom title with priority indicator
-			let priority_color = '';
-			switch(doc.priority) {
-				case 'Urgent': priority_color = 'red'; break;
-				case 'High': priority_color = 'orange'; break;
-				case 'Medium': priority_color = 'blue'; break;
-				case 'Low': priority_color = 'green'; break;
-				default: priority_color = 'gray';
-			}
-			
-			let priority_badge = doc.priority ? 
-				`<span class="badge badge-sm" style="background-color: ${priority_color}; color: white; margin-left: 8px;">${doc.priority}</span>` : '';
-			
-			return `<strong>${value}</strong>${priority_badge}`;
-		}
-	},
-
-	// Custom Kanban card template
-	kanban_card_template: function(doc) {
-		// Format due date
-		let due_date_display = '';
-		if (doc.due_date) {
-			const due = new Date(doc.due_date);
-			const today = new Date();
-			const diffTime = due - today;
-			const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-			
-			let due_class = '';
-			if (diffDays < 0) {
-				due_class = 'text-danger';
-				due_date_display = `<span class="${due_class}">Overdue (${Math.abs(diffDays)} days)</span>`;
-			} else if (diffDays === 0) {
-				due_class = 'text-warning';
-				due_date_display = `<span class="${due_class}">Due Today</span>`;
-			} else if (diffDays <= 3) {
-				due_class = 'text-warning';
-				due_date_display = `<span class="${due_class}">Due in ${diffDays} days</span>`;
-			} else {
-				due_date_display = `Due: ${frappe.datetime.str_to_user(doc.due_date)}`;
-			}
-		}
-
-		// Priority badge
-		let priority_badge = '';
-		if (doc.priority) {
-			let priority_color = '';
-			switch(doc.priority) {
-				case 'Urgent': priority_color = '#dc3545'; break;
-				case 'High': priority_color = '#fd7e14'; break;
-				case 'Medium': priority_color = '#0d6efd'; break;
-				case 'Low': priority_color = '#198754'; break;
-				default: priority_color = '#6c757d';
-			}
-			priority_badge = `<span class="badge" style="background-color: ${priority_color}; color: white; font-size: 10px;">${doc.priority}</span>`;
-		}
-
-		// Task type badge
-		let task_type_badge = '';
-		if (doc.task_type && doc.task_type !== 'Assigned') {
-			task_type_badge = `<span class="badge badge-light" style="font-size: 10px; margin-left: 4px;">${doc.task_type}</span>`;
-		}
-
-		// Paused indicator
-		let paused_indicator = '';
-		if (doc.is_paused) {
-			paused_indicator = `<span class="badge badge-warning" style="font-size: 10px; margin-left: 4px;">⏸ Paused</span>`;
-		}
-
-		return `
-			<div class="kanban-card-content" style="padding: 12px;">
-				<div class="kanban-card-header" style="margin-bottom: 8px;">
-					<div style="font-weight: 600; font-size: 14px; line-height: 1.3; margin-bottom: 4px;">
-						${doc.subject || doc.name}
-					</div>
-					<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;">
-						${priority_badge}
-						${task_type_badge}
-						${paused_indicator}
-					</div>
-				</div>
-				
-				<div class="kanban-card-body" style="font-size: 12px; color: #666;">
-					${doc.employee_name ? `
-						<div style="margin-bottom: 4px;">
-							<i class="fa fa-user" style="width: 12px; margin-right: 6px;"></i>
-							<strong>${doc.employee_name}</strong>
-						</div>
-					` : ''}
-					
-					${due_date_display ? `
-						<div style="margin-bottom: 4px;">
-							<i class="fa fa-calendar" style="width: 12px; margin-right: 6px;"></i>
-							${due_date_display}
-						</div>
-					` : ''}
-					
-					${doc.task_type ? `
-						<div style="margin-bottom: 4px;">
-							<i class="fa fa-tag" style="width: 12px; margin-right: 6px;"></i>
-							${doc.task_type}
-						</div>
-					` : ''}
-				</div>
-				
-				${doc.description ? `
-					<div class="kanban-card-footer" style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #eee; font-size: 11px; color: #888; max-height: 40px; overflow: hidden;">
-						${doc.description.substring(0, 80)}${doc.description.length > 80 ? '...' : ''}
-					</div>
-				` : ''}
-			</div>
-		`;
 	}
 };
 
@@ -231,7 +115,195 @@ frappe.listview_settings['Team Tasks'].onload = function(listview) {
 			listview.refresh();
 		}
 	});
+
+	// Custom Kanban card enhancement
+	setTimeout(function() {
+		enhanceKanbanCards(listview);
+	}, 1000);
 };
+
+// Function to enhance Kanban cards with additional information
+function enhanceKanbanCards(listview) {
+	// Wait for Kanban view to be ready
+	if (listview.view_name !== 'Kanban') return;
+	
+	// Override the Kanban card rendering
+	if (listview.kanban && listview.kanban.wrapper) {
+		// Add custom CSS for enhanced cards
+		if (!document.getElementById('team-tasks-kanban-styles')) {
+			const style = document.createElement('style');
+			style.id = 'team-tasks-kanban-styles';
+			style.textContent = `
+				.kanban-card-enhanced {
+					padding: 12px !important;
+					border-radius: 6px;
+					box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+				}
+				.kanban-card-title {
+					font-weight: 600;
+					font-size: 14px;
+					margin-bottom: 8px;
+					line-height: 1.3;
+				}
+				.kanban-card-badges {
+					display: flex;
+					flex-wrap: wrap;
+					gap: 4px;
+					margin-bottom: 8px;
+				}
+				.kanban-card-info {
+					font-size: 12px;
+					color: #666;
+					line-height: 1.4;
+				}
+				.kanban-card-info div {
+					margin-bottom: 4px;
+				}
+				.kanban-card-footer {
+					margin-top: 8px;
+					padding-top: 6px;
+					border-top: 1px solid #eee;
+					font-size: 11px;
+					color: #888;
+					max-height: 40px;
+					overflow: hidden;
+				}
+				.priority-urgent { background-color: #dc3545 !important; }
+				.priority-high { background-color: #fd7e14 !important; }
+				.priority-medium { background-color: #0d6efd !important; }
+				.priority-low { background-color: #198754 !important; }
+				.task-type-badge { background-color: #6c757d !important; }
+				.paused-badge { background-color: #ffc107 !important; color: #000 !important; }
+			`;
+			document.head.appendChild(style);
+		}
+
+		// Monitor for new cards being added
+		const observer = new MutationObserver(function(mutations) {
+			mutations.forEach(function(mutation) {
+				mutation.addedNodes.forEach(function(node) {
+					if (node.nodeType === 1 && node.classList && node.classList.contains('kanban-card')) {
+						enhanceSingleCard(node);
+					}
+				});
+			});
+		});
+
+		observer.observe(listview.kanban.wrapper[0], {
+			childList: true,
+			subtree: true
+		});
+
+		// Enhance existing cards
+		setTimeout(function() {
+			listview.kanban.wrapper.find('.kanban-card').each(function() {
+				enhanceSingleCard(this);
+			});
+		}, 500);
+	}
+}
+
+// Function to enhance a single Kanban card
+function enhanceSingleCard(cardElement) {
+	const $card = $(cardElement);
+	
+	// Skip if already enhanced
+	if ($card.hasClass('kanban-card-enhanced')) return;
+	
+	// Get the document name from the card
+	const docName = $card.attr('data-name');
+	if (!docName) return;
+
+	// Fetch the document data
+	frappe.call({
+		method: 'frappe.client.get',
+		args: {
+			doctype: 'Team Tasks',
+			name: docName
+		},
+		callback: function(r) {
+			if (r.message) {
+				const doc = r.message;
+				updateCardContent($card, doc);
+			}
+		}
+	});
+}
+
+// Function to update card content with enhanced information
+function updateCardContent($card, doc) {
+	// Mark as enhanced
+	$card.addClass('kanban-card-enhanced');
+	
+	// Build enhanced content
+	let content = `<div class="kanban-card-title">${doc.subject || doc.name}</div>`;
+	
+	// Add badges
+	content += '<div class="kanban-card-badges">';
+	
+	// Priority badge
+	if (doc.priority) {
+		const priorityClass = `priority-${doc.priority.toLowerCase()}`;
+		content += `<span class="badge ${priorityClass}" style="color: white; font-size: 10px;">${doc.priority}</span>`;
+	}
+	
+	// Task type badge
+	if (doc.task_type && doc.task_type !== 'Assigned') {
+		content += `<span class="badge task-type-badge" style="color: white; font-size: 10px;">${doc.task_type}</span>`;
+	}
+	
+	// Paused indicator
+	if (doc.is_paused) {
+		content += `<span class="badge paused-badge" style="font-size: 10px;">⏸ Paused</span>`;
+	}
+	
+	content += '</div>';
+	
+	// Add info section
+	content += '<div class="kanban-card-info">';
+	
+	// Employee name
+	if (doc.employee_name) {
+		content += `<div><i class="fa fa-user" style="width: 12px; margin-right: 6px;"></i><strong>${doc.employee_name}</strong></div>`;
+	}
+	
+	// Due date
+	if (doc.due_date) {
+		const due = new Date(doc.due_date);
+		const today = new Date();
+		const diffTime = due - today;
+		const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+		
+		let dueDateText = '';
+		let dueDateClass = '';
+		
+		if (diffDays < 0) {
+			dueDateText = `Overdue (${Math.abs(diffDays)} days)`;
+			dueDateClass = 'text-danger';
+		} else if (diffDays === 0) {
+			dueDateText = 'Due Today';
+			dueDateClass = 'text-warning';
+		} else if (diffDays <= 3) {
+			dueDateText = `Due in ${diffDays} days`;
+			dueDateClass = 'text-warning';
+		} else {
+			dueDateText = `Due: ${frappe.datetime.str_to_user(doc.due_date)}`;
+		}
+		
+		content += `<div><i class="fa fa-calendar" style="width: 12px; margin-right: 6px;"></i><span class="${dueDateClass}">${dueDateText}</span></div>`;
+	}
+	
+	content += '</div>';
+	
+	// Add description footer
+	if (doc.description) {
+		const shortDesc = doc.description.substring(0, 80);
+		content += `<div class="kanban-card-footer">${shortDesc}${doc.description.length > 80 ? '...' : ''}</div>`;
+	}
+	
+	// Update the card content
+	$card.html(content);
+}
 
 // Function to create a status-based Kanban board
 function createStatusKanbanBoard() {

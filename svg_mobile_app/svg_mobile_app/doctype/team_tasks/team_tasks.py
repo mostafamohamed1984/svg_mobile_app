@@ -22,7 +22,7 @@ def create_status_kanban_board():
 	if not existing_boards:
 		# Create a new status-based Kanban board
 		board = frappe.new_doc("Kanban Board")
-		board.kanban_board_name = "Team Tasks Status"
+		board.name = "Team Tasks Status"
 		board.reference_doctype = "Team Tasks"
 		board.field_name = "status"
 		
@@ -35,6 +35,6 @@ def create_status_kanban_board():
 		
 		board.save()
 		frappe.db.commit()
-		frappe.msgprint(f"Created Kanban board: {board.kanban_board_name}")
+		frappe.msgprint(f"Created Kanban board: {board.name}")
 	
 	return "Status Kanban board is ready"

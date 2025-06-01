@@ -119,12 +119,12 @@ function createStatusKanbanBoard() {
 							'reference_doctype': 'Team Tasks',
 							'field_name': 'status',
 							'columns': [
-								{ 'column_name': 'Open', 'status': 'Open', 'indicator': 'blue' },
-								{ 'column_name': 'Working', 'status': 'Working', 'indicator': 'orange' },
-								{ 'column_name': 'Pending Review', 'status': 'Pending Review', 'indicator': 'purple' },
-								{ 'column_name': 'Overdue', 'status': 'Overdue', 'indicator': 'red' },
-								{ 'column_name': 'Completed', 'status': 'Completed', 'indicator': 'green' },
-								{ 'column_name': 'Cancelled', 'status': 'Cancelled', 'indicator': 'gray' }
+								{ 'column_name': 'Open', 'indicator': 'blue' },
+								{ 'column_name': 'Working', 'indicator': 'orange' },
+								{ 'column_name': 'Pending Review', 'indicator': 'purple' },
+								{ 'column_name': 'Overdue', 'indicator': 'red' },
+								{ 'column_name': 'Completed', 'indicator': 'green' },
+								{ 'column_name': 'Cancelled', 'indicator': 'gray' }
 							]
 						}
 					},

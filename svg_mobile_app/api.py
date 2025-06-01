@@ -1235,7 +1235,7 @@ def update_request_status(employee_id, request_name, doctype, status, reason=Non
 
 @frappe.whitelist(allow_guest=False)
 def get_user_profile_data():
-    """Get current user's profile data including emails safely"""
+    """Get current user's profile data including email accounts safely"""
     try:
         user = frappe.session.user
         
@@ -1250,24 +1250,35 @@ def get_user_profile_data():
             "user_emails": []
         }
         
-        # Try to get additional emails safely
+        # Try to get email accounts from the User Emails child table safely
         try:
-            # Check if user has permission to read their own user_emails
+            # Check if user has permission to read their own user data
             if frappe.has_permission("User", "read", user_doc=user_doc):
-                # Get user emails from the child table
-                user_emails = frappe.get_all(
-                    "User Email",
+                # Get email accounts from the User Emails child table
+                # This child table links to Email Account doctype
+                user_email_accounts = frappe.get_all(
+                    "User Emails",  # This is the child table name
                     filters={"parent": user},
-                    fields=["email_id"],
+                    fields=["email_account"],  # Field that links to Email Account
                     order_by="idx"
                 )
-                profile_data["user_emails"] = [email.email_id for email in user_emails]
+                
+                # Get the actual email addresses from Email Account doctype
+                email_addresses = []
+                for email_account_row in user_email_accounts:
+                    if email_account_row.email_account:
+                        # Get the email_id from Email Account doctype
+                        email_id = frappe.db.get_value("Email Account", email_account_row.email_account, "email_id")
+                        if email_id:
+                            email_addresses.append(email_id)
+                
+                profile_data["user_emails"] = email_addresses
             else:
                 # Fallback: just use the main email
                 profile_data["user_emails"] = [user_doc.email] if user_doc.email else []
         except Exception as e:
-            # If there's any error accessing user_emails, just use main email
-            frappe.log_error(f"Error accessing user emails for {user}: {str(e)}", "User Profile Data")
+            # If there's any error accessing user emails, just use main email
+            frappe.log_error(f"Error accessing user email accounts for {user}: {str(e)}", "User Profile Data")
             profile_data["user_emails"] = [user_doc.email] if user_doc.email else []
         
         return {

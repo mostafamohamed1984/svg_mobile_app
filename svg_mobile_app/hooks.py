@@ -25,7 +25,7 @@ app_license = "mit"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/svg_mobile_app/css/svg_mobile_app.css"
+app_include_css = "/assets/svg_mobile_app/css/team_tasks_kanban.css"
 # app_include_js = "/assets/svg_mobile_app/js/svg_mobile_app.js"
 
 # include js, css files in header of web template
@@ -46,6 +46,9 @@ app_license = "mit"
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 doctype_list_js = {
     "Team Tasks": "svg_mobile_app/doctype/team_tasks/team_tasks.js"
+}
+doctype_kanban_js = {
+    "Team Tasks": "svg_mobile_app/doctype/team_tasks/team_tasks_kanban.js"
 }
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}

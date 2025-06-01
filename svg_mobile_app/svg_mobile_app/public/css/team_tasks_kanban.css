@@ -1,0 +1,76 @@
+/* Enhanced styling for Team Tasks Kanban cards */
+
+.kanban-card {
+    border-radius: 8px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+.kanban-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.kanban-card-body {
+    padding: 12px !important;
+}
+
+.kanban-card-custom-info {
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding-top: 8px;
+    margin-top: 8px !important;
+}
+
+/* Priority colors */
+.priority-urgent {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.priority-high {
+    background-color: #fd7e14 !important;
+    color: white !important;
+}
+
+.priority-medium {
+    background-color: #0d6efd !important;
+    color: white !important;
+}
+
+.priority-low {
+    background-color: #198754 !important;
+    color: white !important;
+}
+
+/* Status column indicators */
+.kanban-column[data-column-value="Open"] .kanban-column-title {
+    color: #0d6efd !important;
+}
+
+.kanban-column[data-column-value="Working"] .kanban-column-title {
+    color: #fd7e14 !important;
+}
+
+.kanban-column[data-column-value="Pending Review"] .kanban-column-title {
+    color: #6f42c1 !important;
+}
+
+.kanban-column[data-column-value="Overdue"] .kanban-column-title {
+    color: #dc3545 !important;
+}
+
+.kanban-column[data-column-value="Completed"] .kanban-column-title {
+    color: #198754 !important;
+}
+
+.kanban-column[data-column-value="Cancelled"] .kanban-column-title {
+    color: #6c757d !important;
+}
+
+/* Badge styling */
+.badge {
+    padding: 3px 6px !important;
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    border-radius: 4px !important;
+} 

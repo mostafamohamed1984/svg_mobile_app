@@ -1252,8 +1252,8 @@ def get_user_profile_data():
         
         # Try to get email accounts from the User Emails child table safely
         try:
-            # Check if user has permission to read their own user data
-            if frappe.has_permission("User", "read", user_doc=user_doc):
+            # Check if user has permission to read User doctype
+            if frappe.has_permission("User", "read"):
                 # Debug: Log what we're looking for
                 frappe.log_error(f"DEBUG: Looking for user_emails child table for user: {user}", "Debug User Emails")
                 
@@ -1290,7 +1290,7 @@ def get_user_profile_data():
                 profile_data["user_emails"] = email_addresses
             else:
                 # Fallback: just use the main email
-                frappe.log_error(f"DEBUG: No permission to read user data for: {user}", "Debug User Emails")
+                frappe.log_error(f"DEBUG: No permission to read User doctype for: {user}", "Debug User Emails")
                 profile_data["user_emails"] = [user_doc.email] if user_doc.email else []
         except Exception as e:
             # If there's any error accessing user emails, just use main email

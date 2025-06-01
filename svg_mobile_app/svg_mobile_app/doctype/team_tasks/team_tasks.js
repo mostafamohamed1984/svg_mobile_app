@@ -104,7 +104,7 @@ function createStatusKanbanBoard() {
 			doctype: 'Kanban Board',
 			filters: {
 				'reference_doctype': 'Team Tasks',
-				'name': ['like', '%Status%']
+				'kanban_board_name': ['like', '%Status%']
 			}
 		},
 		callback: function(r) {
@@ -115,7 +115,7 @@ function createStatusKanbanBoard() {
 					args: {
 						doc: {
 							'doctype': 'Kanban Board',
-							'name': 'Team Tasks Status Board',
+							'kanban_board_name': 'Team Tasks Status Board',
 							'reference_doctype': 'Team Tasks',
 							'field_name': 'status',
 							'columns': [

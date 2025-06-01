@@ -1254,9 +1254,6 @@ def get_user_profile_data():
         try:
             # Check if user has permission to read User doctype
             if frappe.has_permission("User", "read"):
-                # Debug: Log what we're looking for
-                frappe.log_error(f"DEBUG: Looking for User Email child table for user: {user}", "Debug User Emails")
-                
                 # Get email accounts from the User Email child table
                 user_email_accounts = frappe.get_all(
                     "User Email",  # Correct child table doctype name
@@ -1264,9 +1261,6 @@ def get_user_profile_data():
                     fields=["email_account", "email_id"],  # Both fields from the child table
                     order_by="idx"
                 )
-                
-                # Debug: Log what we found
-                frappe.log_error(f"DEBUG: Found user_email_accounts: {user_email_accounts}", "Debug User Emails")
                 
                 # Get the actual email addresses
                 email_addresses = []
@@ -1276,25 +1270,14 @@ def get_user_profile_data():
                         email_addresses.append(email_account_row.email_id)
                     # If email_id is empty, try to get it from the linked Email Account
                     elif email_account_row.email_account:
-                        # Debug: Log each email account lookup
-                        frappe.log_error(f"DEBUG: Looking up Email Account: {email_account_row.email_account}", "Debug User Emails")
-                        
                         # Get the email_id from Email Account doctype
                         email_id = frappe.db.get_value("Email Account", email_account_row.email_account, "email_id")
-                        
-                        # Debug: Log what email_id we got
-                        frappe.log_error(f"DEBUG: Found email_id: {email_id} for account: {email_account_row.email_account}", "Debug User Emails")
-                        
                         if email_id:
                             email_addresses.append(email_id)
-                
-                # Debug: Log final result
-                frappe.log_error(f"DEBUG: Final email_addresses: {email_addresses}", "Debug User Emails")
                 
                 profile_data["user_emails"] = email_addresses
             else:
                 # Fallback: just use the main email
-                frappe.log_error(f"DEBUG: No permission to read User doctype for: {user}", "Debug User Emails")
                 profile_data["user_emails"] = [user_doc.email] if user_doc.email else []
         except Exception as e:
             # If there's any error accessing user emails, just use main email

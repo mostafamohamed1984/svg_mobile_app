@@ -1255,20 +1255,20 @@ def get_user_profile_data():
             # Check if user has permission to read their own user data
             if frappe.has_permission("User", "read", user_doc=user_doc):
                 # Get email accounts from the User Emails child table
-                # This child table links to Email Account doctype
+                # This child table links to Email Account doctype through email_id field
                 user_email_accounts = frappe.get_all(
-                    "User Emails",  # This is the child table name
+                    "User Emails",  # Child table doctype name
                     filters={"parent": user},
-                    fields=["email_account"],  # Field that links to Email Account
+                    fields=["email_id"],  # Field that links to Email Account
                     order_by="idx"
                 )
                 
                 # Get the actual email addresses from Email Account doctype
                 email_addresses = []
                 for email_account_row in user_email_accounts:
-                    if email_account_row.email_account:
+                    if email_account_row.email_id:
                         # Get the email_id from Email Account doctype
-                        email_id = frappe.db.get_value("Email Account", email_account_row.email_account, "email_id")
+                        email_id = frappe.db.get_value("Email Account", email_account_row.email_id, "email_id")
                         if email_id:
                             email_addresses.append(email_id)
                 

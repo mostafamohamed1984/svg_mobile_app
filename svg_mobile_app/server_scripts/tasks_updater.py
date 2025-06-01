@@ -44,6 +44,14 @@ def update_daily_tasks():
         task_doc.due_date = today_date
         task_doc.save()
     
+    # Also update daily recurring meetings
+    try:
+        from svg_mobile_app.server_scripts.meeting_automation import update_daily_recurring_meetings
+        meetings_created = update_daily_recurring_meetings()
+        frappe.logger().info(f"Created {meetings_created} daily recurring meetings")
+    except Exception as e:
+        frappe.logger().error(f"Error updating daily recurring meetings: {e}")
+    
     return len(tasks)
 
 def update_weekly_tasks():
@@ -71,6 +79,14 @@ def update_weekly_tasks():
         task_doc.status = 'Open'
         task_doc.due_date = next_week
         task_doc.save()
+    
+    # Also update weekly recurring meetings
+    try:
+        from svg_mobile_app.server_scripts.meeting_automation import update_weekly_recurring_meetings
+        meetings_created = update_weekly_recurring_meetings()
+        frappe.logger().info(f"Created {meetings_created} weekly recurring meetings")
+    except Exception as e:
+        frappe.logger().error(f"Error updating weekly recurring meetings: {e}")
     
     return len(tasks)
 
@@ -100,4 +116,24 @@ def update_monthly_tasks():
         task_doc.due_date = next_month
         task_doc.save()
     
-    return len(tasks) 
+    # Also update monthly recurring meetings
+    try:
+        from svg_mobile_app.server_scripts.meeting_automation import update_monthly_recurring_meetings
+        meetings_created = update_monthly_recurring_meetings()
+        frappe.logger().info(f"Created {meetings_created} monthly recurring meetings")
+    except Exception as e:
+        frappe.logger().error(f"Error updating monthly recurring meetings: {e}")
+    
+    return len(tasks)
+
+def check_meeting_conflicts():
+    """Check for meeting timing conflicts - called by daily scheduler"""
+    try:
+        from svg_mobile_app.server_scripts.meeting_automation import check_meeting_timing_conflicts
+        conflicts = check_meeting_timing_conflicts()
+        if conflicts:
+            frappe.logger().warning(f"Found {len(conflicts)} meeting timing conflicts")
+        return len(conflicts)
+    except Exception as e:
+        frappe.logger().error(f"Error checking meeting conflicts: {e}")
+        return 0 

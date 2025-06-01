@@ -5,7 +5,7 @@
    "label": "Monthly Meetings"
   }
  ],
- "content": "[{\"id\":\"YaeBozpa_j\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Meetings</span>\",\"col\":12}},{\"id\":\"cLfI2ilgOY\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Planned Meetings\",\"col\":4}},{\"id\":\"8_vT4Ud3gP\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Completed Meetings\",\"col\":4}},{\"id\":\"y32dwczgJ0\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Cancelled Meetings\",\"col\":4}},{\"id\":\"olNgfiqUAq\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Monthly Meetings\",\"col\":12}},{\"id\":\"T_R8ui_Ekw\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Meeting\",\"col\":12}},{\"id\":\"mvK-XzL553\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"p8My5KdAKs\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Upcoming Meeting\",\"col\":4}}]",
+ "content": "[{\"id\":\"YaeBozpa_j\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Meetings</span>\",\"col\":12}},{\"id\":\"cLfI2ilgOY\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Planned Meetings\",\"col\":4}},{\"id\":\"8_vT4Ud3gP\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Completed Meetings\",\"col\":4}},{\"id\":\"y32dwczgJ0\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"Cancelled Meetings\",\"col\":4}},{\"id\":\"olNgfiqUAq\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Monthly Meetings\",\"col\":12}},{\"id\":\"T_R8ui_Ekw\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Meeting\",\"col\":12}},{\"id\":\"mvK-XzL553\",\"type\":\"card\",\"data\":{\"card_name\":\"Masters\",\"col\":4}},{\"id\":\"p8My5KdAKs\",\"type\":\"quick_list\",\"data\":{\"quick_list_name\":\"Upcoming Meeting\",\"col\":4}},{\"id\":\"automation_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Automation\",\"col\":4}}]",
  "creation": "2025-01-09 02:02:13.439736",
  "custom_blocks": [
   {
@@ -61,9 +61,28 @@
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Automation",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recurring Meeting Schedule",
+   "link_count": 0,
+   "link_to": "Recurring Meeting Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   }
  ],
- "modified": "2025-05-13 10:17:12.155867",
+ "modified": "2025-06-01 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Meetings",

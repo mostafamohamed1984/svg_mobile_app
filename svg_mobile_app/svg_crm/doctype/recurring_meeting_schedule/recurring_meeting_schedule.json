@@ -1,0 +1,235 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:RMS-{schedule_name}-{###}",
+ "creation": "2025-06-01 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_details_section",
+  "schedule_name",
+  "meeting_templet",
+  "is_enabled",
+  "column_break_main",
+  "created_by",
+  "creation_date",
+  "last_run_date",
+  "recurrence_section",
+  "frequency",
+  "start_date",
+  "end_date",
+  "column_break_recurrence",
+  "next_run_date",
+  "total_meetings_created",
+  "time_settings_section",
+  "time_fromeg",
+  "time_toeg",
+  "column_break_time",
+  "duration",
+  "time_fromuae",
+  "time_touae",
+  "tracking_section",
+  "created_meetings",
+  "notes_section",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_details_section",
+   "fieldtype": "Section Break",
+   "label": "Main Details"
+  },
+  {
+   "fieldname": "schedule_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Schedule Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "meeting_templet",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Meeting Template",
+   "options": "Meeting Templets",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "is_enabled",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Enabled"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "Employee",
+   "read_only": 1
+  },
+  {
+   "fieldname": "creation_date",
+   "fieldtype": "Date",
+   "label": "Creation Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_run_date",
+   "fieldtype": "Datetime",
+   "label": "Last Run Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recurrence_section",
+   "fieldtype": "Section Break",
+   "label": "Recurrence Settings"
+  },
+  {
+   "fieldname": "frequency",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Frequency",
+   "options": "\nDaily\nWeekly\nMonthly",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Start Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date (Optional)"
+  },
+  {
+   "fieldname": "column_break_recurrence",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "next_run_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Next Run Date",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "total_meetings_created",
+   "fieldtype": "Int",
+   "label": "Total Meetings Created",
+   "read_only": 1
+  },
+  {
+   "fieldname": "time_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Time Settings"
+  },
+  {
+   "fieldname": "time_fromeg",
+   "fieldtype": "Time",
+   "label": "Time From (EG)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "time_toeg",
+   "fieldtype": "Time",
+   "label": "Time To (EG)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_time",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Duration",
+   "hide_days": 1,
+   "hide_seconds": 1,
+   "label": "Duration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "time_fromuae",
+   "fieldtype": "Time",
+   "label": "Time From (UAE)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "time_touae",
+   "fieldtype": "Time",
+   "label": "Time To (UAE)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tracking_section",
+   "fieldtype": "Section Break",
+   "label": "Created Meetings Tracking"
+  },
+  {
+   "fieldname": "created_meetings",
+   "fieldtype": "Table",
+   "label": "Created Meetings",
+   "options": "Recurring Meeting Log",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SVG CRM",
+ "name": "Recurring Meeting Schedule",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Operation",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "show_name_in_global_search": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+} 

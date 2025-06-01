@@ -1233,3 +1233,52 @@ def update_request_status(employee_id, request_name, doctype, status, reason=Non
         frappe.log_error(frappe.get_traceback(), "Update Request Status Error")
         return {"status": "fail", "message": str(e)}
 
+@frappe.whitelist(allow_guest=False)
+def get_user_profile_data():
+    """Get current user's profile data including emails safely"""
+    try:
+        user = frappe.session.user
+        
+        # Get basic user info
+        user_doc = frappe.get_doc("User", user)
+        
+        # Prepare response data
+        profile_data = {
+            "full_name": user_doc.full_name or user,
+            "email": user_doc.email or user,
+            "user_image": user_doc.user_image,
+            "user_emails": []
+        }
+        
+        # Try to get additional emails safely
+        try:
+            # Check if user has permission to read their own user_emails
+            if frappe.has_permission("User", "read", user_doc=user_doc):
+                # Get user emails from the child table
+                user_emails = frappe.get_all(
+                    "User Email",
+                    filters={"parent": user},
+                    fields=["email_id"],
+                    order_by="idx"
+                )
+                profile_data["user_emails"] = [email.email_id for email in user_emails]
+            else:
+                # Fallback: just use the main email
+                profile_data["user_emails"] = [user_doc.email] if user_doc.email else []
+        except Exception as e:
+            # If there's any error accessing user_emails, just use main email
+            frappe.log_error(f"Error accessing user emails for {user}: {str(e)}", "User Profile Data")
+            profile_data["user_emails"] = [user_doc.email] if user_doc.email else []
+        
+        return {
+            "status": "success",
+            "data": profile_data
+        }
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get User Profile Data Error")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+

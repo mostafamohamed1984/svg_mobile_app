@@ -1250,28 +1250,32 @@ def get_user_profile_data():
             "user_emails": []
         }
         
-        # Try to get email accounts from the User Emails child table safely
+        # Try to get email accounts from the User Email child table safely
         try:
             # Check if user has permission to read User doctype
             if frappe.has_permission("User", "read"):
                 # Debug: Log what we're looking for
-                frappe.log_error(f"DEBUG: Looking for user_emails child table for user: {user}", "Debug User Emails")
+                frappe.log_error(f"DEBUG: Looking for User Email child table for user: {user}", "Debug User Emails")
                 
-                # Get email accounts from the user_emails child table
+                # Get email accounts from the User Email child table
                 user_email_accounts = frappe.get_all(
-                    "user_emails",  # Child table doctype name (actual name, not label)
+                    "User Email",  # Correct child table doctype name
                     filters={"parent": user},
-                    fields=["email_account"],  # Field that links to Email Account doctype
+                    fields=["email_account", "email_id"],  # Both fields from the child table
                     order_by="idx"
                 )
                 
                 # Debug: Log what we found
                 frappe.log_error(f"DEBUG: Found user_email_accounts: {user_email_accounts}", "Debug User Emails")
                 
-                # Get the actual email addresses from Email Account doctype
+                # Get the actual email addresses
                 email_addresses = []
                 for email_account_row in user_email_accounts:
-                    if email_account_row.email_account:
+                    # First try to get email_id directly from the child table
+                    if email_account_row.email_id:
+                        email_addresses.append(email_account_row.email_id)
+                    # If email_id is empty, try to get it from the linked Email Account
+                    elif email_account_row.email_account:
                         # Debug: Log each email account lookup
                         frappe.log_error(f"DEBUG: Looking up Email Account: {email_account_row.email_account}", "Debug User Emails")
                         

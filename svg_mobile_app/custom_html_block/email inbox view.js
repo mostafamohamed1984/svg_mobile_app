@@ -369,14 +369,11 @@
                     if (r.message && r.message.fields) {
                         const customTagField = r.message.fields.find(field => field.fieldname === 'custom_tag');
                         if (customTagField && customTagField.options) {
-                            console.log("Found custom_tag child table:", customTagField.options);
                             resolve(customTagField.options);
                         } else {
-                            console.log("custom_tag field not found or no options");
                             resolve(null);
                         }
                     } else {
-                        console.log("Could not get Communication meta");
                         resolve(null);
                     }
                 },
@@ -401,8 +398,6 @@
                     },
                     callback: function(r) {
                         if (r.message && r.message.custom_tag) {
-                            console.log("Communication custom_tag data for", communicationName, ":", r.message.custom_tag);
-                            
                             // The custom_tag field contains an array of child table records
                             if (Array.isArray(r.message.custom_tag) && r.message.custom_tag.length > 0) {
                                 // Extract tag references from child table records
@@ -412,14 +407,11 @@
                                     return item.tags || item.tag || item.mail_tag || item.tag_name || item.multiple_tag;
                                 }).filter(tag => tag); // Remove any undefined/null values
                                 
-                                console.log("Extracted tags from Communication document:", tags);
                                 resolve(tags);
                             } else {
-                                console.log("custom_tag field is empty or not an array for:", communicationName);
                                 resolve([]);
                             }
                         } else {
-                            console.log("No custom_tag field found in Communication:", communicationName);
                             resolve([]);
                         }
                     },

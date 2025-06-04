@@ -1314,161 +1314,95 @@ def get_communications_with_tags(filters=None, tag_filter=None, search_term=None
         if not filters:
             filters = {}
         
-        # Debug logging
-        frappe.log_error(f"get_communications_with_tags called with: filters={filters}, tag_filter={tag_filter}, search_term={search_term}", "Debug Communications API")
+        # Clean up tag_filter - handle empty strings and None
+        if not tag_filter or tag_filter == "all" or tag_filter == "":
+            tag_filter = None
         
-        # Base query for communications
-        base_conditions = []
-        base_values = []
+        # Clean up search_term - handle empty strings
+        if not search_term or search_term == "":
+            search_term = None
         
-        # Apply basic filters
-        for field, value in filters.items():
-            if isinstance(value, list) and len(value) == 2 and value[0] in ['in', 'like']:
-                operator, val = value
-                if operator == 'in':
-                    placeholders = ', '.join(['%s'] * len(val))
-                    base_conditions.append(f"`tabCommunication`.`{field}` IN ({placeholders})")
-                    base_values.extend(val)
-                elif operator == 'like':
-                    base_conditions.append(f"`tabCommunication`.`{field}` LIKE %s")
-                    base_values.append(val)
+        # Start with base filters for Communication doctype
+        communication_filters = filters.copy()
+        
+        # Handle tag filtering first
+        if tag_filter:
+            # Get communications that have this specific tag
+            tagged_communications = frappe.db.sql("""
+                SELECT DISTINCT parent 
+                FROM `tabMultiple Tag` 
+                WHERE parenttype = 'Communication' AND tags = %s
+            """, (tag_filter,), as_list=True)
+            
+            if tagged_communications:
+                comm_names = [comm[0] for comm in tagged_communications]
+                communication_filters['name'] = ['in', comm_names]
             else:
-                base_conditions.append(f"`tabCommunication`.`{field}` = %s")
-                base_values.append(value)
+                # No communications found with this tag
+                return {
+                    'data': [],
+                    'total_count': 0
+                }
         
-        # Build the main query
-        if tag_filter and tag_filter != "all" or search_term:
-            # Complex query with tag filtering and/or search
-            
-            # Base communication query
-            comm_query = """
-                SELECT DISTINCT 
-                    `tabCommunication`.`name`,
-                    `tabCommunication`.`subject`,
-                    `tabCommunication`.`sender`,
-                    `tabCommunication`.`sender_full_name`,
-                    `tabCommunication`.`recipients`,
-                    `tabCommunication`.`creation`,
-                    `tabCommunication`.`content`,
-                    `tabCommunication`.`read_by_recipient`,
-                    `tabCommunication`.`has_attachment`,
-                    `tabCommunication`.`reference_doctype`,
-                    `tabCommunication`.`reference_name`,
-                    `tabCommunication`.`sent_or_received`,
-                    `tabCommunication`.`status`,
-                    `tabCommunication`.`email_account`
-                FROM `tabCommunication`
-            """
-            
-            # Add tag join if needed
-            if tag_filter and tag_filter != "all":
-                comm_query += """
-                    INNER JOIN `tabMultiple Tag` ON 
-                        `tabMultiple Tag`.`parent` = `tabCommunication`.`name` AND
-                        `tabMultiple Tag`.`parenttype` = 'Communication'
-                """
-            elif search_term:
-                # For search, use LEFT JOIN to include communications without tags
-                comm_query += """
-                    LEFT JOIN `tabMultiple Tag` AS search_tags ON 
-                        search_tags.`parent` = `tabCommunication`.`name` AND
-                        search_tags.`parenttype` = 'Communication'
-                """
-            
-            # Build WHERE conditions
-            where_conditions = []
-            query_values = []
-            
-            # Add base filters
-            if base_conditions:
-                where_conditions.extend(base_conditions)
-                query_values.extend(base_values)
-            
-            # Add tag filter
-            if tag_filter and tag_filter != "all":
-                where_conditions.append("`tabMultiple Tag`.`tags` = %s")
-                query_values.append(tag_filter)
-            
-            # Add search conditions
-            if search_term:
-                search_conditions = []
-                search_conditions.append("`tabCommunication`.`subject` LIKE %s")
-                search_conditions.append("`tabCommunication`.`content` LIKE %s")
+        # Handle search term
+        if search_term:
+            # If we already have tag filtering, search within those results
+            if tag_filter:
+                # Search within the already filtered communications
+                search_results = frappe.db.sql("""
+                    SELECT name FROM `tabCommunication`
+                    WHERE name IN %(comm_names)s
+                    AND (subject LIKE %(search_pattern)s OR content LIKE %(search_pattern)s)
+                """, {
+                    'comm_names': comm_names,
+                    'search_pattern': f'%{search_term}%'
+                }, as_list=True)
                 
-                # Add tag search
-                if tag_filter and tag_filter != "all":
-                    # If we already have a tag filter, search within that tag
-                    search_conditions.append("`tabMultiple Tag`.`tags` LIKE %s")
+                if search_results:
+                    communication_filters['name'] = ['in', [result[0] for result in search_results]]
                 else:
-                    # If no specific tag filter, search in all tags
-                    search_conditions.append("search_tags.`tags` LIKE %s")
+                    return {
+                        'data': [],
+                        'total_count': 0
+                    }
+            else:
+                # Search in all communications (including tag search)
+                search_results = frappe.db.sql("""
+                    SELECT DISTINCT c.name 
+                    FROM `tabCommunication` c
+                    LEFT JOIN `tabMultiple Tag` t ON t.parent = c.name AND t.parenttype = 'Communication'
+                    WHERE (c.subject LIKE %(search_pattern)s 
+                           OR c.content LIKE %(search_pattern)s 
+                           OR t.tags LIKE %(search_pattern)s)
+                """, {
+                    'search_pattern': f'%{search_term}%'
+                }, as_list=True)
                 
-                where_conditions.append(f"({' OR '.join(search_conditions)})")
-                search_pattern = f"%{search_term}%"
-                query_values.extend([search_pattern] * len(search_conditions))
-            
-            # Complete the query
-            if where_conditions:
-                comm_query += f" WHERE {' AND '.join(where_conditions)}"
-            
-            # Extract order field and direction
-            order_field = order_by.replace(' desc', '').replace(' asc', '').strip()
-            order_direction = 'DESC' if 'desc' in order_by.lower() else 'ASC'
-            comm_query += f" ORDER BY `tabCommunication`.`{order_field}` {order_direction}"
-            
-            # Get total count first
-            count_query = """
-                SELECT COUNT(DISTINCT `tabCommunication`.`name`)
-                FROM `tabCommunication`
-            """
-            
-            if tag_filter and tag_filter != "all":
-                count_query += """
-                    INNER JOIN `tabMultiple Tag` ON 
-                        `tabMultiple Tag`.`parent` = `tabCommunication`.`name` AND
-                        `tabMultiple Tag`.`parenttype` = 'Communication'
-                """
-            elif search_term:
-                count_query += """
-                    LEFT JOIN `tabMultiple Tag` AS search_tags ON 
-                        search_tags.`parent` = `tabCommunication`.`name` AND
-                        search_tags.`parenttype` = 'Communication'
-                """
-            
-            if where_conditions:
-                count_query += f" WHERE {' AND '.join(where_conditions)}"
-            
-            # Debug the queries
-            frappe.log_error(f"Count Query: {count_query}\nValues: {query_values}", "Debug Count Query")
-            
-            total_count = frappe.db.sql(count_query, query_values)[0][0]
-            
-            # Add pagination
-            comm_query += f" LIMIT {limit_start}, {limit_page_length}"
-            
-            # Debug the main query
-            frappe.log_error(f"Main Query: {comm_query}\nValues: {query_values}", "Debug Main Query")
-            
-            # Execute main query
-            communications = frappe.db.sql(comm_query, query_values, as_dict=True)
-            
-        else:
-            # Simple query without tag processing
-            communications = frappe.get_list(
-                'Communication',
-                fields=[
-                    'name', 'subject', 'sender', 'sender_full_name', 'recipients',
-                    'creation', 'content', 'read_by_recipient', 'has_attachment',
-                    'reference_doctype', 'reference_name', 'sent_or_received',
-                    'status', 'email_account'
-                ],
-                filters=filters,
-                order_by=order_by,
-                limit_start=limit_start,
-                limit_page_length=limit_page_length
-            )
-            
-            total_count = frappe.db.count('Communication', filters)
+                if search_results:
+                    communication_filters['name'] = ['in', [result[0] for result in search_results]]
+                else:
+                    return {
+                        'data': [],
+                        'total_count': 0
+                    }
+        
+        # Get total count
+        total_count = frappe.db.count('Communication', communication_filters)
+        
+        # Get the actual communications
+        communications = frappe.get_list(
+            'Communication',
+            fields=[
+                'name', 'subject', 'sender', 'sender_full_name', 'recipients',
+                'creation', 'content', 'read_by_recipient', 'has_attachment',
+                'reference_doctype', 'reference_name', 'sent_or_received',
+                'status', 'email_account'
+            ],
+            filters=communication_filters,
+            order_by=order_by,
+            limit_start=limit_start,
+            limit_page_length=limit_page_length
+        )
         
         # Add tags to each communication
         for comm in communications:
@@ -1479,16 +1413,14 @@ def get_communications_with_tags(filters=None, tag_filter=None, search_term=None
             """, (comm.name,), as_dict=True)
             comm['tags'] = [tag.tags for tag in tags if tag.tags]
         
-        # Debug the results
-        frappe.log_error(f"Found {len(communications)} communications, total_count: {total_count}", "Debug Results")
-        
         return {
             'data': communications,
             'total_count': total_count
         }
         
     except Exception as e:
-        frappe.log_error(f"Error in get_communications_with_tags: {str(e)}\n{frappe.get_traceback()}")
+        # Simple error logging without long messages
+        frappe.log_error("Error in get_communications_with_tags", "Communications API Error")
         return {
             'data': [],
             'total_count': 0

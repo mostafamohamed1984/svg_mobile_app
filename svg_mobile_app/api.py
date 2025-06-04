@@ -1366,25 +1366,57 @@ def get_communications_with_tags(filters=None, tag_filter=None, search_term=None
                         'total_count': 0
                     }
             else:
-                # Search in all communications (including tag search)
-                search_results = frappe.db.sql("""
-                    SELECT DISTINCT c.name 
-                    FROM `tabCommunication` c
-                    LEFT JOIN `tabMultiple Tag` t ON t.parent = c.name AND t.parenttype = 'Communication'
-                    WHERE (c.subject LIKE %(search_pattern)s 
-                           OR c.content LIKE %(search_pattern)s 
-                           OR t.tags LIKE %(search_pattern)s)
-                """, {
-                    'search_pattern': f'%{search_term}%'
-                }, as_list=True)
+                # For standalone search, prioritize exact tag matches first
+                exact_tag_results = frappe.db.sql("""
+                    SELECT DISTINCT parent 
+                    FROM `tabMultiple Tag` 
+                    WHERE parenttype = 'Communication' AND tags = %s
+                """, (search_term,), as_list=True)
                 
-                if search_results:
-                    communication_filters['name'] = ['in', [result[0] for result in search_results]]
+                # If we found exact tag matches, use only those
+                if exact_tag_results:
+                    communication_filters['name'] = ['in', [result[0] for result in exact_tag_results]]
                 else:
-                    return {
-                        'data': [],
-                        'total_count': 0
-                    }
+                    # If no exact tag match, then search in content but be more restrictive
+                    # Only search for the term at word boundaries or as complete words
+                    search_patterns = [
+                        f'{search_term}%',  # Starts with search term
+                        f'%{search_term}',  # Ends with search term  
+                        f'% {search_term} %',  # Whole word surrounded by spaces
+                        f'%{search_term}%'   # Contains search term (fallback)
+                    ]
+                    
+                    content_results = set()
+                    for pattern in search_patterns:
+                        results = frappe.db.sql("""
+                            SELECT DISTINCT name 
+                            FROM `tabCommunication`
+                            WHERE subject LIKE %s OR content LIKE %s
+                        """, (pattern, pattern), as_list=True)
+                        
+                        if results:
+                            content_results.update([result[0] for result in results])
+                            # If we found results with a more restrictive pattern, stop here
+                            if pattern != search_patterns[-1]:  # Not the fallback pattern
+                                break
+                    
+                    # Also check for partial tag matches
+                    partial_tag_results = frappe.db.sql("""
+                        SELECT DISTINCT parent 
+                        FROM `tabMultiple Tag` 
+                        WHERE parenttype = 'Communication' AND tags LIKE %s
+                    """, (f'%{search_term}%',), as_list=True)
+                    
+                    if partial_tag_results:
+                        content_results.update([result[0] for result in partial_tag_results])
+                    
+                    if content_results:
+                        communication_filters['name'] = ['in', list(content_results)]
+                    else:
+                        return {
+                            'data': [],
+                            'total_count': 0
+                        }
         
         # Get total count
         total_count = frappe.db.count('Communication', communication_filters)

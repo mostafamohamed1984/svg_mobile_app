@@ -11,6 +11,7 @@
     let userEmails = [];
     let mailTags = [];
     let searchTerm = "";
+    let allEmailAccounts = []; // Store all email accounts with access types
 
     // Wait for DOM to be ready
     if (typeof root_element === 'undefined') {
@@ -205,11 +206,11 @@
                     const fallbackEmails = data.user_emails || [];
                     
                     // Combine all email accounts for the dropdown
-                    const allEmailAccounts = [];
+                    const emailAccountsData = [];
                     
                     // Add personal emails (from existing User Email child table)
                     personalEmails.forEach(email => {
-                        allEmailAccounts.push({
+                        emailAccountsData.push({
                             name: email.account_name,
                             email_id: email.email_id,
                             type: "personal",
@@ -220,7 +221,7 @@
                     
                     // Add work emails (from new User Work Email Access child table)
                     workEmails.forEach(email => {
-                        allEmailAccounts.push({
+                        emailAccountsData.push({
                             name: email.account_name,
                             email_id: email.email_id,
                             type: "work",
@@ -230,14 +231,17 @@
                     });
                     
                     // If no emails found at all, fall back to user's main email
-                    if (allEmailAccounts.length === 0) {
-                        allEmailAccounts.push({
+                    if (emailAccountsData.length === 0) {
+                        emailAccountsData.push({
                             name: "user_email",
                             email_id: data.email || frappe.session.user_email,
                             type: "fallback",
                             description: "Main Email"
                         });
                     }
+                    
+                    // Store globally for access control
+                    allEmailAccounts = emailAccountsData;
                     
                     // Use the email accounts
                     userEmails = allEmailAccounts.map(acc => acc.email_id);
@@ -323,6 +327,15 @@
                 let displayText = account.email_id;
                 if (account.access_type) {
                     displayText += " (" + account.access_type + ")";
+                    
+                    // Add visual indicator for read-only access
+                    if (account.access_type === "Read Only") {
+                        displayText += " 🔒";
+                    } else if (account.access_type === "Read & Send") {
+                        displayText += " ✉️";
+                    } else if (account.access_type === "Full Access") {
+                        displayText += " 🔓";
+                    }
                 }
                 if (account.description && account.description !== "Work Email Access") {
                     displayText += " - " + account.description;
@@ -910,22 +923,69 @@
         return text.replace(regex, '<span class="search-highlight">$1</span>');
     }
 
-    // Function to open Frappe's email compose dialog
+    // Function to open Frappe's email compose dialog with access control
     function openComposeDialog() {
-        // Get the selected email account if available
+        // Get the selected email account and check access level
         let emailAccount = null;
+        let canSend = true;
+        let accessMessage = "";
+        
         if (selectedEmailAccount !== "all") {
-            emailAccount = selectedEmailAccount;
+            // Find the email account in our loaded data
+            const selectedAccount = allEmailAccounts.find(acc => acc.name === selectedEmailAccount);
+            
+            if (selectedAccount) {
+                if (selectedAccount.type === "work") {
+                    // Check access level for work emails
+                    if (selectedAccount.access_type === "Read Only") {
+                        canSend = false;
+                        accessMessage = `You only have "Read Only" access to ${selectedAccount.email_id}. Cannot compose emails from this account.`;
+                    } else if (selectedAccount.access_type === "Read & Send" || selectedAccount.access_type === "Full Access") {
+                        canSend = true;
+                        emailAccount = selectedEmailAccount;
+                    }
+                } else if (selectedAccount.type === "personal" || selectedAccount.type === "fallback") {
+                    // Personal emails and fallback always have full access
+                    canSend = true;
+                    emailAccount = selectedEmailAccount;
+                }
+            } else {
+                // Account not found, allow but warn
+                emailAccount = selectedEmailAccount;
+                console.warn("Selected email account not found in loaded accounts");
+            }
+        } else {
+            // "All" selected - use default behavior
+            // Could default to primary personal email or let user choose
+            const primaryPersonal = allEmailAccounts.find(acc => acc.type === "personal" && acc.is_primary);
+            if (primaryPersonal) {
+                emailAccount = primaryPersonal.name;
+            }
         }
 
-        // Open Frappe's email dialog
-        new frappe.views.CommunicationComposer({
-            subject: '',
-            recipients: '',
-            attach_document_print: false,
-            sender: emailAccount,
-            is_email: true
-        });
+        // Show access control message if needed
+        if (!canSend) {
+            frappe.msgprint({
+                title: "Access Restricted",
+                message: accessMessage,
+                indicator: "orange"
+            });
+            return;
+        }
+
+        // Open compose dialog if user has send permissions
+        try {
+            new frappe.views.CommunicationComposer({
+                subject: '',
+                recipients: '',
+                attach_document_print: false,
+                sender: emailAccount,
+                is_email: true
+            });
+        } catch (error) {
+            console.error("Error opening compose dialog:", error);
+            frappe.msgprint("Error opening email composer. Please try again.");
+        }
     }
 
 })();

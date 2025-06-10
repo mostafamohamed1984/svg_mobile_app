@@ -192,100 +192,66 @@
     }
 
     function loadUserEmails() {
-        // Use custom API to get user's email accounts without permission issues
+        // Use custom API to get user's email accounts with simplified two-tier system
         frappe.call({
             method: "svg_mobile_app.api.get_user_profile_data",
             callback: function(r) {
                 if (r.message && r.message.status === "success") {
                     const data = r.message.data;
                     
-                    // Get email accounts from user_emails array in the API response
-                    if (data.user_emails && data.user_emails.length > 0) {
-                        // First, get all email accounts to match with user emails
-                        frappe.call({
-                            method: "frappe.client.get_list",
-                            args: {
-                                doctype: "Email Account",
-                                fields: ["name", "email_id"],
-                                limit_page_length: 500
-                            },
-                            callback: function(email_resp) {
-                                if (email_resp.message && email_resp.message.length > 0) {
-                                    const allEmailAccounts = email_resp.message;
-                                    
-                                    // Find matching email accounts for the user's emails
-                                    const userEmailAccounts = [];
-                                    
-                                    // For each user email, find the matching email account
-                                    data.user_emails.forEach(userEmail => {
-                                        const matchingAccount = allEmailAccounts.find(acc => acc.email_id === userEmail);
-                                        if (matchingAccount) {
-                                            userEmailAccounts.push({
-                                                name: matchingAccount.name,
-                                                email_id: matchingAccount.email_id
-                                            });
-                                        } else {
-                                            // If no matching account found, create a generic one
-                                            userEmailAccounts.push({
-                                                name: userEmail,
-                                                email_id: userEmail
-                                            });
-                                        }
-                                    });
-
-                                    // Use the matched accounts
-                                    if (userEmailAccounts.length > 0) {
-                                        userEmails = data.user_emails;
-                                        populateEmailAccountsDropdown(userEmailAccounts);
-                                    } else {
-                                        // Fall back to user's primary email
-                                        userEmails = [data.email || frappe.session.user_email];
-                                        populateEmailAccountsDropdown([{
-                                            name: "user_email",
-                                            email_id: data.email || frappe.session.user_email
-                                        }]);
-                                    }
-
-                                    // Fetch communications after processing
-                                    fetchCommunications();
-                                } else {
-                                    // No email accounts found, use user emails directly
-                                    const userEmailAccounts = data.user_emails.map(email => ({
-                                        name: email,
-                                        email_id: email
-                                    }));
-                                    userEmails = data.user_emails;
-                                    populateEmailAccountsDropdown(userEmailAccounts);
-                                    fetchCommunications();
-                                }
-                            },
-                            error: function() {
-                                // Error getting email accounts, use user emails directly
-                                const userEmailAccounts = data.user_emails.map(email => ({
-                                    name: email,
-                                    email_id: email
-                                }));
-                                userEmails = data.user_emails;
-                                populateEmailAccountsDropdown(userEmailAccounts);
-                                fetchCommunications();
-                            }
+                    // Get personal emails (from User Email) and work emails from the API response
+                    const personalEmails = data.personal_emails || [];
+                    const workEmails = data.work_emails || [];
+                    const fallbackEmails = data.user_emails || [];
+                    
+                    // Combine all email accounts for the dropdown
+                    const allEmailAccounts = [];
+                    
+                    // Add personal emails (from existing User Email child table)
+                    personalEmails.forEach(email => {
+                        allEmailAccounts.push({
+                            name: email.account_name,
+                            email_id: email.email_id,
+                            type: "personal",
+                            is_primary: email.is_primary,
+                            description: email.description
                         });
-                    } else {
-                        // No user emails found, fall back to primary email
-                        userEmails = [data.email || frappe.session.user_email];
-                        populateEmailAccountsDropdown([{
+                    });
+                    
+                    // Add work emails (from new User Work Email Access child table)
+                    workEmails.forEach(email => {
+                        allEmailAccounts.push({
+                            name: email.account_name,
+                            email_id: email.email_id,
+                            type: "work",
+                            access_type: email.access_type,
+                            description: email.description
+                        });
+                    });
+                    
+                    // If no emails found at all, fall back to user's main email
+                    if (allEmailAccounts.length === 0) {
+                        allEmailAccounts.push({
                             name: "user_email",
-                            email_id: data.email || frappe.session.user_email
-                        }]);
-                        fetchCommunications();
+                            email_id: data.email || frappe.session.user_email,
+                            type: "fallback",
+                            description: "Main Email"
+                        });
                     }
+                    
+                    // Use the email accounts
+                    userEmails = allEmailAccounts.map(acc => acc.email_id);
+                    populateEmailAccountsDropdown(allEmailAccounts);
+                    fetchCommunications();
                 } else {
                     console.error('API Error or unexpected response format:', r.message);
                     // Fall back to user's own email
                     userEmails = [frappe.session.user_email];
                     populateEmailAccountsDropdown([{
                         name: "user_email",
-                        email_id: frappe.session.user_email
+                        email_id: frappe.session.user_email,
+                        type: "fallback",
+                        description: "Main Email"
                     }]);
                     fetchCommunications();
                 }
@@ -296,7 +262,9 @@
                 userEmails = [frappe.session.user_email];
                 populateEmailAccountsDropdown([{
                     name: "user_email",
-                    email_id: frappe.session.user_email
+                    email_id: frappe.session.user_email,
+                    type: "fallback",
+                    description: "Main Email"
                 }]);
                 fetchCommunications();
             }
@@ -312,22 +280,76 @@
             emailAccountSelect.remove(1);
         }
 
-        // Add each email account as an option
-        emailAccounts.forEach(function(account) {
-            const option = document.createElement('option');
-            option.value = account.name; // Use the account name (ID) as value
-            option.textContent = account.email_id + " (" + account.name + ")";
-            emailAccountSelect.appendChild(option);
-        });
+        // Group emails by type
+        const personalEmails = emailAccounts.filter(acc => acc.type === "personal");
+        const workEmails = emailAccounts.filter(acc => acc.type === "work");
+        const fallbackEmails = emailAccounts.filter(acc => acc.type === "fallback");
+
+        // Add personal emails section
+        if (personalEmails.length > 0) {
+            // Add section header
+            const personalHeader = document.createElement('option');
+            personalHeader.disabled = true;
+            personalHeader.style.fontWeight = 'bold';
+            personalHeader.style.backgroundColor = '#f8f9fa';
+            personalHeader.textContent = '--- Personal Emails ---';
+            emailAccountSelect.appendChild(personalHeader);
+
+            personalEmails.forEach(function(account) {
+                const option = document.createElement('option');
+                option.value = account.name;
+                let displayText = account.email_id;
+                if (account.is_primary) {
+                    displayText += " (Primary)";
+                }
+                option.textContent = displayText;
+                emailAccountSelect.appendChild(option);
+            });
+        }
+
+        // Add work emails section
+        if (workEmails.length > 0) {
+            // Add section header
+            const workHeader = document.createElement('option');
+            workHeader.disabled = true;
+            workHeader.style.fontWeight = 'bold';
+            workHeader.style.backgroundColor = '#f8f9fa';
+            workHeader.textContent = '--- Work Email Access ---';
+            emailAccountSelect.appendChild(workHeader);
+
+            workEmails.forEach(function(account) {
+                const option = document.createElement('option');
+                option.value = account.name;
+                let displayText = account.email_id;
+                if (account.access_type) {
+                    displayText += " (" + account.access_type + ")";
+                }
+                if (account.description && account.description !== "Work Email Access") {
+                    displayText += " - " + account.description;
+                }
+                option.textContent = displayText;
+                emailAccountSelect.appendChild(option);
+            });
+        }
+
+        // Add fallback emails
+        if (fallbackEmails.length > 0) {
+            fallbackEmails.forEach(function(account) {
+                const option = document.createElement('option');
+                option.value = account.name;
+                option.textContent = account.email_id + " (" + account.description + ")";
+                emailAccountSelect.appendChild(option);
+            });
+        }
     }
 
     function loadMailTags() {
-        // Get mail tags from the Mail Tags doctype
+        // Get mail tags from the Mail Tags doctype including color information
         frappe.call({
             method: "frappe.client.get_list",
             args: {
                 doctype: "Mail Tags",
-                fields: ["name", "tag_name"],
+                fields: ["name", "tag_name", "color"],
                 limit_page_length: 500
             },
             callback: function(r) {
@@ -696,8 +718,9 @@
                 const tagLabels = tags.map(tagName => {
                     const tag = mailTags.find(t => t.name === tagName);
                     const displayName = tag ? tag.tag_name || tagName : tagName;
+                    const tagColor = tag && tag.color ? tag.color : '#6c757d'; // Default gray color
                     const highlightedName = highlightSearchTerm(displayName, searchTerm);
-                    return `<span class="label">${highlightedName}</span>`;
+                    return `<span class="label" style="background-color: ${tagColor}; color: white; border: 1px solid ${tagColor};">${highlightedName}</span>`;
                 });
                 tagElement.innerHTML = tagLabels.join(' ');
             } else {
@@ -763,15 +786,17 @@
 
                         // Add tag information (now handling multiple tags from Table MultiSelect)
                         if (tags && tags.length > 0) {
-                            const tagNames = tags.map(tagName => {
+                            const tagLabels = tags.map(tagName => {
                                 const tag = mailTags.find(t => t.name === tagName);
-                                return tag ? tag.tag_name || tagName : tagName;
+                                const displayName = tag ? tag.tag_name || tagName : tagName;
+                                const tagColor = tag && tag.color ? tag.color : '#6c757d'; // Default gray color
+                                return `<span class="label" style="background-color: ${tagColor}; color: white; border: 1px solid ${tagColor};">${displayName}</span>`;
                             });
 
                             // Add tags to meta section
                             const metaDiv = content.querySelector('.email-meta');
                             const tagDiv = document.createElement('div');
-                            tagDiv.innerHTML = `<strong>Tags:</strong> <span class="email-tags">${tagNames.map(name => `<span class="label">${name}</span>`).join(' ')}</span>`;
+                            tagDiv.innerHTML = `<strong>Tags:</strong> <span class="email-tags">${tagLabels.join(' ')}</span>`;
                             metaDiv.appendChild(tagDiv);
                         }
 

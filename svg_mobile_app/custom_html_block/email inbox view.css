@@ -100,7 +100,6 @@
     flex-wrap: wrap;
     gap: 4px;
     align-items: center;
-    min-height: 20px; /* Ensure consistent height while loading */
 }
 
 .inbox-item-tag .label {
@@ -394,9 +393,47 @@
     border-color: #f8bbd9;
 }
 
-/* Loading tags indicator */
-.loading-tags {
-    font-size: 0.75em;
-    color: #999;
+/* Email Account Dropdown Styling */
+#email-account-filter option[disabled] {
+    font-weight: bold;
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
     font-style: italic;
+}
+
+#email-account-filter optgroup {
+    font-weight: bold;
+    color: #495057;
+}
+
+.email-accounts-row .text-muted {
+    font-size: 0.85em;
+    margin-top: 3px;
+}
+
+/* Email type indicators in the inbox list */
+.inbox-item-sender .email-type-badge {
+    font-size: 0.75em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-left: 5px;
+    font-weight: 500;
+}
+
+.email-type-personal {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.email-type-work {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border: 1px solid #ce93d8;
+}
+
+.email-type-fallback {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border: 1px solid #ffcc02;
 }

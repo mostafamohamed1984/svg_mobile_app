@@ -27,7 +27,7 @@
  "is_hidden": 0,
  "label": "Tasks Control",
  "links": [],
- "modified": "2025-05-13 10:17:35.787751",
+ "modified": "2025-06-03 12:51:05.049533",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Tasks Control",
@@ -49,7 +49,14 @@
  "parent_page": "",
  "public": 1,
  "quick_lists": [],
- "roles": [],
+ "roles": [
+  {
+   "role": "Tasks Team"
+  },
+  {
+   "role": "Tasks Leaders"
+  }
+ ],
  "sequence_id": 36.0,
  "shortcuts": [],
  "title": "Tasks Control"

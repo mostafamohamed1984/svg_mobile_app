@@ -130,14 +130,14 @@ function setup_item_filter(frm) {
 }
 
 function create_employee_advances(frm, eligible_items) {
-    // Filter out items that already have Employee Advances created
+    // Filter out items that have zero or negative remaining amounts
     let pending_items = eligible_items.filter(item => {
-        // Check if the item is fully processed
-        return !item.employee_advance_created;
+        const remainingAmount = flt(item.remaining_amount || 0);
+        return remainingAmount > 0;
     });
     
     if (pending_items.length === 0) {
-        frappe.msgprint(__('No eligible items found for creating Employee Advances.'));
+        frappe.msgprint(__('No eligible items found for creating Employee Advances. All items have been fully allocated.'));
         return;
     }
     
@@ -146,6 +146,7 @@ function create_employee_advances(frm, eligible_items) {
     // Show a dialog to select employees for the advances
     let dialog = new frappe.ui.Dialog({
         title: __('Create Employee Advances'),
+        size: 'large', // Make dialog larger
         fields: [
             {
                 fieldname: 'fees_and_deposits_html',
@@ -162,18 +163,34 @@ function create_employee_advances(frm, eligible_items) {
 
     // Render the fees and deposits table
     let fees_html = `
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>${__('Item')}</th>
-                        <th>${__('Original Rate')}</th>
-                        <th>${__('Claimed Amount')}</th>
-                        <th>${__('Remaining Amount')}</th>
-                        <th>${__('Actions')}</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <style>
+            .employee-advances-dialog .table-responsive {
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+            .employee-advances-dialog .form-control {
+                min-height: 32px;
+            }
+            .employee-advances-dialog .awesomplete {
+                z-index: 9999 !important;
+            }
+            .employee-advances-dialog .frappe-control {
+                margin-bottom: 8px;
+            }
+        </style>
+        <div class="employee-advances-dialog">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>${__('Item')}</th>
+                            <th>${__('Original Rate')}</th>
+                            <th>${__('Claimed Amount')}</th>
+                            <th>${__('Remaining Amount')}</th>
+                            <th>${__('Actions')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
     `;
     
     pending_items.forEach((item, idx) => {
@@ -232,6 +249,7 @@ function create_employee_advances(frm, eligible_items) {
                 </tbody>
             </table>
         </div>
+        </div>
     `;
 
     dialog.fields_dict.fees_and_deposits_html.$wrapper.html(fees_html);
@@ -287,6 +305,14 @@ function create_employee_advances(frm, eligible_items) {
                 },
                 render_input: true
             });
+            
+            // Ensure dropdown has proper z-index
+            setTimeout(() => {
+                const employeeField = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.employee-field-container-${entryId} .awesomplete`);
+                if (employeeField.length) {
+                    employeeField.css('z-index', '9999');
+                }
+            }, 100);
         } catch (error) {
             console.error('Failed to create employee field:', error);
             dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.employee-field-container-${entryId}`)
@@ -410,6 +436,28 @@ function create_employee_advances(frm, eligible_items) {
     });
     
     dialog.show();
+    
+    // Ensure dialog is properly sized and positioned
+    setTimeout(() => {
+        // Set minimum height for dialog
+        dialog.$wrapper.find('.modal-dialog').css({
+            'max-width': '90vw',
+            'width': '1000px'
+        });
+        
+        dialog.$wrapper.find('.modal-content').css({
+            'min-height': '500px',
+            'max-height': '90vh'
+        });
+        
+        dialog.$wrapper.find('.modal-body').css({
+            'max-height': '70vh',
+            'overflow-y': 'auto'
+        });
+        
+        // Ensure dropdowns appear above dialog content
+        dialog.$wrapper.find('.awesomplete').css('z-index', '9999');
+    }, 200);
     
     // Function to create the advances from dialog values
     function create_advances_from_dialog(frm, dialog, values, pending_items) {

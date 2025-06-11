@@ -477,19 +477,27 @@ class ProjectClaim(Document):
 		if not invoices or not self.claim_items:
 			return
 			
-		# Parse the being field to extract invoice-specific claim amounts
-		import re
-		
 		# Map to track claim amounts per invoice
 		invoice_claim_amounts = {}
+		invoice_tax_amounts = {}
 		
 		# Initialize with zero
 		for invoice in invoices:
 			invoice_claim_amounts[invoice] = 0
+			invoice_tax_amounts[invoice] = 0
 		
-		# Calculate how much to claim from each invoice
-		# First try to extract from the "being" field
-		if self.being:
+		# FIXED: Calculate amounts per invoice based on claim items first (most reliable)
+		for item in self.claim_items:
+			if hasattr(item, 'invoice_reference') and item.invoice_reference:
+				inv = item.invoice_reference
+				if inv in invoices:
+					invoice_claim_amounts[inv] = invoice_claim_amounts.get(inv, 0) + flt(item.amount)
+					invoice_tax_amounts[inv] = invoice_tax_amounts.get(inv, 0) + flt(item.tax_amount or 0)
+					frappe.logger().debug(f"Added amount {item.amount} from item {item.item} to invoice {inv}")
+		
+		# If we couldn't get amounts from claim items, try parsing from being field
+		if sum(invoice_claim_amounts.values()) == 0 and self.being:
+			import re
 			lines = self.being.split('\n')
 			current_invoice = None
 			
@@ -512,42 +520,30 @@ class ProjectClaim(Document):
 						except (ValueError, KeyError) as e:
 							frappe.logger().error(f"Error parsing claim amount for {current_invoice}: {e}")
 		
-		# If we couldn't parse from being field, try directly from claim items
-		if sum(invoice_claim_amounts.values()) == 0 and hasattr(self, 'claim_items') and self.claim_items:
-			for item in self.claim_items:
-				if hasattr(item, 'invoice_reference') and item.invoice_reference:
-					inv = item.invoice_reference
-					if inv in invoices:
-						invoice_claim_amounts[inv] = invoice_claim_amounts.get(inv, 0) + flt(item.amount)
-						frappe.logger().debug(f"Added amount {item.amount} from item {item.item} to invoice {inv}")
-		
-		# If we still couldn't determine amounts, distribute evenly
-		if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-			even_share = flt(self.claim_amount) / len(invoices)
-			for invoice in invoices:
-				invoice_claim_amounts[invoice] = even_share
-				frappe.logger().debug(f"Distributed even share {even_share} to invoice {invoice}")
-		
-		# Calculate tax amounts for each invoice
-		invoice_tax_amounts = {}
-		for invoice, claim_amount in invoice_claim_amounts.items():
-			# Calculate tax for this invoice based on its items
-			tax_amount = 0
-			for item in self.claim_items:
-				if hasattr(item, 'invoice_reference') and item.invoice_reference == invoice:
-					tax_amount += flt(item.tax_amount or 0)
-			
-			# If we couldn't get tax from items, calculate based on document tax_ratio
-			if tax_amount == 0 and self.tax_ratio:
-				tax_amount = flt(claim_amount) * flt(self.tax_ratio) / 100
-			
-			invoice_tax_amounts[invoice] = tax_amount
-			frappe.logger().debug(f"Calculated tax amount for invoice {invoice}: {tax_amount}")
+		# FIXED: Only use even distribution as a last resort and only if we have a single invoice
+		# For multiple invoices, we should not guess - this prevents incorrect status updates
+		if sum(invoice_claim_amounts.values()) == 0:
+			if len(invoices) == 1:
+				# Single invoice case - safe to use the full claim amount
+				invoice_claim_amounts[invoices[0]] = flt(self.claim_amount)
+				if self.tax_ratio:
+					invoice_tax_amounts[invoices[0]] = flt(self.claim_amount) * flt(self.tax_ratio) / 100
+				frappe.logger().debug(f"Single invoice: assigned full claim amount {self.claim_amount} to {invoices[0]}")
+			else:
+				# Multiple invoices but no specific amounts - log warning and skip updates
+				frappe.logger().warning(f"Cannot determine claim amounts per invoice for {self.name}. Skipping outstanding amount updates to prevent incorrect status changes.")
+				return
 		
 		# Log what we determined for each invoice
 		frappe.logger().info(f"Final claim amounts per invoice: {invoice_claim_amounts}")
 		frappe.logger().info(f"Final tax amounts per invoice: {invoice_tax_amounts}")
 		frappe.logger().info(f"Total determined: {sum(invoice_claim_amounts.values())}, Claim amount: {self.claim_amount}")
+		
+		# Validate that we're not claiming more than the total claim amount
+		total_determined = sum(invoice_claim_amounts.values())
+		if total_determined > flt(self.claim_amount) * 1.01:  # Allow 1% tolerance for rounding
+			frappe.logger().error(f"Total determined amounts ({total_determined}) exceed claim amount ({self.claim_amount})")
+			frappe.throw(f"Error: Calculated claim amounts per invoice ({total_determined}) exceed total claim amount ({self.claim_amount})")
 		
 		# Update each invoice's outstanding amount
 		for invoice, claim_amount in invoice_claim_amounts.items():
@@ -561,6 +557,11 @@ class ProjectClaim(Document):
 				# Make sure we're reducing by a positive amount (including tax)
 				claim_reduction = abs(claim_amount) + abs(tax_amount)
 				
+				# FIXED: Validate that we're not reducing more than the current outstanding
+				if claim_reduction > flt(current_outstanding) * 1.01:  # Allow 1% tolerance
+					frappe.logger().warning(f"Invoice {invoice}: Claim reduction ({claim_reduction}) exceeds current outstanding ({current_outstanding}). Capping to outstanding amount.")
+					claim_reduction = flt(current_outstanding)
+				
 				# Calculate new outstanding amount (ensure it doesn't go below zero)
 				new_outstanding = max(0, flt(current_outstanding) - flt(claim_reduction))
 				
@@ -569,14 +570,15 @@ class ProjectClaim(Document):
 				# Update the invoice
 				frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
 				
-				# Update status based on new outstanding amount
+				# FIXED: Update status based on new outstanding amount with proper thresholds
 				grand_total = frappe.db.get_value("Sales Invoice", invoice, "grand_total") or 0
-				if flt(new_outstanding) <= 0:
+				if flt(new_outstanding) <= 0.01:  # Consider amounts <= 0.01 as fully paid
 					frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
 					frappe.logger().info(f"Invoice {invoice} marked as Paid")
-				elif flt(new_outstanding) < flt(grand_total):
+				elif flt(new_outstanding) < flt(grand_total) - 0.01:  # Partially paid if outstanding is less than grand total
 					frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
 					frappe.logger().info(f"Invoice {invoice} marked as Partly Paid")
+				# If outstanding equals grand total, leave status unchanged (likely "Unpaid" or "Overdue")
 
 	def get_items_from_invoices(self, invoices):
 		"""Get items from multiple invoices for bulk claim creation"""

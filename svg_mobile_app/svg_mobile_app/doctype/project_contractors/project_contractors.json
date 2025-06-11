@@ -16,6 +16,7 @@
   "project_amount",
   "profit_ratio",
   "profit_value",
+  "tax_template",
   "add_tender_fees",
   "sales_invoice_created",
   "project_items_section",
@@ -75,9 +76,21 @@
   },
   {
    "fieldname": "profit_value",
-   "fieldtype": "Float",
-   "in_standard_filter": 1,
-   "label": "Profit Value"
+   "fieldtype": "Currency",
+   "label": "Profit Value",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_template",
+   "fieldtype": "Link",
+   "label": "Tax Template",
+   "options": "Sales Taxes and Charges Template",
+   "description": "Tax template to apply on project items (taxable items only)"
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "section_break_a2ic",

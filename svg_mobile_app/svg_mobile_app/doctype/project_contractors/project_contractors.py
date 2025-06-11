@@ -4,10 +4,138 @@
 import frappe
 from frappe.model.document import Document
 import json
+from frappe.utils import flt, cstr
 
 
 class ProjectContractors(Document):
-	pass
+	def validate(self):
+		self.calculate_totals()
+		
+	def calculate_totals(self):
+		"""Calculate total amounts for items and fees"""
+		total_items = 0
+		total_fees = 0
+		
+		# Calculate total for project items
+		for item in self.items:
+			if item.custom_rate:
+				total_items += flt(item.custom_rate)
+		
+		# Calculate total for fees and deposits
+		for fee in self.fees_and_deposits:
+			if fee.custom_rate:
+				total_fees += flt(fee.custom_rate)
+		
+		self.total_items = total_items
+		self.total_fees_and_deposits = total_fees
+		self.grand_total = total_items + total_fees
+
+	def get_tax_template_taxes(self):
+		"""Get taxes from the selected tax template"""
+		if not self.tax_template:
+			return []
+		
+		tax_template = frappe.get_doc("Sales Taxes and Charges Template", self.tax_template)
+		return tax_template.taxes or []
+
+	def calculate_taxes_for_amount(self, amount):
+		"""Calculate taxes for a given amount using the tax template"""
+		if not self.tax_template or not amount:
+			return []
+		
+		taxes = self.get_tax_template_taxes()
+		calculated_taxes = []
+		
+		for tax in taxes:
+			tax_amount = 0
+			if tax.charge_type == "On Net Total":
+				tax_amount = flt(amount * flt(tax.rate) / 100)
+			elif tax.charge_type == "Actual":
+				tax_amount = flt(tax.tax_amount)
+			
+			calculated_taxes.append({
+				"charge_type": tax.charge_type,
+				"account_head": tax.account_head,
+				"description": tax.description,
+				"rate": tax.rate,
+				"tax_amount": tax_amount
+			})
+		
+		return calculated_taxes
+
+	@frappe.whitelist()
+	def create_sales_invoice_for_items(self):
+		"""Create sales invoice for project items with taxes"""
+		if not self.items:
+			frappe.throw("No project items found to create invoice")
+		
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.project_name = self.project_name
+		
+		# Add items
+		for item in self.items:
+			if item.custom_rate:
+				sales_invoice.append("items", {
+					"item_code": item.item,
+					"qty": 1,
+					"rate": item.custom_rate,
+					"amount": item.custom_rate
+				})
+		
+		# Apply taxes if tax template is selected
+		if self.tax_template:
+			tax_template = frappe.get_doc("Sales Taxes and Charges Template", self.tax_template)
+			for tax in tax_template.taxes:
+				sales_invoice.append("taxes", {
+					"charge_type": tax.charge_type,
+					"account_head": tax.account_head,
+					"description": tax.description,
+					"rate": tax.rate,
+					"tax_amount": tax.tax_amount if tax.charge_type == "Actual" else 0
+				})
+		
+		# Save and submit
+		sales_invoice.save()
+		sales_invoice.submit()
+		
+		# Update status
+		self.sales_invoice_created = 1
+		self.save()
+		
+		frappe.msgprint(f"Sales Invoice {sales_invoice.name} created successfully")
+		return sales_invoice.name
+
+	@frappe.whitelist()
+	def create_sales_invoice_for_fees(self):
+		"""Create sales invoice for fees and deposits (non-taxable)"""
+		if not self.fees_and_deposits:
+			frappe.throw("No fees and deposits found to create invoice")
+		
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.project_name = self.project_name
+		
+		# Add fees and deposits (no taxes applied)
+		for fee in self.fees_and_deposits:
+			if fee.custom_rate:
+				sales_invoice.append("items", {
+					"item_code": fee.item,
+					"qty": 1,
+					"rate": fee.custom_rate,
+					"amount": fee.custom_rate
+				})
+		
+		# Save and submit (no taxes for fees)
+		sales_invoice.save()
+		sales_invoice.submit()
+		
+		frappe.msgprint(f"Sales Invoice {sales_invoice.name} created for fees and deposits")
+		return sales_invoice.name
 
 
 @frappe.whitelist()

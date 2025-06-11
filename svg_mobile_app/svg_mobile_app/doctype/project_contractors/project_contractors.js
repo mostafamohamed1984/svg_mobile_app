@@ -11,10 +11,90 @@ frappe.ui.form.on("Project Contractors", {
             // Check if there are any fees and deposits items that have Project Claims but don't have Employee Advances created
             check_project_claims_for_advances(frm);
         }
+
+        // Add custom buttons for creating invoices
+        if (frm.doc.docstatus === 1) {
+            frm.add_custom_button(__('Create Sales Invoice (Items)'), function() {
+                frm.call({
+                    method: 'create_sales_invoice_for_items',
+                    doc: frm.doc,
+                    callback: function(r) {
+                        if (r.message) {
+                            frappe.msgprint(__('Sales Invoice created: {0}', [r.message]));
+                            frm.reload_doc();
+                        }
+                    }
+                });
+            }, __('Create'));
+
+            frm.add_custom_button(__('Create Sales Invoice (Fees)'), function() {
+                frm.call({
+                    method: 'create_sales_invoice_for_fees',
+                    doc: frm.doc,
+                    callback: function(r) {
+                        if (r.message) {
+                            frappe.msgprint(__('Sales Invoice created: {0}', [r.message]));
+                            frm.reload_doc();
+                        }
+                    }
+                });
+            }, __('Create'));
+        }
     },
     
     setup: function(frm) {
         setup_item_filter(frm);
+    },
+
+    tax_template: function(frm) {
+        // When tax template changes, show preview of taxes
+        if (frm.doc.tax_template && frm.doc.total_items) {
+            frm.call({
+                method: 'calculate_taxes_for_amount',
+                doc: frm.doc,
+                args: {
+                    amount: frm.doc.total_items
+                },
+                callback: function(r) {
+                    if (r.message && r.message.length > 0) {
+                        let tax_preview = '';
+                        let total_tax = 0;
+                        
+                        r.message.forEach(function(tax) {
+                            tax_preview += `${tax.description}: ${tax.rate}% = ${tax.tax_amount}<br>`;
+                            total_tax += tax.tax_amount;
+                        });
+                        
+                        frappe.msgprint({
+                            title: __('Tax Preview for Project Items'),
+                            message: `
+                                <strong>Net Amount:</strong> ${frm.doc.total_items}<br>
+                                ${tax_preview}
+                                <strong>Total Tax:</strong> ${total_tax}<br>
+                                <strong>Grand Total:</strong> ${frm.doc.total_items + total_tax}
+                            `
+                        });
+                    }
+                }
+            });
+        }
+    },
+
+    customer: function(frm) {
+        if (frm.doc.customer) {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Customer",
+                    name: frm.doc.customer
+                },
+                callback: function(r) {
+                    if (r.message && r.message.custom_company) {
+                        frm.set_value("company", r.message.custom_company);
+                    }
+                }
+            });
+        }
     }
 });
 

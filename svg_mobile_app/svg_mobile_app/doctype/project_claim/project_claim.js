@@ -347,6 +347,12 @@ function show_bulk_invoice_dialog(frm) {
 				read_only: 1
 			},
 			{
+				fieldname: 'total_tax_amount',
+				label: __('Total Tax Amount'),
+				fieldtype: 'Currency',
+				read_only: 1
+			},
+			{
 				fieldname: 'include_taxes',
 				label: __('Include Taxes'),
 				fieldtype: 'Check',
@@ -356,6 +362,8 @@ function show_bulk_invoice_dialog(frm) {
 					if (dialog.selected_invoices && dialog.selected_invoices.size > 0) {
 						update_items_preview(dialog);
 					}
+					// Update total calculations
+					update_total_claim_amount(dialog);
 				}
 			}
 		],
@@ -702,11 +710,16 @@ function update_total_claim_amount(dialog) {
 	let total = 0;
 	let total_tax = 0;
 	
+	// Check if taxes should be included
+	const include_taxes = dialog.get_value('include_taxes');
+	
 	// Sum up claim amounts for selected invoices in current view
 	dialog.invoices_data.forEach(inv => {
 		if (inv.select) {
 			total += flt(inv.claim_amount);
-			total_tax += flt(inv.tax_amount || 0);
+			if (include_taxes) {
+				total_tax += flt(inv.tax_amount || 0);
+			}
 		}
 	});
 	
@@ -731,6 +744,7 @@ function update_total_claim_amount(dialog) {
 	
 	console.log("Total claim amount:", total, "Total tax amount:", total_tax);
 	dialog.set_value('total_claim_amount', total);
+	dialog.set_value('total_tax_amount', total_tax);
 	// Store tax amount in dialog for future use
 	dialog.total_tax_amount = total_tax;
 }
@@ -931,6 +945,9 @@ function update_items_preview(dialog) {
 						return;
 					}
 					
+					// Check if taxes should be included (used for table headers and columns)
+					const include_taxes = dialog.get_value('include_taxes');
+					
 					// Set available_balance for each item
 					all_items.forEach(item => {
 						if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
@@ -950,7 +967,6 @@ function update_items_preview(dialog) {
 						item.claim_amount = saved_amount || 0;
 						
 						// Calculate tax amount based on claim amount, tax rate, and include_taxes setting
-						const include_taxes = dialog.get_value('include_taxes');
 						item.tax_amount = include_taxes ? flt(item.claim_amount * item.tax_rate / 100) : 0;
 					});
 					
@@ -1035,8 +1051,8 @@ function update_items_preview(dialog) {
 												<th>${__('Original Amount')}</th>
 												<th>${__('Available Balance')}</th>
 												<th>${__('Claim Amount')}</th>
-												<th>${__('Tax Rate')}</th>
-												<th>${__('Tax Amount')}</th>
+												${include_taxes ? `<th>${__('Tax Rate')}</th>` : ''}
+												${include_taxes ? `<th>${__('Tax Amount')}</th>` : ''}
 											</tr>
 										</thead>
 										<tbody>
@@ -1056,8 +1072,6 @@ function update_items_preview(dialog) {
 							
 							// Get tax rate from the item data
 							let tax_rate = item.tax_rate || 0;
-							// Check if taxes should be included
-							const include_taxes = dialog.get_value('include_taxes');
 							// Calculate tax amount based on include_taxes setting
 							let tax_amount = include_taxes ? flt(item.claim_amount * tax_rate / 100) : 0;
 							
@@ -1085,8 +1099,8 @@ function update_items_preview(dialog) {
 											onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 										>
 									</td>
-									<td class="text-right">${tax_rate}%</td>
-									<td class="text-right tax-amount" data-invoice="${inv.invoice}" data-item="${item.item_code}">${format_currency(tax_amount)}</td>
+									${include_taxes ? `<td class="text-right">${tax_rate}%</td>` : ''}
+									${include_taxes ? `<td class="text-right tax-amount" data-invoice="${inv.invoice}" data-item="${item.item_code}">${format_currency(tax_amount)}</td>` : ''}
 								</tr>
 							`;
 						});
@@ -1096,8 +1110,8 @@ function update_items_preview(dialog) {
 							<tr class="table-active">
 								<td colspan="3" class="text-right"><strong>${__('Total')}:</strong></td>
 								<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_amount)}</td>
-								<td></td>
-								<td class="text-right">${format_currency(total_tax)}</td>
+								${include_taxes ? '<td></td>' : ''}
+								${include_taxes ? `<td class="text-right">${format_currency(total_tax)}</td>` : ''}
 							</tr>
 						`;
 						
@@ -1549,30 +1563,39 @@ function create_bulk_project_claim(frm, dialog) {
 	console.log("Final unique_projects set:", Array.from(unique_projects));
 	console.log("Value being set to project_references:", all_projects);
 	
-	// Get party account and project from the primary invoice
-	frappe.call({
-		method: 'frappe.client.get_value',
-		args: {
-			doctype: 'Sales Invoice',
-			filters: { name: primary_invoice },
-			fieldname: ['debit_to', 'custom_for_project']
-		},
-		callback: function(data) {
-			console.log("Invoice details response:", data);
-			
-			if (!data.message) {
-				frappe.msgprint(__('Could not fetch account information'));
-				return;
-			}
+		// Get party account and project from the primary invoice
+		frappe.call({
+			method: 'frappe.client.get_value',
+			args: {
+				doctype: 'Sales Invoice',
+				filters: { name: primary_invoice },
+				fieldname: ['debit_to', 'custom_for_project']
+			},
+			callback: function(data) {
+				console.log("Invoice details response:", data);
+				
+				if (!data.message) {
+					frappe.msgprint(__('Could not fetch account information'));
+					return;
+				}
+				
+				// Calculate total outstanding amount from selected invoices (use available data)
+				let total_outstanding_amount = 0;
+				selected_invoices.forEach(inv => {
+					// Use the outstanding amount from the invoice data if available
+					total_outstanding_amount += flt(inv.outstanding || 0);
+				});
+				
+				console.log("Total outstanding amount from selected invoices:", total_outstanding_amount);
 			
 			// Get the project contractor from the dialog (which was selected by the user)
 			let project_contractor = dialog.get_value('project_contractor_filter');
 			
-			// Calculate total claimable amount across all selected invoices
-			let total_claimable_amount = 0;
-			selected_invoices.forEach(inv => {
-				total_claimable_amount += flt(inv.claim_amount);
-			});
+				// Calculate total claimable amount across all selected invoices
+	let total_claimable_amount = 0;
+	selected_invoices.forEach(inv => {
+		total_claimable_amount += flt(inv.claim_amount);
+	});
 			
 			// Filter out items with zero or negative available balance before creating claim items
 			let filtered_claim_items = claim_items.filter(item => item.amount > 0);
@@ -1641,7 +1664,7 @@ function create_bulk_project_claim(frm, dialog) {
 			set_value_quietly('party_account', data.message.debit_to);
 			set_value_quietly('claim_amount', total_claimable_amount);
 			set_value_quietly('claimable_amount', total_claimable_amount);
-			set_value_quietly('outstanding_amount', total_claimable_amount);  // Ensure outstanding_amount is set
+			set_value_quietly('outstanding_amount', total_outstanding_amount);  // Set to sum of all invoice outstanding amounts
 			set_value_quietly('being', being_text);
 			set_value_quietly('reference_invoice', primary_invoice);
 			set_value_quietly('invoice_references', invoice_names.join(", "));
@@ -1665,7 +1688,7 @@ function create_bulk_project_claim(frm, dialog) {
 				party_account: data.message.debit_to,
 				claim_amount: total_claimable_amount,
 				claimable_amount: total_claimable_amount,
-				outstanding_amount: total_claimable_amount
+				outstanding_amount: total_outstanding_amount
 			};
 			
 			// Always show the project_references field, even with one project
@@ -1711,7 +1734,7 @@ function create_bulk_project_claim(frm, dialog) {
 			}, 100);
 		}
 	});
-}
+	}
 }
 
 // Function to show email dialog with attachment

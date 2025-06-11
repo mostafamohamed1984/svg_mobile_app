@@ -563,6 +563,7 @@ class ProjectClaim(Document):
 			
 		return items_data
 	
+
 	def create_journal_entry(self, invoices):
 		"""Create journal entry for the claim using the same logic as the client script"""
 		if not self.party_account or not self.receiving_account:
@@ -623,7 +624,9 @@ class ProjectClaim(Document):
 					'account': self.party_account,
 					'party_type': 'Customer',
 					'party': customer or self.customer,
-					'credit_in_account_currency': total_amount_per_invoice
+					'credit_in_account_currency': total_amount_per_invoice,
+					'reference_type': 'Sales Invoice',
+					'reference_name': invoice
 				})
 		
 		# Debit receiving account (amount excluding tax)

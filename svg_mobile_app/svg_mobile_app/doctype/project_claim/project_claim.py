@@ -474,7 +474,10 @@ class ProjectClaim(Document):
 
 	def update_invoice_outstanding_amounts(self, invoices):
 		"""Update outstanding amounts for all invoices based on claim amounts"""
+		frappe.logger().info(f"update_invoice_outstanding_amounts called for claim {self.name} with invoices: {invoices}")
+		
 		if not invoices or not self.claim_items:
+			frappe.logger().info(f"Skipping update: invoices={invoices}, claim_items count={len(self.claim_items) if self.claim_items else 0}")
 			return
 			
 		# Map to track claim amounts per invoice
@@ -671,6 +674,10 @@ class ProjectClaim(Document):
 			if invoice in invoices and base_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
 				tax_amount_per_invoice = invoice_tax_amounts.get(invoice, 0)
 				total_amount_per_invoice = base_amount + tax_amount_per_invoice
+				
+				# FIXED: Add debugging to track amounts
+				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
+				frappe.logger().info(f"Journal Entry for invoice {invoice}: Base={base_amount}, Tax={tax_amount_per_invoice}, Total={total_amount_per_invoice}, Current Outstanding={current_outstanding}")
 				
 				# Get customer from the invoice
 				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
@@ -981,6 +988,11 @@ def create_journal_entry_from_claim(claim_name):
 	
 	# Create the journal entry
 	je_name = claim.create_journal_entry(invoices)
+	
+	# FIXED: Update invoice outstanding amounts after journal entry creation
+	if je_name:
+		claim.update_invoice_outstanding_amounts(invoices)
+		frappe.db.commit()  # Ensure the updates are saved
 	
 	# Return the journal entry name
 	return je_name

@@ -310,9 +310,8 @@ function show_bulk_invoice_dialog(frm) {
 								let customerInfo = r.customer_name ? `Customer: ${r.customer_name}` : '';
 								let description = [projectInfo, customerInfo].filter(Boolean).join(', ');
 								
-								// Update the field description
-								dialog.set_df_property('project_contractor_filter', 'description', description);
-								dialog.refresh_field('project_contractor_filter');
+														// Update the field description
+						dialog.set_df_property('project_contractor_filter', 'description', description);
 							}
 						});
 						
@@ -326,9 +325,8 @@ function show_bulk_invoice_dialog(frm) {
 							</div>
 						`);
 						
-						// Clear the description
-						dialog.set_df_property('project_contractor_filter', 'description', '');
-						dialog.refresh_field('project_contractor_filter');
+											// Clear the description
+					dialog.set_df_property('project_contractor_filter', 'description', '');
 					}
 				}
 			},
@@ -343,12 +341,6 @@ function show_bulk_invoice_dialog(frm) {
 			{
 				fieldname: 'total_claim_amount',
 				label: __('Total Claim Amount'),
-				fieldtype: 'Currency',
-				read_only: 1
-			},
-			{
-				fieldname: 'total_tax_amount',
-				label: __('Total Tax Amount'),
 				fieldtype: 'Currency',
 				read_only: 1
 			},
@@ -480,6 +472,9 @@ function show_bulk_invoice_dialog(frm) {
 				dialog.invoices_data[invoice_index].claim_amount = invoice_total;
 				dialog.invoices_data[invoice_index].tax_amount = tax_total;
 			}
+			
+			// Update the table totals for this specific invoice
+			update_invoice_table_totals(dialog, invoice, invoice_total, tax_total);
 			
 			// Recalculate ratios internally based on the new amounts
 			if (invoice_total > 0) {
@@ -744,9 +739,22 @@ function update_total_claim_amount(dialog) {
 	
 	console.log("Total claim amount:", total, "Total tax amount:", total_tax);
 	dialog.set_value('total_claim_amount', total);
-	dialog.set_value('total_tax_amount', total_tax);
 	// Store tax amount in dialog for future use
 	dialog.total_tax_amount = total_tax;
+}
+
+function update_invoice_table_totals(dialog, invoice, total_amount, total_tax) {
+	// Check if taxes should be included
+	const include_taxes = dialog.get_value('include_taxes');
+	
+	// Update the amount total for this specific invoice
+	$(`.amount-total[data-invoice="${invoice}"]`).text(format_currency(total_amount));
+	
+	// Update the tax total if taxes are included
+	if (include_taxes) {
+		// Find the tax total cell for this invoice (it's in the same row as amount-total, last cell)
+		$(`.amount-total[data-invoice="${invoice}"]`).closest('tr').find('td:last').text(format_currency(total_tax));
+	}
 }
 
 function update_items_preview(dialog) {

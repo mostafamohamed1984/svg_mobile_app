@@ -106,6 +106,9 @@ function check_project_claims_for_advances(frm) {
             include_partial_advances: true  // Include items with partial advances
         },
         callback: function(r) {
+            // Remove existing button first
+            frm.remove_custom_button(__('Create Employee Advances'));
+            
             if (r.message && r.message.has_eligible_items) {
                 frm.add_custom_button(__('Create Employee Advances'), function() {
                     create_employee_advances(frm, r.message.eligible_items);
@@ -505,6 +508,11 @@ function create_employee_advances(frm, eligible_items) {
                     
                     dialog.hide();
                     frm.reload_doc();
+                    
+                    // Refresh the Employee Advances button to show updated remaining amounts
+                    setTimeout(() => {
+                        check_project_claims_for_advances(frm);
+                    }, 1000);
                 } else {
                     frappe.msgprint({
                         title: __('Error'),

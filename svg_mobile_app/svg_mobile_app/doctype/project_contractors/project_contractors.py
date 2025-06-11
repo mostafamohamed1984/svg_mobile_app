@@ -514,6 +514,9 @@ def check_project_claims_for_advances(project_contractors, include_partial_advan
             # Calculate remaining amount
             remaining_amount = claimed_amount - total_advanced
             
+            # Debug logging
+            frappe.log_error(f"Item: {item.item}, Claimed: {claimed_amount}, Advanced: {total_advanced}, Remaining: {remaining_amount}, employee_advance_created: {item.employee_advance_created}")
+            
             # Check if the item has no advances or only partial advances
             if not item.employee_advance_created:
                 is_eligible = True

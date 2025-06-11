@@ -1475,7 +1475,7 @@ function create_bulk_project_claim(frm, dialog) {
 					revenue_account: item.custom_default_earning_account || '',
 					invoice_reference: inv.invoice, // Critical for proper invoice-level tracking
 					project_contractor_reference: project_contractor, // Add project contractor reference from correct invoice
-					current_balance: item.available_balance // Add available balance directly
+					current_balance: flt(item.available_balance) // Ensure current_balance is properly set as a number
 				});
 			});
 		});
@@ -1623,8 +1623,8 @@ function create_bulk_project_claim(frm, dialog) {
 			
 			// Explicitly set current_balance for each item
 			filtered_claim_items.forEach(item => {
-				// Set current_balance equal to available_balance without fallback
-				item.current_balance = item.available_balance;
+				// Ensure current_balance is properly set as a number
+				item.current_balance = flt(item.current_balance || 0);
 			});
 			
 			// Use a quieter version of set_value that doesn't trigger validation

@@ -10,6 +10,11 @@ from frappe.utils import flt, cstr
 class ProjectContractors(Document):
 	def validate(self):
 		self.calculate_totals()
+	
+	def on_submit(self):
+		"""Automatically create sales invoices when document is submitted"""
+		if not self.sales_invoice_created:
+			self.create_automatic_sales_invoices()
 		
 	def calculate_totals(self):
 		"""Calculate total amounts for items and fees"""
@@ -30,6 +35,175 @@ class ProjectContractors(Document):
 		self.total_amount = total_items
 		self.total_fees = total_fees
 		self.total_project_amount = total_items + total_fees
+
+	def create_automatic_sales_invoices(self):
+		"""Create both taxable and non-taxable sales invoices automatically"""
+		created_invoices = []
+		
+		try:
+			# Create invoice for project items (taxable) if items exist
+			if self.items and any(item.rate for item in self.items):
+				taxable_invoice = self.create_taxable_sales_invoice()
+				if taxable_invoice:
+					created_invoices.append(f"Taxable Invoice: {taxable_invoice}")
+			
+			# Create invoice for fees and deposits (non-taxable) if fees exist
+			if self.fees_and_deposits and any(fee.rate for fee in self.fees_and_deposits):
+				non_taxable_invoice = self.create_non_taxable_sales_invoice()
+				if non_taxable_invoice:
+					created_invoices.append(f"Non-Taxable Invoice: {non_taxable_invoice}")
+			
+			# Update status if any invoices were created
+			if created_invoices:
+				self.sales_invoice_created = 1
+				self.db_set('sales_invoice_created', 1, update_modified=False)
+				
+				# Show success message
+				frappe.msgprint(
+					title="Sales Invoices Created",
+					message="<br>".join(created_invoices),
+					indicator="green"
+				)
+			
+		except Exception as e:
+			frappe.log_error(f"Error creating automatic sales invoices: {str(e)}")
+			frappe.throw(f"Failed to create sales invoices: {str(e)}")
+
+	def create_taxable_sales_invoice(self):
+		"""Create sales invoice for project items with taxes"""
+		# Filter items with rates
+		items_with_rates = [item for item in self.items if hasattr(item, 'rate') and item.rate and item.rate > 0]
+		
+		if not items_with_rates:
+			return None
+
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.project_name = self.project_name
+		sales_invoice.posting_date = frappe.utils.today()
+		sales_invoice.custom_for_project = self.name  # Link back to project contractors
+		
+		# Add items
+		for item in items_with_rates:
+			# Use custom_rate if available, otherwise use rate
+			rate = getattr(item, 'custom_rate', None) or item.rate
+			sales_invoice.append("items", {
+				"item_code": item.item,
+				"qty": getattr(item, 'qty', 1) or 1,
+				"rate": rate,
+				"amount": rate
+			})
+		
+		# Apply tax template if selected
+		if self.tax_template:
+			try:
+				tax_template = frappe.get_doc("Sales Taxes and Charges Template", self.tax_template)
+				for tax in tax_template.taxes:
+					sales_invoice.append("taxes", {
+						"charge_type": tax.charge_type,
+						"account_head": tax.account_head,
+						"description": tax.description,
+						"rate": tax.rate,
+						"tax_amount": tax.tax_amount if tax.charge_type == "Actual" else 0
+					})
+			except Exception as e:
+				frappe.log_error(f"Error applying tax template: {str(e)}")
+		
+		# Save and submit
+		sales_invoice.save()
+		sales_invoice.submit()
+		
+		return sales_invoice.name
+
+	def create_non_taxable_sales_invoice(self):
+		"""Create sales invoice for fees and deposits (non-taxable)"""
+		# Filter fees with rates
+		fees_with_rates = [fee for fee in self.fees_and_deposits if hasattr(fee, 'rate') and fee.rate and fee.rate > 0]
+		
+		if not fees_with_rates:
+			return None
+
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.project_name = f"{self.project_name} - Fees"
+		sales_invoice.posting_date = frappe.utils.today()
+		sales_invoice.custom_for_project = self.name  # Link back to project contractors
+		
+		# Add fees and deposits (no taxes applied)
+		for fee in fees_with_rates:
+			# Use custom_rate if available, otherwise use rate
+			rate = getattr(fee, 'custom_rate', None) or fee.rate
+			sales_invoice.append("items", {
+				"item_code": fee.item,
+				"qty": getattr(fee, 'qty', 1) or 1,
+				"rate": rate,
+				"amount": rate
+			})
+		
+		# Save and submit (no taxes for fees)
+		sales_invoice.save()
+		sales_invoice.submit()
+		
+		return sales_invoice.name
+
+	def create_additional_fees_invoice(self, uninvoiced_items=None):
+		"""Create sales invoice for additional/uninvoiced items"""
+		if not uninvoiced_items:
+			# Find uninvoiced items
+			uninvoiced_items = [item for item in self.items if not getattr(item, 'invoiced', False) and item.rate and item.rate > 0]
+		
+		if not uninvoiced_items:
+			frappe.throw("No uninvoiced items found to create additional fees")
+
+		# Get customer details
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.custom_for_project = self.name
+		sales_invoice.posting_date = frappe.utils.today()
+		
+		# Set currency and price list from customer
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+		
+		sales_invoice.ignore_pricing_rule = 1
+		
+		# Add uninvoiced items
+		items_to_mark = []
+		for item in uninvoiced_items:
+			rate = getattr(item, 'custom_rate', None) or item.rate
+			sales_invoice.append("items", {
+				"item_code": item.item,
+				"qty": getattr(item, 'qty', 1) or 1,
+				"rate": rate,
+				"amount": rate
+			})
+			items_to_mark.append(item)
+		
+		# Save and submit
+		sales_invoice.save()
+		sales_invoice.submit()
+		
+		# Mark items as invoiced
+		for item in items_to_mark:
+			item.invoiced = 1
+			item.sales_invoice = sales_invoice.name
+		
+		# Save the updated document
+		self.save()
+		
+		return sales_invoice.name
 
 	def get_tax_template_taxes(self):
 		"""Get taxes from the selected tax template"""
@@ -75,13 +249,14 @@ class ProjectContractors(Document):
 		sales_invoice.customer = self.customer
 		sales_invoice.company = self.company
 		sales_invoice.project_name = self.project_name
+		sales_invoice.custom_for_project = self.name
 		
 		# Add items
 		for item in self.items:
 			if item.rate:
 				sales_invoice.append("items", {
 					"item_code": item.item,
-					"qty": 1,
+					"qty": getattr(item, 'qty', 1) or 1,
 					"rate": item.rate,
 					"amount": item.rate
 				})
@@ -104,7 +279,7 @@ class ProjectContractors(Document):
 		
 		# Update status
 		self.sales_invoice_created = 1
-		self.save()
+		self.db_set('sales_invoice_created', 1, update_modified=False)
 		
 		frappe.msgprint(f"Sales Invoice {sales_invoice.name} created successfully")
 		return sales_invoice.name
@@ -120,13 +295,14 @@ class ProjectContractors(Document):
 		sales_invoice.customer = self.customer
 		sales_invoice.company = self.company
 		sales_invoice.project_name = self.project_name
+		sales_invoice.custom_for_project = self.name
 		
 		# Add fees and deposits (no taxes applied)
 		for fee in self.fees_and_deposits:
 			if fee.rate:
 				sales_invoice.append("items", {
 					"item_code": fee.item,
-					"qty": 1,
+					"qty": getattr(fee, 'qty', 1) or 1,
 					"rate": fee.rate,
 					"amount": fee.rate
 				})
@@ -169,6 +345,17 @@ class ProjectContractors(Document):
 		
 		print(f"Returning tax preview: {result}")
 		return result
+
+	@frappe.whitelist()
+	def create_additional_fees_invoice_api(self):
+		"""API method to create additional fees invoice for uninvoiced items"""
+		try:
+			invoice_name = self.create_additional_fees_invoice()
+			frappe.msgprint(f"Additional Fees Invoice {invoice_name} created successfully")
+			return invoice_name
+		except Exception as e:
+			frappe.log_error(f"Error creating additional fees invoice: {str(e)}")
+			frappe.throw(f"Failed to create additional fees invoice: {str(e)}")
 
 
 @frappe.whitelist()

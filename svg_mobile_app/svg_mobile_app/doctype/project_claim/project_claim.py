@@ -489,7 +489,7 @@ class ProjectClaim(Document):
 			invoice_claim_amounts[invoice] = 0
 			invoice_tax_amounts[invoice] = 0
 		
-		# Calculate amounts per invoice based on claim items (most reliable method)
+		# FIXED: Calculate amounts per invoice based on claim items first (most reliable)
 		for item in self.claim_items:
 			if hasattr(item, 'invoice_reference') and item.invoice_reference:
 				inv = item.invoice_reference
@@ -497,6 +497,7 @@ class ProjectClaim(Document):
 					invoice_claim_amounts[inv] = invoice_claim_amounts.get(inv, 0) + flt(item.amount)
 					invoice_tax_amounts[inv] = invoice_tax_amounts.get(inv, 0) + flt(item.tax_amount or 0)
 					frappe.logger().info(f"Processing claim item: {item.item} - Amount: {item.amount}, Tax: {item.tax_amount or 0}, Invoice: {inv}")
+					frappe.logger().debug(f"Added amount {item.amount} from item {item.item} to invoice {inv}")
 		
 		# If we couldn't get amounts from claim items, try parsing from being field
 		if sum(invoice_claim_amounts.values()) == 0 and self.being:
@@ -523,7 +524,8 @@ class ProjectClaim(Document):
 						except (ValueError, KeyError) as e:
 							frappe.logger().error(f"Error parsing claim amount for {current_invoice}: {e}")
 		
-		# Only use even distribution as a last resort and only if we have a single invoice
+		# FIXED: Only use even distribution as a last resort and only if we have a single invoice
+		# For multiple invoices, we should not guess - this prevents incorrect status updates
 		if sum(invoice_claim_amounts.values()) == 0:
 			if len(invoices) == 1:
 				# Single invoice case - safe to use the full claim amount
@@ -557,11 +559,10 @@ class ProjectClaim(Document):
 				# Get tax amount for this invoice
 				tax_amount = invoice_tax_amounts.get(invoice, 0)
 				
-				# CRITICAL FIX: The reduction should be ONLY the base claim amount, NOT including tax
-				# The tax is handled separately in the journal entry and doesn't reduce outstanding amount
-				claim_reduction = abs(claim_amount)  # Remove tax from reduction calculation
+				# Make sure we're reducing by a positive amount (including tax)
+				claim_reduction = abs(claim_amount) + abs(tax_amount)
 				
-				# Validate that we're not reducing more than the current outstanding
+				# FIXED: Validate that we're not reducing more than the current outstanding
 				if claim_reduction > flt(current_outstanding) * 1.01:  # Allow 1% tolerance
 					frappe.logger().warning(f"Invoice {invoice}: Claim reduction ({claim_reduction}) exceeds current outstanding ({current_outstanding}). Capping to outstanding amount.")
 					claim_reduction = flt(current_outstanding)
@@ -574,14 +575,14 @@ class ProjectClaim(Document):
 				frappe.logger().info(f"  Current Outstanding: {current_outstanding}")
 				frappe.logger().info(f"  Claim Amount (base): {claim_amount}")
 				frappe.logger().info(f"  Tax Amount: {tax_amount}")
-				frappe.logger().info(f"  Total Reduction (base only): {claim_reduction}")
+				frappe.logger().info(f"  Total Reduction: {claim_reduction}")
 				frappe.logger().info(f"  New Outstanding: {new_outstanding}")
 				frappe.logger().info(f"  Grand Total: {frappe.db.get_value('Sales Invoice', invoice, 'grand_total') or 0}")
 				
 				# Update the invoice
 				frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
 				
-				# Update status based on new outstanding amount with proper thresholds
+				# FIXED: Update status based on new outstanding amount with proper thresholds
 				grand_total = frappe.db.get_value("Sales Invoice", invoice, "grand_total") or 0
 				
 				frappe.logger().info(f"STATUS UPDATE LOGIC for Invoice {invoice}:")
@@ -693,7 +694,7 @@ class ProjectClaim(Document):
 				tax_amount_per_invoice = invoice_tax_amounts.get(invoice, 0)
 				total_amount_per_invoice = base_amount + tax_amount_per_invoice
 				
-				# Add debugging to track amounts
+				# FIXED: Add debugging to track amounts
 				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
 				frappe.logger().info(f"Journal Entry for invoice {invoice}: Base={base_amount}, Tax={tax_amount_per_invoice}, Total={total_amount_per_invoice}, Current Outstanding={current_outstanding}")
 				
@@ -701,13 +702,14 @@ class ProjectClaim(Document):
 				customer = frappe.db.get_value("Sales Invoice", invoice, "customer")
 				
 				# Credit customer account for this invoice's portion including tax
+				# CRITICAL FIX: Remove reference_type and reference_name to prevent automatic outstanding amount update
+				# This prevents double reduction of outstanding amounts (once by journal entry, once by our custom method)
 				accounts.append({
 					'account': self.party_account,
 					'party_type': 'Customer',
 					'party': customer or self.customer,
-					'credit_in_account_currency': total_amount_per_invoice,
-					'reference_type': 'Sales Invoice',
-					'reference_name': invoice
+					'credit_in_account_currency': total_amount_per_invoice
+					# Removed reference_type and reference_name to avoid double impact on outstanding amounts
 				})
 		
 		# Debit receiving account (amount excluding tax)

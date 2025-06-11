@@ -18,13 +18,13 @@ class ProjectContractors(Document):
 		
 		# Calculate total for project items
 		for item in self.items:
-			if item.custom_rate:
-				total_items += flt(item.custom_rate)
+			if item.rate:
+				total_items += flt(item.rate)
 		
 		# Calculate total for fees and deposits
 		for fee in self.fees_and_deposits:
-			if fee.custom_rate:
-				total_fees += flt(fee.custom_rate)
+			if fee.rate:
+				total_fees += flt(fee.rate)
 		
 		self.total_items = total_items
 		self.total_fees_and_deposits = total_fees
@@ -77,12 +77,12 @@ class ProjectContractors(Document):
 		
 		# Add items
 		for item in self.items:
-			if item.custom_rate:
+			if item.rate:
 				sales_invoice.append("items", {
 					"item_code": item.item,
 					"qty": 1,
-					"rate": item.custom_rate,
-					"amount": item.custom_rate
+					"rate": item.rate,
+					"amount": item.rate
 				})
 		
 		# Apply taxes if tax template is selected
@@ -122,12 +122,12 @@ class ProjectContractors(Document):
 		
 		# Add fees and deposits (no taxes applied)
 		for fee in self.fees_and_deposits:
-			if fee.custom_rate:
+			if fee.rate:
 				sales_invoice.append("items", {
 					"item_code": fee.item,
 					"qty": 1,
-					"rate": fee.custom_rate,
-					"amount": fee.custom_rate
+					"rate": fee.rate,
+					"amount": fee.rate
 				})
 		
 		# Save and submit (no taxes for fees)
@@ -140,11 +140,17 @@ class ProjectContractors(Document):
 	@frappe.whitelist()
 	def get_tax_preview(self, amount):
 		"""Get tax preview for given amount using selected tax template"""
+		print(f"get_tax_preview called with amount: {amount}, tax_template: {self.tax_template}")
+		
 		if not self.tax_template or not amount:
+			print(f"Missing tax_template ({self.tax_template}) or amount ({amount})")
 			return None
 			
 		taxes = self.get_tax_template_taxes()
+		print(f"Retrieved taxes: {taxes}")
+		
 		if not taxes:
+			print("No taxes found in template")
 			return None
 			
 		total_tax = 0
@@ -152,12 +158,16 @@ class ProjectContractors(Document):
 			if tax.get('charge_type') == 'On Net Total':
 				tax_amount = flt(amount) * flt(tax.get('rate', 0)) / 100
 				total_tax += tax_amount
+				print(f"Tax calculation: {amount} * {tax.get('rate', 0)}% = {tax_amount}")
 				
-		return {
+		result = {
 			'tax_amount': total_tax,
 			'net_amount': flt(amount),
 			'grand_total': flt(amount) + total_tax
 		}
+		
+		print(f"Returning tax preview: {result}")
+		return result
 
 
 @frappe.whitelist()

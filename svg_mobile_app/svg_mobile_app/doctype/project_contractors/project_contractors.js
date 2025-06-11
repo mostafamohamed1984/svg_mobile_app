@@ -54,7 +54,11 @@ frappe.ui.form.on("Project Contractors", {
     },
 
     tax_template: function(frm) {
+        console.log('Tax template changed:', frm.doc.tax_template);
+        console.log('Total items:', frm.doc.total_items);
+        
         if (frm.doc.tax_template && frm.doc.total_items) {
+            console.log('Calling get_tax_preview with amount:', frm.doc.total_items);
             frm.call({
                 method: 'get_tax_preview',
                 doc: frm.doc,
@@ -62,15 +66,25 @@ frappe.ui.form.on("Project Contractors", {
                     amount: frm.doc.total_items
                 },
                 callback: function(r) {
+                    console.log('Tax preview response:', r);
                     if (r.message) {
                         frappe.msgprint({
                             title: __('Tax Preview'),
                             message: __('Tax Amount: {0}', [format_currency(r.message.tax_amount, frm.doc.currency)]),
                             indicator: 'blue'
                         });
+                    } else {
+                        console.log('No tax preview data returned');
                     }
                 }
             });
+        } else {
+            if (!frm.doc.tax_template) {
+                console.log('No tax template selected');
+            }
+            if (!frm.doc.total_items) {
+                console.log('No total_items value found');
+            }
         }
     },
 

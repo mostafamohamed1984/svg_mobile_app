@@ -9,7 +9,7 @@ frappe.ui.form.on('Project Contractors', {
     items_remove: function(frm, cdt, cdn) {
         calculate_totals(frm);
     },
-    items_custom_rate: function(frm, cdt, cdn) {
+    items_rate: function(frm, cdt, cdn) {
         calculate_totals(frm);
     },
     fees_and_deposits_add: function(frm, cdt, cdn) {
@@ -18,27 +18,35 @@ frappe.ui.form.on('Project Contractors', {
     fees_and_deposits_remove: function(frm, cdt, cdn) {
         calculate_totals(frm);
     },
-    fees_and_deposits_custom_rate: function(frm, cdt, cdn) {
+    fees_and_deposits_rate: function(frm, cdt, cdn) {
         calculate_totals(frm);
     }
 });
 
 function calculate_totals(frm) {
-    // Calculate total from items table
     let items_total = 0;
-    $.each(frm.doc.items || [], function(i, item) {
-        items_total += flt(item.rate);
-    });
-    frm.set_value('total_amount', items_total);
-    
-    // Calculate total from fees_and_deposits table
     let fees_total = 0;
-    $.each(frm.doc.fees_and_deposits || [], function(i, fee) {
-        fees_total += flt(fee.rate);
-    });
-    frm.set_value('total_fees', fees_total);
     
-    // Calculate grand total
-    let grand_total = items_total + fees_total;
-    frm.set_value('total_project_amount', grand_total);
+    // Calculate total for project items
+    if (frm.doc.items) {
+        frm.doc.items.forEach(function(item) {
+            if (item.rate) {
+                items_total += flt(item.rate);
+            }
+        });
+    }
+    
+    // Calculate total for fees and deposits
+    if (frm.doc.fees_and_deposits) {
+        frm.doc.fees_and_deposits.forEach(function(fee) {
+            if (fee.rate) {
+                fees_total += flt(fee.rate);
+            }
+        });
+    }
+    
+    // Set the calculated totals
+    frm.set_value('total_items', items_total);
+    frm.set_value('total_fees_and_deposits', fees_total);
+    frm.set_value('grand_total', items_total + fees_total);
 }

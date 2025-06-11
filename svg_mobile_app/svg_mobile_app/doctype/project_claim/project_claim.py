@@ -496,6 +496,7 @@ class ProjectClaim(Document):
 				if inv in invoices:
 					invoice_claim_amounts[inv] = invoice_claim_amounts.get(inv, 0) + flt(item.amount)
 					invoice_tax_amounts[inv] = invoice_tax_amounts.get(inv, 0) + flt(item.tax_amount or 0)
+					frappe.logger().info(f"Processing claim item: {item.item} - Amount: {item.amount}, Tax: {item.tax_amount or 0}, Invoice: {inv}")
 					frappe.logger().debug(f"Added amount {item.amount} from item {item.item} to invoice {inv}")
 		
 		# If we couldn't get amounts from claim items, try parsing from being field
@@ -568,7 +569,13 @@ class ProjectClaim(Document):
 				# Calculate new outstanding amount (ensure it doesn't go below zero)
 				new_outstanding = max(0, flt(current_outstanding) - flt(claim_reduction))
 				
-				frappe.logger().info(f"Invoice {invoice}: Current outstanding={current_outstanding}, Claim={claim_amount}, Tax={tax_amount}, Total reduction={claim_reduction}, New outstanding={new_outstanding}")
+				frappe.logger().info(f"DETAILED CALCULATION for Invoice {invoice}:")
+				frappe.logger().info(f"  Current Outstanding: {current_outstanding}")
+				frappe.logger().info(f"  Claim Amount (base): {claim_amount}")
+				frappe.logger().info(f"  Tax Amount: {tax_amount}")
+				frappe.logger().info(f"  Total Reduction: {claim_reduction}")
+				frappe.logger().info(f"  New Outstanding: {new_outstanding}")
+				frappe.logger().info(f"  Grand Total: {frappe.db.get_value('Sales Invoice', invoice, 'grand_total') or 0}")
 				
 				# Update the invoice
 				frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)

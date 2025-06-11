@@ -282,10 +282,6 @@ class ProjectClaim(Document):
 		if self.for_project and self.for_project not in projects:
 			projects.append(self.for_project)
 		
-		# Also check project_contractor field
-		if self.project_contractor and self.project_contractor not in projects:
-			projects.append(self.project_contractor)
-		
 		# Get invoices to check for project contractors
 		invoices = [self.reference_invoice]
 		if self.invoice_references:

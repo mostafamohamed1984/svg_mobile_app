@@ -554,6 +554,7 @@ class ProjectClaim(Document):
 			if claim_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
 				# Get current outstanding amount
 				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
+				current_status = frappe.db.get_value("Sales Invoice", invoice, "status") or "Unknown"
 				
 				# Get tax amount for this invoice
 				tax_amount = invoice_tax_amounts.get(invoice, 0)
@@ -570,6 +571,7 @@ class ProjectClaim(Document):
 				new_outstanding = max(0, flt(current_outstanding) - flt(claim_reduction))
 				
 				frappe.logger().info(f"DETAILED CALCULATION for Invoice {invoice}:")
+				frappe.logger().info(f"  Current Status: {current_status}")
 				frappe.logger().info(f"  Current Outstanding: {current_outstanding}")
 				frappe.logger().info(f"  Claim Amount (base): {claim_amount}")
 				frappe.logger().info(f"  Tax Amount: {tax_amount}")
@@ -582,12 +584,22 @@ class ProjectClaim(Document):
 				
 				# FIXED: Update status based on new outstanding amount with proper thresholds
 				grand_total = frappe.db.get_value("Sales Invoice", invoice, "grand_total") or 0
+				
+				frappe.logger().info(f"STATUS UPDATE LOGIC for Invoice {invoice}:")
+				frappe.logger().info(f"  New Outstanding: {new_outstanding}")
+				frappe.logger().info(f"  Grand Total: {grand_total}")
+				frappe.logger().info(f"  Is new_outstanding <= 0.01? {flt(new_outstanding) <= 0.01}")
+				frappe.logger().info(f"  Is new_outstanding < grand_total - 0.01? {flt(new_outstanding) < flt(grand_total) - 0.01}")
+				frappe.logger().info(f"  Grand total - 0.01 = {flt(grand_total) - 0.01}")
+				
 				if flt(new_outstanding) <= 0.01:  # Consider amounts <= 0.01 as fully paid
 					frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
-					frappe.logger().info(f"Invoice {invoice} marked as Paid")
+					frappe.logger().info(f"Invoice {invoice} marked as Paid (outstanding <= 0.01)")
 				elif flt(new_outstanding) < flt(grand_total) - 0.01:  # Partially paid if outstanding is less than grand total
 					frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
-					frappe.logger().info(f"Invoice {invoice} marked as Partly Paid")
+					frappe.logger().info(f"Invoice {invoice} marked as Partly Paid (outstanding < grand_total)")
+				else:
+					frappe.logger().info(f"Invoice {invoice} status unchanged (outstanding equals grand_total)")
 				# If outstanding equals grand total, leave status unchanged (likely "Unpaid" or "Overdue")
 
 	def get_items_from_invoices(self, invoices):

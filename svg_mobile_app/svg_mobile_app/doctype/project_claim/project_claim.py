@@ -177,6 +177,9 @@ class ProjectClaim(Document):
 		# Update project-specific claim tracking if needed
 		self.update_project_claim_tracking()
 		
+		# Update Project Contractors fees and deposits table
+		self.update_project_contractors_fees_and_deposits()
+		
 		# Generate and attach PDF on submission using the existing print format
 		try:
 			import os
@@ -267,55 +270,56 @@ class ProjectClaim(Document):
 	
 	def update_project_claim_tracking(self):
 		"""Update project-specific claim tracking"""
+		# Get all project contractors referenced in this claim
 		projects = []
 		
-		# Get the main project
-		if self.for_project:
+		# Check project_references field first
+		if self.project_references:
+			project_refs = [p.strip() for p in self.project_references.split(',') if p.strip()]
+			projects.extend(project_refs)
+		
+		# Also check for_project field
+		if self.for_project and self.for_project not in projects:
 			projects.append(self.for_project)
 		
-		# Get additional projects from project_references
-		if self.project_references:
-			additional_projects = [proj.strip() for proj in self.project_references.split(',') if proj.strip()]
-			for proj in additional_projects:
-				if proj not in projects:
-					projects.append(proj)
+		# Also check project_contractor field
+		if self.project_contractor and self.project_contractor not in projects:
+			projects.append(self.project_contractor)
 		
-		# If we have multiple projects, we need to determine how much of the claim goes to each
+		# Get invoices to check for project contractors
+		invoices = [self.reference_invoice]
+		if self.invoice_references:
+			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+			invoices.extend(additional_invoices)
+		
+		# Get project contractors from invoices
+		for invoice in invoices:
+			project_contractor = frappe.db.get_value("Sales Invoice", invoice, "custom_for_project")
+			if project_contractor and project_contractor not in projects:
+				projects.append(project_contractor)
+		
 		if len(projects) > 1:
-			# Try to parse the being field to get project-specific amounts
-			import re
-			
-			# Create a map to track project claim amounts
-			project_amounts = {}
-			for proj in projects:
-				project_amounts[proj] = 0
-			
-			# Check if we have an invoice to project mapping from the being field
-			invoice_project_map = {}
+			# Multiple projects case - distribute amounts proportionally
 			invoice_amounts = {}
+			invoice_project_map = {}
 			
-			# Parse the being field to extract invoice, project, and amount information
-			lines = self.being.split('\n')
-			current_invoice = None
+			# Map each invoice to its project
+			for invoice in invoices:
+				project = frappe.db.get_value("Sales Invoice", invoice, "custom_for_project")
+				if project:
+					invoice_project_map[invoice] = project
+					
+					# Calculate amount for this invoice
+					invoice_total = 0
+					for item in self.claim_items:
+						if getattr(item, 'invoice_reference', None) == invoice:
+							invoice_total += flt(item.amount)
+					
+					if invoice_total > 0:
+						invoice_amounts[invoice] = invoice_total
 			
-			for line in lines:
-				# Check for invoice line
-				invoice_match = re.search(r'- ([\w\d-]+) \((.*?), (.*?)(,|$)', line)
-				if invoice_match:
-					current_invoice = invoice_match.group(1)
-					project_text = invoice_match.group(3).strip()
-					if project_text != 'No Project':
-						invoice_project_map[current_invoice] = project_text
-			
-				# Check for total claimed line
-				if current_invoice and 'Total Claimed:' in line:
-					amount_match = re.search(r'Total Claimed: ([0-9,.]+)', line)
-					if amount_match:
-						amount_text = amount_match.group(1).replace(',', '')
-						try:
-							invoice_amounts[current_invoice] = float(amount_text)
-						except ValueError:
-							pass  # Ignore if we can't parse the amount
+			# Distribute amounts to projects
+			project_amounts = {project: 0 for project in projects}
 			
 			# Now distribute the claim amount to each project based on the invoices
 			for invoice, amount in invoice_amounts.items():
@@ -357,6 +361,60 @@ class ProjectClaim(Document):
 						
 						# Update the project
 						frappe.db.set_value("Project Contractors", project, "claim_references", new_refs)
+
+	def update_project_contractors_fees_and_deposits(self):
+		"""Update the fees and deposits table in Project Contractors with claim references"""
+		# Get all invoices referenced in this claim
+		invoices = [self.reference_invoice]
+		if self.invoice_references:
+			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+			invoices.extend(additional_invoices)
+		
+		# Get all Project Contractors that have these invoices
+		project_contractors = frappe.get_all(
+			"Sales Invoice",
+			filters={
+				"name": ["in", invoices],
+				"custom_for_project": ["!=", ""]
+			},
+			fields=["custom_for_project"],
+			distinct=True
+		)
+		
+		# Update each Project Contractors document
+		for pc_record in project_contractors:
+			project_contractor_name = pc_record.custom_for_project
+			
+			try:
+				# Get the Project Contractors document
+				pc_doc = frappe.get_doc("Project Contractors", project_contractor_name)
+				
+				# Track if any changes were made
+				changes_made = False
+				
+				# Update fees and deposits items that match claim items
+				for claim_item in self.claim_items:
+					for fee_item in pc_doc.fees_and_deposits:
+						if fee_item.item == claim_item.item:
+							# Update the project_claim field if it exists
+							if hasattr(fee_item, 'project_claim'):
+								if not fee_item.project_claim:
+									fee_item.project_claim = self.name
+									changes_made = True
+								elif self.name not in fee_item.project_claim:
+									# If there are multiple claims, append this one
+									fee_item.project_claim = f"{fee_item.project_claim}, {self.name}"
+									changes_made = True
+				
+				# Save the document if changes were made
+				if changes_made:
+					pc_doc.save(ignore_permissions=True)
+					frappe.logger().info(f"Updated Project Contractors {project_contractor_name} with claim reference {self.name}")
+				
+			except Exception as e:
+				frappe.logger().error(f"Error updating Project Contractors {project_contractor_name}: {str(e)}")
+				# Don't fail the entire submission if this update fails
+				continue
 	
 	def validate_claim_amount(self):
 		"""Validate that claim amount does not exceed outstanding amount"""

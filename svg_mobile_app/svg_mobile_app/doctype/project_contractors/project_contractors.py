@@ -60,8 +60,8 @@ class ProjectContractors(Document):
 				
 				# Show success message
 				frappe.msgprint(
+					"<br>".join(created_invoices),
 					title="Sales Invoices Created",
-					message="<br>".join(created_invoices),
 					indicator="green"
 				)
 			

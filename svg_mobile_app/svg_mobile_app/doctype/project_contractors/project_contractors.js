@@ -44,35 +44,29 @@ frappe.ui.form.on("Project Contractors", {
     
     setup: function(frm) {
         setup_item_filter(frm);
+        frm.set_query('tax_template', function() {
+            return {
+                filters: {
+                    'company': frm.doc.company
+                }
+            };
+        });
     },
 
     tax_template: function(frm) {
-        // When tax template changes, show preview of taxes
         if (frm.doc.tax_template && frm.doc.total_items) {
             frm.call({
-                method: 'calculate_taxes_for_amount',
+                method: 'get_tax_preview',
                 doc: frm.doc,
                 args: {
                     amount: frm.doc.total_items
                 },
                 callback: function(r) {
-                    if (r.message && r.message.length > 0) {
-                        let tax_preview = '';
-                        let total_tax = 0;
-                        
-                        r.message.forEach(function(tax) {
-                            tax_preview += `${tax.description}: ${tax.rate}% = ${tax.tax_amount}<br>`;
-                            total_tax += tax.tax_amount;
-                        });
-                        
+                    if (r.message) {
                         frappe.msgprint({
-                            title: __('Tax Preview for Project Items'),
-                            message: `
-                                <strong>Net Amount:</strong> ${frm.doc.total_items}<br>
-                                ${tax_preview}
-                                <strong>Total Tax:</strong> ${total_tax}<br>
-                                <strong>Grand Total:</strong> ${frm.doc.total_items + total_tax}
-                            `
+                            title: __('Tax Preview'),
+                            message: __('Tax Amount: {0}', [format_currency(r.message.tax_amount, frm.doc.currency)]),
+                            indicator: 'blue'
                         });
                     }
                 }
@@ -94,6 +88,22 @@ frappe.ui.form.on("Project Contractors", {
                     }
                 }
             });
+        }
+    },
+
+    company: function(frm) {
+        if (frm.doc.company) {
+            frm.set_query('tax_template', function() {
+                return {
+                    filters: {
+                        'company': frm.doc.company
+                    }
+                };
+            });
+            // Clear tax template if company changes
+            if (frm.doc.tax_template) {
+                frm.set_value('tax_template', '');
+            }
         }
     }
 });

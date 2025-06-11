@@ -137,6 +137,28 @@ class ProjectContractors(Document):
 		frappe.msgprint(f"Sales Invoice {sales_invoice.name} created for fees and deposits")
 		return sales_invoice.name
 
+	@frappe.whitelist()
+	def get_tax_preview(self, amount):
+		"""Get tax preview for given amount using selected tax template"""
+		if not self.tax_template or not amount:
+			return None
+			
+		taxes = self.get_tax_template_taxes()
+		if not taxes:
+			return None
+			
+		total_tax = 0
+		for tax in taxes:
+			if tax.get('charge_type') == 'On Net Total':
+				tax_amount = flt(amount) * flt(tax.get('rate', 0)) / 100
+				total_tax += tax_amount
+				
+		return {
+			'tax_amount': total_tax,
+			'net_amount': flt(amount),
+			'grand_total': flt(amount) + total_tax
+		}
+
 
 @frappe.whitelist()
 @frappe.validate_and_sanitize_search_inputs

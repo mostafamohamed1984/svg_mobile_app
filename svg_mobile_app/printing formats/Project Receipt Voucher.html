@@ -193,7 +193,7 @@
 
         <div class="spaced-line custom-space">
             <p class="bold-text">Being&nbsp;&nbsp;&nbsp;&nbsp;</p>
-            <p class="inline-text">{{doc.being}}</p>
+            <div class="inline-text" style="white-space: pre-line; line-height: 1.8;">{{doc.being}}</div>
             <p class="bold-text">وذلك نظير &nbsp;&nbsp;&nbsp;&nbsp;</p>
         </div>
         
@@ -389,21 +389,18 @@
                 <tr class="tm_gray_bg">
                   <td class="tm_width_3 tm_primary_color tm_bold">Subtotal</td>
                   <td class="tm_width_3 tm_primary_color tm_bold tm_text_right">
-                    {{ invoice.currency }} {{ frappe.format(invoice.total, { fieldtype: "Currency" }) }}
+                    {% set net_amount = (frappe.utils.flt(doc.claim_amount) - frappe.utils.flt(doc.tax_amount)) %}
+                    {{ invoice.currency }} {{ frappe.format(net_amount, { fieldtype: "Currency" }) }}
                   </td>
                 </tr>
-                  </td>
-                </tr>
-                 {% for taxes in invoice.taxes %}
                   <tr class="tm_gray_bg">
-                    <td class="tm_width_3 tm_primary_color">Tax & Charges<span class="tm_ternary_color">({{taxes.rate}})%</span></td>
-                    <td class="tm_width_3 tm_primary_color tm_text_right">{{taxes.tax_amount}}</td>
-                    {% endfor %}
+                    <td class="tm_width_3 tm_primary_color">Tax Amount</td>
+                    <td class="tm_width_3 tm_primary_color tm_text_right">{{ invoice.currency }} {{ frappe.format(doc.tax_amount, { fieldtype: "Currency" }) }}</td>
                   </tr>
-                  <tr class="tm_accent_bg">
-                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color">Grand Total</td>
-                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_primary_color tm_text_right">
-                        {{ invoice.currency }} {{ frappe.format(invoice.grand_total, { fieldtype: "Currency" }) }}</td>
+                  <tr style="background-color: #27ae60;">
+                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_white_color">Grand Total</td>
+                    <td class="tm_width_3 tm_border_top_0 tm_bold tm_f16 tm_white_color tm_text_right">
+                        {{ invoice.currency }} {{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -415,9 +412,8 @@
 <div>
     <p>
         <strong style="color: #2c3e50; min-width: 150px; display: inline-block; font-size: 18px; ">Being/نظير :</strong> 
-    <span style="color: #000130; font-weight: bold; font-size: 14px;">{{ doc.being}}
-    </span>
     </p>
+    <div style="color: #000130; font-weight: bold; font-size: 14px; white-space: pre-line; line-height: 1.8; margin-top: 10px;">{{ doc.being}}</div>
 </div>
           </div>
         <div class="signature-container custom-space">

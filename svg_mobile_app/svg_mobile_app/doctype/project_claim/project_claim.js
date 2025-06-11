@@ -538,7 +538,7 @@ function fetch_customer_invoices_by_contractor(dialog, customer, project_contrac
 				'customer': customer,
 				'custom_for_project': project_contractor,
 				'docstatus': 1,
-				'status': ['in', ['Partly Paid', 'Unpaid', 'Overdue']],
+				'status': ['not in', ['Paid', 'Cancelled']],
 				'outstanding_amount': ['>', 0]
 			},
 			fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
@@ -798,7 +798,9 @@ function update_items_preview(dialog) {
 				args: {
 					doctype: 'Sales Invoice',
 					filters: {
-							'name': ['in', invoice_batch]
+							'name': ['in', invoice_batch],
+							'status': ['not in', ['Paid', 'Cancelled']],
+							'outstanding_amount': ['>', 0]
 					},
 						fields: ['name', 'posting_date', 'custom_for_project', 'status', 'due_date', 'grand_total', 'outstanding_amount'],
 						limit_page_length: 0  // No limit

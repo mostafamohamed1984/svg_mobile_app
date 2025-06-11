@@ -322,9 +322,25 @@ td { border-top: 1px solid #dbdfea; }
   .tm_dark_invoice .tm_gray_bg { background: rgba(255, 255, 255, 0.05) !important; }
   hr { background: #dbdfea !important; }
 
+  .footer-image {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    margin-top: 0 !important;
+  }
 
-    @page {
-        size: A4;
-    }
+  .signature-container {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  @page {
+    size: A4;
+    margin-bottom: 60px; /* Space for footer */
+  }
  
 }

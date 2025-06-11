@@ -45,8 +45,8 @@ function calculate_totals(frm) {
         });
     }
     
-    // Set the calculated totals
-    frm.set_value('total_items', items_total);
-    frm.set_value('total_fees_and_deposits', fees_total);
-    frm.set_value('grand_total', items_total + fees_total);
+    // Set the calculated totals using the correct field names that exist in the doctype
+    frm.set_value('total_amount', items_total);
+    frm.set_value('total_fees', fees_total);
+    frm.set_value('total_project_amount', items_total + fees_total);
 }

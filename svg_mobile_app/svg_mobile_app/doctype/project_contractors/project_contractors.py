@@ -26,9 +26,10 @@ class ProjectContractors(Document):
 			if fee.rate:
 				total_fees += flt(fee.rate)
 		
-		self.total_items = total_items
-		self.total_fees_and_deposits = total_fees
-		self.grand_total = total_items + total_fees
+		# Use the correct field names that exist in the doctype
+		self.total_amount = total_items
+		self.total_fees = total_fees
+		self.total_project_amount = total_items + total_fees
 
 	def get_tax_template_taxes(self):
 		"""Get taxes from the selected tax template"""

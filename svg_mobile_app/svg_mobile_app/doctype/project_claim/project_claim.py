@@ -1008,10 +1008,10 @@ def create_journal_entry_from_claim(claim_name):
 	# Create the journal entry
 	je_name = claim.create_journal_entry(invoices)
 	
-	# FIXED: Update invoice outstanding amounts after journal entry creation
+	# NOTE: update_invoice_outstanding_amounts is already called during claim submission
+	# No need to call it again here as it would cause double reduction
 	if je_name:
-		claim.update_invoice_outstanding_amounts(invoices)
-		frappe.db.commit()  # Ensure the updates are saved
+		frappe.db.commit()  # Ensure the journal entry is saved
 	
 	# Return the journal entry name
 	return je_name

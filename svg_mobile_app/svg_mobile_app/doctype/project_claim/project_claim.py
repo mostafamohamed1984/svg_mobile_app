@@ -928,3 +928,31 @@ def create_journal_entry_from_claim(claim_name):
 	
 	# Return the journal entry name
 	return je_name
+
+@frappe.whitelist()
+def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield, start, page_len, filters):
+	"""Get project contractors that have outstanding invoices for the given customer"""
+	customer = filters.get('customer')
+	if not customer:
+		return []
+	
+	# Query to get project contractors that have outstanding invoices
+	query = """
+		SELECT DISTINCT pc.name, pc.project_name, pc.customer_name
+		FROM `tabProject Contractors` pc
+		INNER JOIN `tabSales Invoice` si ON si.custom_for_project = pc.name
+		WHERE pc.customer = %(customer)s
+		AND si.docstatus = 1
+		AND si.status NOT IN ('Paid', 'Cancelled')
+		AND si.outstanding_amount > 0
+		AND (pc.name LIKE %(txt)s OR pc.project_name LIKE %(txt)s)
+		ORDER BY pc.project_name
+		LIMIT %(start)s, %(page_len)s
+	"""
+	
+	return frappe.db.sql(query, {
+		'customer': customer,
+		'txt': f'%{txt}%',
+		'start': start,
+		'page_len': page_len
+	})

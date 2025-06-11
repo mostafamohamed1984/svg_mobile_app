@@ -292,9 +292,20 @@ function show_bulk_invoice_dialog(frm) {
 				fieldtype: 'Link',
 				options: 'Project Contractors',
 				get_query: function() {
+					let customer = dialog.get_value('customer');
+					if (!customer) {
+						return {
+							filters: {
+								'name': 'no-match' // Return no results if no customer selected
+							}
+						};
+					}
+					
+					// Return a query that filters project contractors based on having outstanding invoices
 					return {
+						query: 'svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.get_project_contractors_with_outstanding_invoices',
 						filters: {
-							'customer': dialog.get_value('customer')
+							'customer': customer
 						}
 					};
 				},

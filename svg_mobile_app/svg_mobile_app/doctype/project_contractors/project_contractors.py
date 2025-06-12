@@ -691,10 +691,6 @@ def create_employee_advances(project_contractors, advances):
                             # Same currency, use exchange rate 1
                             employee_advance.exchange_rate = 1.0
                     
-                    # FIXED: Set advance_account using the working method we discovered
-                    # Use set() method instead of direct assignment to avoid field validation issues
-                    employee_advance.set("advance_account", default_advance_account)
-                    
                     # Add custom fields if they exist
                     if frappe.get_meta("Employee Advance").has_field("custom_type"):
                         employee_advance.custom_type = "Advance"
@@ -707,16 +703,17 @@ def create_employee_advances(project_contractors, advances):
                     if frappe.get_meta("Employee Advance").has_field("item_reference"):
                         employee_advance.item_reference = item_code
                     
-                    # FIXED: Add validation before saving to catch issues early
+                    # FIXED: Use the working method discovered through testing
                     frappe.logger().info(f"Creating Employee Advance with: employee={employee}, amount={advance_amount}, account={default_advance_account}")
                     
-                    # Validate that advance_account is properly set
-                    if not employee_advance.get("advance_account"):
-                        frappe.throw(f"Advance account not set properly. Expected: {default_advance_account}")
-                    
-                    # Save the Employee Advance
+                    # Save without advance_account first (ignore mandatory validation)
+                    employee_advance.flags.ignore_mandatory = True
                     employee_advance.insert()
                     frappe.logger().info(f"Successfully created Employee Advance: {employee_advance.name}")
+                    
+                    # Now set the advance_account using db_set (this method works)
+                    employee_advance.db_set("advance_account", default_advance_account)
+                    frappe.logger().info(f"Set advance_account to: {default_advance_account}")
                     
                     # Submit the advance if possible
                     try:

@@ -41,20 +41,49 @@ class ProjectContractors(Document):
 		created_invoices = []
 		
 		try:
+			# DEBUGGING: Log the start of the process
+			frappe.logger().info(f"Starting automatic sales invoice creation for Project Contractors: {self.name}")
+			frappe.logger().info(f"Customer: {self.customer}, Company: {self.company}")
+			frappe.logger().info(f"Items count: {len(self.items) if self.items else 0}")
+			frappe.logger().info(f"Fees count: {len(self.fees_and_deposits) if self.fees_and_deposits else 0}")
+			
+			# DEBUGGING: Check if customer exists
+			if not frappe.db.exists("Customer", self.customer):
+				frappe.throw(f"Customer {self.customer} does not exist in the system")
+			
+			# DEBUGGING: Check if company exists
+			if not frappe.db.exists("Company", self.company):
+				frappe.throw(f"Company {self.company} does not exist in the system")
+			
 			# Create invoice for project items (taxable) if items exist
 			if self.items and any(item.rate for item in self.items):
-				taxable_invoice = self.create_taxable_sales_invoice()
-				if taxable_invoice:
-					created_invoices.append(f"Taxable Invoice: {taxable_invoice}")
+				frappe.logger().info("Creating taxable sales invoice for project items")
+				try:
+					taxable_invoice = self.create_taxable_sales_invoice()
+					if taxable_invoice:
+						created_invoices.append(f"Taxable Invoice: {taxable_invoice}")
+						frappe.logger().info(f"Successfully created taxable invoice: {taxable_invoice}")
+				except Exception as e:
+					frappe.logger().error(f"Failed to create taxable invoice: {str(e)}")
+					frappe.log_error(f"Taxable invoice creation failed for {self.name}: {str(e)}", "Project Contractors Invoice Creation")
+					raise e
 			
 			# Create invoice for fees and deposits (non-taxable) if fees exist
 			if self.fees_and_deposits and any(fee.rate for fee in self.fees_and_deposits):
-				non_taxable_invoice = self.create_non_taxable_sales_invoice()
-				if non_taxable_invoice:
-					created_invoices.append(f"Non-Taxable Invoice: {non_taxable_invoice}")
+				frappe.logger().info("Creating non-taxable sales invoice for fees and deposits")
+				try:
+					non_taxable_invoice = self.create_non_taxable_sales_invoice()
+					if non_taxable_invoice:
+						created_invoices.append(f"Non-Taxable Invoice: {non_taxable_invoice}")
+						frappe.logger().info(f"Successfully created non-taxable invoice: {non_taxable_invoice}")
+				except Exception as e:
+					frappe.logger().error(f"Failed to create non-taxable invoice: {str(e)}")
+					frappe.log_error(f"Non-taxable invoice creation failed for {self.name}: {str(e)}", "Project Contractors Invoice Creation")
+					raise e
 			
 			# Update status if any invoices were created
 			if created_invoices:
+				frappe.logger().info(f"Updating sales_invoice_created flag for {self.name}")
 				self.sales_invoice_created = 1
 				self.db_set('sales_invoice_created', 1, update_modified=False)
 				
@@ -64,9 +93,14 @@ class ProjectContractors(Document):
 					title="Sales Invoices Created",
 					indicator="green"
 				)
+				frappe.logger().info(f"Successfully completed automatic sales invoice creation for {self.name}")
+			else:
+				frappe.logger().warning(f"No invoices were created for {self.name} - no items with rates found")
 			
 		except Exception as e:
-			frappe.log_error(f"Error creating automatic sales invoices: {str(e)}")
+			error_msg = f"Error creating automatic sales invoices for {self.name}: {str(e)}"
+			frappe.logger().error(error_msg)
+			frappe.log_error(error_msg, "Project Contractors Invoice Creation")
 			frappe.throw(f"Failed to create sales invoices: {str(e)}")
 
 	def create_taxable_sales_invoice(self):
@@ -74,10 +108,19 @@ class ProjectContractors(Document):
 		# Filter items with rates
 		items_with_rates = [item for item in self.items if hasattr(item, 'rate') and item.rate and item.rate > 0]
 		
+		frappe.logger().info(f"Filtered items with rates: {len(items_with_rates)} items")
+		for item in items_with_rates:
+			frappe.logger().info(f"Item: {item.item}, Rate: {item.rate}")
+			# DEBUGGING: Check if item exists
+			if not frappe.db.exists("Item", item.item):
+				frappe.throw(f"Item {item.item} does not exist in the system")
+		
 		if not items_with_rates:
+			frappe.logger().info("No items with rates found for taxable invoice")
 			return None
 
 		# Create sales invoice
+		frappe.logger().info("Creating new Sales Invoice document")
 		sales_invoice = frappe.new_doc("Sales Invoice")
 		sales_invoice.customer = self.customer
 		sales_invoice.company = self.company
@@ -85,10 +128,13 @@ class ProjectContractors(Document):
 		sales_invoice.posting_date = frappe.utils.today()
 		sales_invoice.custom_for_project = self.name  # Link back to project contractors
 		
+		frappe.logger().info(f"Sales Invoice basic fields set - Customer: {self.customer}, Company: {self.company}")
+		
 		# Add items
 		for item in items_with_rates:
 			# Use custom_rate if available, otherwise use rate
 			rate = getattr(item, 'custom_rate', None) or item.rate
+			frappe.logger().info(f"Adding item {item.item} with rate {rate}")
 			sales_invoice.append("items", {
 				"item_code": item.item,
 				"qty": getattr(item, 'qty', 1) or 1,
@@ -98,9 +144,21 @@ class ProjectContractors(Document):
 		
 		# Apply tax template if selected
 		if self.tax_template:
+			frappe.logger().info(f"Applying tax template: {self.tax_template}")
 			try:
+				# DEBUGGING: Check if tax template exists
+				if not frappe.db.exists("Sales Taxes and Charges Template", self.tax_template):
+					frappe.throw(f"Tax template {self.tax_template} does not exist in the system")
+				
 				tax_template = frappe.get_doc("Sales Taxes and Charges Template", self.tax_template)
+				frappe.logger().info(f"Tax template loaded with {len(tax_template.taxes)} tax entries")
+				
 				for tax in tax_template.taxes:
+					frappe.logger().info(f"Adding tax: {tax.account_head}, Rate: {tax.rate}")
+					# DEBUGGING: Check if account exists
+					if not frappe.db.exists("Account", tax.account_head):
+						frappe.throw(f"Tax account {tax.account_head} does not exist in the system")
+					
 					sales_invoice.append("taxes", {
 						"charge_type": tax.charge_type,
 						"account_head": tax.account_head,
@@ -109,11 +167,25 @@ class ProjectContractors(Document):
 						"tax_amount": tax.tax_amount if tax.charge_type == "Actual" else 0
 					})
 			except Exception as e:
+				frappe.logger().error(f"Error applying tax template: {str(e)}")
 				frappe.log_error(f"Error applying tax template: {str(e)}")
+				raise e
+		else:
+			frappe.logger().info("No tax template selected")
 		
 		# Save and submit
-		sales_invoice.save()
-		sales_invoice.submit()
+		try:
+			frappe.logger().info("Saving sales invoice")
+			sales_invoice.save()
+			frappe.logger().info(f"Sales invoice saved with name: {sales_invoice.name}")
+			
+			frappe.logger().info("Submitting sales invoice")
+			sales_invoice.submit()
+			frappe.logger().info(f"Sales invoice submitted successfully: {sales_invoice.name}")
+		except Exception as e:
+			frappe.logger().error(f"Error saving/submitting sales invoice: {str(e)}")
+			frappe.log_error(f"Error saving/submitting taxable sales invoice: {str(e)}")
+			raise e
 		
 		return sales_invoice.name
 
@@ -122,10 +194,19 @@ class ProjectContractors(Document):
 		# Filter fees with rates
 		fees_with_rates = [fee for fee in self.fees_and_deposits if hasattr(fee, 'rate') and fee.rate and fee.rate > 0]
 		
+		frappe.logger().info(f"Filtered fees with rates: {len(fees_with_rates)} fees")
+		for fee in fees_with_rates:
+			frappe.logger().info(f"Fee Item: {fee.item}, Rate: {fee.rate}")
+			# DEBUGGING: Check if item exists
+			if not frappe.db.exists("Item", fee.item):
+				frappe.throw(f"Fee item {fee.item} does not exist in the system")
+		
 		if not fees_with_rates:
+			frappe.logger().info("No fees with rates found for non-taxable invoice")
 			return None
 
 		# Create sales invoice
+		frappe.logger().info("Creating new Sales Invoice document for fees")
 		sales_invoice = frappe.new_doc("Sales Invoice")
 		sales_invoice.customer = self.customer
 		sales_invoice.company = self.company
@@ -133,10 +214,13 @@ class ProjectContractors(Document):
 		sales_invoice.posting_date = frappe.utils.today()
 		sales_invoice.custom_for_project = self.name  # Link back to project contractors
 		
+		frappe.logger().info(f"Non-taxable Sales Invoice basic fields set - Customer: {self.customer}, Company: {self.company}")
+		
 		# Add fees and deposits (no taxes applied)
 		for fee in fees_with_rates:
 			# Use custom_rate if available, otherwise use rate
 			rate = getattr(fee, 'custom_rate', None) or fee.rate
+			frappe.logger().info(f"Adding fee item {fee.item} with rate {rate}")
 			sales_invoice.append("items", {
 				"item_code": fee.item,
 				"qty": getattr(fee, 'qty', 1) or 1,
@@ -145,8 +229,18 @@ class ProjectContractors(Document):
 			})
 		
 		# Save and submit (no taxes for fees)
-		sales_invoice.save()
-		sales_invoice.submit()
+		try:
+			frappe.logger().info("Saving non-taxable sales invoice")
+			sales_invoice.save()
+			frappe.logger().info(f"Non-taxable sales invoice saved with name: {sales_invoice.name}")
+			
+			frappe.logger().info("Submitting non-taxable sales invoice")
+			sales_invoice.submit()
+			frappe.logger().info(f"Non-taxable sales invoice submitted successfully: {sales_invoice.name}")
+		except Exception as e:
+			frappe.logger().error(f"Error saving/submitting non-taxable sales invoice: {str(e)}")
+			frappe.log_error(f"Error saving/submitting non-taxable sales invoice: {str(e)}")
+			raise e
 		
 		return sales_invoice.name
 

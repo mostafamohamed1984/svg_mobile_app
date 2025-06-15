@@ -221,7 +221,7 @@ function createFeesDepositsInvoice(frm, customerCurrency, priceList) {
                             frappe.msgprint(__('Fees and Deposits Sales Invoice created successfully'));
                             
                             // Navigate to the newly created Sales Invoice for Fees and Deposits
-                            frappe.set_route('Form', 'Sales Invoice', response.message.name);
+                            // frappe.set_route('Form', 'Sales Invoice', response.message.name);
                         },
                         error: function(err) {
                             frappe.msgprint(__('Error updating Project Contractors'));
@@ -232,7 +232,7 @@ function createFeesDepositsInvoice(frm, customerCurrency, priceList) {
                     frappe.msgprint(__('Fees and Deposits Sales Invoice created successfully'));
                     
                     // Navigate to the newly created Sales Invoice for Fees and Deposits
-                    frappe.set_route('Form', 'Sales Invoice', response.message.name);
+                    // frappe.set_route('Form', 'Sales Invoice', response.message.name);
                 }
             }
         },
@@ -330,7 +330,7 @@ function createAdditionalFees(frm) {
                                         callback: function() {
                                             frm.refresh();
                                             frappe.msgprint(__('Additional Fees Invoice created successfully'));
-                                            frappe.set_route('Form', 'Sales Invoice', response.message.name);
+                                            // frappe.set_route('Form', 'Sales Invoice', response.message.name);
                                         },
                                         error: function(err) {
                                             frappe.msgprint(__('Error updating Project Contractors'));

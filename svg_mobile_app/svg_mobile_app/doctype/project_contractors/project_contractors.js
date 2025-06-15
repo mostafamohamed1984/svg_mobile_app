@@ -300,35 +300,7 @@ function create_employee_advances(frm, eligible_items) {
                             filters: {
                                 'status': 'Active'
                             },
-                            query: function(txt, callback) {
-                                // Custom query to format results as "ID - Name" 
-                                frappe.call({
-                                    method: "frappe.client.get_list",
-                                    args: {
-                                        doctype: "Employee",
-                                        filters: {
-                                            status: "Active",
-                                            name: ["like", `%${txt}%`]
-                                        },
-                                        fields: ["name", "employee_name"],
-                                        limit: 20,
-                                        order_by: "name"
-                                    },
-                                    callback: function(r) {
-                                        if (r.message) {
-                                            // Format results to show ID first, then name
-                                            const results = r.message.map(emp => {
-                                                return [
-                                                    emp.name, // value (what gets selected)
-                                                    emp.name, // label (what shows in dropdown)
-                                                    emp.employee_name || '' // description
-                                                ];
-                                            });
-                                            callback(results);
-                                        }
-                                    }
-                                });
-                            }
+                            query: "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.get_employees_for_advance"
                         };
                     }
                 },

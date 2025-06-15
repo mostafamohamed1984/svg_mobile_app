@@ -1154,3 +1154,79 @@ def get_exchange_rate(from_currency, to_currency):
     except Exception as e:
         frappe.log_error(f"Error getting exchange rate: {str(e)}")
         return 1.0
+
+@frappe.whitelist()
+@frappe.validate_and_sanitize_search_inputs
+def get_employees_for_advance(doctype, txt, searchfield, start, page_len, filters):
+    """
+    Custom query function for Employee Link field in Employee Advance creation
+    Returns employees with ID as primary display and name as description
+    
+    Args:
+        doctype (str): DocType name (Employee)
+        txt (str): Search text
+        searchfield (str): Field to search in
+        start (int): Start index for pagination
+        page_len (int): Number of results per page
+        filters (dict): Additional filters
+    
+    Returns:
+        list: List of tuples [employee_id, employee_id, employee_name]
+    """
+    try:
+        # Build the search condition
+        search_condition = ""
+        search_params = []
+        
+        if txt:
+            # Search in both employee ID (name) and employee name
+            search_condition = """
+                AND (
+                    `tabEmployee`.`name` LIKE %s 
+                    OR `tabEmployee`.`employee_name` LIKE %s
+                )
+            """
+            search_params = [f"%{txt}%", f"%{txt}%"]
+        
+        # Build the query
+        query = f"""
+            SELECT 
+                `tabEmployee`.`name` as employee_id,
+                `tabEmployee`.`name` as display_name,
+                `tabEmployee`.`employee_name` as description
+            FROM `tabEmployee`
+            WHERE `tabEmployee`.`status` = 'Active'
+            {search_condition}
+            ORDER BY `tabEmployee`.`name`
+            LIMIT %s OFFSET %s
+        """
+        
+        # Add pagination parameters
+        search_params.extend([page_len, start])
+        
+        # Execute the query
+        employees = frappe.db.sql(query, search_params, as_dict=True)
+        
+        # Format results for Link field
+        # Format: [value, label, description]
+        results = []
+        for emp in employees:
+            results.append([
+                emp.employee_id,  # value (what gets selected)
+                emp.employee_id,  # label (what shows as main text)
+                emp.description or ''  # description (what shows as secondary text)
+            ])
+        
+        return results
+        
+    except Exception as e:
+        frappe.log_error(f"Error in get_employees_for_advance: {str(e)}")
+        # Fallback to standard employee search
+        return frappe.db.sql("""
+            SELECT name, name, employee_name
+            FROM `tabEmployee`
+            WHERE status = 'Active'
+            AND name LIKE %s
+            ORDER BY name
+            LIMIT %s OFFSET %s
+        """, (f"%{txt}%", page_len, start))

@@ -66,8 +66,16 @@ class ProjectContractors(Document):
 				)
 			
 		except Exception as e:
-			frappe.log_error(f"Error creating automatic sales invoices: {str(e)}")
-			frappe.throw(f"Failed to create sales invoices: {str(e)}")
+			# Create a shorter error message for logging
+			error_msg = str(e)
+			if len(error_msg) > 100:
+				error_msg = error_msg[:100] + "..."
+			
+			frappe.log_error(
+				title=f"Sales Invoice Creation Error",
+				message=f"Project Contractors: {self.name}\nError: {str(e)}"
+			)
+			frappe.throw(f"Failed to create sales invoices: {error_msg}")
 
 	def create_taxable_sales_invoice(self):
 		"""Create sales invoice for project items with taxes"""
@@ -77,6 +85,10 @@ class ProjectContractors(Document):
 		if not items_with_rates:
 			return None
 
+		# Get customer and company details for currency handling
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		company_doc = frappe.get_doc("Company", self.company)
+		
 		# Create sales invoice
 		sales_invoice = frappe.new_doc("Sales Invoice")
 		sales_invoice.customer = self.customer
@@ -84,6 +96,20 @@ class ProjectContractors(Document):
 		sales_invoice.project_name = self.project_name
 		sales_invoice.posting_date = frappe.utils.today()
 		sales_invoice.custom_for_project = self.name  # Link back to project contractors
+		
+		# Set currency and price list from customer or company
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		else:
+			# Fallback to company currency
+			sales_invoice.currency = company_doc.default_currency
+			sales_invoice.price_list_currency = company_doc.default_currency
+		
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+		
+		sales_invoice.ignore_pricing_rule = 1
 		
 		# Add items
 		for item in items_with_rates:
@@ -125,6 +151,10 @@ class ProjectContractors(Document):
 		if not fees_with_rates:
 			return None
 
+		# Get customer and company details for currency handling
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		company_doc = frappe.get_doc("Company", self.company)
+		
 		# Create sales invoice
 		sales_invoice = frappe.new_doc("Sales Invoice")
 		sales_invoice.customer = self.customer
@@ -132,6 +162,20 @@ class ProjectContractors(Document):
 		sales_invoice.project_name = f"{self.project_name} - Fees"
 		sales_invoice.posting_date = frappe.utils.today()
 		sales_invoice.custom_for_project = self.name  # Link back to project contractors
+		
+		# Set currency and price list from customer or company
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		else:
+			# Fallback to company currency
+			sales_invoice.currency = company_doc.default_currency
+			sales_invoice.price_list_currency = company_doc.default_currency
+		
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+		
+		sales_invoice.ignore_pricing_rule = 1
 		
 		# Add fees and deposits (no taxes applied)
 		for fee in fees_with_rates:
@@ -244,12 +288,30 @@ class ProjectContractors(Document):
 		if not self.items:
 			frappe.throw("No project items found to create invoice")
 		
+		# Get customer and company details for currency handling
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		company_doc = frappe.get_doc("Company", self.company)
+		
 		# Create sales invoice
 		sales_invoice = frappe.new_doc("Sales Invoice")
 		sales_invoice.customer = self.customer
 		sales_invoice.company = self.company
 		sales_invoice.project_name = self.project_name
 		sales_invoice.custom_for_project = self.name
+		
+		# Set currency and price list from customer or company
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		else:
+			# Fallback to company currency
+			sales_invoice.currency = company_doc.default_currency
+			sales_invoice.price_list_currency = company_doc.default_currency
+		
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+		
+		sales_invoice.ignore_pricing_rule = 1
 		
 		# Add items
 		for item in self.items:
@@ -290,12 +352,30 @@ class ProjectContractors(Document):
 		if not self.fees_and_deposits:
 			frappe.throw("No fees and deposits found to create invoice")
 		
+		# Get customer and company details for currency handling
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		company_doc = frappe.get_doc("Company", self.company)
+		
 		# Create sales invoice
 		sales_invoice = frappe.new_doc("Sales Invoice")
 		sales_invoice.customer = self.customer
 		sales_invoice.company = self.company
 		sales_invoice.project_name = self.project_name
 		sales_invoice.custom_for_project = self.name
+		
+		# Set currency and price list from customer or company
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		else:
+			# Fallback to company currency
+			sales_invoice.currency = company_doc.default_currency
+			sales_invoice.price_list_currency = company_doc.default_currency
+		
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+		
+		sales_invoice.ignore_pricing_rule = 1
 		
 		# Add fees and deposits (no taxes applied)
 		for fee in self.fees_and_deposits:

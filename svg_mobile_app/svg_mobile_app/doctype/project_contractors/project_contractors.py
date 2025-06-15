@@ -651,14 +651,31 @@ def create_employee_advances(project_contractors, advances):
         # Validate input data
         validation_errors = []
         for i, advance in enumerate(advances):
-            if not advance.get("employee"):
+            employee_value = advance.get("employee")
+            frappe.logger().info(f"Advance {i+1}: Raw employee value: '{employee_value}' (type: {type(employee_value)}, length: {len(str(employee_value)) if employee_value else 'None'})")
+            
+            if not employee_value:
                 validation_errors.append(f"Advance {i+1}: Employee is required")
             else:
+                # Clean the employee value
+                employee_clean = str(employee_value).strip()
+                frappe.logger().info(f"Advance {i+1}: Cleaned employee value: '{employee_clean}'")
+                
                 # Check if employee exists and is active
-                if not frappe.db.exists("Employee", advance["employee"]):
-                    validation_errors.append(f"Advance {i+1}: Employee {advance['employee']} does not exist")
-                elif frappe.get_value("Employee", advance["employee"], "status") != "Active":
-                    validation_errors.append(f"Advance {i+1}: Employee {advance['employee']} is not active")
+                employee_exists = frappe.db.exists("Employee", employee_clean)
+                frappe.logger().info(f"Advance {i+1}: Employee exists check: {employee_exists}")
+                
+                if not employee_exists:
+                    # Let's also check what employees are actually in the database
+                    all_employees = frappe.db.sql("SELECT name, employee_name FROM `tabEmployee` WHERE status = 'Active' LIMIT 10", as_dict=True)
+                    frappe.logger().info(f"Sample active employees in database: {all_employees}")
+                    
+                    validation_errors.append(f"Advance {i+1}: Employee '{employee_clean}' does not exist")
+                else:
+                    employee_status = frappe.get_value("Employee", employee_clean, "status")
+                    frappe.logger().info(f"Advance {i+1}: Employee status: {employee_status}")
+                    if employee_status != "Active":
+                        validation_errors.append(f"Advance {i+1}: Employee '{employee_clean}' is not active")
             
             if not advance.get("advance_amount") or float(advance.get("advance_amount", 0)) <= 0:
                 validation_errors.append(f"Advance {i+1}: Valid advance amount is required")

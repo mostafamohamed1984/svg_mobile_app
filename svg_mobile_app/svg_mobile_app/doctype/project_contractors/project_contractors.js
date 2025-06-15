@@ -360,7 +360,24 @@ function create_employee_advances(frm, eligible_items) {
         const input = container.find('input');
         if (!input.length) return fieldType === 'Currency' ? 0 : '';
         
-        const value = input.val() || '';
+        let value = input.val() || '';
+        
+        // For Link fields, try to get the actual selected value
+        if (container.find('.link-field').length || input.attr('data-fieldtype') === 'Link') {
+            // Check if there's a Frappe control attached
+            const control = container.find('input').data('control');
+            if (control && control.get_value) {
+                value = control.get_value() || '';
+            }
+        }
+        
+        // Clean up the value - remove extra whitespace
+        if (typeof value === 'string') {
+            value = value.trim();
+        }
+        
+        console.log(`getFieldValue: container=`, container, `fieldType=${fieldType}`, `rawValue="${input.val()}"`, `cleanedValue="${value}"`);
+        
         return fieldType === 'Currency' ? flt(value) : value;
     }
 
@@ -478,6 +495,12 @@ function create_employee_advances(frm, eligible_items) {
                 const employeeFieldContainer = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.employee-field-container-${entry.id}`);
                 const employee = getFieldValue(employeeFieldContainer);
                 
+                // Debug: Log the employee value being extracted
+                console.log(`Entry ${entry.id}: Employee field container:`, employeeFieldContainer);
+                console.log(`Entry ${entry.id}: Employee value extracted:`, employee);
+                console.log(`Entry ${entry.id}: Employee value type:`, typeof employee);
+                console.log(`Entry ${entry.id}: Employee value length:`, employee ? employee.length : 'null');
+                
                 // Get the amount using consistent helper
                 const amountFieldContainer = dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.amount-field-container-${entry.id}`);
                 const amount = getFieldValue(amountFieldContainer, 'Currency');
@@ -490,14 +513,17 @@ function create_employee_advances(frm, eligible_items) {
                 totalForItem += amount;
                 
                 if (employee && amount > 0) {
-                    advances_to_create.push({
+                    const advanceData = {
                         employee: employee,
                         purpose: purpose,
                         advance_amount: amount,
                         item: item.item,
                         project_contractors: frm.doc.name,
                         invoice_reference: item.invoice_reference || null
-                    });
+                    };
+                    
+                    console.log(`Adding advance data:`, advanceData);
+                    advances_to_create.push(advanceData);
                 }
             });
             

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "hpkv-memory-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://memory-mcp.hpkv.io/sse",
+        "--transport",
+        "sse-only",
+        "--debug"
+      ]
+    }
+  }
+} 

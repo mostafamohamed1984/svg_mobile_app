@@ -16,6 +16,7 @@
   "project_amount",
   "profit_ratio",
   "profit_value",
+  "tax_template",
   "add_tender_fees",
   "sales_invoice_created",
   "project_items_section",
@@ -75,9 +76,21 @@
   },
   {
    "fieldname": "profit_value",
-   "fieldtype": "Float",
-   "in_standard_filter": 1,
-   "label": "Profit Value"
+   "fieldtype": "Currency",
+   "label": "Profit Value",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "tax_template",
+   "fieldtype": "Link",
+   "label": "Tax Template",
+   "options": "Sales Taxes and Charges Template",
+   "description": "Tax template to apply on project items (taxable items only)"
+  },
+  {
+   "fieldname": "column_break_12",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "section_break_a2ic",
@@ -184,11 +197,11 @@
  "is_submittable": 1,
  "links": [
   {
-   "link_doctype": "Sales Invoice",
-   "link_fieldname": "custom_for_project"
+   "link_doctype": "Project Claim",
+   "link_fieldname": "for_project"
   }
  ],
- "modified": "2025-05-22 13:55:56.535571",
+ "modified": "2025-06-03 09:58:02.855628",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",
@@ -212,7 +225,6 @@
    "write": 1
   }
  ],
- "row_format": "Dynamic",
  "search_fields": "project_name,customer_name,customer",
  "sort_field": "modified",
  "sort_order": "DESC",

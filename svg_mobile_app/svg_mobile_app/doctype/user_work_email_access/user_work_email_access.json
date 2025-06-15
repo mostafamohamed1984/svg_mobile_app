@@ -1,0 +1,71 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-10 12:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "email_account",
+  "email_id",
+  "access_type",
+  "granted_by",
+  "granted_date",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "email_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Email Account",
+   "options": "Email Account",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "email_account.email_id",
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Email ID",
+   "read_only": 1
+  },
+  {
+   "default": "Read Only",
+   "fieldname": "access_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Access Type",
+   "options": "Read Only\nRead & Send\nFull Access"
+  },
+  {
+   "fieldname": "granted_by",
+   "fieldtype": "Link",
+   "label": "Granted By",
+   "options": "User"
+  },
+  {
+   "default": "Today",
+   "fieldname": "granted_date",
+   "fieldtype": "Date",
+   "label": "Granted Date"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-10 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "User Work Email Access",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

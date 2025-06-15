@@ -95,12 +95,63 @@
     font-size: 0.9em;
 }
 
+.inbox-item-tag {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
 .inbox-item-tag .label {
-    font-size: 0.85em;
-    padding: 3px 8px;
-    border-radius: 10px;
-    background-color: #f0f4f7;
-    color: #505a62;
+    font-size: 0.8em;
+    padding: 2px 6px;
+    border-radius: 8px;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+    margin: 1px 0;
+}
+
+/* Multiple tag handling */
+.inbox-item-tag .label:not(:last-child)::after {
+    content: "";
+    margin-right: 2px;
+}
+
+/* Tag color variations for better visual distinction */
+.inbox-item-tag .label:nth-child(1) {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-color: #bbdefb;
+}
+
+.inbox-item-tag .label:nth-child(2) {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border-color: #ce93d8;
+}
+
+.inbox-item-tag .label:nth-child(3) {
+    background-color: #e8f5e8;
+    color: #388e3c;
+    border-color: #a5d6a7;
+}
+
+.inbox-item-tag .label:nth-child(4) {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border-color: #ffcc02;
+}
+
+.inbox-item-tag .label:nth-child(n+5) {
+    background-color: #fce4ec;
+    color: #c2185b;
+    border-color: #f8bbd9;
 }
 
 .btn-show-email {
@@ -293,4 +344,96 @@
     background-color: #fff3cd;
     padding: 1px 2px;
     border-radius: 2px;
+}
+
+.email-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 5px;
+}
+
+.email-tags .label {
+    font-size: 0.85em;
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-block;
+    font-weight: 500;
+    border: 1px solid;
+}
+
+/* Email popup tag color variations */
+.email-tags .label:nth-child(1) {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-color: #bbdefb;
+}
+
+.email-tags .label:nth-child(2) {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border-color: #ce93d8;
+}
+
+.email-tags .label:nth-child(3) {
+    background-color: #e8f5e8;
+    color: #388e3c;
+    border-color: #a5d6a7;
+}
+
+.email-tags .label:nth-child(4) {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border-color: #ffcc02;
+}
+
+.email-tags .label:nth-child(n+5) {
+    background-color: #fce4ec;
+    color: #c2185b;
+    border-color: #f8bbd9;
+}
+
+/* Email Account Dropdown Styling */
+#email-account-filter option[disabled] {
+    font-weight: bold;
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+    font-style: italic;
+}
+
+#email-account-filter optgroup {
+    font-weight: bold;
+    color: #495057;
+}
+
+.email-accounts-row .text-muted {
+    font-size: 0.85em;
+    margin-top: 3px;
+}
+
+/* Email type indicators in the inbox list */
+.inbox-item-sender .email-type-badge {
+    font-size: 0.75em;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-left: 5px;
+    font-weight: 500;
+}
+
+.email-type-personal {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.email-type-work {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border: 1px solid #ce93d8;
+}
+
+.email-type-fallback {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border: 1px solid #ffcc02;
 }

@@ -151,13 +151,13 @@
    "fieldname": "district",
    "fieldtype": "Link",
    "label": "District",
-   "options": "District"
+   "options": "Project Districts"
   },
   {
    "fieldname": "regions",
    "fieldtype": "Link",
    "label": "Regions",
-   "options": "Regions"
+   "options": "Project Region"
   },
   {
    "fieldname": "nationality",

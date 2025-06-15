@@ -122,13 +122,14 @@ doctype_kanban_js = {
 # -----------
 # Permissions evaluated in scripted ways
 
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
-#
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+# Permission hooks for email access control
+permission_query_conditions = {
+    "Communication": "svg_mobile_app.permissions.get_communication_permission_query_conditions"
+}
+
+has_permission = {
+    "Communication": "svg_mobile_app.permissions.has_communication_permission"
+}
 
 # DocType Class
 # ---------------

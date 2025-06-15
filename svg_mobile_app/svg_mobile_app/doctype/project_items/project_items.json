@@ -18,6 +18,7 @@
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Item",
+   "link_filters": "[[\"Item\",\"item_group\",\"=\",\"Orbit Engineering Items\"]]",
    "options": "Item"
   },
   {
@@ -52,7 +53,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-08 01:46:17.630251",
+ "modified": "2025-06-11 12:45:35.317742",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Items",

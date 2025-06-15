@@ -657,21 +657,48 @@ def create_employee_advances(project_contractors, advances):
             if not employee_value:
                 validation_errors.append(f"Advance {i+1}: Employee is required")
             else:
-                # Clean the employee value
-                employee_clean = str(employee_value).strip()
-                frappe.logger().info(f"Advance {i+1}: Cleaned employee value: '{employee_clean}'")
+                # Clean the employee value - normalize spaces
+                import re
+                employee_clean = re.sub(r'\s+', ' ', str(employee_value).strip())
+                frappe.logger().info(f"Advance {i+1}: Cleaned employee value: '{employee_clean}' (length: {len(employee_clean)})")
                 
                 # Check if employee exists and is active
                 employee_exists = frappe.db.exists("Employee", employee_clean)
                 frappe.logger().info(f"Advance {i+1}: Employee exists check: {employee_exists}")
                 
                 if not employee_exists:
-                    # Let's also check what employees are actually in the database
-                    all_employees = frappe.db.sql("SELECT name, employee_name FROM `tabEmployee` WHERE status = 'Active' LIMIT 10", as_dict=True)
-                    frappe.logger().info(f"Sample active employees in database: {all_employees}")
+                    # Try to find employee with normalized spaces in both directions
+                    possible_matches = frappe.db.sql("""
+                        SELECT name, employee_name 
+                        FROM `tabEmployee` 
+                        WHERE status = 'Active' 
+                        AND (
+                            REPLACE(REPLACE(name, '  ', ' '), '   ', ' ') = %s
+                            OR REPLACE(REPLACE(employee_name, '  ', ' '), '   ', ' ') = %s
+                            OR name = %s
+                            OR employee_name = %s
+                        )
+                        LIMIT 5
+                    """, (employee_clean, employee_clean, employee_value, employee_value), as_dict=True)
                     
-                    validation_errors.append(f"Advance {i+1}: Employee '{employee_clean}' does not exist")
-                else:
+                    frappe.logger().info(f"Possible matches found: {possible_matches}")
+                    
+                    if possible_matches:
+                        # Use the first match
+                        matched_employee = possible_matches[0].name
+                        frappe.logger().info(f"Using matched employee: '{matched_employee}' instead of '{employee_clean}'")
+                        # Update the advance data with the correct employee name
+                        advance["employee"] = matched_employee
+                        employee_clean = matched_employee
+                        employee_exists = True
+                    else:
+                        # Let's also check what employees are actually in the database
+                        all_employees = frappe.db.sql("SELECT name, employee_name FROM `tabEmployee` WHERE status = 'Active' LIMIT 10", as_dict=True)
+                        frappe.logger().info(f"Sample active employees in database: {all_employees}")
+                        
+                        validation_errors.append(f"Advance {i+1}: Employee '{employee_clean}' does not exist")
+                
+                if employee_exists:
                     employee_status = frappe.get_value("Employee", employee_clean, "status")
                     frappe.logger().info(f"Advance {i+1}: Employee status: {employee_status}")
                     if employee_status != "Active":

@@ -344,6 +344,13 @@ function create_employee_advances(frm, eligible_items) {
                                         const employeeId = r.message[0].name;
                                         console.log(`Converting "${value}" to employee ID: "${employeeId}"`);
                                         employeeField.set_value(employeeId);
+                                        // Store the converted ID for getFieldValue to use
+                                        employeeField.$input.data('converted-employee-id', employeeId);
+                                        // Force the input value to update
+                                        setTimeout(() => {
+                                            employeeField.$input.val(employeeId);
+                                            employeeField.$input.trigger('change');
+                                        }, 100);
                                     } else {
                                         // Try a broader search with LIKE operator
                                         frappe.call({
@@ -363,6 +370,13 @@ function create_employee_advances(frm, eligible_items) {
                                                     const employeeId = r2.message[0].name;
                                                     console.log(`Converting "${value}" to employee ID via broader search: "${employeeId}"`);
                                                     employeeField.set_value(employeeId);
+                                                    // Store the converted ID for getFieldValue to use
+                                                    employeeField.$input.data('converted-employee-id', employeeId);
+                                                    // Force the input value to update
+                                                    setTimeout(() => {
+                                                        employeeField.$input.val(employeeId);
+                                                        employeeField.$input.trigger('change');
+                                                    }, 100);
                                                 } else {
                                                     console.warn(`No employee found for: "${value}"`);
                                                 }
@@ -438,6 +452,23 @@ function create_employee_advances(frm, eligible_items) {
             const control = container.find('input').data('control');
             if (control && control.get_value) {
                 value = control.get_value() || '';
+            }
+            
+            // If the value looks like an employee name with multiple spaces, 
+            // it might need conversion to employee ID
+            if (value && typeof value === 'string' && value.includes(' ') && 
+                !value.match(/^(SVG|HR-EMP|EMP)-/i) && !value.match(/^\d+$/)) {
+                
+                console.log(`getFieldValue: Detected employee name "${value}", checking for converted ID...`);
+                
+                // Check if this field has been converted by looking for a data attribute
+                const convertedId = input.data('converted-employee-id');
+                if (convertedId) {
+                    console.log(`getFieldValue: Using converted employee ID: "${convertedId}"`);
+                    value = convertedId;
+                } else {
+                    console.warn(`getFieldValue: Employee name "${value}" not converted to ID yet`);
+                }
             }
         }
         

@@ -197,10 +197,6 @@
  "is_submittable": 1,
  "links": [
   {
-   "link_doctype": "Sales Invoice",
-   "link_fieldname": "custom_for_project"
-  },
-  {
    "link_doctype": "Project Claim",
    "link_fieldname": "for_project"
   }

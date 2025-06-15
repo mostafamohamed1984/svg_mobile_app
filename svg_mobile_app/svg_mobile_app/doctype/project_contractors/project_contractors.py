@@ -692,11 +692,35 @@ def create_employee_advances(project_contractors, advances):
                         employee_clean = matched_employee
                         employee_exists = True
                     else:
-                        # Let's also check what employees are actually in the database
-                        all_employees = frappe.db.sql("SELECT name, employee_name FROM `tabEmployee` WHERE status = 'Active' LIMIT 10", as_dict=True)
-                        frappe.logger().info(f"Sample active employees in database: {all_employees}")
+                        # Try to find by employee_name matching the input value
+                        name_matches = frappe.db.sql("""
+                            SELECT name, employee_name 
+                            FROM `tabEmployee` 
+                            WHERE status = 'Active' 
+                            AND (
+                                employee_name = %s
+                                OR REPLACE(REPLACE(employee_name, '  ', ' '), '   ', ' ') = %s
+                                OR REPLACE(REPLACE(employee_name, '  ', ' '), '   ', ' ') = %s
+                            )
+                            LIMIT 5
+                        """, (employee_value, employee_clean, employee_value), as_dict=True)
                         
-                        validation_errors.append(f"Advance {i+1}: Employee '{employee_clean}' does not exist")
+                        frappe.logger().info(f"Name-based matches found: {name_matches}")
+                        
+                        if name_matches:
+                            # Use the employee ID (name field) instead of employee_name
+                            matched_employee = name_matches[0].name
+                            frappe.logger().info(f"Using employee ID: '{matched_employee}' for employee name '{employee_value}'")
+                            # Update the advance data with the correct employee ID
+                            advance["employee"] = matched_employee
+                            employee_clean = matched_employee
+                            employee_exists = True
+                        else:
+                            # Let's also check what employees are actually in the database
+                            all_employees = frappe.db.sql("SELECT name, employee_name FROM `tabEmployee` WHERE status = 'Active' LIMIT 10", as_dict=True)
+                            frappe.logger().info(f"Sample active employees in database: {all_employees}")
+                            
+                            validation_errors.append(f"Advance {i+1}: Employee '{employee_clean}' does not exist")
                 
                 if employee_exists:
                     employee_status = frappe.get_value("Employee", employee_clean, "status")
@@ -798,8 +822,22 @@ def create_employee_advances(project_contractors, advances):
                     # Validate employee exists
                     employee = advance_data.get("employee")
                     if not frappe.db.exists("Employee", employee):
-                        frappe.msgprint(f"Employee {employee} not found. Skipping advance.")
-                        continue
+                        # Try to find by employee_name if direct lookup fails
+                        name_match = frappe.db.sql("""
+                            SELECT name 
+                            FROM `tabEmployee` 
+                            WHERE status = 'Active' 
+                            AND employee_name = %s
+                            LIMIT 1
+                        """, (employee,), as_dict=True)
+                        
+                        if name_match:
+                            employee = name_match[0].name
+                            advance_data["employee"] = employee
+                            frappe.logger().info(f"Found employee by name lookup: {employee}")
+                        else:
+                            frappe.msgprint(f"Employee {employee} not found. Skipping advance.")
+                            continue
                     
                     # Create Employee Advance
                     frappe.logger().info(f"Creating Employee Advance for employee: {employee}, amount: {advance_amount}")

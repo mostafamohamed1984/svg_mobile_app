@@ -631,11 +631,16 @@ def create_employee_advances(project_contractors, advances):
         dict: Status and list of created Employee Advance documents
     """
     try:
+        frappe.logger().info(f"create_employee_advances called with project_contractors: {project_contractors}")
+        frappe.logger().info(f"advances parameter type: {type(advances)}, value: {advances}")
+        
         if isinstance(advances, str):
             advances = json.loads(advances)
         
         if not advances:
             return {"status": "error", "message": "No advances to create"}
+        
+        frappe.logger().info(f"Parsed advances: {advances}")
         
         # Validate input data
         validation_errors = []
@@ -659,6 +664,7 @@ def create_employee_advances(project_contractors, advances):
             return {"status": "error", "message": "<br>".join(validation_errors)}
         
         # Get the Project Contractors document
+        frappe.logger().info(f"Getting Project Contractors document: {project_contractors}")
         project_contractors_doc = frappe.get_doc("Project Contractors", project_contractors)
         
         if project_contractors_doc.docstatus != 1:
@@ -666,9 +672,11 @@ def create_employee_advances(project_contractors, advances):
         
         # Get company from the Project Contractors document
         company = project_contractors_doc.company
+        frappe.logger().info(f"Company: {company}")
         
         # Get default advance account for the company
         default_advance_account = get_default_advance_account(company)
+        frappe.logger().info(f"Default advance account: {default_advance_account}")
         if not default_advance_account:
             return {"status": "error", "message": f"No default advance account found for company {company}"}
         
@@ -744,12 +752,14 @@ def create_employee_advances(project_contractors, advances):
                         continue
                     
                     # Create Employee Advance
+                    frappe.logger().info(f"Creating Employee Advance for employee: {employee}, amount: {advance_amount}")
                     employee_advance = frappe.new_doc("Employee Advance")
                     employee_advance.employee = employee
                     employee_advance.purpose = advance_data.get("purpose") or f"Advance for {item_code}"
                     employee_advance.advance_amount = advance_amount
                     employee_advance.posting_date = frappe.utils.today()
                     employee_advance.company = company
+                    frappe.logger().info(f"Basic fields set for Employee Advance")
                     
                     # Set currency and exchange rate to prevent errors
                     if frappe.get_meta("Employee Advance").has_field("currency"):
@@ -783,25 +793,25 @@ def create_employee_advances(project_contractors, advances):
                     if frappe.get_meta("Employee Advance").has_field("item_reference"):
                         employee_advance.item_reference = item_code
                     
-                    # FIXED: Use the working method discovered through testing
+                    # Try a simpler approach first - just set the advance_account directly
                     frappe.logger().info(f"Creating Employee Advance with: employee={employee}, amount={advance_amount}, account={default_advance_account}")
                     
-                    # Save without advance_account first (ignore mandatory validation)
-                    employee_advance.flags.ignore_mandatory = True
+                    # Set the advance_account directly
+                    employee_advance.advance_account = default_advance_account
+                    
+                    # Try to save the employee advance
+                    frappe.logger().info("Attempting to save Employee Advance...")
                     employee_advance.insert()
                     frappe.logger().info(f"Successfully created Employee Advance: {employee_advance.name}")
                     
-                    # Now set the advance_account using db_set (this method works)
-                    employee_advance.db_set("advance_account", default_advance_account)
-                    frappe.logger().info(f"Set advance_account to: {default_advance_account}")
-                    
                     # Submit the advance if possible
                     try:
+                        frappe.logger().info("Attempting to submit Employee Advance...")
                         employee_advance.submit()
                         frappe.logger().info(f"Successfully submitted Employee Advance: {employee_advance.name}")
                     except Exception as e:
-                        frappe.log_error(f"Error submitting Employee Advance: {str(e)}")
-                        frappe.msgprint(f"Employee Advance {employee_advance.name} created but could not be submitted automatically.")
+                        frappe.logger().error(f"Error submitting Employee Advance: {str(e)}")
+                        # Don't fail the whole process if submission fails
                     
                     created_advances.append(employee_advance.name)
                     
@@ -818,8 +828,8 @@ def create_employee_advances(project_contractors, advances):
                     error_msg = f"Error creating advance for {advance_data.get('employee')}: {str(e)}"
                     frappe.log_error(message=error_msg, title="Create Employee Advance Error")
                     frappe.logger().error(error_msg)
-                    # Don't use frappe.msgprint here as it can cause issues in API calls
-                    # Instead, we'll return the error in the response
+                    # Return the specific error instead of continuing
+                    return {"status": "error", "message": error_msg}
         
         # Update the Project Contractors document with employee advance references
         if updated_fees_and_deposits:
@@ -832,7 +842,11 @@ def create_employee_advances(project_contractors, advances):
         }
 
     except Exception as e:
-        frappe.log_error(f"Error in create_employee_advances: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        frappe.log_error(message=error_details, title="Create Employee Advances Error")
+        frappe.logger().error(f"Error in create_employee_advances: {str(e)}")
+        frappe.logger().error(f"Full traceback: {error_details}")
         return {"status": "error", "message": f"Failed to create employee advances: {str(e)}"}
 
 def find_project_claim_for_item(item_code):
@@ -960,42 +974,53 @@ def get_default_advance_account(company):
     Returns:
         str: Default advance account
     """
-    # Try to get from company defaults
-    default_account = frappe.get_cached_value('Company', company, 'default_employee_advance_account')
-    
-    if not default_account:
-        # Try to find an account with "Employee Advance" in the name
-        accounts = frappe.get_all(
-            "Account",
-            filters={
-                "company": company,
-                "account_type": "Payable",
-                "is_group": 0,
-                "name": ["like", "%Employee Advance%"]
-            },
-            fields=["name"]
-        )
+    try:
+        frappe.logger().info(f"Getting default advance account for company: {company}")
         
-        if accounts:
-            default_account = accounts[0].name
-    
-    if not default_account:
-        # Try to find any payable account
-        accounts = frappe.get_all(
-            "Account",
-            filters={
-                "company": company,
-                "account_type": "Payable",
-                "is_group": 0
-            },
-            fields=["name"],
-            limit=1
-        )
+        # Try to get from company defaults
+        default_account = frappe.get_cached_value('Company', company, 'default_employee_advance_account')
+        frappe.logger().info(f"Company default advance account: {default_account}")
         
-        if accounts:
-            default_account = accounts[0].name
-    
-    return default_account
+        if not default_account:
+            # Try to find an account with "Employee Advance" in the name
+            accounts = frappe.get_all(
+                "Account",
+                filters={
+                    "company": company,
+                    "account_type": "Payable",
+                    "is_group": 0,
+                    "name": ["like", "%Employee Advance%"]
+                },
+                fields=["name"]
+            )
+            frappe.logger().info(f"Found Employee Advance accounts: {accounts}")
+            
+            if accounts:
+                default_account = accounts[0].name
+        
+        if not default_account:
+            # Try to find any payable account
+            accounts = frappe.get_all(
+                "Account",
+                filters={
+                    "company": company,
+                    "account_type": "Payable",
+                    "is_group": 0
+                },
+                fields=["name"],
+                limit=1
+            )
+            frappe.logger().info(f"Found payable accounts: {accounts}")
+            
+            if accounts:
+                default_account = accounts[0].name
+        
+        frappe.logger().info(f"Final default account: {default_account}")
+        return default_account
+        
+    except Exception as e:
+        frappe.logger().error(f"Error in get_default_advance_account: {str(e)}")
+        return None
 
 def get_exchange_rate(from_currency, to_currency):
     """

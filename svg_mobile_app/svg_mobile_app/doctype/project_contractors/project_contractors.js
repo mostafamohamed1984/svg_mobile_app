@@ -310,26 +310,68 @@ function create_employee_advances(frm, eligible_items) {
             if (employeeField && employeeField.$input) {
                 employeeField.$input.on('change', function() {
                     const value = $(this).val();
-                    if (value && value.includes(' ') && !value.includes('-')) {
-                        // This looks like an employee name, try to find the corresponding ID
-                        frappe.call({
-                            method: "frappe.client.get_list",
-                            args: {
-                                doctype: "Employee",
-                                filters: {
-                                    employee_name: value,
-                                    status: "Active"
+                    console.log(`Employee field changed: "${value}" (length: ${value ? value.length : 0})`);
+                    
+                    if (value && value.trim()) {
+                        // Check if this looks like an employee name (contains spaces but not typical ID patterns)
+                        const looksLikeEmployeeName = value.includes(' ') && 
+                                                    !value.match(/^(SVG|HR-EMP|EMP)-/i) && 
+                                                    !value.match(/^\d+$/);
+                        
+                        console.log(`Looks like employee name: ${looksLikeEmployeeName}`);
+                        
+                        if (looksLikeEmployeeName) {
+                            // Normalize spaces in the value for searching
+                            const normalizedValue = value.replace(/\s+/g, ' ').trim();
+                            console.log(`Normalized value: "${normalizedValue}"`);
+                            
+                            // Try to find the corresponding employee ID
+                            frappe.call({
+                                method: "frappe.client.get_list",
+                                args: {
+                                    doctype: "Employee",
+                                    filters: {
+                                        employee_name: ["in", [value, normalizedValue]],
+                                        status: "Active"
+                                    },
+                                    fields: ["name", "employee_name"],
+                                    limit: 5
                                 },
-                                fields: ["name", "employee_name"],
-                                limit: 1
-                            },
-                            callback: function(r) {
-                                if (r.message && r.message.length > 0) {
-                                    // Replace the employee name with the employee ID
-                                    employeeField.set_value(r.message[0].name);
+                                callback: function(r) {
+                                    console.log(`Employee search results:`, r.message);
+                                    if (r.message && r.message.length > 0) {
+                                        // Use the first match
+                                        const employeeId = r.message[0].name;
+                                        console.log(`Converting "${value}" to employee ID: "${employeeId}"`);
+                                        employeeField.set_value(employeeId);
+                                    } else {
+                                        // Try a broader search with LIKE operator
+                                        frappe.call({
+                                            method: "frappe.client.get_list",
+                                            args: {
+                                                doctype: "Employee",
+                                                filters: {
+                                                    employee_name: ["like", `%${normalizedValue}%`],
+                                                    status: "Active"
+                                                },
+                                                fields: ["name", "employee_name"],
+                                                limit: 5
+                                            },
+                                            callback: function(r2) {
+                                                console.log(`Broader employee search results:`, r2.message);
+                                                if (r2.message && r2.message.length > 0) {
+                                                    const employeeId = r2.message[0].name;
+                                                    console.log(`Converting "${value}" to employee ID via broader search: "${employeeId}"`);
+                                                    employeeField.set_value(employeeId);
+                                                } else {
+                                                    console.warn(`No employee found for: "${value}"`);
+                                                }
+                                            }
+                                        });
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
                 });
             }

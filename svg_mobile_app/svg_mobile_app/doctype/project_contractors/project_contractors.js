@@ -299,6 +299,30 @@ function create_employee_advances(frm, eligible_items) {
                         return {
                             filters: {
                                 'status': 'Active'
+                            },
+                            query: function(txt, callback) {
+                                frappe.call({
+                                    method: "frappe.desk.search.search_link",
+                                    args: {
+                                        doctype: "Employee",
+                                        txt: txt,
+                                        filters: {'status': 'Active'},
+                                        searchfield: "name"
+                                    },
+                                    callback: function(r) {
+                                        // Ensure we return employee ID (name) as both value and label
+                                        if (r.results) {
+                                            const results = r.results.map(result => {
+                                                if (Array.isArray(result)) {
+                                                    // Format: [value, label, description]
+                                                    return [result[0], result[0], result[2] || ''];
+                                                }
+                                                return result;
+                                            });
+                                            callback(results);
+                                        }
+                                    }
+                                });
                             }
                         };
                     }

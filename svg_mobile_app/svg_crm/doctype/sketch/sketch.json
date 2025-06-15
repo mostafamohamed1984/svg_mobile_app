@@ -157,7 +157,7 @@
    "fieldname": "regions",
    "fieldtype": "Link",
    "label": "Regions",
-   "options": "Regions"
+   "options": "Project Region"
   },
   {
    "fieldname": "nationality",

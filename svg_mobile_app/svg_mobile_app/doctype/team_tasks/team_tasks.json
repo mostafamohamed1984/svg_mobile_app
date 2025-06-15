@@ -20,7 +20,8 @@
   "due_date",
   "status",
   "task_description_section",
-  "description"
+  "description",
+  "is_paused"
  ],
  "fields": [
   {
@@ -70,6 +71,7 @@
   {
    "fieldname": "status",
    "fieldtype": "Select",
+   "in_list_view": 1,
    "label": "Status",
    "options": "Open\nWorking\nPending Review\nOverdue\nCompleted\nCancelled"
   },
@@ -116,15 +118,15 @@
   },
   {
    "default": "0",
+   "description": "When checked, this task will be excluded from automatic status updates by the scheduler",
    "fieldname": "is_paused",
    "fieldtype": "Check",
-   "label": "Paused",
-   "description": "When checked, this task will be excluded from automatic status updates by the scheduler"
+   "label": "Paused"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-01 02:03:38.845178",
+ "modified": "2025-06-11 13:57:43.244401",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Team Tasks",

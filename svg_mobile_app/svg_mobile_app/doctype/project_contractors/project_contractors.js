@@ -542,7 +542,9 @@ function create_employee_advances(frm, eligible_items) {
             freeze: true,
             freeze_message: __('Creating Employee Advances...'),
             callback: function(r) {
-                if (r.message && r.message.advances) {
+                console.log('Employee Advance Creation Response:', r);
+                
+                if (r.message && r.message.status === 'success' && r.message.advances) {
                     // Show success message with links to created advances
                     let message = __('Created the following Employee Advances:<br>');
                     r.message.advances.forEach(adv => {
@@ -561,19 +563,47 @@ function create_employee_advances(frm, eligible_items) {
                     setTimeout(() => {
                         check_project_claims_for_advances(frm);
                     }, 1000);
+                } else if (r.message && r.message.status === 'error') {
+                    // Show the specific error message from the server
+                    frappe.msgprint({
+                        title: __('Error Creating Employee Advances'),
+                        indicator: 'red',
+                        message: r.message.message || __('Unknown error occurred.')
+                    });
+                    console.error('Employee Advance Creation Error:', r.message.message);
                 } else {
+                    // Fallback for unexpected response format
                     frappe.msgprint({
                         title: __('Error'),
                         indicator: 'red',
-                        message: __('Failed to create employee advances. Please check the console for details.')
+                        message: __('Unexpected response format. Check console for details.')
                     });
+                    console.error('Unexpected response:', r);
                 }
             },
             error: function(r) {
+                console.error('Employee Advance Creation Network Error:', r);
+                let errorMessage = __('Network error occurred while creating employee advances.');
+                
+                // Try to extract error message from response
+                if (r.responseJSON && r.responseJSON.message) {
+                    errorMessage = r.responseJSON.message;
+                } else if (r.responseText) {
+                    try {
+                        const parsed = JSON.parse(r.responseText);
+                        if (parsed.message) {
+                            errorMessage = parsed.message;
+                        }
+                    } catch (e) {
+                        // If parsing fails, use the raw response text (truncated)
+                        errorMessage = r.responseText.substring(0, 500) + (r.responseText.length > 500 ? '...' : '');
+                    }
+                }
+                
                 frappe.msgprint({
-                    title: __('Error'),
+                    title: __('Network Error'),
                     indicator: 'red',
-                    message: r.message || __('An error occurred while creating employee advances.')
+                    message: errorMessage
                 });
             }
         });

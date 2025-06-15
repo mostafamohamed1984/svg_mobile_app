@@ -630,9 +630,15 @@ def create_employee_advances(project_contractors, advances):
     Returns:
         dict: Status and list of created Employee Advance documents
     """
+    import json
+    from frappe.utils import flt
+    
     try:
         frappe.logger().info(f"create_employee_advances called with project_contractors: {project_contractors}")
         frappe.logger().info(f"advances parameter type: {type(advances)}, value: {advances}")
+        
+        # Temporary test - remove this after testing
+        # return {"status": "error", "message": f"Function called successfully! Project: {project_contractors}, Advances count: {len(advances) if isinstance(advances, list) else 'not a list'}"}
         
         if isinstance(advances, str):
             advances = json.loads(advances)

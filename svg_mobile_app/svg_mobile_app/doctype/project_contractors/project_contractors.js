@@ -287,7 +287,7 @@ function create_employee_advances(frm, eligible_items) {
         
         // Create employee field with error handling
         try {
-            frappe.ui.form.make_control({
+            const employeeField = frappe.ui.form.make_control({
                 parent: dialog.fields_dict.fees_and_deposits_html.$wrapper.find(`.employee-field-container-${entryId}`),
                 df: {
                     fieldtype: 'Link',
@@ -299,36 +299,40 @@ function create_employee_advances(frm, eligible_items) {
                         return {
                             filters: {
                                 'status': 'Active'
-                            },
-                            query: function(txt, callback) {
-                                frappe.call({
-                                    method: "frappe.desk.search.search_link",
-                                    args: {
-                                        doctype: "Employee",
-                                        txt: txt,
-                                        filters: {'status': 'Active'},
-                                        searchfield: "name"
-                                    },
-                                    callback: function(r) {
-                                        // Ensure we return employee ID (name) as both value and label
-                                        if (r.results) {
-                                            const results = r.results.map(result => {
-                                                if (Array.isArray(result)) {
-                                                    // Format: [value, label, description]
-                                                    return [result[0], result[0], result[2] || ''];
-                                                }
-                                                return result;
-                                            });
-                                            callback(results);
-                                        }
-                                    }
-                                });
                             }
                         };
                     }
                 },
                 render_input: true
             });
+            
+            // Add onchange handler after field is created
+            if (employeeField && employeeField.$input) {
+                employeeField.$input.on('change', function() {
+                    const value = $(this).val();
+                    if (value && value.includes(' ') && !value.includes('-')) {
+                        // This looks like an employee name, try to find the corresponding ID
+                        frappe.call({
+                            method: "frappe.client.get_list",
+                            args: {
+                                doctype: "Employee",
+                                filters: {
+                                    employee_name: value,
+                                    status: "Active"
+                                },
+                                fields: ["name", "employee_name"],
+                                limit: 1
+                            },
+                            callback: function(r) {
+                                if (r.message && r.message.length > 0) {
+                                    // Replace the employee name with the employee ID
+                                    employeeField.set_value(r.message[0].name);
+                                }
+                            }
+                        });
+                    }
+                });
+            }
             
             // Ensure dropdown has proper z-index
             setTimeout(() => {

@@ -299,96 +299,41 @@ function create_employee_advances(frm, eligible_items) {
                         return {
                             filters: {
                                 'status': 'Active'
+                            },
+                            query: function(txt, callback) {
+                                // Custom query to format results as "ID - Name" 
+                                frappe.call({
+                                    method: "frappe.client.get_list",
+                                    args: {
+                                        doctype: "Employee",
+                                        filters: {
+                                            status: "Active",
+                                            name: ["like", `%${txt}%`]
+                                        },
+                                        fields: ["name", "employee_name"],
+                                        limit: 20,
+                                        order_by: "name"
+                                    },
+                                    callback: function(r) {
+                                        if (r.message) {
+                                            // Format results to show ID first, then name
+                                            const results = r.message.map(emp => {
+                                                return [
+                                                    emp.name, // value (what gets selected)
+                                                    emp.name, // label (what shows in dropdown)
+                                                    emp.employee_name || '' // description
+                                                ];
+                                            });
+                                            callback(results);
+                                        }
+                                    }
+                                });
                             }
                         };
                     }
                 },
                 render_input: true
             });
-            
-            // Add onchange handler after field is created
-            if (employeeField && employeeField.$input) {
-                employeeField.$input.on('change', function() {
-                    const value = $(this).val();
-                    console.log(`Employee field changed: "${value}" (length: ${value ? value.length : 0})`);
-                    
-                    if (value && value.trim()) {
-                        // Check if this looks like an employee name (contains spaces but not typical ID patterns)
-                        const looksLikeEmployeeName = value.includes(' ') && 
-                                                    !value.match(/^(SVG|HR-EMP|EMP)-/i) && 
-                                                    !value.match(/^\d+$/);
-                        
-                        console.log(`Looks like employee name: ${looksLikeEmployeeName}`);
-                        
-                        if (looksLikeEmployeeName) {
-                            // Normalize spaces in the value for searching
-                            const normalizedValue = value.replace(/\s+/g, ' ').trim();
-                            console.log(`Normalized value: "${normalizedValue}"`);
-                            
-                            // Try to find the corresponding employee ID
-                            frappe.call({
-                                method: "frappe.client.get_list",
-                                args: {
-                                    doctype: "Employee",
-                                    filters: {
-                                        employee_name: ["in", [value, normalizedValue]],
-                                        status: "Active"
-                                    },
-                                    fields: ["name", "employee_name"],
-                                    limit: 5
-                                },
-                                callback: function(r) {
-                                    console.log(`Employee search results:`, r.message);
-                                    if (r.message && r.message.length > 0) {
-                                        // Use the first match
-                                        const employeeId = r.message[0].name;
-                                        console.log(`Converting "${value}" to employee ID: "${employeeId}"`);
-                                        employeeField.set_value(employeeId);
-                                        // Store the converted ID for getFieldValue to use
-                                        employeeField.$input.data('converted-employee-id', employeeId);
-                                        // Force the input value to update
-                                        setTimeout(() => {
-                                            employeeField.$input.val(employeeId);
-                                            employeeField.$input.trigger('change');
-                                        }, 100);
-                                    } else {
-                                        // Try a broader search with LIKE operator
-                                        frappe.call({
-                                            method: "frappe.client.get_list",
-                                            args: {
-                                                doctype: "Employee",
-                                                filters: {
-                                                    employee_name: ["like", `%${normalizedValue}%`],
-                                                    status: "Active"
-                                                },
-                                                fields: ["name", "employee_name"],
-                                                limit: 5
-                                            },
-                                            callback: function(r2) {
-                                                console.log(`Broader employee search results:`, r2.message);
-                                                if (r2.message && r2.message.length > 0) {
-                                                    const employeeId = r2.message[0].name;
-                                                    console.log(`Converting "${value}" to employee ID via broader search: "${employeeId}"`);
-                                                    employeeField.set_value(employeeId);
-                                                    // Store the converted ID for getFieldValue to use
-                                                    employeeField.$input.data('converted-employee-id', employeeId);
-                                                    // Force the input value to update
-                                                    setTimeout(() => {
-                                                        employeeField.$input.val(employeeId);
-                                                        employeeField.$input.trigger('change');
-                                                    }, 100);
-                                                } else {
-                                                    console.warn(`No employee found for: "${value}"`);
-                                                }
-                                            }
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                    }
-                });
-            }
             
             // Ensure dropdown has proper z-index
             setTimeout(() => {
@@ -452,23 +397,6 @@ function create_employee_advances(frm, eligible_items) {
             const control = container.find('input').data('control');
             if (control && control.get_value) {
                 value = control.get_value() || '';
-            }
-            
-            // If the value looks like an employee name with multiple spaces, 
-            // it might need conversion to employee ID
-            if (value && typeof value === 'string' && value.includes(' ') && 
-                !value.match(/^(SVG|HR-EMP|EMP)-/i) && !value.match(/^\d+$/)) {
-                
-                console.log(`getFieldValue: Detected employee name "${value}", checking for converted ID...`);
-                
-                // Check if this field has been converted by looking for a data attribute
-                const convertedId = input.data('converted-employee-id');
-                if (convertedId) {
-                    console.log(`getFieldValue: Using converted employee ID: "${convertedId}"`);
-                    value = convertedId;
-                } else {
-                    console.warn(`getFieldValue: Employee name "${value}" not converted to ID yet`);
-                }
             }
         }
         

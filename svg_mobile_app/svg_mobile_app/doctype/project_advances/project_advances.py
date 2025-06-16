@@ -169,8 +169,8 @@ class ProjectAdvances(Document):
 		employee_advances = frappe.get_all(
 			"Employee Advance",
 			filters={
-				"custom_project_contractors_reference": project_contractor,
-				"custom_item_reference": item_code,
+				"project_contractors_reference": project_contractor,
+				"item_reference": item_code,
 				"docstatus": 1
 			},
 			fields=["advance_amount"]
@@ -313,6 +313,8 @@ class ProjectAdvances(Document):
 			
 			if allocated_amount > 0:
 				self.append("advance_items", {
+					"project_contractor": item['project_contractor'],
+					"project_name": item['project_name'],
 					"item_code": item['item_code'],
 					"available_balance": item['available_balance'],
 					"allocated_amount": allocated_amount,
@@ -333,6 +335,8 @@ class ProjectAdvances(Document):
 			
 			if allocated_amount > 0:
 				self.append("advance_items", {
+					"project_contractor": item['project_contractor'],
+					"project_name": item['project_name'],
 					"item_code": item['item_code'],
 					"available_balance": item['available_balance'],
 					"allocated_amount": allocated_amount,
@@ -364,11 +368,11 @@ class ProjectAdvances(Document):
 				if frappe.get_meta("Employee Advance").has_field("custom_project_advance_reference"):
 					employee_advance.custom_project_advance_reference = self.name
 					
-				if frappe.get_meta("Employee Advance").has_field("custom_project_contractors_reference"):
-					employee_advance.custom_project_contractors_reference = item.project_contractor
+				if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
+					employee_advance.project_contractors_reference = item.project_contractor
 					
-				if frappe.get_meta("Employee Advance").has_field("custom_item_reference"):
-					employee_advance.custom_item_reference = item.item_code
+				if frappe.get_meta("Employee Advance").has_field("item_reference"):
+					employee_advance.item_reference = item.item_code
 					
 				# Get default advance account
 				advance_account = self.get_default_advance_account()

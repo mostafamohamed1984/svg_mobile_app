@@ -499,6 +499,12 @@ class ProjectAdvances(Document):
 					employee_advance.posting_date = self.date
 					employee_advance.company = self.company
 					
+					# Set exchange rate to avoid validation error
+					# For same currency transactions, exchange rate should be 1.0
+					company_currency = frappe.get_cached_value("Company", self.company, "default_currency")
+					employee_advance.currency = company_currency
+					employee_advance.exchange_rate = 1.0
+					
 					# Set custom fields for tracking
 					if frappe.get_meta("Employee Advance").has_field("custom_project_advance_reference"):
 						employee_advance.custom_project_advance_reference = self.name

@@ -170,7 +170,31 @@ class ProjectAdvances(Document):
 		
 	def get_advanced_amount_for_item(self, item_code, project_contractor):
 		"""Get total advanced amount for an item from Employee Advances"""
-		# Get all employee advances for this item and project contractor
+		total_advanced = 0
+		
+		# Method 1: Get advances created through Project Contractors system
+		# These are stored in the employee_advances field (comma-separated list)
+		try:
+			project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor)
+			
+			for fee_item in project_contractor_doc.fees_and_deposits:
+				if fee_item.item == item_code and fee_item.employee_advances:
+					# Parse the comma-separated list of Employee Advance names
+					advance_names = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
+					
+					for advance_name in advance_names:
+						try:
+							advance_amount = frappe.get_cached_value("Employee Advance", advance_name, "advance_amount")
+							if advance_amount:
+								total_advanced += flt(advance_amount)
+						except:
+							# Skip if Employee Advance doesn't exist
+							continue
+		except:
+			# Skip if Project Contractors document doesn't exist
+			pass
+		
+		# Method 2: Get advances created through Project Advances system (our new system)
 		employee_advances = frappe.get_all(
 			"Employee Advance",
 			filters={
@@ -181,7 +205,6 @@ class ProjectAdvances(Document):
 			fields=["advance_amount"]
 		)
 		
-		total_advanced = 0
 		for advance in employee_advances:
 			total_advanced += flt(advance.advance_amount)
 			

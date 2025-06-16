@@ -56,6 +56,7 @@
    "default": "Today",
    "fieldname": "date",
    "fieldtype": "Date",
+   "in_list_view": 1,
    "label": "Date"
   },
   {
@@ -118,6 +119,7 @@
   {
    "fieldname": "advance_amount",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Advance Amount",
    "reqd": 1
   },
@@ -134,6 +136,7 @@
   {
    "fieldname": "custodian_employee",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Custodian Employee",
    "options": "Employee",
    "reqd": 1

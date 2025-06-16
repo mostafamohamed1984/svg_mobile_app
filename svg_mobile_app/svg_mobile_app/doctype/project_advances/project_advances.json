@@ -146,18 +146,21 @@
    "fieldname": "distribution_method",
    "fieldtype": "Select",
    "label": "Distribution Method",
-   "options": "Proportional\nEqual\nManual"
+   "options": "Proportional\nEqual\nManual",
+   "hidden": 1
   },
   {
    "fieldname": "section_break_items",
    "fieldtype": "Section Break",
-   "label": "Advance Distribution"
+   "label": "Advance Distribution",
+   "hidden": 1
   },
   {
    "fieldname": "advance_items",
    "fieldtype": "Table",
    "label": "Advance Items",
-   "options": "Project Advance Items"
+   "options": "Project Advance Items",
+   "hidden": 1
   },
   {
    "fieldname": "section_break_summary",

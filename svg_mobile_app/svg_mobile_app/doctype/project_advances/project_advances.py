@@ -32,21 +32,37 @@ class ProjectAdvances(Document):
 		if not self.project_contractors or not self.advance_amount:
 			return
 			
-		available_balance = self.get_total_available_balance()
+		# Calculate total allocated amount from contractors
+		total_allocated = 0
+		for contractor in self.project_contractors:
+			if contractor.allocated_amount:
+				total_allocated += flt(contractor.allocated_amount)
 		
-		if flt(self.advance_amount) > flt(available_balance):
+		# Validate that total allocated doesn't exceed advance amount
+		if total_allocated > flt(self.advance_amount):
 			frappe.throw(
-				f"Advance amount {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})} "
-				f"cannot exceed available balance {frappe.format(available_balance, {'fieldtype': 'Currency'})}"
+				f"Total allocated amount {frappe.format(total_allocated, {'fieldtype': 'Currency'})} "
+				f"cannot exceed advance amount {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})}"
 			)
+		
+		# Validate each contractor's allocation doesn't exceed their available balance
+		for contractor in self.project_contractors:
+			if contractor.allocated_amount and contractor.total_available_balance:
+				if flt(contractor.allocated_amount) > flt(contractor.total_available_balance):
+					frappe.throw(
+						f"Allocated amount {frappe.format(contractor.allocated_amount, {'fieldtype': 'Currency'})} "
+						f"for {contractor.project_contractor} cannot exceed available balance "
+						f"{frappe.format(contractor.total_available_balance, {'fieldtype': 'Currency'})}"
+					)
 			
 	def calculate_totals(self):
 		"""Calculate total distributed and balance remaining"""
 		total_distributed = 0
 		
-		for item in self.advance_items:
-			if item.allocated_amount:
-				total_distributed += flt(item.allocated_amount)
+		# Calculate from contractor allocated amounts instead of advance items
+		for contractor in self.project_contractors:
+			if contractor.allocated_amount:
+				total_distributed += flt(contractor.allocated_amount)
 		
 		self.total_distributed = total_distributed
 		self.balance_remaining = flt(self.advance_amount) - total_distributed
@@ -76,10 +92,6 @@ class ProjectAdvances(Document):
 		
 		# Update the HTML field to show available amounts
 		self.update_available_fees_html(available_data)
-		
-		# Auto-populate advance items if distribution method is set and items are empty
-		if self.distribution_method and not self.advance_items and self.advance_amount:
-			self.auto_populate_advance_items(available_data)
 			
 	def get_available_fees_and_deposits(self):
 		"""Get available fees and deposits balances for all selected project contractors"""
@@ -194,17 +206,6 @@ class ProjectAdvances(Document):
 				pluck="name"
 			)
 			project_claims_for_contractor.extend(claims_by_for_project)
-			
-			# Check project_contractor field
-			claims_by_project_contractor = frappe.get_all(
-				"Project Claim",
-				filters={
-					"project_contractor": project_contractor,
-					"docstatus": 1
-				},
-				pluck="name"
-			)
-			project_claims_for_contractor.extend(claims_by_project_contractor)
 			
 			# Remove duplicates
 			project_claims_for_contractor = list(set(project_claims_for_contractor))
@@ -422,120 +423,87 @@ class ProjectAdvances(Document):
 		
 		self.available_fees_html = html
 		
-	def auto_populate_advance_items(self, available_data):
-		"""Auto-populate advance items based on distribution method"""
-		if not available_data or not self.advance_amount:
-			return
-			
-		# Clear existing items
-		self.advance_items = []
-		
-		if self.distribution_method == "Proportional":
-			self.distribute_proportionally(available_data)
-		elif self.distribution_method == "Equal":
-			self.distribute_equally(available_data)
-		# Manual distribution will be handled by user
-		
-	def distribute_proportionally(self, available_data):
-		"""Distribute advance amount proportionally based on available balances"""
-		total_available = sum(flt(item['available_balance']) for item in available_data)
-		
-		if total_available <= 0:
-			return
-			
-		for item in available_data:
-			if flt(item['available_balance']) <= 0:
-				continue
-				
-			# Calculate proportional amount
-			proportion = flt(item['available_balance']) / total_available
-			allocated_amount = flt(self.advance_amount) * proportion
-			
-			# Don't exceed available balance
-			allocated_amount = min(allocated_amount, flt(item['available_balance']))
-			
-			if allocated_amount > 0:
-				self.append("advance_items", {
-					"project_contractor": item['project_contractor'],
-					"project_name": item['project_name'],
-					"item_code": item['item_code'],
-					"available_balance": item['available_balance'],
-					"allocated_amount": allocated_amount,
-					"employee": self.custodian_employee,
-					"purpose": f"Advance for {item['item_name']}"
-				})
-				
-	def distribute_equally(self, available_data):
-		"""Distribute advance amount equally among available items"""
-		if not available_data:
-			return
-			
-		per_item_amount = flt(self.advance_amount) / len(available_data)
-		
-		for item in available_data:
-			# Don't exceed available balance
-			allocated_amount = min(per_item_amount, flt(item['available_balance']))
-			
-			if allocated_amount > 0:
-				self.append("advance_items", {
-					"project_contractor": item['project_contractor'],
-					"project_name": item['project_name'],
-					"item_code": item['item_code'],
-					"available_balance": item['available_balance'],
-					"allocated_amount": allocated_amount,
-					"employee": self.custodian_employee,
-					"purpose": f"Advance for {item['item_name']}"
-				})
+
 				
 	def create_employee_advances(self):
-		"""Create Employee Advances for each advance item"""
-		if not self.advance_items:
-			frappe.throw("No advance items found to create Employee Advances")
+		"""Create Employee Advances based on contractor allocations"""
+		if not self.project_contractors:
+			frappe.throw("No project contractors found to create Employee Advances")
+			
+		if not self.custodian_employee:
+			frappe.throw("Please set Custodian Employee")
 			
 		created_advances = []
 		
-		for item in self.advance_items:
-			if flt(item.allocated_amount) <= 0:
+		for contractor in self.project_contractors:
+			if not contractor.allocated_amount or flt(contractor.allocated_amount) <= 0:
 				continue
 				
-			try:
-				# Create Employee Advance
-				employee_advance = frappe.new_doc("Employee Advance")
-				employee_advance.employee = item.employee
-				employee_advance.purpose = item.purpose or f"Project Advance for {item.item_code}"
-				employee_advance.advance_amount = item.allocated_amount
-				employee_advance.posting_date = self.date
-				employee_advance.company = self.company
-				
-				# Set custom fields for tracking
-				if frappe.get_meta("Employee Advance").has_field("custom_project_advance_reference"):
-					employee_advance.custom_project_advance_reference = self.name
+			# Get available items for this contractor
+			available_items = self.get_available_items_for_contractor(contractor.project_contractor)
+			
+			if not available_items:
+				frappe.msgprint(f"No available items found for {contractor.project_contractor}")
+				continue
+			
+			# Calculate total available balance for proportional distribution
+			total_available = sum(flt(item['available_balance']) for item in available_items)
+			
+			if total_available <= 0:
+				frappe.msgprint(f"No available balance for {contractor.project_contractor}")
+				continue
+			
+			# Create Employee Advances proportionally for each available item
+			allocated_amount = flt(contractor.allocated_amount)
+			
+			for item in available_items:
+				if flt(item['available_balance']) <= 0:
+					continue
 					
-				if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
-					employee_advance.project_contractors_reference = item.project_contractor
+				# Calculate proportional amount for this item
+				proportion = flt(item['available_balance']) / total_available
+				item_advance_amount = allocated_amount * proportion
+				
+				# Don't exceed available balance
+				item_advance_amount = min(item_advance_amount, flt(item['available_balance']))
+				
+				if item_advance_amount <= 0:
+					continue
+				
+				try:
+					# Create Employee Advance
+					employee_advance = frappe.new_doc("Employee Advance")
+					employee_advance.employee = self.custodian_employee
+					employee_advance.purpose = f"Project Advance for {item['item_name']} - {contractor.project_contractor}"
+					employee_advance.advance_amount = item_advance_amount
+					employee_advance.posting_date = self.date
+					employee_advance.company = self.company
 					
-				if frappe.get_meta("Employee Advance").has_field("item_reference"):
-					employee_advance.item_reference = item.item_code
+					# Set custom fields for tracking
+					if frappe.get_meta("Employee Advance").has_field("custom_project_advance_reference"):
+						employee_advance.custom_project_advance_reference = self.name
+						
+					if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
+						employee_advance.project_contractors_reference = contractor.project_contractor
+						
+					if frappe.get_meta("Employee Advance").has_field("item_reference"):
+						employee_advance.item_reference = item['item_code']
+						
+					# Get default advance account
+					advance_account = self.get_default_advance_account()
+					if advance_account:
+						employee_advance.advance_account = advance_account
+						
+					# Save and submit
+					employee_advance.insert()
+					employee_advance.submit()
 					
-				# Get default advance account
-				advance_account = self.get_default_advance_account()
-				if advance_account:
-					employee_advance.advance_account = advance_account
+					created_advances.append(employee_advance.name)
 					
-				# Save and submit
-				employee_advance.insert()
-				employee_advance.submit()
-				
-				# Update the advance item
-				item.employee_advance_created = 1
-				item.employee_advance_reference = employee_advance.name
-				
-				created_advances.append(employee_advance.name)
-				
-			except Exception as e:
-				frappe.log_error(f"Error creating Employee Advance for item {item.item_code}: {str(e)}")
-				frappe.throw(f"Failed to create Employee Advance for {item.item_code}: {str(e)}")
-				
+				except Exception as e:
+					frappe.log_error(f"Error creating Employee Advance for item {item['item_code']}: {str(e)}")
+					frappe.throw(f"Failed to create Employee Advance for {item['item_code']}: {str(e)}")
+		
 		# Update remaining balance
 		self.remaining_balance = flt(self.advance_amount) - flt(self.total_distributed)
 		self.db_set('remaining_balance', self.remaining_balance, update_modified=False)
@@ -546,7 +514,44 @@ class ProjectAdvances(Document):
 				title="Employee Advances Created",
 				indicator="green"
 			)
+	
+	def get_available_items_for_contractor(self, project_contractor):
+		"""Get available items for a specific contractor"""
+		# Get the project contractor document
+		project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor)
+		
+		available_items = []
+		
+		# Process fees and deposits items for this contractor
+		for fee_item in project_contractor_doc.fees_and_deposits:
+			# Get claimed amount from Project Claims for this specific contractor and item
+			claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor)
 			
+			# Get already advanced amount from existing Employee Advances
+			advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor)
+			
+			# Calculate available balance
+			# For items with no claims yet, use the original rate as available balance
+			if claimed_amount <= 0:
+				available_balance = flt(fee_item.rate) - advanced_amount
+			else:
+				available_balance = claimed_amount - advanced_amount
+			
+			if available_balance > 0:
+				# Get item name from Item master
+				item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item
+				
+				available_items.append({
+					'item_code': fee_item.item,
+					'item_name': item_name,
+					'original_rate': fee_item.rate,
+					'claimed_amount': claimed_amount,
+					'advanced_amount': advanced_amount,
+					'available_balance': available_balance
+				})
+				
+		return available_items
+		
 	def cancel_employee_advances(self):
 		"""Cancel related Employee Advances when Project Advance is cancelled"""
 		for item in self.advance_items:
@@ -595,25 +600,7 @@ class ProjectAdvances(Document):
 		self.load_available_fees_and_deposits()
 		return self.available_fees_html
 		
-	@frappe.whitelist()
-	def auto_distribute_amounts(self):
-		"""Auto-distribute amounts based on selected distribution method"""
-		if not self.advance_amount:
-			frappe.throw("Please set advance amount first")
-			
-		available_data = self.get_available_fees_and_deposits()
-		
-		if not available_data:
-			frappe.throw("No available fees and deposits found")
-			
-		self.auto_populate_advance_items(available_data)
-		self.calculate_totals()
-		
-		return {
-			"advance_items": [item.as_dict() for item in self.advance_items],
-			"total_distributed": self.total_distributed,
-			"balance_remaining": self.balance_remaining
-		}
+
 
 
 @frappe.whitelist()

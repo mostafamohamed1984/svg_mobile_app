@@ -103,8 +103,9 @@ class ProjectAdvances(Document):
 				# Get claimed amount from Project Claims for this specific contractor and item
 				claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
 				
-				if claimed_amount <= 0:
-					continue  # Skip items with no claims
+				# For testing: show all items even if not claimed yet
+				# if claimed_amount <= 0:
+				# 	continue  # Skip items with no claims
 					
 				# Get already advanced amount from existing Employee Advances
 				advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor_name)
@@ -113,14 +114,21 @@ class ProjectAdvances(Document):
 				allocated_in_other_advances = self.get_allocated_in_other_project_advances(fee_item.item, project_contractor_name)
 				
 				# Calculate available balance
-				available_balance = claimed_amount - advanced_amount - allocated_in_other_advances
+				# For items with no claims yet, use the original rate as available balance
+				if claimed_amount <= 0:
+					available_balance = flt(fee_item.rate) - advanced_amount - allocated_in_other_advances
+				else:
+					available_balance = claimed_amount - advanced_amount - allocated_in_other_advances
 				
 				if available_balance > 0:
+					# Get item name from Item master
+					item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item
+					
 					available_items.append({
 						'project_contractor': project_contractor_name,
 						'project_name': project_contractor_doc.project_name,
 						'item_code': fee_item.item,
-						'item_name': fee_item.item_name if hasattr(fee_item, 'item_name') else fee_item.item,
+						'item_name': item_name,
 						'original_rate': fee_item.rate,
 						'claimed_amount': claimed_amount,
 						'advanced_amount': advanced_amount,
@@ -132,27 +140,24 @@ class ProjectAdvances(Document):
 		
 	def get_claimed_amount_for_item(self, item_code, project_contractor):
 		"""Get total claimed amount for an item from Project Claims"""
-		# Get all sales invoices for this project contractor
-		sales_invoices = frappe.get_all(
-			"Sales Invoice",
-			filters={
-				"custom_for_project": project_contractor,
-				"docstatus": 1
-			},
+		# Get all submitted project claims
+		submitted_claims = frappe.get_all(
+			"Project Claim",
+			filters={"docstatus": 1},
 			pluck="name"
 		)
 		
-		if not sales_invoices:
+		if not submitted_claims:
 			return 0
 			
-		# Get claim items for this item from all project claims
+		# Get claim items for this specific item and project contractor
 		claim_items = frappe.get_all(
 			"Claim Items",
 			filters={
 				"item": item_code,
-				"invoice_reference": ["in", sales_invoices],
+				"project_contractor_reference": project_contractor,
 				"parenttype": "Project Claim",
-				"parent": ["in", frappe.get_all("Project Claim", filters={"docstatus": 1}, pluck="name")]
+				"parent": ["in", submitted_claims]
 			},
 			fields=["amount"]
 		)

@@ -1,0 +1,260 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-06-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "project_contractor",
+  "project_name",
+  "customer",
+  "customer_name",
+  "company",
+  "column_break_main",
+  "date",
+  "status",
+  "total_advance_amount",
+  "remaining_balance",
+  "created_by",
+  "section_break_available",
+  "available_fees_html",
+  "section_break_advance",
+  "advance_amount",
+  "purpose",
+  "column_break_advance",
+  "custodian_employee",
+  "distribution_method",
+  "section_break_items",
+  "advance_items",
+  "section_break_summary",
+  "total_distributed",
+  "column_break_summary",
+  "balance_remaining",
+  "section_break_details",
+  "notes",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Series",
+   "options": "PA-.YYYY.-"
+  },
+  {
+   "fieldname": "project_contractor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Project Contractor",
+   "options": "Project Contractors",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "project_contractor.project_name",
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Project Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "project_contractor.customer",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "project_contractor.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "project_contractor.company",
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "default": "Draft",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Draft\nActive\nExhausted\nCancelled",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_advance_amount",
+   "fieldtype": "Currency",
+   "label": "Total Advance Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remaining_balance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Remaining Balance",
+   "read_only": 1
+  },
+  {
+   "default": "__user",
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_available",
+   "fieldtype": "Section Break",
+   "label": "Available Fees & Deposits"
+  },
+  {
+   "fieldname": "available_fees_html",
+   "fieldtype": "HTML",
+   "label": "Available Amounts"
+  },
+  {
+   "fieldname": "section_break_advance",
+   "fieldtype": "Section Break",
+   "label": "Advance Details"
+  },
+  {
+   "fieldname": "advance_amount",
+   "fieldtype": "Currency",
+   "label": "Advance Amount",
+   "reqd": 1
+  },
+  {
+   "fieldname": "purpose",
+   "fieldtype": "Small Text",
+   "label": "Purpose",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_advance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "custodian_employee",
+   "fieldtype": "Link",
+   "label": "Custodian Employee",
+   "options": "Employee",
+   "reqd": 1
+  },
+  {
+   "default": "Proportional",
+   "fieldname": "distribution_method",
+   "fieldtype": "Select",
+   "label": "Distribution Method",
+   "options": "Proportional\nEqual\nManual"
+  },
+  {
+   "fieldname": "section_break_items",
+   "fieldtype": "Section Break",
+   "label": "Advance Distribution"
+  },
+  {
+   "fieldname": "advance_items",
+   "fieldtype": "Table",
+   "label": "Advance Items",
+   "options": "Project Advance Items"
+  },
+  {
+   "fieldname": "section_break_summary",
+   "fieldtype": "Section Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "total_distributed",
+   "fieldtype": "Currency",
+   "label": "Total Distributed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_summary",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "balance_remaining",
+   "fieldtype": "Currency",
+   "label": "Balance Remaining",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Text Editor",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Project Advances",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [
+  {
+   "link_doctype": "Employee Advance",
+   "link_fieldname": "custom_project_advance_reference"
+  }
+ ],
+ "modified": "2025-06-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Project Advances",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "project_name,customer_name,custodian_employee",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "project_name"
+} 

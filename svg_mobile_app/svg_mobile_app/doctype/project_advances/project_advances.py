@@ -17,6 +17,11 @@ class ProjectAdvances(Document):
 	def before_save(self):
 		if self.project_contractors:
 			self.load_available_fees_and_deposits()
+	
+	def on_load(self):
+		"""Load available fees and deposits when document is loaded"""
+		if self.project_contractors:
+			self.load_available_fees_and_deposits()
 			
 	def on_submit(self):
 		"""Create Employee Advances when document is submitted"""
@@ -68,8 +73,11 @@ class ProjectAdvances(Document):
 		return list(contractors)
 		
 	def validate_advance_amount(self):
-		"""Validate that advance amount doesn't exceed available balance"""
-		if not self.project_contractors or not self.advance_amount:
+		"""Validate that advance amount and allocations are correct"""
+		if not self.advance_amount:
+			frappe.throw("Advance Amount is required")
+			
+		if not self.project_contractors:
 			return
 			
 		# Calculate total allocated amount from contractors
@@ -78,11 +86,14 @@ class ProjectAdvances(Document):
 			if contractor.allocated_amount:
 				total_allocated += flt(contractor.allocated_amount)
 		
-		# Validate that total allocated doesn't exceed advance amount
+		# CRITICAL VALIDATION: Total allocated cannot exceed advance amount
 		if total_allocated > flt(self.advance_amount):
 			frappe.throw(
-				f"Total allocated amount {frappe.format(total_allocated, {'fieldtype': 'Currency'})} "
-				f"cannot exceed advance amount {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})}"
+				f"<b>Invalid Allocation!</b><br>"
+				f"Total Allocated Amount: {frappe.format(total_allocated, {'fieldtype': 'Currency'})}<br>"
+				f"Advance Amount: {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})}<br>"
+				f"<b>You cannot allocate more than the advance amount!</b><br>"
+				f"Please reduce the allocated amounts or increase the advance amount."
 			)
 		
 		# Validate each contractor's allocation doesn't exceed their available balance
@@ -90,10 +101,26 @@ class ProjectAdvances(Document):
 			if contractor.allocated_amount and contractor.total_available_balance:
 				if flt(contractor.allocated_amount) > flt(contractor.total_available_balance):
 					frappe.throw(
-						f"Allocated amount {frappe.format(contractor.allocated_amount, {'fieldtype': 'Currency'})} "
-						f"for {contractor.project_contractor} cannot exceed available balance "
-						f"{frappe.format(contractor.total_available_balance, {'fieldtype': 'Currency'})}"
+						f"<b>Insufficient Balance for {contractor.project_contractor}!</b><br>"
+						f"Allocated Amount: {frappe.format(contractor.allocated_amount, {'fieldtype': 'Currency'})}<br>"
+						f"Available Balance: {frappe.format(contractor.total_available_balance, {'fieldtype': 'Currency'})}<br>"
+						f"Please reduce the allocated amount for this contractor."
 					)
+		
+		# Validate that advance amount doesn't exceed total available balance across all contractors
+		total_available_balance = 0
+		for contractor in self.project_contractors:
+			if contractor.total_available_balance:
+				total_available_balance += flt(contractor.total_available_balance)
+		
+		if flt(self.advance_amount) > total_available_balance:
+			frappe.msgprint(
+				f"<b>Warning:</b> Advance amount {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})} "
+				f"exceeds total available balance {frappe.format(total_available_balance, {'fieldtype': 'Currency'})} "
+				f"across all selected contractors.",
+				title="High Advance Amount",
+				indicator="orange"
+			)
 			
 	def calculate_totals(self):
 		"""Calculate total distributed and balance remaining"""
@@ -675,16 +702,30 @@ class ProjectAdvances(Document):
 			frappe.logger().info(f"Refreshing available balances for Project Advances {self.name}")
 			frappe.logger().info(f"Project contractors: {[c.project_contractor for c in self.project_contractors]}")
 			
-			self.load_available_fees_and_deposits()
+			# Debug: Check if we have project contractors
+			if not self.project_contractors:
+				return '<div class="alert alert-info">Please select project contractors first.</div>'
+			
+			# Get available data directly
+			available_data = self.get_available_fees_and_deposits()
+			frappe.logger().info(f"Available data count: {len(available_data) if available_data else 0}")
+			
+			# Update HTML
+			self.update_available_fees_html(available_data)
 			
 			frappe.logger().info(f"Available fees HTML length: {len(self.available_fees_html) if self.available_fees_html else 0}")
+			
+			# Also save the HTML to the document
+			if self.available_fees_html:
+				self.db_set('available_fees_html', self.available_fees_html, update_modified=False)
 			
 			return self.available_fees_html
 		except Exception as e:
 			frappe.logger().error(f"Error in refresh_available_balances: {str(e)}")
 			import traceback
 			frappe.logger().error(traceback.format_exc())
-			return f'<div class="alert alert-danger">Error loading available balances: {str(e)}</div>'
+			error_html = f'<div class="alert alert-danger">Error loading available balances: {str(e)}<br><small>{traceback.format_exc()}</small></div>'
+			return error_html
 		
 
 

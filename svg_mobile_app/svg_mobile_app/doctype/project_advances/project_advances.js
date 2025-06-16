@@ -11,12 +11,42 @@ frappe.ui.form.on("Project Advances", {
 			}).addClass('btn-info');
 		}
 		
+		// Always add debug refresh button for testing
+		frm.add_custom_button(__('Debug: Force Refresh HTML'), function() {
+			console.log('Debug: Force refreshing HTML');
+			refresh_available_balances(frm);
+		}).addClass('btn-warning');
+		
 		// Set up field dependencies
 		setup_field_dependencies(frm);
+		
+		// Auto-refresh HTML when form loads if we have contractors
+		if (frm.doc.project_contractors && frm.doc.project_contractors.length > 0) {
+			setTimeout(() => {
+				refresh_available_balances(frm);
+			}, 1000);
+		}
 	},
 	
 	advance_amount: function(frm) {
 		calculate_totals(frm);
+		
+		// Validate that advance amount is not less than total allocated
+		let total_allocated = 0;
+		if (frm.doc.project_contractors) {
+			frm.doc.project_contractors.forEach(function(contractor) {
+				total_allocated += flt(contractor.allocated_amount);
+			});
+		}
+		
+		if (total_allocated > flt(frm.doc.advance_amount)) {
+			frappe.msgprint({
+				title: __('Invalid Advance Amount'),
+				message: __('Advance amount ({0}) cannot be less than total allocated amount ({1}). Please increase the advance amount or reduce allocations.', 
+					[format_currency(frm.doc.advance_amount), format_currency(total_allocated)]),
+				indicator: 'orange'
+			});
+		}
 	},
 	
 	custodian_employee: function(frm) {
@@ -45,12 +75,38 @@ frappe.ui.form.on("Project Advance Contractors", {
 		
 		// Validate allocated amount doesn't exceed available balance
 		if (flt(row.allocated_amount) > flt(row.total_available_balance)) {
-			frappe.msgprint(__('Allocated amount cannot exceed available balance'));
+			frappe.msgprint(__('Allocated amount cannot exceed available balance for this contractor'));
 			frappe.model.set_value(cdt, cdn, 'allocated_amount', row.total_available_balance);
+			return;
 		}
 		
 		// Recalculate totals
 		calculate_totals(frm);
+		
+		// Validate total doesn't exceed advance amount
+		let total_allocated = 0;
+		if (frm.doc.project_contractors) {
+			frm.doc.project_contractors.forEach(function(contractor) {
+				total_allocated += flt(contractor.allocated_amount);
+			});
+		}
+		
+		if (total_allocated > flt(frm.doc.advance_amount)) {
+			frappe.msgprint({
+				title: __('Invalid Allocation'),
+				message: __('Total allocated amount ({0}) cannot exceed advance amount ({1}). Please reduce the allocation.', 
+					[format_currency(total_allocated), format_currency(frm.doc.advance_amount)]),
+				indicator: 'red'
+			});
+			
+			// Reset this allocation to prevent exceeding
+			let excess = total_allocated - flt(frm.doc.advance_amount);
+			let new_amount = flt(row.allocated_amount) - excess;
+			if (new_amount < 0) new_amount = 0;
+			
+			frappe.model.set_value(cdt, cdn, 'allocated_amount', new_amount);
+			calculate_totals(frm);
+		}
 	},
 	
 	project_contractors_add: function(frm, cdt, cdn) {
@@ -114,18 +170,28 @@ function load_contractor_balance(frm, contractor_row) {
 function refresh_available_balances(frm) {
 	if (!frm.doc.project_contractors || frm.doc.project_contractors.length === 0) {
 		frm.set_value('available_fees_html', '<div class="alert alert-info">Please select project contractors first.</div>');
+		frm.refresh_field('available_fees_html');
 		return;
 	}
 	
 	// Show loading indicator
 	frm.set_value('available_fees_html', '<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading available balances...</div>');
+	frm.refresh_field('available_fees_html');
 	
 	// Call server method to get all available balances
 	frm.call('refresh_available_balances').then(r => {
+		console.log('Refresh available balances response:', r);
 		if (r.message) {
 			frm.set_value('available_fees_html', r.message);
 			frm.refresh_field('available_fees_html');
+		} else {
+			frm.set_value('available_fees_html', '<div class="alert alert-warning">No data returned from server.</div>');
+			frm.refresh_field('available_fees_html');
 		}
+	}).catch(error => {
+		console.error('Error refreshing available balances:', error);
+		frm.set_value('available_fees_html', '<div class="alert alert-danger">Error loading available balances. Check console for details.</div>');
+		frm.refresh_field('available_fees_html');
 	});
 }
 
@@ -141,7 +207,28 @@ function calculate_totals(frm) {
 	}
 	
 	frm.set_value('total_distributed', total_distributed);
-	frm.set_value('balance_remaining', flt(frm.doc.advance_amount) - total_distributed);
+	let balance_remaining = flt(frm.doc.advance_amount) - total_distributed;
+	frm.set_value('balance_remaining', balance_remaining);
+	
+	// Visual indicators for balance status
+	setTimeout(() => {
+		let balance_field = frm.get_field('balance_remaining');
+		let total_field = frm.get_field('total_distributed');
+		
+		if (balance_remaining < 0) {
+			// Negative balance - red indicator
+			balance_field.$wrapper.find('.control-value').css('color', 'red').css('font-weight', 'bold');
+			total_field.$wrapper.find('.control-value').css('color', 'red').css('font-weight', 'bold');
+		} else if (balance_remaining === 0) {
+			// Exact match - green indicator
+			balance_field.$wrapper.find('.control-value').css('color', 'green').css('font-weight', 'bold');
+			total_field.$wrapper.find('.control-value').css('color', 'green').css('font-weight', 'normal');
+		} else {
+			// Positive balance - normal
+			balance_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
+			total_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
+		}
+	}, 100);
 }
 
 	

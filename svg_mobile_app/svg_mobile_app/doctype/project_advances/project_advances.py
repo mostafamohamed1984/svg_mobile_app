@@ -9,6 +9,7 @@ import json
 
 class ProjectAdvances(Document):
 	def validate(self):
+		self.validate_project_claim_reference()
 		self.validate_advance_amount()
 		self.calculate_totals()
 		self.update_status()
@@ -26,6 +27,45 @@ class ProjectAdvances(Document):
 		"""Cancel related Employee Advances when document is cancelled"""
 		self.cancel_employee_advances()
 		self.update_status()
+		
+	def validate_project_claim_reference(self):
+		"""Validate that Project Claim reference is valid and submitted"""
+		if not self.project_claim_reference:
+			frappe.throw("Project Claim Reference is required")
+			
+		# Check if Project Claim exists and is submitted
+		project_claim = frappe.get_doc("Project Claim", self.project_claim_reference)
+		if project_claim.docstatus != 1:
+			frappe.throw(f"Project Claim {self.project_claim_reference} must be submitted before creating Project Advance")
+			
+		# Validate that the selected project contractors are related to this project claim
+		if self.project_contractors:
+			claim_contractors = self.get_contractors_from_project_claim(self.project_claim_reference)
+			for contractor_row in self.project_contractors:
+				if contractor_row.project_contractor not in claim_contractors:
+					frappe.throw(
+						f"Project Contractor {contractor_row.project_contractor} is not related to "
+						f"Project Claim {self.project_claim_reference}"
+					)
+		
+	def get_contractors_from_project_claim(self, project_claim_name):
+		"""Get list of project contractors related to a project claim"""
+		# Get claim items and their project contractor references
+		claim_items = frappe.get_all(
+			"Claim Items",
+			filters={
+				"parent": project_claim_name,
+				"parenttype": "Project Claim"
+			},
+			fields=["project_contractor_reference"]
+		)
+		
+		contractors = set()
+		for item in claim_items:
+			if item.project_contractor_reference:
+				contractors.add(item.project_contractor_reference)
+		
+		return list(contractors)
 		
 	def validate_advance_amount(self):
 		"""Validate that advance amount doesn't exceed available balance"""
@@ -508,6 +548,9 @@ class ProjectAdvances(Document):
 					# Set custom fields for tracking
 					if frappe.get_meta("Employee Advance").has_field("custom_project_advance_reference"):
 						employee_advance.custom_project_advance_reference = self.name
+						
+					if frappe.get_meta("Employee Advance").has_field("custom_project_claim_reference"):
+						employee_advance.custom_project_claim_reference = self.project_claim_reference
 						
 					if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
 						employee_advance.project_contractors_reference = contractor.project_contractor

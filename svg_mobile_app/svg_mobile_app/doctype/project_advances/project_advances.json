@@ -8,6 +8,7 @@
  "field_order": [
   "naming_series",
   "company",
+  "project_claim_reference",
   "column_break_main",
   "date",
   "status",
@@ -47,6 +48,14 @@
    "label": "Company",
    "options": "Company",
    "reqd": 1
+  },
+  {
+   "fieldname": "project_claim_reference",
+   "fieldtype": "Link",
+   "label": "Project Claim Reference",
+   "options": "Project Claim",
+   "reqd": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "column_break_main",

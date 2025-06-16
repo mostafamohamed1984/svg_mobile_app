@@ -35,6 +35,50 @@ class ProjectContractors(Document):
 		self.total_amount = total_items
 		self.total_fees = total_fees
 		self.total_project_amount = total_items + total_fees
+		
+	@frappe.whitelist()
+	def check_paid_employee_advance_availability(self):
+		"""Check if there are paid Employee Advances available for this contractor"""
+		if self.docstatus != 1:
+			return {"available_amount": 0, "message": "Project Contractor must be submitted"}
+		
+		# Find Employee Advances that reference this Project Contractor and are PAID
+		employee_advances = frappe.get_all(
+			"Employee Advance",
+			filters={
+				"project_contractors_reference": self.name,
+				"status": "Paid",  # CRITICAL: Only paid advances
+				"docstatus": 1
+			},
+			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "returned_amount"]
+		)
+		
+		if not employee_advances:
+			return {"available_amount": 0, "message": "No paid Employee Advances found for this contractor"}
+		
+		total_available = 0
+		advance_details = []
+		
+		for advance in employee_advances:
+			# Calculate outstanding amount (what's available for distribution)
+			outstanding = flt(advance.paid_amount) - (flt(advance.claimed_amount) + flt(advance.returned_amount))
+			
+			if outstanding > 0:
+				total_available += outstanding
+				advance_details.append({
+					"name": advance.name,
+					"advance_amount": advance.advance_amount,
+					"paid_amount": advance.paid_amount,
+					"claimed_amount": advance.claimed_amount,
+					"returned_amount": advance.returned_amount,
+					"outstanding": outstanding
+				})
+		
+		return {
+			"available_amount": total_available,
+			"advance_details": advance_details,
+			"message": f"Total available amount: {frappe.format(total_available, {'fieldtype': 'Currency'})}" if total_available > 0 else "No outstanding amount available"
+		}
 
 	def create_automatic_sales_invoices(self):
 		"""Create both taxable and non-taxable sales invoices automatically"""

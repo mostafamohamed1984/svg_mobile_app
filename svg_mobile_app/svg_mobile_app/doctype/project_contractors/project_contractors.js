@@ -98,21 +98,33 @@ frappe.ui.form.on("Project Contractors", {
 
 // Function to check if there are Project Claims for the fees and deposits items
 function check_project_claims_for_advances(frm) {
-    // Get all sales invoices created for this Project Contractors
-    frappe.call({
-        method: 'svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.check_project_claims_for_advances',
-        args: {
-            project_contractors: frm.doc.name,
-            include_partial_advances: true  // Include items with partial advances
-        },
+    // First check if there are paid Employee Advances available for this contractor
+    frm.call({
+        method: 'check_paid_employee_advance_availability',
+        doc: frm.doc,
         callback: function(r) {
             // Remove existing button first
             frm.remove_custom_button(__('Create Employee Advances'));
             
-            if (r.message && r.message.has_eligible_items) {
+            if (r.message && r.message.available_amount > 0) {
+                // Show button with available amount information
                 frm.add_custom_button(__('Create Employee Advances'), function() {
-                    create_employee_advances(frm, r.message.eligible_items);
+                    show_employee_advance_dialog(frm, r.message);
                 }).addClass('btn-primary');
+                
+                // Show available amount in a small message
+                frm.dashboard.add_comment(
+                    `Available for distribution: ${frappe.format(r.message.available_amount, {'fieldtype': 'Currency'})}`,
+                    'blue',
+                    true
+                );
+            } else {
+                // Show informational message about why button is not available
+                frm.dashboard.add_comment(
+                    r.message.message || 'No paid Employee Advances available for distribution',
+                    'orange',
+                    true
+                );
             }
         }
     });
@@ -127,6 +139,82 @@ function setup_item_filter(frm) {
             ]
         };
     });
+}
+
+// Function to show Employee Advance distribution dialog
+function show_employee_advance_dialog(frm, advance_data) {
+    let dialog = new frappe.ui.Dialog({
+        title: __('Distribute Employee Advances'),
+        size: 'large',
+        fields: [
+            {
+                fieldname: 'available_amount_info',
+                fieldtype: 'HTML',
+                label: __('Available Amount Information')
+            },
+            {
+                fieldname: 'advance_details_html',
+                fieldtype: 'HTML',
+                label: __('Employee Advance Details')
+            }
+        ],
+        primary_action_label: __('Distribute Advances'),
+        primary_action(values) {
+            // Handle distribution logic here
+            frappe.msgprint(__('Employee Advance distribution functionality will be implemented here'));
+            dialog.hide();
+        }
+    });
+
+    // Show available amount information
+    let info_html = `
+        <div class="alert alert-info">
+            <strong>Total Available Amount:</strong> ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}
+            <br>
+            <small>This amount is from paid Employee Advances that can be distributed to project items.</small>
+        </div>
+    `;
+    
+    dialog.fields_dict.available_amount_info.$wrapper.html(info_html);
+
+    // Show advance details
+    let details_html = `
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee Advance</th>
+                        <th>Advance Amount</th>
+                        <th>Paid Amount</th>
+                        <th>Claimed Amount</th>
+                        <th>Returned Amount</th>
+                        <th>Outstanding</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    advance_data.advance_details.forEach(advance => {
+        details_html += `
+            <tr>
+                <td><a href="/app/employee-advance/${advance.name}" target="_blank">${advance.name}</a></td>
+                <td>${frappe.format(advance.advance_amount, {'fieldtype': 'Currency'})}</td>
+                <td>${frappe.format(advance.paid_amount, {'fieldtype': 'Currency'})}</td>
+                <td>${frappe.format(advance.claimed_amount, {'fieldtype': 'Currency'})}</td>
+                <td>${frappe.format(advance.returned_amount, {'fieldtype': 'Currency'})}</td>
+                <td><strong>${frappe.format(advance.outstanding, {'fieldtype': 'Currency'})}</strong></td>
+            </tr>
+        `;
+    });
+    
+    details_html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    dialog.fields_dict.advance_details_html.$wrapper.html(details_html);
+    dialog.show();
 }
 
 function create_employee_advances(frm, eligible_items) {

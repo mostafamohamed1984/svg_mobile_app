@@ -54,6 +54,9 @@ frappe.ui.form.on("Project Advance Contractors", {
 	project_contractor: function(frm, cdt, cdn) {
 		let row = locals[cdt][cdn];
 		if (row.project_contractor) {
+			// Auto-populate project claim reference for this contractor
+			auto_populate_project_claim_reference_for_contractor(frm, cdt, cdn, row);
+			
 			// Load available balance for this contractor
 			load_contractor_balance(frm, row);
 			
@@ -107,11 +110,6 @@ frappe.ui.form.on("Project Advance Contractors", {
 		// Refresh available balances when a new contractor is added
 		setTimeout(() => {
 			refresh_available_balances(frm);
-			
-			// Auto-populate project claim reference if not set
-			if (!frm.doc.project_claim_reference) {
-				auto_populate_project_claim_reference(frm);
-			}
 		}, 500);
 	},
 	
@@ -196,38 +194,34 @@ function refresh_available_balances(frm) {
 
 
 
-function auto_populate_project_claim_reference(frm) {
-	if (!frm.doc.project_contractors || frm.doc.project_contractors.length === 0) {
+function auto_populate_project_claim_reference_for_contractor(frm, cdt, cdn, row) {
+	if (!row.project_contractor) {
 		return;
 	}
 	
-	// Get selected contractors
-	let selected_contractors = frm.doc.project_contractors
-		.filter(row => row.project_contractor)
-		.map(row => row.project_contractor);
-	
-	if (selected_contractors.length === 0) {
-		return;
-	}
-	
-	// Call server method to find matching project claims
+	// Call server method to find matching project claims for this specific contractor
 	frappe.call({
-		method: 'svg_mobile_app.svg_mobile_app.doctype.project_advances.project_advances.find_project_claims_for_contractors',
+		method: 'svg_mobile_app.svg_mobile_app.doctype.project_advances.project_advances.find_project_claims_for_contractor',
 		args: {
-			contractor_list: selected_contractors
+			project_contractor: row.project_contractor
 		},
 		callback: function(r) {
 			if (r.message && r.message.length === 1) {
 				// Auto-populate if exactly one match found
-				frm.set_value('project_claim_reference', r.message[0]);
+				frappe.model.set_value(cdt, cdn, 'project_claim_reference', r.message[0]);
 				frappe.show_alert({
-					message: __('Auto-populated Project Claim Reference: {0}', [r.message[0]]),
+					message: __('Auto-populated Project Claim Reference for {0}: {1}', [row.project_contractor, r.message[0]]),
 					indicator: 'green'
 				});
 			} else if (r.message && r.message.length > 1) {
 				frappe.show_alert({
-					message: __('Multiple Project Claims found. Please select manually.'),
+					message: __('Multiple Project Claims found for {0}. Please select manually.', [row.project_contractor]),
 					indicator: 'orange'
+				});
+			} else {
+				frappe.show_alert({
+					message: __('No Project Claims found for {0}.', [row.project_contractor]),
+					indicator: 'red'
 				});
 			}
 		}

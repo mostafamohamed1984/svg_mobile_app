@@ -6,6 +6,7 @@
  "engine": "InnoDB",
  "field_order": [
   "project_contractor",
+  "project_claim_reference",
   "project_name",
   "customer",
   "column_break_main",
@@ -22,6 +23,14 @@
    "label": "Project Contractor",
    "options": "Project Contractors",
    "reqd": 1
+  },
+  {
+   "fieldname": "project_claim_reference",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Project Claim Reference",
+   "options": "Project Claim",
+   "read_only": 1
   },
   {
    "fetch_from": "project_contractor.project_name",

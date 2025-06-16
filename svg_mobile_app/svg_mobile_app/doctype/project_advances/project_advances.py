@@ -14,7 +14,7 @@ class ProjectAdvances(Document):
 		self.update_status()
 		
 	def before_save(self):
-		if self.project_contractor:
+		if self.project_contractors:
 			self.load_available_fees_and_deposits()
 			
 	def on_submit(self):
@@ -29,7 +29,7 @@ class ProjectAdvances(Document):
 		
 	def validate_advance_amount(self):
 		"""Validate that advance amount doesn't exceed available balance"""
-		if not self.project_contractor or not self.advance_amount:
+		if not self.project_contractors or not self.advance_amount:
 			return
 			
 		available_balance = self.get_total_available_balance()
@@ -67,11 +67,11 @@ class ProjectAdvances(Document):
 			self.status = "Active"
 			
 	def load_available_fees_and_deposits(self):
-		"""Load available fees and deposits for the selected project contractor"""
-		if not self.project_contractor:
+		"""Load available fees and deposits for all selected project contractors"""
+		if not self.project_contractors:
 			return
 			
-		# Get available balances for this project contractor
+		# Get available balances for all project contractors
 		available_data = self.get_available_fees_and_deposits()
 		
 		# Update the HTML field to show available amounts
@@ -82,52 +82,61 @@ class ProjectAdvances(Document):
 			self.auto_populate_advance_items(available_data)
 			
 	def get_available_fees_and_deposits(self):
-		"""Get available fees and deposits balances for the project contractor"""
-		if not self.project_contractor:
+		"""Get available fees and deposits balances for all selected project contractors"""
+		if not self.project_contractors:
 			return []
 			
-		# Get the project contractor document
-		project_contractor_doc = frappe.get_doc("Project Contractors", self.project_contractor)
-		
 		available_items = []
 		
-		# Process fees and deposits items
-		for fee_item in project_contractor_doc.fees_and_deposits:
-			# Get claimed amount from Project Claims
-			claimed_amount = self.get_claimed_amount_for_item(fee_item.item)
+		# Process each selected project contractor
+		for contractor_row in self.project_contractors:
+			project_contractor_name = contractor_row.project_contractor
 			
-			if claimed_amount <= 0:
-				continue  # Skip items with no claims
+			if not project_contractor_name:
+				continue
 				
-			# Get already advanced amount from existing Employee Advances
-			advanced_amount = self.get_advanced_amount_for_item(fee_item.item)
+			# Get the project contractor document
+			project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor_name)
 			
-			# Get amount already allocated in other Project Advances
-			allocated_in_other_advances = self.get_allocated_in_other_project_advances(fee_item.item)
-			
-			# Calculate available balance
-			available_balance = claimed_amount - advanced_amount - allocated_in_other_advances
-			
-			if available_balance > 0:
-				available_items.append({
-					'item_code': fee_item.item,
-					'item_name': fee_item.item_name if hasattr(fee_item, 'item_name') else fee_item.item,
-					'original_rate': fee_item.rate,
-					'claimed_amount': claimed_amount,
-					'advanced_amount': advanced_amount,
-					'allocated_in_other_advances': allocated_in_other_advances,
-					'available_balance': available_balance
-				})
+			# Process fees and deposits items for this contractor
+			for fee_item in project_contractor_doc.fees_and_deposits:
+				# Get claimed amount from Project Claims for this specific contractor and item
+				claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
 				
+				if claimed_amount <= 0:
+					continue  # Skip items with no claims
+					
+				# Get already advanced amount from existing Employee Advances
+				advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor_name)
+				
+				# Get amount already allocated in other Project Advances
+				allocated_in_other_advances = self.get_allocated_in_other_project_advances(fee_item.item, project_contractor_name)
+				
+				# Calculate available balance
+				available_balance = claimed_amount - advanced_amount - allocated_in_other_advances
+				
+				if available_balance > 0:
+					available_items.append({
+						'project_contractor': project_contractor_name,
+						'project_name': project_contractor_doc.project_name,
+						'item_code': fee_item.item,
+						'item_name': fee_item.item_name if hasattr(fee_item, 'item_name') else fee_item.item,
+						'original_rate': fee_item.rate,
+						'claimed_amount': claimed_amount,
+						'advanced_amount': advanced_amount,
+						'allocated_in_other_advances': allocated_in_other_advances,
+						'available_balance': available_balance
+					})
+					
 		return available_items
 		
-	def get_claimed_amount_for_item(self, item_code):
+	def get_claimed_amount_for_item(self, item_code, project_contractor):
 		"""Get total claimed amount for an item from Project Claims"""
 		# Get all sales invoices for this project contractor
 		sales_invoices = frappe.get_all(
 			"Sales Invoice",
 			filters={
-				"custom_for_project": self.project_contractor,
+				"custom_for_project": project_contractor,
 				"docstatus": 1
 			},
 			pluck="name"
@@ -154,13 +163,13 @@ class ProjectAdvances(Document):
 			
 		return total_claimed
 		
-	def get_advanced_amount_for_item(self, item_code):
+	def get_advanced_amount_for_item(self, item_code, project_contractor):
 		"""Get total advanced amount for an item from Employee Advances"""
 		# Get all employee advances for this item and project contractor
 		employee_advances = frappe.get_all(
 			"Employee Advance",
 			filters={
-				"custom_project_contractors_reference": self.project_contractor,
+				"custom_project_contractors_reference": project_contractor,
 				"custom_item_reference": item_code,
 				"docstatus": 1
 			},
@@ -173,11 +182,10 @@ class ProjectAdvances(Document):
 			
 		return total_advanced
 		
-	def get_allocated_in_other_project_advances(self, item_code):
+	def get_allocated_in_other_project_advances(self, item_code, project_contractor):
 		"""Get amount allocated in other Project Advances for this item"""
-		# Get all other project advances for the same project contractor (excluding current one)
+		# Get all other project advances that include this project contractor (excluding current one)
 		filters = {
-			"project_contractor": self.project_contractor,
 			"docstatus": ["!=", 2]  # Not cancelled
 		}
 		
@@ -193,11 +201,12 @@ class ProjectAdvances(Document):
 		if not other_advances:
 			return 0
 			
-		# Get allocated amounts from advance items
+		# Get allocated amounts from advance items for this specific project contractor and item
 		allocated_items = frappe.get_all(
 			"Project Advance Items",
 			filters={
 				"parent": ["in", other_advances],
+				"project_contractor": project_contractor,
 				"item_code": item_code
 			},
 			fields=["allocated_amount"]
@@ -356,7 +365,7 @@ class ProjectAdvances(Document):
 					employee_advance.custom_project_advance_reference = self.name
 					
 				if frappe.get_meta("Employee Advance").has_field("custom_project_contractors_reference"):
-					employee_advance.custom_project_contractors_reference = self.project_contractor
+					employee_advance.custom_project_contractors_reference = item.project_contractor
 					
 				if frappe.get_meta("Employee Advance").has_field("custom_item_reference"):
 					employee_advance.custom_item_reference = item.item_code

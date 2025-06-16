@@ -7,10 +7,6 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
-  "project_contractor",
-  "project_name",
-  "customer",
-  "customer_name",
   "company",
   "column_break_main",
   "date",
@@ -18,6 +14,8 @@
   "total_advance_amount",
   "remaining_balance",
   "created_by",
+  "section_break_contractors",
+  "project_contractors",
   "section_break_available",
   "available_fees_html",
   "section_break_advance",
@@ -44,44 +42,11 @@
    "options": "PA-.YYYY.-"
   },
   {
-   "fieldname": "project_contractor",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "label": "Project Contractor",
-   "options": "Project Contractors",
-   "reqd": 1
-  },
-  {
-   "fetch_from": "project_contractor.project_name",
-   "fieldname": "project_name",
-   "fieldtype": "Data",
-   "in_list_view": 1,
-   "label": "Project Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "project_contractor.customer",
-   "fieldname": "customer",
-   "fieldtype": "Link",
-   "label": "Customer",
-   "options": "Customer",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "project_contractor.customer_name",
-   "fieldname": "customer_name",
-   "fieldtype": "Data",
-   "label": "Customer Name",
-   "read_only": 1
-  },
-  {
-   "fetch_from": "project_contractor.company",
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
    "options": "Company",
-   "read_only": 1
+   "reqd": 1
   },
   {
    "fieldname": "column_break_main",
@@ -122,6 +87,18 @@
    "label": "Created By",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "section_break_contractors",
+   "fieldtype": "Section Break",
+   "label": "Project Contractors Selection"
+  },
+  {
+   "fieldname": "project_contractors",
+   "fieldtype": "Table",
+   "label": "Project Contractors",
+   "options": "Project Advance Contractors",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_available",

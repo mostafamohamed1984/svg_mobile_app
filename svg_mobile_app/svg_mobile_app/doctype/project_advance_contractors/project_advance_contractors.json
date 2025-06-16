@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "project_contractor",
+  "project_name",
+  "customer",
+  "column_break_main",
+  "total_available_balance",
+  "allocated_amount",
+  "section_break_details",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "project_contractor",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Project Contractor",
+   "options": "Project Contractors",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "project_contractor.project_name",
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Project Name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "project_contractor.customer_name",
+   "fieldname": "customer",
+   "fieldtype": "Data",
+   "label": "Customer",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_available_balance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Available Balance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allocated_amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Allocated Amount"
+  },
+  {
+   "fieldname": "section_break_details",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-06-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Project Advance Contractors",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+} 

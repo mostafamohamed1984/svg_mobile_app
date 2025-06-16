@@ -149,8 +149,10 @@ class ProjectAdvances(Document):
 		
 		if not submitted_claims:
 			return 0
-			
-		# Get claim items for this specific item and project contractor
+		
+		total_claimed = 0
+		
+		# Method 1: Try exact match with project_contractor_reference
 		claim_items = frappe.get_all(
 			"Claim Items",
 			filters={
@@ -162,9 +164,122 @@ class ProjectAdvances(Document):
 			fields=["amount"]
 		)
 		
-		total_claimed = 0
 		for claim_item in claim_items:
 			total_claimed += flt(claim_item.amount)
+		
+		# Method 2: If no exact match found, try broader search
+		# Look for claims where the Project Claim references this project contractor
+		if total_claimed == 0:
+			# Get Project Claims that reference this project contractor in various ways
+			project_claims_for_contractor = []
+			
+			# Check project_references field
+			claims_by_project_refs = frappe.get_all(
+				"Project Claim",
+				filters=[
+					["docstatus", "=", 1],
+					["project_references", "like", f"%{project_contractor}%"]
+				],
+				pluck="name"
+			)
+			project_claims_for_contractor.extend(claims_by_project_refs)
+			
+			# Check for_project field
+			claims_by_for_project = frappe.get_all(
+				"Project Claim",
+				filters={
+					"for_project": project_contractor,
+					"docstatus": 1
+				},
+				pluck="name"
+			)
+			project_claims_for_contractor.extend(claims_by_for_project)
+			
+			# Check project_contractor field
+			claims_by_project_contractor = frappe.get_all(
+				"Project Claim",
+				filters={
+					"project_contractor": project_contractor,
+					"docstatus": 1
+				},
+				pluck="name"
+			)
+			project_claims_for_contractor.extend(claims_by_project_contractor)
+			
+			# Remove duplicates
+			project_claims_for_contractor = list(set(project_claims_for_contractor))
+			
+			if project_claims_for_contractor:
+				# Get claim items for this item from these claims
+				broader_claim_items = frappe.get_all(
+					"Claim Items",
+					filters={
+						"item": item_code,
+						"parenttype": "Project Claim",
+						"parent": ["in", project_claims_for_contractor]
+					},
+					fields=["amount"]
+				)
+				
+				for claim_item in broader_claim_items:
+					total_claimed += flt(claim_item.amount)
+		
+		# Method 3: If still no match, check Sales Invoices from this Project Contractor
+		if total_claimed == 0:
+			# Get Sales Invoices for this Project Contractor
+			sales_invoices = frappe.get_all(
+				"Sales Invoice",
+				filters={
+					"custom_for_project": project_contractor,
+					"docstatus": 1
+				},
+				pluck="name"
+			)
+			
+			if sales_invoices:
+				# Find Project Claims that reference these invoices
+				claims_by_invoice = []
+				
+				for invoice in sales_invoices:
+					# Check reference_invoice field
+					claims = frappe.get_all(
+						"Project Claim",
+						filters={
+							"reference_invoice": invoice,
+							"docstatus": 1
+						},
+						pluck="name"
+					)
+					claims_by_invoice.extend(claims)
+					
+					# Check invoice_references field
+					additional_claims = frappe.get_all(
+						"Project Claim",
+						filters=[
+							["docstatus", "=", 1],
+							["invoice_references", "like", f"%{invoice}%"]
+						],
+						pluck="name"
+					)
+					claims_by_invoice.extend(additional_claims)
+				
+				# Remove duplicates
+				claims_by_invoice = list(set(claims_by_invoice))
+				
+				if claims_by_invoice:
+					# Get claim items for this item from these claims
+					invoice_claim_items = frappe.get_all(
+						"Claim Items",
+						filters={
+							"item": item_code,
+							"parenttype": "Project Claim",
+							"parent": ["in", claims_by_invoice]
+						},
+						fields=["amount"]
+					)
+					
+					for claim_item in invoice_claim_items:
+						total_claimed += flt(claim_item.amount)
 			
 		return total_claimed
 		
@@ -509,7 +624,11 @@ def get_project_contractor_summary(project_contractor):
 		
 	# Create a temporary Project Advances document to use its methods
 	temp_doc = frappe.new_doc("Project Advances")
-	temp_doc.project_contractor = project_contractor
+	
+	# Add the project contractor to the project_contractors table
+	temp_doc.append("project_contractors", {
+		"project_contractor": project_contractor
+	})
 	
 	available_data = temp_doc.get_available_fees_and_deposits()
 	total_available = sum(flt(item['available_balance']) for item in available_data)
@@ -529,7 +648,11 @@ def validate_advance_amount(project_contractor, advance_amount):
 		
 	# Create a temporary Project Advances document to use its methods
 	temp_doc = frappe.new_doc("Project Advances")
-	temp_doc.project_contractor = project_contractor
+	
+	# Add the project contractor to the project_contractors table
+	temp_doc.append("project_contractors", {
+		"project_contractor": project_contractor
+	})
 	
 	total_available = temp_doc.get_total_available_balance()
 	advance_amount = flt(advance_amount)

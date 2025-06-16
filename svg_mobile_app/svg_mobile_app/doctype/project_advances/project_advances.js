@@ -11,12 +11,6 @@ frappe.ui.form.on("Project Advances", {
 			}).addClass('btn-info');
 		}
 		
-		// Always add debug refresh button for testing
-		frm.add_custom_button(__('Debug: Force Refresh HTML'), function() {
-			console.log('Debug: Force refreshing HTML');
-			refresh_available_balances(frm);
-		}).addClass('btn-warning');
-		
 		// Set up field dependencies
 		setup_field_dependencies(frm);
 		
@@ -113,6 +107,11 @@ frappe.ui.form.on("Project Advance Contractors", {
 		// Refresh available balances when a new contractor is added
 		setTimeout(() => {
 			refresh_available_balances(frm);
+			
+			// Auto-populate project claim reference if not set
+			if (!frm.doc.project_claim_reference) {
+				auto_populate_project_claim_reference(frm);
+			}
 		}, 500);
 	},
 	
@@ -196,6 +195,44 @@ function refresh_available_balances(frm) {
 }
 
 
+
+function auto_populate_project_claim_reference(frm) {
+	if (!frm.doc.project_contractors || frm.doc.project_contractors.length === 0) {
+		return;
+	}
+	
+	// Get selected contractors
+	let selected_contractors = frm.doc.project_contractors
+		.filter(row => row.project_contractor)
+		.map(row => row.project_contractor);
+	
+	if (selected_contractors.length === 0) {
+		return;
+	}
+	
+	// Call server method to find matching project claims
+	frappe.call({
+		method: 'svg_mobile_app.svg_mobile_app.doctype.project_advances.project_advances.find_project_claims_for_contractors',
+		args: {
+			contractor_list: selected_contractors
+		},
+		callback: function(r) {
+			if (r.message && r.message.length === 1) {
+				// Auto-populate if exactly one match found
+				frm.set_value('project_claim_reference', r.message[0]);
+				frappe.show_alert({
+					message: __('Auto-populated Project Claim Reference: {0}', [r.message[0]]),
+					indicator: 'green'
+				});
+			} else if (r.message && r.message.length > 1) {
+				frappe.show_alert({
+					message: __('Multiple Project Claims found. Please select manually.'),
+					indicator: 'orange'
+				});
+			}
+		}
+	});
+}
 
 function calculate_totals(frm) {
 	let total_distributed = 0;

@@ -96,6 +96,7 @@ class ProjectAdvances(Document):
 	def get_available_fees_and_deposits(self):
 		"""Get available fees and deposits balances for all selected project contractors"""
 		if not self.project_contractors:
+			frappe.logger().info("No project contractors found")
 			return []
 			
 		available_items = []
@@ -105,49 +106,61 @@ class ProjectAdvances(Document):
 			project_contractor_name = contractor_row.project_contractor
 			
 			if not project_contractor_name:
+				frappe.logger().info(f"Empty project contractor in row")
 				continue
 				
-			# Get the project contractor document
-			project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor_name)
+			frappe.logger().info(f"Processing contractor: {project_contractor_name}")
 			
-			# Process fees and deposits items for this contractor
-			for fee_item in project_contractor_doc.fees_and_deposits:
-				# Get claimed amount from Project Claims for this specific contractor and item
-				claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
+			try:
+				# Get the project contractor document
+				project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor_name)
+				frappe.logger().info(f"Found contractor doc with {len(project_contractor_doc.fees_and_deposits)} fees and deposits items")
 				
-				# For testing: show all items even if not claimed yet
-				# if claimed_amount <= 0:
-				# 	continue  # Skip items with no claims
+				# Process fees and deposits items for this contractor
+				for fee_item in project_contractor_doc.fees_and_deposits:
+					frappe.logger().info(f"Processing item: {fee_item.item}")
 					
-				# Get already advanced amount from existing Employee Advances
-				advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor_name)
-				
-				# Get amount already allocated in other Project Advances
-				allocated_in_other_advances = self.get_allocated_in_other_project_advances(fee_item.item, project_contractor_name)
-				
-				# Calculate available balance
-				# For items with no claims yet, use the original rate as available balance
-				if claimed_amount <= 0:
-					available_balance = flt(fee_item.rate) - advanced_amount - allocated_in_other_advances
-				else:
-					available_balance = claimed_amount - advanced_amount - allocated_in_other_advances
-				
-				if available_balance > 0:
-					# Get item name from Item master
-					item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item
+					# Get claimed amount from Project Claims for this specific contractor and item
+					claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
+					frappe.logger().info(f"Claimed amount for {fee_item.item}: {claimed_amount}")
 					
-					available_items.append({
-						'project_contractor': project_contractor_name,
-						'project_name': project_contractor_doc.project_name,
-						'item_code': fee_item.item,
-						'item_name': item_name,
-						'original_rate': fee_item.rate,
-						'claimed_amount': claimed_amount,
-						'advanced_amount': advanced_amount,
-						'allocated_in_other_advances': allocated_in_other_advances,
-						'available_balance': available_balance
-					})
+					# Get already advanced amount from existing Employee Advances
+					advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor_name)
+					frappe.logger().info(f"Advanced amount for {fee_item.item}: {advanced_amount}")
 					
+					# Calculate available balance
+					# For items with no claims yet, use the original rate as available balance
+					if claimed_amount <= 0:
+						available_balance = flt(fee_item.rate) - advanced_amount
+					else:
+						available_balance = claimed_amount - advanced_amount
+					
+					frappe.logger().info(f"Available balance for {fee_item.item}: {available_balance}")
+					
+					if available_balance > 0:
+						# Get item name from Item master
+						item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item
+						
+						available_items.append({
+							'project_contractor': project_contractor_name,
+							'project_name': project_contractor_doc.project_name,
+							'item_code': fee_item.item,
+							'item_name': item_name,
+							'original_rate': fee_item.rate,
+							'claimed_amount': claimed_amount,
+							'advanced_amount': advanced_amount,
+							'available_balance': available_balance
+						})
+						
+						frappe.logger().info(f"Added item {fee_item.item} to available items")
+					else:
+						frappe.logger().info(f"Skipped item {fee_item.item} - no available balance")
+			
+			except Exception as e:
+				frappe.logger().error(f"Error processing contractor {project_contractor_name}: {str(e)}")
+				continue
+					
+		frappe.logger().info(f"Total available items found: {len(available_items)}")
 		return available_items
 		
 	def get_claimed_amount_for_item(self, item_code, project_contractor):
@@ -374,8 +387,11 @@ class ProjectAdvances(Document):
 		
 	def update_available_fees_html(self, available_data):
 		"""Update the HTML field showing available fees and deposits"""
+		frappe.logger().info(f"Updating HTML with {len(available_data) if available_data else 0} items")
+		
 		if not available_data:
-			self.available_fees_html = '<div class="alert alert-warning">No available fees and deposits found for this project contractor.</div>'
+			self.available_fees_html = '<div class="alert alert-warning">No available fees and deposits found for the selected project contractors.</div>'
+			frappe.logger().info("Set HTML to warning message - no available data")
 			return
 			
 		html = '''
@@ -385,6 +401,7 @@ class ProjectAdvances(Document):
 				<table class="table table-bordered table-sm">
 					<thead>
 						<tr>
+							<th>Project Contractor</th>
 							<th>Item</th>
 							<th>Original Rate</th>
 							<th>Claimed Amount</th>
@@ -400,6 +417,7 @@ class ProjectAdvances(Document):
 			total_available += flt(item['available_balance'])
 			html += f'''
 				<tr>
+					<td>{item['project_contractor']}</td>
 					<td>{item['item_name']}</td>
 					<td class="text-right">{frappe.format(item['original_rate'], {'fieldtype': 'Currency'})}</td>
 					<td class="text-right">{frappe.format(item['claimed_amount'], {'fieldtype': 'Currency'})}</td>
@@ -412,7 +430,7 @@ class ProjectAdvances(Document):
 					</tbody>
 					<tfoot>
 						<tr class="table-active">
-							<th colspan="4">Total Available</th>
+							<th colspan="5">Total Available</th>
 							<th class="text-right">{frappe.format(total_available, {'fieldtype': 'Currency'})}</th>
 						</tr>
 					</tfoot>
@@ -422,6 +440,8 @@ class ProjectAdvances(Document):
 		'''
 		
 		self.available_fees_html = html
+		frappe.logger().info(f"Generated HTML with length: {len(html)}")
+		frappe.logger().info(f"Total available amount: {total_available}")
 		
 
 				
@@ -554,19 +574,24 @@ class ProjectAdvances(Document):
 		
 	def cancel_employee_advances(self):
 		"""Cancel related Employee Advances when Project Advance is cancelled"""
-		for item in self.advance_items:
-			if item.employee_advance_reference:
-				try:
-					employee_advance = frappe.get_doc("Employee Advance", item.employee_advance_reference)
-					if employee_advance.docstatus == 1:
-						employee_advance.cancel()
-						
-					# Update the advance item
-					item.employee_advance_created = 0
-					
-				except Exception as e:
-					frappe.log_error(f"Error cancelling Employee Advance {item.employee_advance_reference}: {str(e)}")
-					
+		# Find Employee Advances created by this Project Advance
+		employee_advances = frappe.get_all(
+			"Employee Advance",
+			filters={
+				"custom_project_advance_reference": self.name,
+				"docstatus": 1
+			},
+			pluck="name"
+		)
+		
+		for advance_name in employee_advances:
+			try:
+				employee_advance = frappe.get_doc("Employee Advance", advance_name)
+				if employee_advance.docstatus == 1:
+					employee_advance.cancel()
+			except Exception as e:
+				frappe.log_error(f"Error cancelling Employee Advance {advance_name}: {str(e)}")
+	
 	def get_default_advance_account(self):
 		"""Get default advance account for the company"""
 		if not self.company:
@@ -597,8 +622,20 @@ class ProjectAdvances(Document):
 	@frappe.whitelist()
 	def refresh_available_balances(self):
 		"""Refresh available balances and update HTML display"""
-		self.load_available_fees_and_deposits()
-		return self.available_fees_html
+		try:
+			frappe.logger().info(f"Refreshing available balances for Project Advances {self.name}")
+			frappe.logger().info(f"Project contractors: {[c.project_contractor for c in self.project_contractors]}")
+			
+			self.load_available_fees_and_deposits()
+			
+			frappe.logger().info(f"Available fees HTML length: {len(self.available_fees_html) if self.available_fees_html else 0}")
+			
+			return self.available_fees_html
+		except Exception as e:
+			frappe.logger().error(f"Error in refresh_available_balances: {str(e)}")
+			import traceback
+			frappe.logger().error(traceback.format_exc())
+			return f'<div class="alert alert-danger">Error loading available balances: {str(e)}</div>'
 		
 
 

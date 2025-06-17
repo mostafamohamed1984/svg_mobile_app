@@ -15,6 +15,27 @@ class ProjectContractors(Document):
 		"""Automatically create sales invoices when document is submitted"""
 		if not self.sales_invoice_created:
 			self.create_automatic_sales_invoices()
+	
+	def on_cancel(self):
+		"""Handle cancellation by ignoring linked Project Claim documents"""
+		# Ignore linked Project Claim documents to prevent infinite loop
+		self.ignore_linked_doctypes = ("Project Claim",)
+		
+	def on_trash(self):
+		"""Handle document deletion by unlinking related documents"""
+		# Unlink any related Project Claims before deletion
+		project_claims = frappe.get_all(
+			"Project Claim",
+			filters={"for_project": self.name},
+			fields=["name"]
+		)
+		
+		for claim in project_claims:
+			# Clear the link to this Project Contractors document
+			frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+		
+		# Commit the changes
+		frappe.db.commit()
 		
 	def calculate_totals(self):
 		"""Calculate total amounts for items and fees"""

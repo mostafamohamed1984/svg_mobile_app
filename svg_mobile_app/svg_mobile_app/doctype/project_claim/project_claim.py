@@ -1044,3 +1044,16 @@ def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield,
 		'start': start,
 		'page_len': page_len
 	})
+
+	def on_cancel(self):
+		"""Handle cancellation by ignoring linked Project Contractors documents"""
+		# Ignore linked Project Contractors documents to prevent infinite loop
+		self.ignore_linked_doctypes = ("Project Contractors",)
+		
+	def on_trash(self):
+		"""Handle document deletion by unlinking related documents"""
+		# Clear any references to Project Contractors before deletion
+		if self.for_project:
+			# We don't need to update the Project Contractors document
+			# Just clear our own reference
+			self.for_project = None

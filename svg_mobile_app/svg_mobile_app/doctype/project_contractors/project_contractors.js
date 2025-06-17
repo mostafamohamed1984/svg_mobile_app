@@ -187,7 +187,7 @@ function show_employee_advance_dialog(frm, advance_data) {
                         <th>Advance Amount</th>
                         <th>Paid Amount</th>
                         <th>Claimed Amount</th>
-                        <th>Returned Amount</th>
+                        <th>Return Amount</th>
                         <th>Outstanding</th>
                     </tr>
                 </thead>
@@ -201,7 +201,7 @@ function show_employee_advance_dialog(frm, advance_data) {
                 <td>${frappe.format(advance.advance_amount, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(advance.paid_amount, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(advance.claimed_amount, {'fieldtype': 'Currency'})}</td>
-                <td>${frappe.format(advance.returned_amount, {'fieldtype': 'Currency'})}</td>
+                                            <td>${frappe.format(advance.return_amount, {'fieldtype': 'Currency'})}</td>
                 <td><strong>${frappe.format(advance.outstanding, {'fieldtype': 'Currency'})}</strong></td>
             </tr>
         `;

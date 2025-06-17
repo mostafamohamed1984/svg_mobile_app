@@ -71,7 +71,7 @@ class ProjectContractors(Document):
 				"status": "Paid",  # CRITICAL: Only paid advances
 				"docstatus": 1
 			},
-			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "returned_amount"]
+			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "return_amount"]
 		)
 		
 		if not employee_advances:
@@ -82,7 +82,7 @@ class ProjectContractors(Document):
 		
 		for advance in employee_advances:
 			# Calculate outstanding amount (what's available for distribution)
-			outstanding = flt(advance.paid_amount) - (flt(advance.claimed_amount) + flt(advance.returned_amount))
+			outstanding = flt(advance.paid_amount) - (flt(advance.claimed_amount) + flt(advance.return_amount))
 			
 			if outstanding > 0:
 				total_available += outstanding
@@ -91,7 +91,7 @@ class ProjectContractors(Document):
 					"advance_amount": advance.advance_amount,
 					"paid_amount": advance.paid_amount,
 					"claimed_amount": advance.claimed_amount,
-					"returned_amount": advance.returned_amount,
+					"return_amount": advance.return_amount,
 					"outstanding": outstanding
 				})
 		

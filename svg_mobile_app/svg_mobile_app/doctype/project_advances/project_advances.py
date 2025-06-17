@@ -32,14 +32,17 @@ class ProjectAdvances(Document):
 		
 	def on_cancel(self):
 		"""Cancel related Employee Advances when document is cancelled"""
-		# Ignore linked documents to prevent infinite loop
-		self.ignore_linked_doctypes = ("Employee Advance", "Project Contractors", "Project Claim")
+		# This is the correct way to bypass link validation completely
+		self.flags.ignore_links = True
 		
 		self.cancel_employee_advances()
 		self.update_status()
 		
 	def on_trash(self):
 		"""Handle document deletion by unlinking related documents"""
+		# This is the correct way to bypass link validation completely
+		self.flags.ignore_links = True
+		
 		# Clear references in Employee Advances before deletion
 		employee_advances = frappe.get_all(
 			"Employee Advance",

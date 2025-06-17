@@ -17,12 +17,15 @@ class ProjectContractors(Document):
 			self.create_automatic_sales_invoices()
 	
 	def on_cancel(self):
-		"""Handle cancellation by ignoring linked Project Claim documents"""
-		# Ignore linked Project Claim documents to prevent infinite loop
-		self.ignore_linked_doctypes = ("Project Claim",)
+		"""Handle cancellation by ignoring all link validation"""
+		# This is the correct way to bypass link validation completely
+		self.flags.ignore_links = True
 		
 	def on_trash(self):
 		"""Handle document deletion by unlinking related documents"""
+		# This is the correct way to bypass link validation completely
+		self.flags.ignore_links = True
+		
 		# Unlink any related Project Claims before deletion
 		project_claims = frappe.get_all(
 			"Project Claim",

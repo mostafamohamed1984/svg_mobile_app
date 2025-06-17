@@ -32,9 +32,28 @@ class ProjectAdvances(Document):
 		
 	def on_cancel(self):
 		"""Cancel related Employee Advances when document is cancelled"""
+		# Ignore linked documents to prevent infinite loop
+		self.ignore_linked_doctypes = ("Employee Advance", "Project Contractors", "Project Claim")
+		
 		self.cancel_employee_advances()
 		self.update_status()
 		
+	def on_trash(self):
+		"""Handle document deletion by unlinking related documents"""
+		# Clear references in Employee Advances before deletion
+		employee_advances = frappe.get_all(
+			"Employee Advance",
+			filters={"custom_project_advance_reference": self.name},
+			fields=["name"]
+		)
+		
+		for advance in employee_advances:
+			# Clear the link to this Project Advances document
+			frappe.db.set_value("Employee Advance", advance.name, "custom_project_advance_reference", None)
+		
+		# Commit the changes
+		frappe.db.commit()
+	
 	def auto_populate_project_claim_references(self):
 		"""Auto-populate project claim references for each contractor in the child table"""
 		if not self.project_contractors:

@@ -199,6 +199,7 @@
   {
    "link_doctype": "Project Claim",
    "link_fieldname": "for_project",
+   "group": "Claims",
    "ignore_on_cancel": 1
   }
  ],

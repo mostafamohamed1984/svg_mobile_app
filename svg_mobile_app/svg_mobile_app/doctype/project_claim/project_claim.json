@@ -318,14 +318,7 @@
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [
-  {
-   "group": "Projects",
-   "link_doctype": "Project Contractors",
-   "link_fieldname": "for_project",
-   "ignore_on_cancel": 1
-  }
- ],
+ "links": [],
  "modified": "2025-05-19 00:50:32.716078",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",

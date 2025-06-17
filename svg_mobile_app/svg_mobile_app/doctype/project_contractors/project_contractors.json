@@ -195,14 +195,7 @@
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
- "links": [
-  {
-   "link_doctype": "Project Claim",
-   "link_fieldname": "for_project",
-   "group": "Claims",
-   "ignore_on_cancel": 1
-  }
- ],
+ "links": [],
  "modified": "2025-06-03 09:58:02.855628",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",

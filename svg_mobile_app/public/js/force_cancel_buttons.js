@@ -9,7 +9,7 @@ frappe.ui.form.on('Project Claim', {
                     __('Are you sure you want to force cancel this document? This will ignore linked documents.'),
                     function() {
                         frappe.call({
-                            method: 'server_scripts.force_cancel_document.force_cancel_document',
+                            method: 'svg_mobile_app.server_scripts.force_cancel_document.force_cancel_document',
                             args: {
                                 doctype: frm.doctype,
                                 name: frm.docname
@@ -46,7 +46,7 @@ frappe.ui.form.on('Project Contractors', {
                     __('Are you sure you want to force cancel this document? This will ignore linked documents.'),
                     function() {
                         frappe.call({
-                            method: 'server_scripts.force_cancel_document.force_cancel_document',
+                            method: 'svg_mobile_app.server_scripts.force_cancel_document.force_cancel_document',
                             args: {
                                 doctype: frm.doctype,
                                 name: frm.docname

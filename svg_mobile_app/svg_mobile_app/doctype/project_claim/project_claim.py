@@ -1102,3 +1102,54 @@ def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield,
 		'start': start,
 		'page_len': page_len
 	})
+
+# Hook functions for doc_events
+def before_cancel_hook(doc, method=None):
+	"""Hook function called before cancelling the document"""
+	_clear_project_claim_links(doc)
+
+def on_cancel_hook(doc, method=None):
+	"""Hook function called when document is cancelled"""
+	pass
+
+def on_trash_hook(doc, method=None):
+	"""Hook function called when document is being deleted"""
+	_clear_project_claim_links(doc)
+
+def after_delete_hook(doc, method=None):
+	"""Hook function called after document deletion"""
+	pass
+
+def _clear_project_claim_links(doc):
+	"""Clear all links to prevent circular reference errors"""
+	try:
+		updates = {}
+		
+		if hasattr(doc, 'for_project') and doc.for_project:
+			updates["for_project"] = None
+		
+		if hasattr(doc, 'reference_invoice') and doc.reference_invoice:
+			updates["reference_invoice"] = None
+		
+		if hasattr(doc, 'invoice_references') and doc.invoice_references:
+			updates["invoice_references"] = None
+		
+		if updates:
+			for field, value in updates.items():
+				frappe.db.set_value("Project Claim", doc.name, field, value)
+		
+		# Clear Claim Items invoice references
+		claim_items = frappe.get_all(
+			"Claim Items",
+			filters={"parent": doc.name},
+			fields=["name"]
+		)
+		
+		for item in claim_items:
+			frappe.db.set_value("Claim Items", item.name, "invoice_reference", None)
+		
+		frappe.db.commit()
+		
+	except Exception as e:
+		frappe.log_error(f"Error clearing Project Claim links for {doc.name}: {str(e)}")
+		# Don't prevent deletion, just log the error

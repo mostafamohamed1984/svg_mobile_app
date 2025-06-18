@@ -6,78 +6,45 @@ from frappe.model.document import Document
 
 
 class EmployeeAdvanceCustom(Document):
-	def on_cancel(self):
-		"""Handle cancellation by ignoring linked documents to prevent infinite loop"""
-		# Ignore linked documents to prevent infinite loop
-		self.ignore_linked_doctypes = ("Project Contractors", "Project Claim", "Project Advances")
-		
-	def on_trash(self):
-		"""Handle document deletion by clearing references"""
-		# Clear references in Project Contractors fees_and_deposits
-		if hasattr(self, 'project_contractors_reference') and self.project_contractors_reference:
-			try:
-				project_contractor = frappe.get_doc("Project Contractors", self.project_contractors_reference)
-				
-				# Update fees_and_deposits to remove this advance reference
-				for fee_item in project_contractor.fees_and_deposits:
-					if hasattr(fee_item, 'employee_advances') and fee_item.employee_advances:
-						# Parse comma-separated list and remove this advance
-						advance_names = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
-						if self.name in advance_names:
-							advance_names.remove(self.name)
-							fee_item.employee_advances = ', '.join(advance_names) if advance_names else None
-				
-				# Save the updated Project Contractors document
-				project_contractor.save(ignore_permissions=True)
-				frappe.db.commit()
-				
-			except Exception as e:
-				frappe.log_error(f"Error updating Project Contractors {self.project_contractors_reference}: {str(e)}")
-
-
-# Hook into the Employee Advance doctype
-def before_cancel(doc, method=None):
-	"""Handle Employee Advance before cancellation"""
-	# Clear all project-related links before cancellation to prevent circular reference
-	updates = {}
-	
-	if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
-		updates["project_contractors_reference"] = None
-	
-	if hasattr(doc, 'custom_project_advance_reference') and doc.custom_project_advance_reference:
-		updates["custom_project_advance_reference"] = None
-	
-	if hasattr(doc, 'custom_project_claim_reference') and doc.custom_project_claim_reference:
-		updates["custom_project_claim_reference"] = None
-	
-	if updates:
-		for field, value in updates.items():
-			frappe.db.set_value("Employee Advance", doc.name, field, value)
-
-def on_cancel(doc, method=None):
-	"""Handle Employee Advance cancellation"""
-	# Additional cleanup after cancellation if needed
 	pass
 
-def on_trash(doc, method=None):
-	"""Handle Employee Advance deletion"""
-	# Clear all project-related links that might prevent deletion
+# Hook functions for Employee Advance
+def validate(doc, method=None):
+	"""Validate Employee Advance before saving"""
+	del method  # Suppress unused parameter warning
+	pass
+
+# Additional hook functions for doc_events
+def before_cancel_hook(doc, method=None):
+	"""Hook function called before cancelling the document"""
+	del method  # Suppress unused parameter warning
+	_clear_employee_advance_links(doc)
+
+def on_cancel_hook(doc, method=None):
+	"""Hook function called when document is cancelled"""
+	del method  # Suppress unused parameter warning
+	pass
+
+def on_trash_hook(doc, method=None):
+	"""Hook function called when document is being deleted"""
+	del method  # Suppress unused parameter warning
+	_clear_employee_advance_links(doc)
+
+def after_delete_hook(doc, method=None):
+	"""Hook function called after document deletion"""
+	del method  # Suppress unused parameter warning
+	pass
+
+def _clear_employee_advance_links(doc):
+	"""Clear all project-related links to prevent circular reference errors"""
 	try:
-		# Clear all project references
 		updates = {}
 		
+		# Clear project contractors reference
 		if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
 			updates["project_contractors_reference"] = None
-			
-			# Also clear references in Project Contractors fees_and_deposits
-			try:
-				project_contractor = frappe.get_doc("Project Contractors", doc.project_contractors_reference)
-				for fee in project_contractor.fees_and_deposits:
-					if hasattr(fee, 'employee_advance') and fee.employee_advance == doc.name:
-						frappe.db.set_value("Project Fees and Deposits", fee.name, "employee_advance", None)
-			except frappe.DoesNotExistError:
-				pass
 		
+		# Clear other project references
 		if hasattr(doc, 'custom_project_advance_reference') and doc.custom_project_advance_reference:
 			updates["custom_project_advance_reference"] = None
 		
@@ -93,14 +60,5 @@ def on_trash(doc, method=None):
 		frappe.db.commit()
 		
 	except Exception as e:
-		frappe.log_error(f"Error clearing Employee Advance links: {str(e)}")
-
-def after_delete(doc, method=None):
-	"""Handle operations after Employee Advance deletion"""
-	# Any cleanup operations after successful deletion
-	pass
-
-def validate(doc, method=None):
-	"""Validate Employee Advance before saving"""
-	# Add any custom validation logic here
-	pass 
+		frappe.log_error(f"Error clearing Employee Advance links for {doc.name}: {str(e)}")
+		# Don't prevent deletion, just log the error

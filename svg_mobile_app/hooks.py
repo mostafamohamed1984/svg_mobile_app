@@ -153,10 +153,22 @@ doc_events = {
     },
     "Employee Advance": {
         "validate": "svg_mobile_app.svg_mobile_app.custom.employee_advance.validate",
-        "before_cancel": "svg_mobile_app.svg_mobile_app.custom.employee_advance.before_cancel",
-        "on_cancel": "svg_mobile_app.svg_mobile_app.custom.employee_advance.on_cancel",
-        "on_trash": "svg_mobile_app.svg_mobile_app.custom.employee_advance.on_trash",
-        "after_delete": "svg_mobile_app.svg_mobile_app.custom.employee_advance.after_delete"
+        "before_cancel": "svg_mobile_app.svg_mobile_app.custom.employee_advance.before_cancel_hook",
+        "on_cancel": "svg_mobile_app.svg_mobile_app.custom.employee_advance.on_cancel_hook",
+        "on_trash": "svg_mobile_app.svg_mobile_app.custom.employee_advance.on_trash_hook",
+        "after_delete": "svg_mobile_app.svg_mobile_app.custom.employee_advance.after_delete_hook"
+    },
+    "Project Claim": {
+        "before_cancel": "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.before_cancel_hook",
+        "on_cancel": "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.on_cancel_hook",
+        "on_trash": "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.on_trash_hook",
+        "after_delete": "svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim.after_delete_hook"
+    },
+    "Project Contractors": {
+        "before_cancel": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.before_cancel_hook",
+        "on_cancel": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.on_cancel_hook",
+        "on_trash": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.on_trash_hook",
+        "after_delete": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.after_delete_hook"
     }
 }
 

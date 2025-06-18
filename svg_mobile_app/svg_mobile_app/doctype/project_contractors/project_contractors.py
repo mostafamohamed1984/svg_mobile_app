@@ -1388,3 +1388,117 @@ def get_employees_for_advance(doctype, txt, searchfield, start, page_len, filter
             ORDER BY name
             LIMIT %s OFFSET %s
         """, (f"%{txt}%", page_len, start))
+
+# Hook functions for doc_events
+def before_cancel_hook(doc, method=None):
+	"""Hook function called before cancelling the document"""
+	_clear_project_contractors_links(doc)
+
+def on_cancel_hook(doc, method=None):
+	"""Hook function called when document is cancelled"""
+	pass
+
+def on_trash_hook(doc, method=None):
+	"""Hook function called when document is being deleted"""
+	_clear_project_contractors_links(doc)
+
+def after_delete_hook(doc, method=None):
+	"""Hook function called after document deletion"""
+	pass
+
+def _clear_project_contractors_links(doc):
+	"""Clear links in related documents to prevent circular reference issues"""
+	try:
+		# Clear Sales Invoice links
+		sales_invoices = frappe.get_all(
+			"Sales Invoice",
+			filters={"custom_for_project": doc.name},
+			fields=["name", "docstatus"]
+		)
+		
+		for invoice in sales_invoices:
+			# Only clear links for draft or cancelled invoices
+			if invoice.docstatus in [0, 2]:  # Draft or Cancelled
+				frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
+			else:
+				# For submitted invoices, cancel them first
+				try:
+					invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+					if invoice_doc.docstatus == 1:  # Submitted
+						invoice_doc.cancel()
+						frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
+				except Exception as e:
+					frappe.log_error(f"Error cancelling Sales Invoice {invoice.name}: {str(e)}")
+		
+		# Clear Project Claim links
+		project_claims = frappe.get_all(
+			"Project Claim",
+			filters={"for_project": doc.name},
+			fields=["name", "docstatus"]
+		)
+		
+		for claim in project_claims:
+			if claim.docstatus in [0, 2]:  # Draft or Cancelled
+				# Clear all project claim links
+				frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+				frappe.db.set_value("Project Claim", claim.name, "reference_invoice", None)
+				frappe.db.set_value("Project Claim", claim.name, "invoice_references", None)
+			else:
+				# For submitted claims, cancel them first
+				try:
+					claim_doc = frappe.get_doc("Project Claim", claim.name)
+					if claim_doc.docstatus == 1:  # Submitted
+						claim_doc.cancel()
+						# Clear all links after cancellation
+						frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+						frappe.db.set_value("Project Claim", claim.name, "reference_invoice", None)
+						frappe.db.set_value("Project Claim", claim.name, "invoice_references", None)
+				except Exception as e:
+					frappe.log_error(f"Error cancelling Project Claim {claim.name}: {str(e)}")
+		
+		# Clear Employee Advance links
+		employee_advances = frappe.get_all(
+			"Employee Advance",
+			filters={"project_contractors_reference": doc.name},
+			fields=["name", "docstatus"]
+		)
+		
+		for advance in employee_advances:
+			if advance.docstatus in [0, 2]:  # Draft or Cancelled
+				frappe.db.set_value("Employee Advance", advance.name, "project_contractors_reference", None)
+			else:
+				# For submitted advances, cancel them first
+				try:
+					advance_doc = frappe.get_doc("Employee Advance", advance.name)
+					if advance_doc.docstatus == 1:  # Submitted
+						advance_doc.cancel()
+						frappe.db.set_value("Employee Advance", advance.name, "project_contractors_reference", None)
+				except Exception as e:
+					frappe.log_error(f"Error cancelling Employee Advance {advance.name}: {str(e)}")
+		
+		# Clear Project Advances links
+		project_advances = frappe.get_all(
+			"Project Advances",
+			filters={"project_contractors": doc.name},
+			fields=["name", "docstatus"]
+		)
+		
+		for advance in project_advances:
+			if advance.docstatus in [0, 2]:  # Draft or Cancelled
+				frappe.db.set_value("Project Advances", advance.name, "project_contractors", None)
+			else:
+				# For submitted advances, cancel them first
+				try:
+					advance_doc = frappe.get_doc("Project Advances", advance.name)
+					if advance_doc.docstatus == 1:  # Submitted
+						advance_doc.cancel()
+						frappe.db.set_value("Project Advances", advance.name, "project_contractors", None)
+				except Exception as e:
+					frappe.log_error(f"Error cancelling Project Advances {advance.name}: {str(e)}")
+		
+		# Commit the changes
+		frappe.db.commit()
+		
+	except Exception as e:
+		frappe.log_error(f"Error clearing related document links for Project Contractors {doc.name}: {str(e)}")
+		# Don't prevent deletion, just log the error

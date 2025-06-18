@@ -3,8 +3,8 @@ from frappe import _
 
 def get_communication_permission_query_conditions(user):
     """
-    Return query conditions for Communication based on user's email access
-    CRITICAL: This function must allow access to ALL communications that the user should see
+    Return query conditions for Communication based on user's email access.
+    This integrates both User Email and User Work Email Access tables.
     """
     if not user:
         user = frappe.session.user
@@ -14,60 +14,58 @@ def get_communication_permission_query_conditions(user):
         return ""
     
     try:
-        # Get user's email access from BOTH standard and custom tables
+        # Get user's accessible email accounts from BOTH tables
+        accessible_accounts = []
+        
+        # Get personal emails (User Email) - Standard Frappe table
         personal_emails = frappe.get_all(
             "User Email",
             filters={"parent": user},
             fields=["email_account"],
             pluck="email_account"
         )
+        accessible_accounts.extend(personal_emails)
         
+        # Get work emails (User Work Email Access) - Custom table
         work_emails = frappe.get_all(
             "User Work Email Access", 
             filters={"parent": user},
             fields=["email_account"],
             pluck="email_account"
         )
+        accessible_accounts.extend(work_emails)
         
-        # Combine all accessible email accounts
-        accessible_accounts = list(set(personal_emails + work_emails))
+        # Remove duplicates and None values
+        accessible_accounts = list(set([acc for acc in accessible_accounts if acc]))
         
-        # CRITICAL: Make the permission system INCLUSIVE, not restrictive
-        # Most communications should be visible to users
-        conditions = []
-        
-        # 1. All non-email communications (always accessible)
-        conditions.append("`tabCommunication`.`communication_medium` != 'Email'")
-        
-        # 2. Email communications without specific email account
-        conditions.append("(`tabCommunication`.`email_account` is null or `tabCommunication`.`email_account` = '')")
-        
-        # 3. Communications where user is involved
-        conditions.append(f"`tabCommunication`.`sender` = '{user}'")
-        conditions.append(f"`tabCommunication`.`recipients` like '%{user}%'")
-        conditions.append(f"`tabCommunication`.`owner` = '{user}'")
-        
-        # 4. Communications from accessible email accounts
         if accessible_accounts:
-            accounts_condition = "', '".join(accessible_accounts)
-            conditions.append(f"`tabCommunication`.`email_account` in ('{accounts_condition}')")
-        
-        # 5. Communications linked to documents the user can access
-        # This is important for document-related communications
-        conditions.append(f"`tabCommunication`.`reference_owner` = '{user}'")
-        
-        # Return permissive conditions (OR logic)
-        return f"({' or '.join(conditions)})"
+            # Build the condition to include:
+            # 1. Communications from accessible email accounts
+            # 2. Communications not tied to any email account (general communications)
+            # 3. Communications where user is involved (sender/recipient)
             
+            email_account_condition = "(`tabCommunication`.`email_account` in ({}) OR `tabCommunication`.`email_account` IS NULL)".format(
+                ", ".join([f"'{acc}'" for acc in accessible_accounts])
+            )
+            
+            # Also include communications where user is the sender or in recipients
+            user_involvement_condition = f"(`tabCommunication`.`sender` = '{user}' OR `tabCommunication`.`recipients` LIKE '%{user}%' OR `tabCommunication`.`user` = '{user}')"
+            
+            # Combine conditions with OR
+            return f"({email_account_condition} OR {user_involvement_condition})"
+        else:
+            # If no email accounts, only show communications where user is directly involved
+            return f"(`tabCommunication`.`sender` = '{user}' OR `tabCommunication`.`recipients` LIKE '%{user}%' OR `tabCommunication`.`user` = '{user}' OR `tabCommunication`.`email_account` IS NULL)"
+    
     except Exception as e:
-        frappe.log_error(f"Error in communication permission query: {str(e)}")
-        # Very permissive fallback - show most communications
-        return f"(`tabCommunication`.`communication_medium` != 'Email' or `tabCommunication`.`email_account` is null or `tabCommunication`.`sender` = '{user}' or `tabCommunication`.`recipients` like '%{user}%' or `tabCommunication`.`owner` = '{user}')"
+        frappe.log_error(f"Error in get_communication_permission_query_conditions: {str(e)}", "Communication Permissions")
+        # Fallback to basic user involvement check
+        return f"(`tabCommunication`.`sender` = '{user}' OR `tabCommunication`.`recipients` LIKE '%{user}%' OR `tabCommunication`.`user` = '{user}')"
 
 def has_communication_permission(doc, user=None, permission_type="read"):
     """
-    Check if user has permission for specific Communication document
-    CRITICAL: This should be INCLUSIVE - allow access unless specifically restricted
+    Check if user has permission for specific Communication document.
+    This integrates both User Email and User Work Email Access tables.
     """
     if not user:
         user = frappe.session.user
@@ -77,47 +75,47 @@ def has_communication_permission(doc, user=None, permission_type="read"):
         return True
     
     try:
-        # CRITICAL: For non-email communications, always allow access
+        # Check if user is directly involved in the communication
+        if (doc.sender == user or 
+            (doc.recipients and user in doc.recipients) or 
+            doc.user == user):
+            return True
+        
+        # If not an email communication or no email account, allow access
         if doc.communication_medium != "Email" or not doc.email_account:
             return True
         
-        # Check if user is involved in the communication
-        if (doc.sender == user or 
-            (doc.recipients and user in doc.recipients) or 
-            doc.owner == user):
-            return True
+        # Check if user has access to this email account through either table
         
-        # Check email account access from BOTH tables
+        # Check personal email access (User Email)
         personal_access = frappe.db.exists("User Email", {
             "parent": user,
             "email_account": doc.email_account
         })
         
+        if personal_access:
+            return True
+        
+        # Check work email access (User Work Email Access)
         work_access = frappe.db.get_value("User Work Email Access", {
             "parent": user,
             "email_account": doc.email_account
         }, "access_type")
         
-        # Personal emails have full access
-        if personal_access:
-            return True
-        
-        # Work emails - check access type for write operations
         if work_access:
-            if permission_type in ["read", "print", "export"]:
+            # Check permission type against access type
+            if permission_type == "read" and work_access in ["Read Only", "Read & Send", "Full Access"]:
                 return True
-            elif permission_type in ["write", "create", "delete", "submit", "cancel"]:
-                # Only allow write operations for Read & Send and Full Access
-                return work_access in ["Read & Send", "Full Access"]
+            elif permission_type == "write" and work_access in ["Read & Send", "Full Access"]:
+                return True
+            elif permission_type == "delete" and work_access == "Full Access":
+                return True
         
-        # CRITICAL: If no specific email account restriction, allow access
-        # This ensures the system works like core Frappe
-        return True
+        return False
         
     except Exception as e:
-        frappe.log_error(f"Error checking communication permission: {str(e)}")
-        # Fallback to allowing access
-        return True
+        frappe.log_error(f"Error in has_communication_permission: {str(e)}", "Communication Permissions")
+        return False
 
 # CRITICAL: Fix the function name to match hooks.py
 def has_communication_permission_main(doc, ptype, user=None):

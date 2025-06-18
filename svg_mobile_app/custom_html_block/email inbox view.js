@@ -498,26 +498,14 @@
         } else if (currentFilter === "read") {
             filters["read_by_recipient"] = 1;
         } else if (currentFilter === "my_emails") {
-            // For "My Email Accounts" view, we need to filter by the user's email accounts
+            // For "My Email Accounts" view, only filter by specific account if one is selected
+            // Otherwise, rely on our comprehensive permission system to show all accessible emails
             if (selectedEmailAccount !== "all") {
-                // If specific account selected
+                // If specific account selected, filter by that account only
                 filters["email_account"] = selectedEmailAccount;
-            } else if (userEmails && userEmails.length > 0) {
-                // If "All Email Accounts" selected, filter by all user's email accounts
-                // Use "in" operator which is supported by Frappe
-                // Get all email account names from the dropdown
-                const emailAccountSelect = root_element.querySelector('#email-account-filter');
-                if (emailAccountSelect && emailAccountSelect.options.length > 1) {
-                    const accountNames = [];
-                    // Skip the first "All Email Accounts" option
-                    for (let i = 1; i < emailAccountSelect.options.length; i++) {
-                        accountNames.push(emailAccountSelect.options[i].value);
-                    }
-                    if (accountNames.length > 0) {
-                        filters["email_account"] = ["in", accountNames];
-                    }
-                }
             }
+            // If "All Email Accounts" is selected, don't add email_account filter
+            // Let the permission system handle what emails the user can see
         }
         // For "all" view, we don't add any additional filters - rely on permissions
 

@@ -4,4 +4,7 @@
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
+
+[post_migrate]
+# Patches added in this section will be executed after all migrations are complete
 svg_mobile_app.patches.set_default_access_types

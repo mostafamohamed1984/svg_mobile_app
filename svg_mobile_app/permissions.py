@@ -88,4 +88,94 @@ def has_communication_permission(doc, user=None, permission_type="read"):
         
     except Exception as e:
         frappe.log_error(f"Error checking communication permission: {str(e)}")
+        return False
+
+# CRITICAL: Fix the function name to match hooks.py
+def has_communication_permission_main(doc, ptype, user=None):
+    """
+    Document-level permission check for Communication
+    This function gets called by Frappe's core permission system via hooks.py
+    """
+    return has_communication_permission(doc, user, ptype)
+
+def get_email_account_permission_query_conditions(user):
+    """
+    Return query conditions for Email Account based on user's email access
+    """
+    if not user:
+        user = frappe.session.user
+    
+    # Administrators have full access
+    if "System Manager" in frappe.get_roles(user):
+        return ""
+    
+    try:
+        # Get user's email access
+        personal_emails = frappe.get_all(
+            "User Email",
+            filters={"parent": user},
+            fields=["email_account"],
+            pluck="email_account"
+        )
+        
+        work_emails = frappe.get_all(
+            "User Work Email Access", 
+            filters={"parent": user},
+            fields=["email_account"],
+            pluck="email_account"
+        )
+        
+        # Combine all accessible email accounts
+        accessible_accounts = personal_emails + work_emails
+        
+        if accessible_accounts:
+            accounts_condition = "', '".join(accessible_accounts)
+            return f"(`tabEmail Account`.`name` in ('{accounts_condition}'))"
+        else:
+            # No email access
+            return "1=0"  # No access
+            
+    except Exception as e:
+        frappe.log_error(f"Error in email account permission query: {str(e)}")
+        return "1=0"
+
+def has_email_account_permission_main(doc, ptype, user=None):
+    """
+    Document-level permission check for Email Account
+    """
+    if not user:
+        user = frappe.session.user
+    
+    # Administrators have full access
+    if "System Manager" in frappe.get_roles(user):
+        return True
+    
+    try:
+        # Check if user has access to this email account
+        personal_access = frappe.db.exists("User Email", {
+            "parent": user,
+            "email_account": doc.name
+        })
+        
+        work_access = frappe.db.get_value("User Work Email Access", {
+            "parent": user,
+            "email_account": doc.name
+        }, "access_type")
+        
+        # Personal emails have full access
+        if personal_access:
+            return True
+        
+        # Work emails - check access type for write operations
+        if work_access:
+            if ptype in ["read", "print", "export"]:
+                return True
+            elif ptype in ["write", "create", "delete", "submit", "cancel"]:
+                # Only allow write operations for Read & Send and Full Access
+                return work_access in ["Read & Send", "Full Access"]
+        
+        return False
+        
+    except Exception as e:
+        frappe.log_error(f"Error checking email account permission: {str(e)}")
         return False 

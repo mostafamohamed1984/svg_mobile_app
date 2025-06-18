@@ -1,0 +1,47 @@
+{
+ "custom_fields": [
+  {
+   "fieldname": "access_type",
+   "fieldtype": "Select",
+   "label": "Access Type",
+   "options": "Read Only\nRead & Send\nFull Access",
+   "default": "Full Access",
+   "in_list_view": 1,
+   "insert_after": "email_account",
+   "description": "Access level for this email account",
+   "dt": "User Email"
+  },
+  {
+   "fieldname": "granted_by",
+   "fieldtype": "Link",
+   "label": "Granted By",
+   "options": "User",
+   "read_only": 1,
+   "insert_after": "access_type",
+   "description": "Who granted this email access",
+   "dt": "User Email"
+  },
+  {
+   "fieldname": "granted_date",
+   "fieldtype": "Date",
+   "label": "Granted Date",
+   "read_only": 1,
+   "insert_after": "granted_by",
+   "description": "When this email access was granted",
+   "dt": "User Email"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "insert_after": "granted_date",
+   "description": "Description of email access",
+   "dt": "User Email"
+  }
+ ],
+ "custom_perms": [],
+ "doctype": "User Email",
+ "links": [],
+ "property_setters": [],
+ "sync_on_migrate": 1
+} 

@@ -1252,24 +1252,27 @@ def get_user_profile_data():
             "user_emails": []  # Keep for backward compatibility
         }
         
-        # Get personal email accounts from existing User Email child table
+        # Get all email accounts from User Email child table (now includes access types)
         try:
             if frappe.has_permission("User", "read"):
-                personal_email_accounts = frappe.get_all(
+                email_accounts = frappe.get_all(
                     "User Email",
                     filters={"parent": user},
-                    fields=["email_account", "email_id"],
+                    fields=["email_account", "email_id", "access_type", "granted_by", "granted_date", "description"],
                     order_by="idx"
                 )
                 
                 personal_emails = []
-                for idx, email_account_row in enumerate(personal_email_accounts):
+                for idx, email_account_row in enumerate(email_accounts):
                     email_data = {
                         "account_name": email_account_row.email_account,
                         "email_id": email_account_row.email_id,
+                        "access_type": email_account_row.access_type or "Full Access",  # Default to Full Access
+                        "granted_by": email_account_row.granted_by,
+                        "granted_date": email_account_row.granted_date,
+                        "description": email_account_row.description or "Email Account",
                         "is_primary": idx == 0,  # First one is primary
-                        "description": "Personal Email",
-                        "type": "personal"
+                        "type": "personal" if (email_account_row.access_type or "Full Access") == "Full Access" else "work"
                     }
                     
                     # If email_id is not fetched, get it from Email Account
@@ -1283,49 +1286,15 @@ def get_user_profile_data():
                 profile_data["personal_emails"] = personal_emails
             
         except Exception as e:
-            frappe.log_error(f"Error accessing personal email accounts for {user}: {str(e)}", "User Profile Data")
+            frappe.log_error(f"Error accessing email accounts for {user}: {str(e)}", "User Profile Data")
             profile_data["personal_emails"] = []
         
-        # Get work email access from new child table
-        try:
-            work_email_accounts = frappe.get_all(
-                "User Work Email Access",
-                filters={"parent": user},
-                fields=["email_account", "email_id", "access_type", "granted_by", "granted_date", "description"],
-                order_by="idx"
-            )
-            
-            work_emails = []
-            for email_account_row in work_email_accounts:
-                email_data = {
-                    "account_name": email_account_row.email_account,
-                    "email_id": email_account_row.email_id,
-                    "access_type": email_account_row.access_type,
-                    "granted_by": email_account_row.granted_by,
-                    "granted_date": email_account_row.granted_date,
-                    "description": email_account_row.description or "Work Email Access",
-                    "type": "work"
-                }
-                
-                # If email_id is not fetched, get it from Email Account
-                if not email_data["email_id"] and email_account_row.email_account:
-                    email_id = frappe.db.get_value("Email Account", email_account_row.email_account, "email_id")
-                    email_data["email_id"] = email_id
-                
-                if email_data["email_id"]:
-                    work_emails.append(email_data)
-            
-            profile_data["work_emails"] = work_emails
-            
-        except Exception as e:
-            frappe.log_error(f"Error accessing work email accounts for {user}: {str(e)}", "User Profile Data")
-            profile_data["work_emails"] = []
+        # All email accounts are now in the unified User Email table with access types
+        # No separate work_emails needed - they're all in personal_emails with access_type field
         
         # Combine all emails for backward compatibility
         all_emails = []
         for email in personal_emails:
-            all_emails.append(email["email_id"])
-        for email in work_emails:
             all_emails.append(email["email_id"])
         
         # Final fallback to user's main email if no emails found
@@ -1509,9 +1478,9 @@ def get_communications_with_tags(filters=None, tag_filter=None, search_term=None
         }
 
 @frappe.whitelist(allow_guest=False)
-def add_work_email_access(user, email_account, access_type="Read Only", description=""):
+def add_email_access(user, email_account, access_type="Full Access", description=""):
     """
-    Helper function to add work email access for a user
+    Helper function to add email access for a user to the unified User Email table
     Can be used by administrators to grant email access
     """
     try:
@@ -1525,7 +1494,7 @@ def add_work_email_access(user, email_account, access_type="Read Only", descript
         
         # Check if access already exists
         existing = frappe.get_all(
-            "User Work Email Access",
+            "User Email",
             filters={
                 "parent": user,
                 "email_account": email_account
@@ -1538,32 +1507,28 @@ def add_work_email_access(user, email_account, access_type="Read Only", descript
         # Get email ID from Email Account
         email_id = frappe.db.get_value("Email Account", email_account, "email_id")
         
-        # Create work email access entry
-        work_email = {
-            "doctype": "User Work Email Access",
-            "parent": user,
-            "parenttype": "User",
-            "parentfield": "work_emails",
+        # Get the User document
+        user_doc = frappe.get_doc("User", user)
+        
+        # Add new email access entry to User Email child table
+        user_doc.append("user_emails", {
             "email_account": email_account,
             "email_id": email_id,
             "access_type": access_type,
             "granted_by": frappe.session.user,
             "granted_date": frappe.utils.today(),
             "description": description
-        }
+        })
         
-        # Insert the work email access entry
-        work_email_doc = frappe.get_doc(work_email)
-        work_email_doc.insert()
+        user_doc.save()
         
         return {
             "status": "success",
-            "message": "Work email access granted successfully",
-            "data": work_email_doc.name
+            "message": "Email access granted successfully"
         }
         
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Add Work Email Access Error")
+        frappe.log_error(frappe.get_traceback(), "Add Email Access Error")
         return {
             "status": "error",
             "message": str(e)

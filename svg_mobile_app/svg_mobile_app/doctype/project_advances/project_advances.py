@@ -30,18 +30,22 @@ class ProjectAdvances(Document):
 		self.create_employee_advances()
 		self.update_status()
 		
+	def before_cancel(self):
+		"""Handle operations before cancelling the document"""
+		# Clear project contractor link before cancellation to prevent circular reference
+		if self.project_contractors:
+			frappe.db.set_value("Project Advances", self.name, "project_contractors", None)
+
 	def on_cancel(self):
 		"""Cancel related Employee Advances when document is cancelled"""
-		# This is the correct way to bypass link validation completely
-		self.flags.ignore_links = True
-		
 		self.cancel_employee_advances()
 		self.update_status()
 		
 	def on_trash(self):
-		"""Handle document deletion by unlinking related documents"""
-		# This is the correct way to bypass link validation completely
-		self.flags.ignore_links = True
+		"""Handle document deletion by clearing related links"""
+		# Clear project contractor link before deletion to prevent circular reference
+		if self.project_contractors:
+			frappe.db.set_value("Project Advances", self.name, "project_contractors", None)
 		
 		# Clear references in Employee Advances before deletion
 		employee_advances = frappe.get_all(
@@ -56,6 +60,11 @@ class ProjectAdvances(Document):
 		
 		# Commit the changes
 		frappe.db.commit()
+
+	def after_delete(self):
+		"""Handle operations after document deletion"""
+		# Any cleanup operations after successful deletion
+		pass
 	
 	def auto_populate_project_claim_references(self):
 		"""Auto-populate project claim references for each contractor in the child table"""

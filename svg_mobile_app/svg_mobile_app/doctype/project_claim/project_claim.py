@@ -1045,18 +1045,25 @@ def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield,
 		'page_len': page_len
 	})
 
+	def before_cancel(self):
+		"""Handle operations before cancelling the document"""
+		# Clear project contractor link before cancellation to prevent circular reference
+		if self.for_project:
+			frappe.db.set_value("Project Claim", self.name, "for_project", None)
+
 	def on_cancel(self):
-		"""Handle cancellation by ignoring all link validation"""
-		# This is the correct way to bypass link validation completely
-		self.flags.ignore_links = True
+		"""Handle operations when document is cancelled"""
+		# Additional cleanup after cancellation if needed
+		pass
 		
 	def on_trash(self):
-		"""Handle document deletion by unlinking related documents"""
-		# This is the correct way to bypass link validation completely
-		self.flags.ignore_links = True
-		
-		# Clear any references to Project Contractors before deletion
+		"""Handle document deletion by clearing related links"""
+		# Clear project contractor link before deletion to prevent circular reference
 		if self.for_project:
-			# We don't need to update the Project Contractors document
-			# Just clear our own reference
-			self.for_project = None
+			frappe.db.set_value("Project Claim", self.name, "for_project", None)
+			frappe.db.commit()
+
+	def after_delete(self):
+		"""Handle operations after document deletion"""
+		# Any cleanup operations after successful deletion
+		pass

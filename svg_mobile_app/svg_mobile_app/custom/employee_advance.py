@@ -36,27 +36,48 @@ class EmployeeAdvanceCustom(Document):
 
 
 # Hook into the Employee Advance doctype
+def before_cancel(doc, method=None):
+	"""Handle Employee Advance before cancellation"""
+	# Clear any project contractor links before cancellation to prevent circular reference
+	if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
+		frappe.db.set_value("Employee Advance", doc.name, "project_contractors_reference", None)
+
 def on_cancel(doc, method=None):
-	"""Handle Employee Advance cancellation by ignoring all link validation"""
-	# This is the correct way to bypass link validation completely
-	doc.flags.ignore_links = True
+	"""Handle Employee Advance cancellation"""
+	# Additional cleanup after cancellation if needed
+	pass
 
 def on_trash(doc, method=None):
-	"""Handle Employee Advance deletion by clearing references"""
-	# This is the correct way to bypass link validation completely
-	doc.flags.ignore_links = True
-	
-	# Clear references in Project Contractors fees_and_deposits
+	"""Handle Employee Advance deletion"""
+	# Clear any links that might prevent deletion
 	if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
 		try:
+			# Clear the reference in Project Contractors fees_and_deposits
 			project_contractor = frappe.get_doc("Project Contractors", doc.project_contractors_reference)
+			
 			# Clear any references in the fees_and_deposits child table
 			for fee in project_contractor.fees_and_deposits:
-				if fee.employee_advance == doc.name:
+				if hasattr(fee, 'employee_advance') and fee.employee_advance == doc.name:
 					frappe.db.set_value("Project Fees and Deposits", fee.name, "employee_advance", None)
+			
+			# Clear the main reference
+			frappe.db.set_value("Employee Advance", doc.name, "project_contractors_reference", None)
 			
 			# Commit the changes
 			frappe.db.commit()
+			
 		except frappe.DoesNotExistError:
 			# Project Contractors document doesn't exist, continue
-			pass 
+			pass
+		except Exception as e:
+			frappe.log_error(f"Error clearing Employee Advance links: {str(e)}")
+
+def after_delete(doc, method=None):
+	"""Handle operations after Employee Advance deletion"""
+	# Any cleanup operations after successful deletion
+	pass
+
+def validate(doc, method=None):
+	"""Validate Employee Advance before saving"""
+	# Add any custom validation logic here
+	pass 

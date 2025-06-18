@@ -152,8 +152,11 @@ doc_events = {
         "after_delete": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.after_delete"
     },
     "Employee Advance": {
-        "on_cancel": "svg_mobile_app.custom.employee_advance.on_cancel",
-        "on_trash": "svg_mobile_app.custom.employee_advance.on_trash"
+        "validate": "svg_mobile_app.svg_mobile_app.custom.employee_advance.validate",
+        "before_cancel": "svg_mobile_app.svg_mobile_app.custom.employee_advance.before_cancel",
+        "on_cancel": "svg_mobile_app.svg_mobile_app.custom.employee_advance.on_cancel",
+        "on_trash": "svg_mobile_app.svg_mobile_app.custom.employee_advance.on_trash",
+        "after_delete": "svg_mobile_app.svg_mobile_app.custom.employee_advance.after_delete"
     }
 }
 

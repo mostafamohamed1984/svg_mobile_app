@@ -75,13 +75,19 @@ class ProjectContractors(Document):
 			
 			for claim in project_claims:
 				if claim.docstatus in [0, 2]:  # Draft or Cancelled
+					# Clear all project claim links
 					frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+					frappe.db.set_value("Project Claim", claim.name, "reference_invoice", None)
+					frappe.db.set_value("Project Claim", claim.name, "invoice_references", None)
 				else:
 					# For submitted claims, cancel them first
 					claim_doc = frappe.get_doc("Project Claim", claim.name)
 					if claim_doc.docstatus == 1:  # Submitted
 						claim_doc.cancel()
+						# Clear all links after cancellation
 						frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+						frappe.db.set_value("Project Claim", claim.name, "reference_invoice", None)
+						frappe.db.set_value("Project Claim", claim.name, "invoice_references", None)
 			
 			# Clear Employee Advance links
 			employee_advances = frappe.get_all(

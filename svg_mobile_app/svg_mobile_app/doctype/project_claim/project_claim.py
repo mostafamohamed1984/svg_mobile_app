@@ -781,6 +781,64 @@ class ProjectClaim(Document):
 		
 		return je.name
 
+	def before_cancel(self):
+		"""Handle operations before cancelling the document"""
+		# Clear all links before cancellation to prevent circular reference
+		updates = {}
+		
+		if self.for_project:
+			updates["for_project"] = None
+		
+		if self.reference_invoice:
+			updates["reference_invoice"] = None
+		
+		if self.invoice_references:
+			updates["invoice_references"] = None
+		
+		if updates:
+			for field, value in updates.items():
+				frappe.db.set_value("Project Claim", self.name, field, value)
+
+	def on_cancel(self):
+		"""Handle operations when document is cancelled"""
+		# Additional cleanup after cancellation if needed
+		pass
+		
+	def on_trash(self):
+		"""Handle document deletion by clearing related links"""
+		# Clear all links before deletion to prevent circular reference
+		updates = {}
+		
+		if self.for_project:
+			updates["for_project"] = None
+		
+		if self.reference_invoice:
+			updates["reference_invoice"] = None
+		
+		if self.invoice_references:
+			updates["invoice_references"] = None
+		
+		if updates:
+			for field, value in updates.items():
+				frappe.db.set_value("Project Claim", self.name, field, value)
+		
+		# Clear Claim Items invoice references
+		claim_items = frappe.get_all(
+			"Claim Items",
+			filters={"parent": self.name},
+			fields=["name"]
+		)
+		
+		for item in claim_items:
+			frappe.db.set_value("Claim Items", item.name, "invoice_reference", None)
+		
+		frappe.db.commit()
+
+	def after_delete(self):
+		"""Handle operations after document deletion"""
+		# Any cleanup operations after successful deletion
+		pass
+
 # Add a static method to be called from JavaScript
 @frappe.whitelist()
 def get_items_from_invoices(invoices):
@@ -1044,61 +1102,3 @@ def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield,
 		'start': start,
 		'page_len': page_len
 	})
-
-	def before_cancel(self):
-		"""Handle operations before cancelling the document"""
-		# Clear all links before cancellation to prevent circular reference
-		updates = {}
-		
-		if self.for_project:
-			updates["for_project"] = None
-		
-		if self.reference_invoice:
-			updates["reference_invoice"] = None
-		
-		if self.invoice_references:
-			updates["invoice_references"] = None
-		
-		if updates:
-			for field, value in updates.items():
-				frappe.db.set_value("Project Claim", self.name, field, value)
-
-	def on_cancel(self):
-		"""Handle operations when document is cancelled"""
-		# Additional cleanup after cancellation if needed
-		pass
-		
-	def on_trash(self):
-		"""Handle document deletion by clearing related links"""
-		# Clear all links before deletion to prevent circular reference
-		updates = {}
-		
-		if self.for_project:
-			updates["for_project"] = None
-		
-		if self.reference_invoice:
-			updates["reference_invoice"] = None
-		
-		if self.invoice_references:
-			updates["invoice_references"] = None
-		
-		if updates:
-			for field, value in updates.items():
-				frappe.db.set_value("Project Claim", self.name, field, value)
-		
-		# Clear Claim Items invoice references
-		claim_items = frappe.get_all(
-			"Claim Items",
-			filters={"parent": self.name},
-			fields=["name"]
-		)
-		
-		for item in claim_items:
-			frappe.db.set_value("Claim Items", item.name, "invoice_reference", None)
-		
-		frappe.db.commit()
-
-	def after_delete(self):
-		"""Handle operations after document deletion"""
-		# Any cleanup operations after successful deletion
-		pass

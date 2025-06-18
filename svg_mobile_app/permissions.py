@@ -4,7 +4,7 @@ from frappe import _
 def get_communication_permission_query_conditions(user):
     """
     Return query conditions for Communication based on user's email access.
-    Now uses the unified User Email table with access types.
+    This integrates both User Email and User Work Email Access tables.
     """
     if not user:
         user = frappe.session.user
@@ -14,13 +14,26 @@ def get_communication_permission_query_conditions(user):
         return ""
     
     try:
-        # Get user's accessible email accounts from User Email table
-        accessible_accounts = frappe.get_all(
+        # Get user's accessible email accounts from BOTH tables
+        accessible_accounts = []
+        
+        # Get personal emails (User Email) - Standard Frappe table
+        personal_emails = frappe.get_all(
             "User Email",
             filters={"parent": user},
             fields=["email_account"],
             pluck="email_account"
         )
+        accessible_accounts.extend(personal_emails)
+        
+        # Get work emails (User Work Email Access) - Custom table
+        work_emails = frappe.get_all(
+            "User Work Email Access", 
+            filters={"parent": user},
+            fields=["email_account"],
+            pluck="email_account"
+        )
+        accessible_accounts.extend(work_emails)
         
         # Remove duplicates and None values
         accessible_accounts = list(set([acc for acc in accessible_accounts if acc]))
@@ -52,7 +65,7 @@ def get_communication_permission_query_conditions(user):
 def has_communication_permission(doc, user=None, permission_type="read"):
     """
     Check if user has permission for specific Communication document.
-    Now uses the unified User Email table with access types.
+    This integrates both User Email and User Work Email Access tables.
     """
     if not user:
         user = frappe.session.user
@@ -72,19 +85,30 @@ def has_communication_permission(doc, user=None, permission_type="read"):
         if doc.communication_medium != "Email" or not doc.email_account:
             return True
         
-        # Check if user has access to this email account through User Email table
-        email_access = frappe.db.get_value("User Email", {
+        # Check if user has access to this email account through either table
+        
+        # Check personal email access (User Email)
+        personal_access = frappe.db.exists("User Email", {
+            "parent": user,
+            "email_account": doc.email_account
+        })
+        
+        if personal_access:
+            return True
+        
+        # Check work email access (User Work Email Access)
+        work_access = frappe.db.get_value("User Work Email Access", {
             "parent": user,
             "email_account": doc.email_account
         }, "access_type")
         
-        if email_access:
+        if work_access:
             # Check permission type against access type
-            if permission_type == "read" and email_access in ["Read Only", "Read & Send", "Full Access"]:
+            if permission_type == "read" and work_access in ["Read Only", "Read & Send", "Full Access"]:
                 return True
-            elif permission_type == "write" and email_access in ["Read & Send", "Full Access"]:
+            elif permission_type == "write" and work_access in ["Read & Send", "Full Access"]:
                 return True
-            elif permission_type == "delete" and email_access == "Full Access":
+            elif permission_type == "delete" and work_access == "Full Access":
                 return True
         
         return False
@@ -113,13 +137,23 @@ def get_email_account_permission_query_conditions(user):
         return ""
     
     try:
-        # Get user's email access from User Email table
-        accessible_accounts = frappe.get_all(
+        # Get user's email access
+        personal_emails = frappe.get_all(
             "User Email",
             filters={"parent": user},
             fields=["email_account"],
             pluck="email_account"
         )
+        
+        work_emails = frappe.get_all(
+            "User Work Email Access", 
+            filters={"parent": user},
+            fields=["email_account"],
+            pluck="email_account"
+        )
+        
+        # Combine all accessible email accounts
+        accessible_accounts = personal_emails + work_emails
         
         if accessible_accounts:
             accounts_condition = "', '".join(accessible_accounts)
@@ -145,17 +179,27 @@ def has_email_account_permission_main(doc, ptype, user=None):
     
     try:
         # Check if user has access to this email account
-        email_access = frappe.db.get_value("User Email", {
+        personal_access = frappe.db.exists("User Email", {
+            "parent": user,
+            "email_account": doc.name
+        })
+        
+        work_access = frappe.db.get_value("User Work Email Access", {
             "parent": user,
             "email_account": doc.name
         }, "access_type")
         
-        if email_access:
+        # Personal emails have full access
+        if personal_access:
+            return True
+        
+        # Work emails - check access type for write operations
+        if work_access:
             if ptype in ["read", "print", "export"]:
                 return True
             elif ptype in ["write", "create", "delete", "submit", "cancel"]:
                 # Only allow write operations for Read & Send and Full Access
-                return email_access in ["Read & Send", "Full Access"]
+                return work_access in ["Read & Send", "Full Access"]
         
         return False
         

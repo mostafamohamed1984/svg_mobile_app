@@ -43,9 +43,7 @@ app_include_css = "/assets/svg_mobile_app/css/team_tasks_kanban.css"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-doctype_js = {
-    "User": "svg_mobile_app/custom/user.js"
-}
+# doctype_js = {"doctype" : "public/js/doctype.js"}
 doctype_list_js = {
     "Team Tasks": "svg_mobile_app/doctype/team_tasks/team_tasks.js"
 }
@@ -124,15 +122,13 @@ doctype_kanban_js = {
 # -----------
 # Permissions evaluated in scripted ways
 
-# Permission hooks for unified email access control
+# Permission hooks for email access control
 permission_query_conditions = {
-    "Communication": "svg_mobile_app.permissions.get_communication_permission_query_conditions",
-    "Email Account": "svg_mobile_app.permissions.get_email_account_permission_query_conditions"
+    "Communication": "svg_mobile_app.permissions.get_communication_permission_query_conditions"
 }
 
 has_permission = {
-    "Communication": "svg_mobile_app.permissions.has_communication_permission_main",
-    "Email Account": "svg_mobile_app.permissions.has_email_account_permission_main"
+    "Communication": "svg_mobile_app.permissions.has_communication_permission_main"
 }
 
 # DocType Class

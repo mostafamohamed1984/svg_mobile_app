@@ -200,23 +200,32 @@
                 if (r.message && r.message.status === "success") {
                     const data = r.message.data;
                     
-                    // Get all emails from unified User Email table (now includes access types)
+                    // Get personal emails (from User Email) and work emails from the API response
                     const personalEmails = data.personal_emails || [];
+                    const workEmails = data.work_emails || [];
                     const fallbackEmails = data.user_emails || [];
                     
                     // Combine all email accounts for the dropdown
                     const emailAccountsData = [];
                     
-                    // Process all emails from unified User Email table
+                    // Add personal emails (from existing User Email child table)
                     personalEmails.forEach(email => {
                         emailAccountsData.push({
                             name: email.account_name,
                             email_id: email.email_id,
-                            type: email.type, // Now determined by access_type in API
-                            access_type: email.access_type,
-                            granted_by: email.granted_by,
-                            granted_date: email.granted_date,
+                            type: "personal",
                             is_primary: email.is_primary,
+                            description: email.description
+                        });
+                    });
+                    
+                    // Add work emails (from new User Work Email Access child table)
+                    workEmails.forEach(email => {
+                        emailAccountsData.push({
+                            name: email.account_name,
+                            email_id: email.email_id,
+                            type: "work",
+                            access_type: email.access_type,
                             description: email.description
                         });
                     });
@@ -275,36 +284,35 @@
             emailAccountSelect.remove(1);
         }
 
-        // Group emails by access type
-        const fullAccessEmails = emailAccounts.filter(acc => (acc.access_type || "Full Access") === "Full Access");
-        const restrictedEmails = emailAccounts.filter(acc => acc.access_type && acc.access_type !== "Full Access");
+        // Group emails by type
+        const personalEmails = emailAccounts.filter(acc => acc.type === "personal");
+        const workEmails = emailAccounts.filter(acc => acc.type === "work");
         const fallbackEmails = emailAccounts.filter(acc => acc.type === "fallback");
 
-        // Add full access emails section (Personal emails)
-        if (fullAccessEmails.length > 0) {
+        // Add personal emails section
+        if (personalEmails.length > 0) {
             // Add section header
             const personalHeader = document.createElement('option');
             personalHeader.disabled = true;
             personalHeader.style.fontWeight = 'bold';
             personalHeader.style.backgroundColor = '#f8f9fa';
-            personalHeader.textContent = '--- Personal Email Accounts ---';
+            personalHeader.textContent = '--- Personal Emails ---';
             emailAccountSelect.appendChild(personalHeader);
 
-            fullAccessEmails.forEach(function(account) {
+            personalEmails.forEach(function(account) {
                 const option = document.createElement('option');
                 option.value = account.name;
                 let displayText = account.email_id;
                 if (account.is_primary) {
                     displayText += " (Primary)";
                 }
-                displayText += " 🔓"; // Full access indicator
                 option.textContent = displayText;
                 emailAccountSelect.appendChild(option);
             });
         }
 
-        // Add restricted access emails section (Work emails)
-        if (restrictedEmails.length > 0) {
+        // Add work emails section
+        if (workEmails.length > 0) {
             // Add section header
             const workHeader = document.createElement('option');
             workHeader.disabled = true;
@@ -313,21 +321,23 @@
             workHeader.textContent = '--- Work Email Access ---';
             emailAccountSelect.appendChild(workHeader);
 
-            restrictedEmails.forEach(function(account) {
+            workEmails.forEach(function(account) {
                 const option = document.createElement('option');
                 option.value = account.name;
                 let displayText = account.email_id;
                 if (account.access_type) {
                     displayText += " (" + account.access_type + ")";
                     
-                    // Add visual indicator for access level
+                    // Add visual indicator for read-only access
                     if (account.access_type === "Read Only") {
                         displayText += " 🔒";
                     } else if (account.access_type === "Read & Send") {
                         displayText += " ✉️";
+                    } else if (account.access_type === "Full Access") {
+                        displayText += " 🔓";
                     }
                 }
-                if (account.description && account.description !== "Email Account") {
+                if (account.description && account.description !== "Work Email Access") {
                     displayText += " - " + account.description;
                 }
                 option.textContent = displayText;

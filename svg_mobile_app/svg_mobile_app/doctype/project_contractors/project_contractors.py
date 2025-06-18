@@ -26,6 +26,17 @@ class ProjectContractors(Document):
 		# This is the correct way to bypass link validation completely
 		self.flags.ignore_links = True
 		
+		# Unlink any related Sales Invoices before deletion
+		sales_invoices = frappe.get_all(
+			"Sales Invoice",
+			filters={"custom_for_project": self.name},
+			fields=["name"]
+		)
+		
+		for invoice in sales_invoices:
+			# Clear the link to this Project Contractors document
+			frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
+		
 		# Unlink any related Project Claims before deletion
 		project_claims = frappe.get_all(
 			"Project Claim",
@@ -36,6 +47,17 @@ class ProjectContractors(Document):
 		for claim in project_claims:
 			# Clear the link to this Project Contractors document
 			frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+		
+		# Unlink any related Employee Advances before deletion
+		employee_advances = frappe.get_all(
+			"Employee Advance",
+			filters={"project_contractors_reference": self.name},
+			fields=["name"]
+		)
+		
+		for advance in employee_advances:
+			# Clear the link to this Project Contractors document
+			frappe.db.set_value("Employee Advance", advance.name, "project_contractors_reference", None)
 		
 		# Commit the changes
 		frappe.db.commit()

@@ -122,16 +122,16 @@ doctype_kanban_js = {
 # -----------
 # Permissions evaluated in scripted ways
 
-# Permission hooks for email access control
-permission_query_conditions = {
-    "Communication": "svg_mobile_app.permissions.get_communication_permission_query_conditions",
-    "Email Account": "svg_mobile_app.permissions.get_email_account_permission_query_conditions"
-}
+# Permission hooks for email access control - TEMPORARILY DISABLED FOR TESTING
+# permission_query_conditions = {
+#     "Communication": "svg_mobile_app.permissions.get_communication_permission_query_conditions",
+#     "Email Account": "svg_mobile_app.permissions.get_email_account_permission_query_conditions"
+# }
 
-has_permission = {
-    "Communication": "svg_mobile_app.permissions.has_communication_permission_main",
-    "Email Account": "svg_mobile_app.permissions.has_email_account_permission_main"
-}
+# has_permission = {
+#     "Communication": "svg_mobile_app.permissions.has_communication_permission_main",
+#     "Email Account": "svg_mobile_app.permissions.has_email_account_permission_main"
+# }
 
 # DocType Class
 # ---------------

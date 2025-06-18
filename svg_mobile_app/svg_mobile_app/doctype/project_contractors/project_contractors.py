@@ -83,6 +83,40 @@ class ProjectContractors(Document):
 						claim_doc.cancel()
 						frappe.db.set_value("Project Claim", claim.name, "for_project", None)
 			
+			# Clear Employee Advance links
+			employee_advances = frappe.get_all(
+				"Employee Advance",
+				filters={"project_contractors_reference": self.name},
+				fields=["name", "docstatus"]
+			)
+			
+			for advance in employee_advances:
+				if advance.docstatus in [0, 2]:  # Draft or Cancelled
+					frappe.db.set_value("Employee Advance", advance.name, "project_contractors_reference", None)
+				else:
+					# For submitted advances, cancel them first
+					advance_doc = frappe.get_doc("Employee Advance", advance.name)
+					if advance_doc.docstatus == 1:  # Submitted
+						advance_doc.cancel()
+						frappe.db.set_value("Employee Advance", advance.name, "project_contractors_reference", None)
+			
+			# Clear Project Advances links
+			project_advances = frappe.get_all(
+				"Project Advances",
+				filters={"project_contractors": self.name},
+				fields=["name", "docstatus"]
+			)
+			
+			for advance in project_advances:
+				if advance.docstatus in [0, 2]:  # Draft or Cancelled
+					frappe.db.set_value("Project Advances", advance.name, "project_contractors", None)
+				else:
+					# For submitted advances, cancel them first
+					advance_doc = frappe.get_doc("Project Advances", advance.name)
+					if advance_doc.docstatus == 1:  # Submitted
+						advance_doc.cancel()
+						frappe.db.set_value("Project Advances", advance.name, "project_contractors", None)
+			
 			# Commit the changes
 			frappe.db.commit()
 			

@@ -38,9 +38,21 @@ class EmployeeAdvanceCustom(Document):
 # Hook into the Employee Advance doctype
 def before_cancel(doc, method=None):
 	"""Handle Employee Advance before cancellation"""
-	# Clear any project contractor links before cancellation to prevent circular reference
+	# Clear all project-related links before cancellation to prevent circular reference
+	updates = {}
+	
 	if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
-		frappe.db.set_value("Employee Advance", doc.name, "project_contractors_reference", None)
+		updates["project_contractors_reference"] = None
+	
+	if hasattr(doc, 'custom_project_advance_reference') and doc.custom_project_advance_reference:
+		updates["custom_project_advance_reference"] = None
+	
+	if hasattr(doc, 'custom_project_claim_reference') and doc.custom_project_claim_reference:
+		updates["custom_project_claim_reference"] = None
+	
+	if updates:
+		for field, value in updates.items():
+			frappe.db.set_value("Employee Advance", doc.name, field, value)
 
 def on_cancel(doc, method=None):
 	"""Handle Employee Advance cancellation"""
@@ -49,28 +61,39 @@ def on_cancel(doc, method=None):
 
 def on_trash(doc, method=None):
 	"""Handle Employee Advance deletion"""
-	# Clear any links that might prevent deletion
-	if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
-		try:
-			# Clear the reference in Project Contractors fees_and_deposits
-			project_contractor = frappe.get_doc("Project Contractors", doc.project_contractors_reference)
+	# Clear all project-related links that might prevent deletion
+	try:
+		# Clear all project references
+		updates = {}
+		
+		if hasattr(doc, 'project_contractors_reference') and doc.project_contractors_reference:
+			updates["project_contractors_reference"] = None
 			
-			# Clear any references in the fees_and_deposits child table
-			for fee in project_contractor.fees_and_deposits:
-				if hasattr(fee, 'employee_advance') and fee.employee_advance == doc.name:
-					frappe.db.set_value("Project Fees and Deposits", fee.name, "employee_advance", None)
-			
-			# Clear the main reference
-			frappe.db.set_value("Employee Advance", doc.name, "project_contractors_reference", None)
-			
-			# Commit the changes
-			frappe.db.commit()
-			
-		except frappe.DoesNotExistError:
-			# Project Contractors document doesn't exist, continue
-			pass
-		except Exception as e:
-			frappe.log_error(f"Error clearing Employee Advance links: {str(e)}")
+			# Also clear references in Project Contractors fees_and_deposits
+			try:
+				project_contractor = frappe.get_doc("Project Contractors", doc.project_contractors_reference)
+				for fee in project_contractor.fees_and_deposits:
+					if hasattr(fee, 'employee_advance') and fee.employee_advance == doc.name:
+						frappe.db.set_value("Project Fees and Deposits", fee.name, "employee_advance", None)
+			except frappe.DoesNotExistError:
+				pass
+		
+		if hasattr(doc, 'custom_project_advance_reference') and doc.custom_project_advance_reference:
+			updates["custom_project_advance_reference"] = None
+		
+		if hasattr(doc, 'custom_project_claim_reference') and doc.custom_project_claim_reference:
+			updates["custom_project_claim_reference"] = None
+		
+		# Apply all updates
+		if updates:
+			for field, value in updates.items():
+				frappe.db.set_value("Employee Advance", doc.name, field, value)
+		
+		# Commit the changes
+		frappe.db.commit()
+		
+	except Exception as e:
+		frappe.log_error(f"Error clearing Employee Advance links: {str(e)}")
 
 def after_delete(doc, method=None):
 	"""Handle operations after Employee Advance deletion"""

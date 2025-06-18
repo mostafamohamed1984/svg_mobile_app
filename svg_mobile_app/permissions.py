@@ -12,9 +12,8 @@ def get_communication_permission_query_conditions(user):
     if "System Manager" in frappe.get_roles(user):
         return ""
     
-    # Get user's email access
     try:
-        # Get personal emails (User Email)
+        # Get user's email access
         personal_emails = frappe.get_all(
             "User Email",
             filters={"parent": user},
@@ -22,7 +21,6 @@ def get_communication_permission_query_conditions(user):
             pluck="email_account"
         )
         
-        # Get work emails (User Work Email Access)
         work_emails = frappe.get_all(
             "User Work Email Access", 
             filters={"parent": user},
@@ -33,17 +31,31 @@ def get_communication_permission_query_conditions(user):
         # Combine all accessible email accounts
         accessible_accounts = personal_emails + work_emails
         
+        # Build comprehensive permission conditions
+        conditions = []
+        
+        # 1. Communications from accessible email accounts
         if accessible_accounts:
-            # User can only see communications from their accessible email accounts
             accounts_condition = "', '".join(accessible_accounts)
-            return f"(`tabCommunication`.`email_account` in ('{accounts_condition}') or `tabCommunication`.`email_account` is null)"
-        else:
-            # No email access - only see communications not tied to email accounts
-            return "`tabCommunication`.`email_account` is null"
+            conditions.append(f"`tabCommunication`.`email_account` in ('{accounts_condition}')")
+        
+        # 2. Communications not tied to any email account (general communications)
+        conditions.append("`tabCommunication`.`email_account` is null")
+        
+        # 3. Communications where user is sender or recipient
+        conditions.append(f"`tabCommunication`.`sender` = '{user}'")
+        conditions.append(f"`tabCommunication`.`recipients` like '%{user}%'")
+        
+        # 4. Communications assigned to the user
+        conditions.append(f"`tabCommunication`.`user` = '{user}'")
+        
+        # Combine all conditions with OR
+        return f"({' or '.join(conditions)})"
             
     except Exception as e:
         frappe.log_error(f"Error in communication permission query: {str(e)}")
-        return "`tabCommunication`.`email_account` is null"
+        # Fallback to basic user-related communications
+        return f"(`tabCommunication`.`sender` = '{user}' or `tabCommunication`.`recipients` like '%{user}%' or `tabCommunication`.`user` = '{user}' or `tabCommunication`.`email_account` is null)"
 
 def has_communication_permission(doc, user=None, permission_type="read"):
     """
@@ -56,12 +68,20 @@ def has_communication_permission(doc, user=None, permission_type="read"):
     if "System Manager" in frappe.get_roles(user):
         return True
     
-    # If not an email communication, use default permissions
-    if doc.communication_medium != "Email" or not doc.email_account:
-        return True
-    
     try:
-        # Check if user has access to this email account
+        # Check multiple access scenarios
+        
+        # 1. User is sender or recipient
+        if (doc.sender == user or 
+            (doc.recipients and user in doc.recipients) or 
+            doc.user == user):
+            return True
+        
+        # 2. Non-email communications or no email account - use default permissions
+        if doc.communication_medium != "Email" or not doc.email_account:
+            return True
+        
+        # 3. Check email account access
         personal_access = frappe.db.exists("User Email", {
             "parent": user,
             "email_account": doc.email_account

@@ -12,55 +12,83 @@ class ProjectContractors(Document):
 		self.calculate_totals()
 		
 	def on_submit(self):
-		"""Automatically create sales invoices when document is submitted"""
-		if not self.sales_invoice_created:
-			self.create_automatic_sales_invoices()
-	
+		"""Create Sales Invoice when Project Contractors is submitted"""
+		# Create a Sales Invoice linked to this Project Contractors
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer if hasattr(self, 'customer') else "Default Customer"
+		sales_invoice.custom_for_project = self.name
+		sales_invoice.company = self.company if hasattr(self, 'company') else frappe.defaults.get_defaults().get("company")
+		
+		# Add other required fields as needed
+		sales_invoice.save()
+		sales_invoice.submit()
+		
+		frappe.msgprint(f"Sales Invoice {sales_invoice.name} created successfully")
+
+	def before_cancel(self):
+		"""Handle operations before cancelling the document"""
+		# Clear any related Sales Invoice links before cancellation
+		self._clear_related_document_links()
+
 	def on_cancel(self):
-		"""Handle cancellation by ignoring all link validation"""
-		# This is the correct way to bypass link validation completely
-		self.flags.ignore_links = True
-		
+		"""Handle operations when document is cancelled"""
+		# Additional cleanup after cancellation if needed
+		frappe.msgprint("Project Contractors cancelled successfully")
+
 	def on_trash(self):
-		"""Handle document deletion by unlinking related documents"""
-		# This is the correct way to bypass link validation completely
-		self.flags.ignore_links = True
-		
-		# Unlink any related Sales Invoices before deletion
-		sales_invoices = frappe.get_all(
-			"Sales Invoice",
-			filters={"custom_for_project": self.name},
-			fields=["name"]
-		)
-		
-		for invoice in sales_invoices:
-			# Clear the link to this Project Contractors document
-			frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
-		
-		# Unlink any related Project Claims before deletion
-		project_claims = frappe.get_all(
-			"Project Claim",
-			filters={"for_project": self.name},
-			fields=["name"]
-		)
-		
-		for claim in project_claims:
-			# Clear the link to this Project Contractors document
-			frappe.db.set_value("Project Claim", claim.name, "for_project", None)
-		
-		# Unlink any related Employee Advances before deletion
-		employee_advances = frappe.get_all(
-			"Employee Advance",
-			filters={"project_contractors_reference": self.name},
-			fields=["name"]
-		)
-		
-		for advance in employee_advances:
-			# Clear the link to this Project Contractors document
-			frappe.db.set_value("Employee Advance", advance.name, "project_contractors_reference", None)
-		
-		# Commit the changes
-		frappe.db.commit()
+		"""Handle document deletion by clearing related links"""
+		# Clear links before deletion to prevent circular reference issues
+		self._clear_related_document_links()
+
+	def after_delete(self):
+		"""Handle operations after document deletion"""
+		# Any cleanup operations after successful deletion
+		pass
+
+	def _clear_related_document_links(self):
+		"""Private method to clear links in related documents"""
+		try:
+			# Clear Sales Invoice links
+			sales_invoices = frappe.get_all(
+				"Sales Invoice",
+				filters={"custom_for_project": self.name},
+				fields=["name", "docstatus"]
+			)
+			
+			for invoice in sales_invoices:
+				# Only clear links for draft or cancelled invoices
+				if invoice.docstatus in [0, 2]:  # Draft or Cancelled
+					frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
+				else:
+					# For submitted invoices, cancel them first
+					invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+					if invoice_doc.docstatus == 1:  # Submitted
+						invoice_doc.cancel()
+						frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
+			
+			# Clear Project Claim links
+			project_claims = frappe.get_all(
+				"Project Claim",
+				filters={"for_project": self.name},
+				fields=["name", "docstatus"]
+			)
+			
+			for claim in project_claims:
+				if claim.docstatus in [0, 2]:  # Draft or Cancelled
+					frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+				else:
+					# For submitted claims, cancel them first
+					claim_doc = frappe.get_doc("Project Claim", claim.name)
+					if claim_doc.docstatus == 1:  # Submitted
+						claim_doc.cancel()
+						frappe.db.set_value("Project Claim", claim.name, "for_project", None)
+			
+			# Commit the changes
+			frappe.db.commit()
+			
+		except Exception as e:
+			frappe.log_error(f"Error clearing related document links: {str(e)}")
+			# Don't prevent deletion, just log the error
 		
 	def calculate_totals(self):
 		"""Calculate total amounts for items and fees"""

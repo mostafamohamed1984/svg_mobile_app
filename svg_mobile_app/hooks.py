@@ -145,9 +145,11 @@ has_permission = {
 
 doc_events = {
     "Sales Invoice": {
-        "on_submit": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_submit_sales_invoice",
-        "on_cancel": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_cancel_sales_invoice",
-        "on_trash": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_trash_sales_invoice"
+        "validate": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.validate",
+        "before_cancel": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.before_cancel",
+        "on_cancel": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_cancel",
+        "on_trash": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_trash",
+        "after_delete": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.after_delete"
     },
     "Employee Advance": {
         "on_cancel": "svg_mobile_app.custom.employee_advance.on_cancel",

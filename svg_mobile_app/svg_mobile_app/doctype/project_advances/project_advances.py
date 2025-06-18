@@ -32,9 +32,10 @@ class ProjectAdvances(Document):
 		
 	def before_cancel(self):
 		"""Handle operations before cancelling the document"""
-		# Clear project contractor link before cancellation to prevent circular reference
+		# Clear project contractor links from child table before cancellation to prevent circular reference
 		if self.project_contractors:
-			frappe.db.set_value("Project Advances", self.name, "project_contractors", None)
+			for contractor_row in self.project_contractors:
+				frappe.db.set_value("Project Advance Contractors", contractor_row.name, "project_contractor", None)
 
 	def on_cancel(self):
 		"""Cancel related Employee Advances when document is cancelled"""
@@ -43,9 +44,10 @@ class ProjectAdvances(Document):
 		
 	def on_trash(self):
 		"""Handle document deletion by clearing related links"""
-		# Clear project contractor link before deletion to prevent circular reference
+		# Clear project contractor links from child table before deletion to prevent circular reference
 		if self.project_contractors:
-			frappe.db.set_value("Project Advances", self.name, "project_contractors", None)
+			for contractor_row in self.project_contractors:
+				frappe.db.set_value("Project Advance Contractors", contractor_row.name, "project_contractor", None)
 		
 		# Clear references in Employee Advances before deletion
 		employee_advances = frappe.get_all(

@@ -1486,25 +1486,32 @@ def _clear_project_contractors_links(doc):
 				except Exception as e:
 					frappe.log_error(f"Error cancelling Employee Advance {advance.name}: {str(e)}")
 		
-		# Clear Project Advances links
-		project_advances = frappe.get_all(
-			"Project Advances",
-			filters={"project_contractors": doc.name},
-			fields=["name", "docstatus"]
+		# Clear Project Advances links (Project Advances references contractors through child table)
+		project_advance_contractors = frappe.get_all(
+			"Project Advance Contractors",
+			filters={"project_contractor": doc.name},
+			fields=["parent", "name"],
+			ignore_permissions=True
 		)
 		
-		for advance in project_advances:
-			if advance.docstatus in [0, 2]:  # Draft or Cancelled
-				frappe.db.set_value("Project Advances", advance.name, "project_contractors", None)
-			else:
-				# For submitted advances, cancel them first
-				try:
-					advance_doc = frappe.get_doc("Project Advances", advance.name)
-					if advance_doc.docstatus == 1:  # Submitted
-						advance_doc.cancel()
-						frappe.db.set_value("Project Advances", advance.name, "project_contractors", None)
-				except Exception as e:
-					frappe.log_error(f"Error cancelling Project Advances {advance.name}: {str(e)}")
+		# Get unique parent Project Advances documents
+		project_advances_to_clear = set()
+		for contractor_row in project_advance_contractors:
+			project_advances_to_clear.add(contractor_row.parent)
+		
+		# Clear the contractor references and cancel if needed
+		for project_advance_name in project_advances_to_clear:
+			try:
+				project_advance_doc = frappe.get_doc("Project Advances", project_advance_name)
+				if project_advance_doc.docstatus == 1:  # Submitted
+					project_advance_doc.cancel()
+				
+				# Clear the contractor reference from child table
+				for contractor_row in project_advance_contractors:
+					if contractor_row.parent == project_advance_name:
+						frappe.db.set_value("Project Advance Contractors", contractor_row.name, "project_contractor", None)
+			except Exception as e:
+				frappe.log_error(f"Error clearing Project Advance {project_advance_name}: {str(e)}")
 		
 		# Commit the changes
 		frappe.db.commit()

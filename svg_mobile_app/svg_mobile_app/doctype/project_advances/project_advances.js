@@ -3,22 +3,14 @@
 
 frappe.ui.form.on("Project Advances", {
 	refresh: function(frm) {
-		// Add custom buttons based on document status
-		if (frm.doc.docstatus === 0) {
-			// Draft - show refresh button
-			frm.add_custom_button(__('Refresh Available Balances'), function() {
-				refresh_available_balances(frm);
-			}).addClass('btn-info');
-		}
-		
 		// Set up field dependencies
 		setup_field_dependencies(frm);
 		
-		// Only auto-refresh on first load if document is new
-		if (frm.doc.__islocal && frm.doc.project_contractors && frm.doc.project_contractors.length > 0) {
+		// Auto-refresh available balances when form loads
+		if (frm.doc.project_contractors && frm.doc.project_contractors.length > 0) {
 			setTimeout(() => {
 				refresh_available_balances(frm);
-			}, 1000);
+			}, 500);
 		}
 	},
 	
@@ -60,7 +52,10 @@ frappe.ui.form.on("Project Advance Contractors", {
 			// Load available balance for this contractor
 			load_contractor_balance(frm, row);
 			
-			// Don't auto-refresh to avoid unsaved state - user can click refresh button
+			// Auto-refresh available balances display
+			setTimeout(() => {
+				refresh_available_balances(frm);
+			}, 500);
 		}
 	},
 	
@@ -106,11 +101,21 @@ frappe.ui.form.on("Project Advance Contractors", {
 	project_contractors_add: function(frm, cdt, cdn) {
 		// Recalculate totals when a new contractor is added
 		calculate_totals(frm);
+		
+		// Auto-refresh available balances display
+		setTimeout(() => {
+			refresh_available_balances(frm);
+		}, 500);
 	},
 	
 	project_contractors_remove: function(frm) {
 		// Recalculate totals when a contractor is removed
 		calculate_totals(frm);
+		
+		// Auto-refresh available balances display
+		setTimeout(() => {
+			refresh_available_balances(frm);
+		}, 500);
 	}
 });
 

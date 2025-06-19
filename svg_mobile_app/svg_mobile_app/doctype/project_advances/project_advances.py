@@ -621,7 +621,7 @@ class ProjectAdvances(Document):
 		return total_available
 		
 	def update_available_fees_html(self, available_data):
-		"""Update the HTML field showing available fees and deposits"""
+		"""Update the HTML field showing available balances summary"""
 		frappe.logger().info(f"Updating HTML with {len(available_data) if available_data else 0} items")
 		
 		if not available_data:
@@ -635,7 +635,7 @@ class ProjectAdvances(Document):
 			debug_html = "<br>".join(debug_info)
 			self.available_fees_html = f'''
 				<div class="alert alert-warning">
-					<strong>No available fees and deposits found for the selected project contractors.</strong><br><br>
+					<strong>No available balances found for the selected contractors.</strong><br><br>
 					<strong>Selected Contractors:</strong><br>
 					{debug_html}<br><br>
 					<em>Note: Make sure the Project Claims are submitted and have available balances.</em>
@@ -643,18 +643,36 @@ class ProjectAdvances(Document):
 			'''
 			frappe.logger().info("Set HTML to warning message - no available data")
 			return
+		
+		# Group data by contractor for summary view
+		contractor_summary = {}
+		for item in available_data:
+			contractor = item['project_contractor']
+			if contractor not in contractor_summary:
+				contractor_summary[contractor] = {
+					'project_name': item['project_name'],
+					'total_claimed': 0,
+					'total_advanced': 0,
+					'total_available': 0,
+					'item_count': 0
+				}
+			
+			contractor_summary[contractor]['total_claimed'] += flt(item['claimed_amount'])
+			contractor_summary[contractor]['total_advanced'] += flt(item['advanced_amount'])
+			contractor_summary[contractor]['total_available'] += flt(item['available_balance'])
+			contractor_summary[contractor]['item_count'] += 1
 			
 		html = '''
-		<div class="available-fees-summary">
-			<h5>Available Fees & Deposits</h5>
+		<div class="available-balances-summary">
+			<h5>Available Balances Summary</h5>
 			<div class="table-responsive">
 				<table class="table table-bordered table-sm">
 					<thead>
 						<tr>
 							<th>Project Contractor</th>
-							<th>Item</th>
-							<th>Original Rate</th>
-							<th>Claimed Amount</th>
+							<th>Project Name</th>
+							<th>Items</th>
+							<th>Total Claimed</th>
 							<th>Already Advanced</th>
 							<th>Available Balance</th>
 						</tr>
@@ -662,36 +680,51 @@ class ProjectAdvances(Document):
 					<tbody>
 		'''
 		
-		total_available = 0
-		for item in available_data:
-			total_available += flt(item['available_balance'])
+		total_available_all = 0
+		total_claimed_all = 0
+		total_advanced_all = 0
+		
+		for contractor, summary in contractor_summary.items():
+			total_available_all += summary['total_available']
+			total_claimed_all += summary['total_claimed']
+			total_advanced_all += summary['total_advanced']
+			
 			html += f'''
 				<tr>
-					<td>{item['project_contractor']}</td>
-					<td>{item['item_name']}</td>
-					<td class="text-right">{frappe.format(item['original_rate'], {'fieldtype': 'Currency'})}</td>
-					<td class="text-right">{frappe.format(item['claimed_amount'], {'fieldtype': 'Currency'})}</td>
-					<td class="text-right">{frappe.format(item['advanced_amount'], {'fieldtype': 'Currency'})}</td>
-					<td class="text-right"><strong>{frappe.format(item['available_balance'], {'fieldtype': 'Currency'})}</strong></td>
+					<td><strong>{contractor}</strong></td>
+					<td>{summary['project_name']}</td>
+					<td class="text-center">{summary['item_count']}</td>
+					<td class="text-right">{frappe.format(summary['total_claimed'], {'fieldtype': 'Currency'})}</td>
+					<td class="text-right">{frappe.format(summary['total_advanced'], {'fieldtype': 'Currency'})}</td>
+					<td class="text-right"><strong style="color: #28a745;">{frappe.format(summary['total_available'], {'fieldtype': 'Currency'})}</strong></td>
 				</tr>
 			'''
 			
 		html += f'''
 					</tbody>
 					<tfoot>
-						<tr class="table-active">
-							<th colspan="5">Total Available</th>
-							<th class="text-right">{frappe.format(total_available, {'fieldtype': 'Currency'})}</th>
+						<tr class="table-success">
+							<th colspan="3">Total Available for Advance</th>
+							<th class="text-right">{frappe.format(total_claimed_all, {'fieldtype': 'Currency'})}</th>
+							<th class="text-right">{frappe.format(total_advanced_all, {'fieldtype': 'Currency'})}</th>
+							<th class="text-right"><strong style="color: #28a745; font-size: 1.1em;">{frappe.format(total_available_all, {'fieldtype': 'Currency'})}</strong></th>
 						</tr>
 					</tfoot>
 				</table>
+			</div>
+			<div class="mt-2">
+				<small class="text-muted">
+					<i class="fa fa-info-circle"></i> 
+					This shows the total available balance per contractor that can be advanced. 
+					Your advance amount and allocations should not exceed these available balances.
+				</small>
 			</div>
 		</div>
 		'''
 		
 		self.available_fees_html = html
 		frappe.logger().info(f"Generated HTML with length: {len(html)}")
-		frappe.logger().info(f"Total available amount: {total_available}")
+		frappe.logger().info(f"Total available amount: {total_available_all}")
 		
 
 				

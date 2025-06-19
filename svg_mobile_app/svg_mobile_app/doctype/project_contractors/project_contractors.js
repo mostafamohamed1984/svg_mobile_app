@@ -235,6 +235,14 @@ function distribute_employee_advances(frm, advance_data) {
                 label: __('Distribution Information')
             },
             {
+                fieldname: 'employee',
+                fieldtype: 'Link',
+                label: __('Select Employee'),
+                options: 'Employee',
+                reqd: 1,
+                description: __('Employee who will receive the new advances')
+            },
+            {
                 fieldname: 'items_table',
                 fieldtype: 'HTML',
                 label: __('Project Items')
@@ -263,59 +271,16 @@ function distribute_employee_advances(frm, advance_data) {
 
 // Function to render the distribution interface
 function render_distribution_interface(dialog, advance_data, project_items) {
-    // Distribution info with employee selection
+    // Distribution info
     let info_html = `
         <div class="alert alert-info">
             <strong>Total Available for Distribution:</strong> ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}
             <br>
             <small>Create new Employee Advances by distributing amounts to specific project items.</small>
         </div>
-        <div class="row">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label><strong>Select Employee</strong> <span class="text-danger">*</span></label>
-                    <div id="employee-select-container">
-                        <input type="text" 
-                               id="employee-select" 
-                               class="form-control" 
-                               placeholder="Type to search employees..."
-                               data-fieldtype="Link"
-                               data-options="Employee">
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label>&nbsp;</label>
-                    <div class="form-control-static">
-                        <small class="text-muted">Employee who will receive the new advances</small>
-                    </div>
-                </div>
-            </div>
-        </div>
     `;
     
     dialog.fields_dict.distribution_info.$wrapper.html(info_html);
-    
-    // Set up employee link field
-    setTimeout(() => {
-        let employee_field = new frappe.ui.form.ControlLink({
-            df: {
-                fieldtype: 'Link',
-                options: 'Employee',
-                fieldname: 'employee',
-                placeholder: 'Select Employee',
-                reqd: 1
-            },
-            parent: $('#employee-select-container'),
-            only_input: false
-        });
-        employee_field.make();
-        $('#employee-select').remove(); // Remove the placeholder input
-        
-        // Store reference for later access
-        dialog.employee_field = employee_field;
-    }, 100);
     
     // Items table with distribution controls
     let items_html = `
@@ -410,7 +375,7 @@ function confirm_advance_distribution(frm, dialog) {
     let total_distributed = 0;
     
     // Get selected employee
-    let employee = dialog.employee_field ? dialog.employee_field.get_value() : null;
+    let employee = dialog.get_value('employee');
     if (!employee) {
         frappe.msgprint(__('Please select an employee'));
         return;

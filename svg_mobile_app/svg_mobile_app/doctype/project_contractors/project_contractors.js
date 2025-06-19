@@ -354,7 +354,7 @@ function render_distribution_interface(dialog, advance_data, project_items) {
                         <th colspan="5">Total Distribution:</th>
                         <th>
                             <span class="total-distribution">0.00</span> / 
-                            <span>${frappe.format(remaining_available_funds, {'fieldtype': 'Currency'})}</span>
+                            <span class="available-limit">${flt(remaining_available_funds).toFixed(2)}</span>
                         </th>
                     </tr>
                 </tfoot>
@@ -363,6 +363,11 @@ function render_distribution_interface(dialog, advance_data, project_items) {
     `;
     
     dialog.fields_dict.items_table.$wrapper.html(items_html);
+    
+    // Format the available limit display properly
+    setTimeout(() => {
+        $('.available-limit').text(format_currency(remaining_available_funds));
+    }, 50);
     
     // Store remaining available funds for use in event handlers
     dialog.remaining_available_funds = remaining_available_funds;
@@ -388,8 +393,8 @@ function render_distribution_interface(dialog, advance_data, project_items) {
                 total += value;
             });
             
-            // Update total display
-            $('.total-distribution').text(frappe.format(total, {'fieldtype': 'Currency'}));
+            // Update total display using system currency formatting
+            $('.total-distribution').text(format_currency(total));
             
             // Update button state based on validation
             let confirm_btn = dialog.get_primary_btn();
@@ -403,7 +408,7 @@ function render_distribution_interface(dialog, advance_data, project_items) {
             } else if (total > available_limit) {
                 $('.total-distribution').css('color', 'red');
                 confirm_btn.addClass('btn-danger').removeClass('btn-primary');
-                confirm_btn.text(__('Total Exceeds Available ({0})', [frappe.format(available_limit, {'fieldtype': 'Currency'})]));
+                confirm_btn.text(__('Total Exceeds Available ({0})', [format_currency(available_limit)]));
                 confirm_btn.prop('disabled', true);
             } else if (total > 0) {
                 $('.total-distribution').css('color', 'green');

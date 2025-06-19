@@ -625,7 +625,22 @@ class ProjectAdvances(Document):
 		frappe.logger().info(f"Updating HTML with {len(available_data) if available_data else 0} items")
 		
 		if not available_data:
-			self.available_fees_html = '<div class="alert alert-warning">No available fees and deposits found for the selected project contractors.</div>'
+			# Provide more detailed information about why no data was found
+			debug_info = []
+			for contractor_row in self.project_contractors:
+				project_contractor_name = contractor_row.project_contractor
+				claim_ref = contractor_row.project_claim_reference or "Not Set"
+				debug_info.append(f"• {project_contractor_name} (Claim: {claim_ref})")
+			
+			debug_html = "<br>".join(debug_info)
+			self.available_fees_html = f'''
+				<div class="alert alert-warning">
+					<strong>No available fees and deposits found for the selected project contractors.</strong><br><br>
+					<strong>Selected Contractors:</strong><br>
+					{debug_html}<br><br>
+					<em>Note: Make sure the Project Claims are submitted and have available balances.</em>
+				</div>
+			'''
 			frappe.logger().info("Set HTML to warning message - no available data")
 			return
 			
@@ -886,6 +901,9 @@ class ProjectAdvances(Document):
 			if not self.project_contractors:
 				return '<div class="alert alert-info">Please select project contractors first.</div>'
 			
+			# Auto-populate project claim references if missing
+			self.auto_populate_project_claim_references()
+			
 			# Get available data directly
 			available_data = self.get_available_fees_and_deposits()
 			frappe.logger().info(f"Available data count: {len(available_data) if available_data else 0}")
@@ -895,10 +913,7 @@ class ProjectAdvances(Document):
 			
 			frappe.logger().info(f"Available fees HTML length: {len(self.available_fees_html) if self.available_fees_html else 0}")
 			
-			# Also save the HTML to the document
-			if self.available_fees_html:
-				self.db_set('available_fees_html', self.available_fees_html, update_modified=False)
-			
+			# Return the HTML directly
 			return self.available_fees_html
 		except Exception as e:
 			frappe.logger().error(f"Error in refresh_available_balances: {str(e)}")

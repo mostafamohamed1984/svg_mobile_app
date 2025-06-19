@@ -1696,8 +1696,16 @@ function create_bulk_project_claim(frm, dialog) {
 				total_tax_amount += flt(item.tax_amount || 0);
 			});
 			
-			// Get the tax rate (should be the same for all items)
-			let tax_ratio = filtered_claim_items.length > 0 ? filtered_claim_items[0].tax_rate : 0;
+			// Calculate weighted average tax ratio based on taxable items only
+			let tax_ratio = 0;
+			if (total_claimable_amount > 0 && total_tax_amount > 0) {
+				// Calculate tax ratio as percentage of total tax amount to total claim amount
+				tax_ratio = (total_tax_amount / total_claimable_amount) * 100;
+			} else {
+				// Fallback: get tax rate from the first taxable item (tax_rate > 0)
+				let taxable_item = filtered_claim_items.find(item => flt(item.tax_rate || 0) > 0);
+				tax_ratio = taxable_item ? taxable_item.tax_rate : 0;
+			}
 			
 			// Set tax fields
 			set_value_quietly('tax_amount', total_tax_amount);

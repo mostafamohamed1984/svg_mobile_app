@@ -273,13 +273,15 @@ function render_distribution_interface(dialog, advance_data, project_items) {
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
-                    <label for="employee-select"><strong>Select Employee</strong> <span class="text-danger">*</span></label>
-                    <input type="text" 
-                           id="employee-select" 
-                           class="form-control" 
-                           placeholder="Type to search employees..."
-                           data-fieldtype="Link"
-                           data-options="Employee">
+                    <label><strong>Select Employee</strong> <span class="text-danger">*</span></label>
+                    <div id="employee-select-container">
+                        <input type="text" 
+                               id="employee-select" 
+                               class="form-control" 
+                               placeholder="Type to search employees..."
+                               data-fieldtype="Link"
+                               data-options="Employee">
+                    </div>
                 </div>
             </div>
             <div class="col-md-6">
@@ -302,14 +304,17 @@ function render_distribution_interface(dialog, advance_data, project_items) {
                 fieldtype: 'Link',
                 options: 'Employee',
                 fieldname: 'employee',
-                placeholder: 'Select Employee'
+                placeholder: 'Select Employee',
+                reqd: 1
             },
-            parent: $('#employee-select').parent(),
-            only_input: true
+            parent: $('#employee-select-container'),
+            only_input: false
         });
-        employee_field.make_input();
-        $('#employee-select').replaceWith(employee_field.$input);
-        employee_field.$input.attr('id', 'employee-select');
+        employee_field.make();
+        $('#employee-select').remove(); // Remove the placeholder input
+        
+        // Store reference for later access
+        dialog.employee_field = employee_field;
     }, 100);
     
     // Items table with distribution controls
@@ -405,7 +410,7 @@ function confirm_advance_distribution(frm, dialog) {
     let total_distributed = 0;
     
     // Get selected employee
-    let employee = $('#employee-select').val();
+    let employee = dialog.employee_field ? dialog.employee_field.get_value() : null;
     if (!employee) {
         frappe.msgprint(__('Please select an employee'));
         return;

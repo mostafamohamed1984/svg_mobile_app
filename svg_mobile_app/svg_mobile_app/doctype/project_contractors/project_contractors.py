@@ -12,18 +12,9 @@ class ProjectContractors(Document):
 		self.calculate_totals()
 		
 	def on_submit(self):
-		"""Create Sales Invoice when Project Contractors is submitted"""
-		# Create a Sales Invoice linked to this Project Contractors
-		sales_invoice = frappe.new_doc("Sales Invoice")
-		sales_invoice.customer = self.customer if hasattr(self, 'customer') else "Default Customer"
-		sales_invoice.custom_for_project = self.name
-		sales_invoice.company = self.company if hasattr(self, 'company') else frappe.defaults.get_defaults().get("company")
-		
-		# Add other required fields as needed
-		sales_invoice.save()
-		sales_invoice.submit()
-		
-		frappe.msgprint(f"Sales Invoice {sales_invoice.name} created successfully")
+		"""Create Sales Invoices when Project Contractors is submitted"""
+		# Create automatic sales invoices for both taxable and non-taxable items
+		self.create_automatic_sales_invoices()
 
 	def before_cancel(self):
 		"""Handle operations before cancelling the document"""
@@ -277,7 +268,10 @@ class ProjectContractors(Document):
 		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
 			sales_invoice.selling_price_list = customer_doc.default_price_list
 		
+		# Set essential fields to prevent base_grand_total None error
 		sales_invoice.ignore_pricing_rule = 1
+		sales_invoice.conversion_rate = 1.0
+		sales_invoice.plc_conversion_rate = 1.0
 		
 		# Add items
 		for item in items_with_rates:
@@ -305,7 +299,8 @@ class ProjectContractors(Document):
 			except Exception as e:
 				frappe.log_error(f"Error applying tax template: {str(e)}")
 		
-		# Save and submit
+		# Set missing values and save
+		sales_invoice.run_method("set_missing_values")
 		sales_invoice.save()
 		sales_invoice.submit()
 		
@@ -343,7 +338,10 @@ class ProjectContractors(Document):
 		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
 			sales_invoice.selling_price_list = customer_doc.default_price_list
 		
+		# Set essential fields to prevent base_grand_total None error
 		sales_invoice.ignore_pricing_rule = 1
+		sales_invoice.conversion_rate = 1.0
+		sales_invoice.plc_conversion_rate = 1.0
 		
 		# Add fees and deposits (no taxes applied)
 		for fee in fees_with_rates:
@@ -356,7 +354,8 @@ class ProjectContractors(Document):
 				"amount": rate
 			})
 		
-		# Save and submit (no taxes for fees)
+		# Set missing values and save (no taxes for fees)
+		sales_invoice.run_method("set_missing_values")
 		sales_invoice.save()
 		sales_invoice.submit()
 		

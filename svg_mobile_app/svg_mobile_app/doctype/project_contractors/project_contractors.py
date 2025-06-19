@@ -201,6 +201,13 @@ class ProjectContractors(Document):
 		if self.docstatus != 1:
 			return []
 		
+		# First, get the total available amount from paid Employee Advances
+		paid_advances_info = self.check_paid_employee_advance_availability()
+		total_available_from_advances = flt(paid_advances_info.get("available_amount", 0))
+		
+		if total_available_from_advances <= 0:
+			return []
+		
 		available_items = []
 		
 		# Process fees and deposits items
@@ -221,10 +228,16 @@ class ProjectContractors(Document):
 					except:
 						continue
 			
-			# Calculate available for advance based on claimed amount
-			available_for_advance = claimed_amount - already_advanced
+			# Calculate maximum available for advance (limited by claimed amount)
+			max_available_by_claim = claimed_amount - already_advanced
 			
-			if available_for_advance > 0:
+			# The actual available for advance is the minimum of:
+			# 1. What's available based on claims (max_available_by_claim)
+			# 2. The total available amount from paid advances (shared across all items)
+			# For display purposes, we'll show the claimed amount limit, but the distribution
+			# will be limited by the total available amount
+			
+			if max_available_by_claim > 0:
 				# Get item name from Item master
 				item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item
 				
@@ -234,7 +247,8 @@ class ProjectContractors(Document):
 					'original_rate': fee_item.rate,
 					'claimed_amount': claimed_amount,
 					'already_advanced': already_advanced,
-					'available_for_advance': available_for_advance
+					'available_for_advance': max_available_by_claim,
+					'total_available_from_advances': total_available_from_advances  # Add this for reference
 				})
 		
 		return available_items

@@ -300,20 +300,28 @@ function render_distribution_interface(dialog, advance_data, project_items) {
     `;
     
     project_items.forEach((item, idx) => {
+        // The actual available for advance is limited by the total available amount
+        let actual_available = Math.min(item.available_for_advance, advance_data.available_amount);
+        
         items_html += `
             <tr>
                 <td><strong>${item.item_name || item.item_code}</strong></td>
                 <td>${frappe.format(item.original_rate, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(item.claimed_amount, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(item.already_advanced, {'fieldtype': 'Currency'})}</td>
-                <td><strong>${frappe.format(item.available_for_advance, {'fieldtype': 'Currency'})}</strong></td>
+                <td>
+                    <strong>${frappe.format(actual_available, {'fieldtype': 'Currency'})}</strong>
+                    ${item.available_for_advance > advance_data.available_amount ? 
+                        `<br><small class="text-muted">(Limited by available funds: ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})})</small>` : 
+                        ''}
+                </td>
                 <td>
                     <input type="number" 
                            class="form-control distribution-amount" 
                            data-item="${item.item_code}"
-                           data-max="${item.available_for_advance}"
+                           data-max="${actual_available}"
                            min="0" 
-                           max="${item.available_for_advance}"
+                           max="${actual_available}"
                            step="0.01"
                            placeholder="0.00">
                 </td>
@@ -416,7 +424,14 @@ function confirm_advance_distribution(frm, dialog) {
                 });
                 
                 dialog.hide();
-                frm.reload_doc();
+                
+                // Refresh the main form and also refresh the distribute advances button
+                frm.reload_doc().then(() => {
+                    // After reload, refresh the distribute advances functionality
+                    setTimeout(() => {
+                        check_project_claims_for_advances(frm);
+                    }, 1000);
+                });
             } else {
                 frappe.msgprint({
                     title: __('Distribution Failed'),

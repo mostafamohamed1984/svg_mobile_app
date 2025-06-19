@@ -231,12 +231,6 @@ class ProjectContractors(Document):
 			# Calculate maximum available for advance (limited by claimed amount)
 			max_available_by_claim = claimed_amount - already_advanced
 			
-			# The actual available for advance is the minimum of:
-			# 1. What's available based on claims (max_available_by_claim)
-			# 2. The total available amount from paid advances (shared across all items)
-			# For display purposes, we'll show the claimed amount limit, but the distribution
-			# will be limited by the total available amount
-			
 			if max_available_by_claim > 0:
 				# Get item name from Item master
 				item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item

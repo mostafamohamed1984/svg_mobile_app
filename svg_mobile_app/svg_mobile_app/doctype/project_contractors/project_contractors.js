@@ -300,8 +300,19 @@ function render_distribution_interface(dialog, advance_data, project_items) {
     `;
     
     project_items.forEach((item, idx) => {
-        // The actual available for advance is limited by the total available amount
-        let actual_available = Math.min(item.available_for_advance, advance_data.available_amount);
+        // Calculate total already advanced across all items
+        let total_already_advanced = 0;
+        project_items.forEach(p_item => {
+            total_already_advanced += flt(p_item.already_advanced);
+        });
+        
+        // Calculate remaining available funds
+        let remaining_available_funds = Math.max(0, advance_data.available_amount - total_already_advanced);
+        
+        // The actual available for advance is the minimum of:
+        // 1. What's claimable for this item (claimed - already advanced for this item)
+        // 2. The remaining available funds from paid advances
+        let actual_available = Math.min(item.available_for_advance, remaining_available_funds);
         
         items_html += `
             <tr>
@@ -311,8 +322,8 @@ function render_distribution_interface(dialog, advance_data, project_items) {
                 <td>${frappe.format(item.already_advanced, {'fieldtype': 'Currency'})}</td>
                 <td>
                     <strong>${frappe.format(actual_available, {'fieldtype': 'Currency'})}</strong>
-                    ${item.available_for_advance > advance_data.available_amount ? 
-                        `<br><small class="text-muted">(Limited by available funds: ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})})</small>` : 
+                    ${actual_available < item.available_for_advance ? 
+                        `<br><small class="text-muted">(Limited by remaining funds: ${frappe.format(remaining_available_funds, {'fieldtype': 'Currency'})})</small>` : 
                         ''}
                 </td>
                 <td>
@@ -329,52 +340,84 @@ function render_distribution_interface(dialog, advance_data, project_items) {
         `;
     });
     
+    // Calculate total already advanced and remaining funds for footer
+    let total_already_advanced = 0;
+    project_items.forEach(p_item => {
+        total_already_advanced += flt(p_item.already_advanced);
+    });
+    let remaining_available_funds = Math.max(0, advance_data.available_amount - total_already_advanced);
+    
     items_html += `
                 </tbody>
                 <tfoot>
                     <tr>
                         <th colspan="5">Total Distribution:</th>
                         <th>
-                            <span id="total-distribution">0.00</span> / 
-                            <span>${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}</span>
+                            <span class="total-distribution">0.00</span> / 
+                            <span>${frappe.format(remaining_available_funds, {'fieldtype': 'Currency'})}</span>
                         </th>
                     </tr>
                 </tfoot>
             </table>
         </div>
-        
-        <script>
-            // Add event listeners for distribution amount inputs
-            $(document).on('input', '.distribution-amount', function() {
-                let total = 0;
-                $('.distribution-amount').each(function() {
-                    let value = parseFloat($(this).val()) || 0;
-                    let max = parseFloat($(this).data('max')) || 0;
-                    
-                    // Validate against max available
-                    if (value > max) {
-                        $(this).val(max);
-                        value = max;
-                    }
-                    
-                    total += value;
-                });
-                
-                // Update total display
-                $('#total-distribution').text(frappe.format(total, {'fieldtype': 'Currency'}));
-                
-                // Validate against available amount
-                let available = ${advance_data.available_amount};
-                if (total > available) {
-                    $('#total-distribution').css('color', 'red');
-                } else {
-                    $('#total-distribution').css('color', 'green');
-                }
-            });
-        </script>
     `;
     
     dialog.fields_dict.items_table.$wrapper.html(items_html);
+    
+    // Store remaining available funds for use in event handlers
+    dialog.remaining_available_funds = remaining_available_funds;
+    
+    // Add event listeners for distribution amount inputs after HTML is rendered
+    setTimeout(() => {
+        $(dialog.body).on('input', '.distribution-amount', function() {
+            let total = 0;
+            let valid = true;
+            
+            $('.distribution-amount').each(function() {
+                let value = flt($(this).val()) || 0;
+                let max = flt($(this).data('max')) || 0;
+                
+                // Validate against max available for this item
+                if (value > max) {
+                    $(this).addClass('has-error');
+                    valid = false;
+                } else {
+                    $(this).removeClass('has-error');
+                }
+                
+                total += value;
+            });
+            
+            // Update total display
+            $('.total-distribution').text(frappe.format(total, {'fieldtype': 'Currency'}));
+            
+            // Update button state based on validation
+            let confirm_btn = dialog.get_primary_btn();
+            let available_limit = dialog.remaining_available_funds;
+            
+            if (!valid) {
+                $('.total-distribution').css('color', 'red');
+                confirm_btn.addClass('btn-danger').removeClass('btn-primary');
+                confirm_btn.text(__('Individual amounts exceed limits'));
+                confirm_btn.prop('disabled', true);
+            } else if (total > available_limit) {
+                $('.total-distribution').css('color', 'red');
+                confirm_btn.addClass('btn-danger').removeClass('btn-primary');
+                confirm_btn.text(__('Total Exceeds Available ({0})', [frappe.format(available_limit, {'fieldtype': 'Currency'})]));
+                confirm_btn.prop('disabled', true);
+            } else if (total > 0) {
+                $('.total-distribution').css('color', 'green');
+                confirm_btn.removeClass('btn-danger').addClass('btn-primary');
+                confirm_btn.text(__('Confirm Distribution'));
+                confirm_btn.prop('disabled', false);
+            } else {
+                $('.total-distribution').css('color', 'black');
+                confirm_btn.removeClass('btn-danger').addClass('btn-primary');
+                confirm_btn.text(__('Confirm Distribution'));
+                confirm_btn.prop('disabled', false);
+            }
+        });
+    }, 100);
 }
 
 // Function to confirm and process the distribution

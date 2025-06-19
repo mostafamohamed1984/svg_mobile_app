@@ -260,11 +260,11 @@ class ProjectContractors(Document):
 					"project_contractor_reference": self.name,
 					"item": item_code
 				},
-				fields=["rate"]
+				fields=["amount"]  # Changed from "rate" to "amount"
 			)
 			
 			for claim_item in claim_items:
-				total_claimed += flt(claim_item.rate)
+				total_claimed += flt(claim_item.amount)  # Changed from rate to amount
 		
 		# If no claimed amount found, fall back to original rate
 		if total_claimed == 0:

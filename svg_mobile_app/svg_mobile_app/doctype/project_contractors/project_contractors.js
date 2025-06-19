@@ -263,16 +263,54 @@ function distribute_employee_advances(frm, advance_data) {
 
 // Function to render the distribution interface
 function render_distribution_interface(dialog, advance_data, project_items) {
-    // Distribution info
+    // Distribution info with employee selection
     let info_html = `
         <div class="alert alert-info">
             <strong>Total Available for Distribution:</strong> ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}
             <br>
-            <small>Distribute the outstanding amounts from Employee Advances to specific project items.</small>
+            <small>Create new Employee Advances by distributing amounts to specific project items.</small>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="employee-select"><strong>Select Employee</strong> <span class="text-danger">*</span></label>
+                    <input type="text" 
+                           id="employee-select" 
+                           class="form-control" 
+                           placeholder="Type to search employees..."
+                           data-fieldtype="Link"
+                           data-options="Employee">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <div class="form-control-static">
+                        <small class="text-muted">Employee who will receive the new advances</small>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     
     dialog.fields_dict.distribution_info.$wrapper.html(info_html);
+    
+    // Set up employee link field
+    setTimeout(() => {
+        let employee_field = new frappe.ui.form.ControlLink({
+            df: {
+                fieldtype: 'Link',
+                options: 'Employee',
+                fieldname: 'employee',
+                placeholder: 'Select Employee'
+            },
+            parent: $('#employee-select').parent(),
+            only_input: true
+        });
+        employee_field.make_input();
+        $('#employee-select').replaceWith(employee_field.$input);
+        employee_field.$input.attr('id', 'employee-select');
+    }, 100);
     
     // Items table with distribution controls
     let items_html = `
@@ -282,6 +320,7 @@ function render_distribution_interface(dialog, advance_data, project_items) {
                     <tr>
                         <th>Project Item</th>
                         <th>Original Rate</th>
+                        <th>Project Claim Amount</th>
                         <th>Already Advanced</th>
                         <th>Available for Advance</th>
                         <th>Distribute Amount</th>
@@ -295,8 +334,9 @@ function render_distribution_interface(dialog, advance_data, project_items) {
             <tr>
                 <td><strong>${item.item_name || item.item_code}</strong></td>
                 <td>${frappe.format(item.original_rate, {'fieldtype': 'Currency'})}</td>
+                <td>${frappe.format(item.claimed_amount, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(item.already_advanced, {'fieldtype': 'Currency'})}</td>
-                <td>${frappe.format(item.available_for_advance, {'fieldtype': 'Currency'})}</td>
+                <td><strong>${frappe.format(item.available_for_advance, {'fieldtype': 'Currency'})}</strong></td>
                 <td>
                     <input type="number" 
                            class="form-control distribution-amount" 
@@ -315,7 +355,7 @@ function render_distribution_interface(dialog, advance_data, project_items) {
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th colspan="4">Total Distribution:</th>
+                        <th colspan="5">Total Distribution:</th>
                         <th>
                             <span id="total-distribution">0.00</span> / 
                             <span>${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}</span>
@@ -364,6 +404,13 @@ function confirm_advance_distribution(frm, dialog) {
     let distributions = [];
     let total_distributed = 0;
     
+    // Get selected employee
+    let employee = $('#employee-select').val();
+    if (!employee) {
+        frappe.msgprint(__('Please select an employee'));
+        return;
+    }
+    
     // Collect distribution data
     $('.distribution-amount').each(function() {
         let amount = parseFloat($(this).val()) || 0;
@@ -387,6 +434,7 @@ function confirm_advance_distribution(frm, dialog) {
         doc: frm.doc,
         args: {
             distributions: distributions,
+            employee: employee,
             total_amount: total_distributed
         },
         callback: function(r) {

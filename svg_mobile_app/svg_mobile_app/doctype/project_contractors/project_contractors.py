@@ -205,24 +205,24 @@ class ProjectContractors(Document):
 		
 		# Process fees and deposits items
 		for fee_item in self.fees_and_deposits:
-			# Calculate already advanced amount
-			already_advanced = 0
+			# Get claimed amount from Project Claims for this item
+			claimed_amount = self.get_claimed_amount_for_item(fee_item.item)
 			
-			# Get advances from the employee_advances field (comma-separated list)
+			# Calculate already advanced amount (from existing Employee Advances)
+			already_advanced = 0
 			if hasattr(fee_item, "employee_advances") and fee_item.employee_advances:
 				advance_names = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
 				
 				for advance_name in advance_names:
 					try:
-						# Get the claimed amount for this specific advance
-						advance_doc = frappe.get_doc("Employee Advance", advance_name)
-						if advance_doc.docstatus == 1:
-							already_advanced += flt(advance_doc.claimed_amount)
+						advance_amount = frappe.get_cached_value("Employee Advance", advance_name, "advance_amount")
+						if advance_amount:
+							already_advanced += flt(advance_amount)
 					except:
 						continue
 			
-			# Calculate available for advance (original rate - already advanced)
-			available_for_advance = flt(fee_item.rate) - already_advanced
+			# Calculate available for advance based on claimed amount
+			available_for_advance = claimed_amount - already_advanced
 			
 			if available_for_advance > 0:
 				# Get item name from Item master
@@ -232,23 +232,63 @@ class ProjectContractors(Document):
 					'item_code': fee_item.item,
 					'item_name': item_name,
 					'original_rate': fee_item.rate,
+					'claimed_amount': claimed_amount,
 					'already_advanced': already_advanced,
 					'available_for_advance': available_for_advance
 				})
 		
 		return available_items
+	
+	def get_claimed_amount_for_item(self, item_code):
+		"""Get claimed amount for an item from Project Claims"""
+		# Find Project Claims that include this item and contractor
+		project_claims = frappe.get_all(
+			"Project Claim",
+			filters={"docstatus": 1},
+			fields=["name"]
+		)
+		
+		total_claimed = 0
+		
+		for claim in project_claims:
+			# Check if this claim has items for this contractor and item
+			claim_items = frappe.get_all(
+				"Claim Items",
+				filters={
+					"parent": claim.name,
+					"parenttype": "Project Claim",
+					"project_contractor_reference": self.name,
+					"item": item_code
+				},
+				fields=["rate"]
+			)
+			
+			for claim_item in claim_items:
+				total_claimed += flt(claim_item.rate)
+		
+		# If no claimed amount found, fall back to original rate
+		if total_claimed == 0:
+			for fee_item in self.fees_and_deposits:
+				if fee_item.item == item_code:
+					total_claimed = flt(fee_item.rate)
+					break
+		
+		return total_claimed
 
 	@frappe.whitelist()
-	def process_advance_distribution(self, distributions, total_amount):
-		"""Process the distribution of Employee Advances to project items"""
+	def process_advance_distribution(self, distributions, employee, total_amount):
+		"""Process the distribution by creating NEW Employee Advances for the specified employee"""
 		if self.docstatus != 1:
 			return {"status": "error", "message": "Project Contractor must be submitted"}
 		
 		if not distributions:
 			return {"status": "error", "message": "No distributions specified"}
 		
+		if not employee:
+			return {"status": "error", "message": "Employee is required for creating advances"}
+		
 		try:
-			# Get paid Employee Advances for this contractor
+			# Get paid Employee Advances for this contractor to verify available amount
 			paid_advances = frappe.get_all(
 				"Employee Advance",
 				filters={
@@ -273,9 +313,9 @@ class ProjectContractors(Document):
 			if flt(total_amount) > total_available:
 				return {"status": "error", "message": f"Distribution amount ({frappe.format(total_amount, {'fieldtype': 'Currency'})}) exceeds available amount ({frappe.format(total_available, {'fieldtype': 'Currency'})})"}
 			
-			# Process each distribution
-			distributed_amount = 0
-			updated_advances = []
+			# Create new Employee Advances for each distribution
+			created_advances = []
+			total_distributed = 0
 			
 			for distribution in distributions:
 				item_code = distribution.get('item_code')
@@ -294,57 +334,88 @@ class ProjectContractors(Document):
 				if not fee_item:
 					continue
 				
-				# Distribute the amount across available advances
-				remaining_to_distribute = amount
+				# Get item name for purpose
+				item_name = frappe.get_cached_value("Item", item_code, "item_name") or item_code
 				
-				for advance in paid_advances:
-					if remaining_to_distribute <= 0:
-						break
+				# Create new Employee Advance
+				employee_advance = frappe.new_doc("Employee Advance")
+				employee_advance.employee = employee
+				employee_advance.purpose = f"Distribution for {item_name} - {self.name}"
+				employee_advance.advance_amount = amount
+				employee_advance.posting_date = frappe.utils.today()
+				employee_advance.company = self.company
+				
+				# Set currency and exchange rate
+				company_currency = frappe.get_cached_value("Company", self.company, "default_currency")
+				employee_advance.currency = company_currency
+				employee_advance.exchange_rate = 1.0
+				
+				# Set custom fields for tracking
+				if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
+					employee_advance.project_contractors_reference = self.name
 					
-					outstanding = flt(advance.paid_amount) - (flt(advance.claimed_amount) + flt(advance.return_amount))
-					if outstanding <= 0:
-						continue
-					
-					# Calculate how much to claim from this advance
-					claim_amount = min(remaining_to_distribute, outstanding)
-					
-					# Update Employee Advance
-					advance_doc = frappe.get_doc("Employee Advance", advance.name)
-					advance_doc.claimed_amount = flt(advance_doc.claimed_amount) + claim_amount
-					advance_doc.save()
-					
-					# Update tracking
-					remaining_to_distribute -= claim_amount
-					distributed_amount += claim_amount
-					
-					if advance.name not in updated_advances:
-						updated_advances.append(advance.name)
+				if frappe.get_meta("Employee Advance").has_field("item_reference"):
+					employee_advance.item_reference = item_code
+				
+				# Get default advance account
+				advance_account = self.get_default_advance_account()
+				if advance_account:
+					employee_advance.advance_account = advance_account
+				
+				# Save and submit the Employee Advance
+				employee_advance.save()
+				employee_advance.submit()
+				
+				created_advances.append(employee_advance.name)
+				total_distributed += amount
 				
 				# Update the fees and deposits item to track the advance
-				if distributed_amount > 0:
-					# Add to employee_advances field (comma-separated list)
-					existing_advances = []
-					if hasattr(fee_item, "employee_advances") and fee_item.employee_advances:
-						existing_advances = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
-					
-					# Add new advances (avoid duplicates)
-					for advance_name in updated_advances:
-						if advance_name not in existing_advances:
-							existing_advances.append(advance_name)
-					
-					fee_item.employee_advances = ",".join(existing_advances)
+				existing_advances = []
+				if hasattr(fee_item, "employee_advances") and fee_item.employee_advances:
+					existing_advances = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
+				
+				# Add new advance
+				existing_advances.append(employee_advance.name)
+				fee_item.employee_advances = ",".join(existing_advances)
 			
 			# Save the Project Contractors document
 			self.save()
 			
 			return {
 				"status": "success",
-				"message": f"Successfully distributed {frappe.format(distributed_amount, {'fieldtype': 'Currency'})} across {len(distributions)} items"
+				"message": f"Successfully created {len(created_advances)} Employee Advances totaling {frappe.format(total_distributed, {'fieldtype': 'Currency'})}",
+				"created_advances": created_advances
 			}
 			
 		except Exception as e:
 			frappe.log_error(f"Error in advance distribution: {str(e)}")
 			return {"status": "error", "message": f"Distribution failed: {str(e)}"}
+	
+	def get_default_advance_account(self):
+		"""Get default advance account for the company"""
+		try:
+			# Try to get from Company settings first
+			advance_account = frappe.get_cached_value("Company", self.company, "default_employee_advance_account")
+			if advance_account:
+				return advance_account
+			
+			# Fallback: Search for Employee Advance account
+			accounts = frappe.get_all(
+				"Account",
+				filters={
+					"company": self.company,
+					"account_type": "Receivable",
+					"is_group": 0
+				},
+				fields=["name"],
+				limit=1
+			)
+			
+			return accounts[0].name if accounts else None
+			
+		except Exception as e:
+			frappe.log_error(f"Error getting default advance account: {str(e)}")
+			return None
 
 	def create_automatic_sales_invoices(self):
 		"""Create both taxable and non-taxable sales invoices automatically"""

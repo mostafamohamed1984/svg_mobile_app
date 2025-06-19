@@ -155,12 +155,9 @@ function load_contractor_balance(frm, contractor_row) {
 }
 
 function refresh_available_balances(frm) {
-	console.log('Starting refresh_available_balances...');
-	
 	if (!frm.doc.project_contractors || frm.doc.project_contractors.length === 0) {
 		let html_field = frm.get_field('available_fees_html');
-		console.log('HTML field object:', html_field);
-		if (html_field) {
+		if (html_field && html_field.$wrapper) {
 			html_field.$wrapper.html('<div class="alert alert-info">Please select project contractors first.</div>');
 		}
 		return;
@@ -168,49 +165,34 @@ function refresh_available_balances(frm) {
 	
 	// Show loading indicator
 	let html_field = frm.get_field('available_fees_html');
-	console.log('HTML field object during loading:', html_field);
-	if (html_field) {
+	if (html_field && html_field.$wrapper) {
 		html_field.$wrapper.html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> Loading available balances...</div>');
 	}
 	
 	// Call server method to get all available balances
 	frm.call('refresh_available_balances').then(r => {
-		console.log('Refresh available balances response:', r);
 		if (r.message) {
-			// Try multiple approaches to set the HTML content
+			// Only use direct DOM manipulation to avoid triggering "not saved" state
 			let html_field = frm.get_field('available_fees_html');
-			console.log('HTML field object after response:', html_field);
-			console.log('HTML field wrapper:', html_field ? html_field.$wrapper : 'No wrapper');
-			
 			if (html_field && html_field.$wrapper) {
-				console.log('Setting HTML content via $wrapper.html()');
 				html_field.$wrapper.html(r.message);
 			}
 			
-			// Also try the traditional approach as backup
-			console.log('Setting HTML content via frm.set_value()');
-			frm.set_value('available_fees_html', r.message);
-			frm.refresh_field('available_fees_html');
-			
-			// Try another approach - direct field manipulation
-			setTimeout(() => {
-				let field_wrapper = frm.fields_dict.available_fees_html;
-				console.log('Field wrapper direct access:', field_wrapper);
-				if (field_wrapper && field_wrapper.$wrapper) {
-					console.log('Setting HTML via direct field access');
-					field_wrapper.$wrapper.html(r.message);
-				}
-			}, 100);
+			// Also try direct field access as backup
+			let field_wrapper = frm.fields_dict.available_fees_html;
+			if (field_wrapper && field_wrapper.$wrapper) {
+				field_wrapper.$wrapper.html(r.message);
+			}
 		} else {
 			let html_field = frm.get_field('available_fees_html');
-			if (html_field) {
+			if (html_field && html_field.$wrapper) {
 				html_field.$wrapper.html('<div class="alert alert-warning">No data returned from server.</div>');
 			}
 		}
 	}).catch(error => {
 		console.error('Error refreshing available balances:', error);
 		let html_field = frm.get_field('available_fees_html');
-		if (html_field) {
+		if (html_field && html_field.$wrapper) {
 			html_field.$wrapper.html('<div class="alert alert-danger">Error loading available balances. Check console for details.</div>');
 		}
 	});

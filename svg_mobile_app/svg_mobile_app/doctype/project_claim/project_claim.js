@@ -1696,15 +1696,12 @@ function create_bulk_project_claim(frm, dialog) {
 				total_tax_amount += flt(item.tax_amount || 0);
 			});
 			
-			// Calculate weighted average tax ratio based on taxable items only
+			// Always get tax ratio from taxable items (tax_rate > 0), not from first item
 			let tax_ratio = 0;
-			if (total_claimable_amount > 0 && total_tax_amount > 0) {
-				// Calculate tax ratio as percentage of total tax amount to total claim amount
-				tax_ratio = (total_tax_amount / total_claimable_amount) * 100;
-			} else {
-				// Fallback: get tax rate from the first taxable item (tax_rate > 0)
-				let taxable_item = filtered_claim_items.find(item => flt(item.tax_rate || 0) > 0);
-				tax_ratio = taxable_item ? taxable_item.tax_rate : 0;
+			let taxable_item = filtered_claim_items.find(item => flt(item.tax_rate || 0) > 0);
+			if (taxable_item) {
+				// Use the tax rate from taxable items (should be 5% from UAE VAT template)
+				tax_ratio = taxable_item.tax_rate;
 			}
 			
 			// Set tax fields

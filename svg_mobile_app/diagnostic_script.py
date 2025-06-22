@@ -77,8 +77,8 @@ def diagnose_project_claim_references():
         print("✅ No orphaned references found in Claim Items")
     
     # Check specific Project Claims mentioned in the error
-    print("\n📋 Checking specific Project Claims (PC-2025-00103, PC-2025-00104)...")
-    problematic_claims = ["PC-2025-00103", "PC-2025-00104"]
+    print("\n📋 Checking specific Project Claims (PC-2025-00103, PC-2025-00104, PC-2025-00105, PC-2025-00106)...")
+    problematic_claims = ["PC-2025-00103", "PC-2025-00104", "PC-2025-00105", "PC-2025-00106"]
     
     for claim_name in problematic_claims:
         exists = frappe.db.exists("Project Claim", claim_name)
@@ -88,8 +88,49 @@ def diagnose_project_claim_references():
             try:
                 doc = frappe.get_doc("Project Claim", claim_name)
                 print(f"     Status: {doc.docstatus} ({'Draft' if doc.docstatus == 0 else 'Submitted' if doc.docstatus == 1 else 'Cancelled'})")
+                
+                # Check for bulk claim indicators
+                if doc.invoice_references:
+                    print(f"     📄 Bulk Claim - References: {doc.invoice_references}")
+                
+                # Check claim items for issues
+                if doc.claim_items:
+                    orphaned_items = 0
+                    for item in doc.claim_items:
+                        if item.project_contractor_reference and not frappe.db.exists("Project Contractors", item.project_contractor_reference):
+                            orphaned_items += 1
+                        if item.invoice_reference and not frappe.db.exists("Sales Invoice", item.invoice_reference):
+                            orphaned_items += 1
+                    
+                    if orphaned_items > 0:
+                        print(f"     ⚠️  {orphaned_items} orphaned references in claim items")
+                    else:
+                        print(f"     ✅ All {len(doc.claim_items)} claim items have valid references")
+                        
             except Exception as e:
                 print(f"     ❌ Error accessing document: {str(e)}")
+    
+    # Check for bulk claim issues using the new diagnostic function
+    print("\n📋 Running bulk claim diagnostics...")
+    try:
+        from svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim import diagnose_bulk_claim_issues
+        bulk_result = diagnose_bulk_claim_issues()
+        print(f"   📊 {bulk_result['message']}")
+        
+        if bulk_result['issues']:
+            print("   🔍 Issues found:")
+            for issue in bulk_result['issues'][:5]:  # Show first 5 issues
+                if issue['type'] == 'orphaned_contractor':
+                    print(f"     - {issue['claim']} Row #{issue['row']}: Orphaned contractor {issue['reference']}")
+                elif issue['type'] == 'orphaned_invoice':
+                    print(f"     - {issue['claim']} Row #{issue['row']}: Orphaned invoice {issue['reference']}")
+                elif issue['type'] == 'access_error':
+                    print(f"     - {issue['claim']}: Access error - {issue['error']}")
+        
+        print(f"   📅 Recent claims: {[claim['name'] for claim in bulk_result['recent_claims'][:3]]}")
+        
+    except Exception as e:
+        print(f"   ❌ Error running bulk claim diagnostics: {str(e)}")
     
     return {
         "orphaned_advances": orphaned_advances,

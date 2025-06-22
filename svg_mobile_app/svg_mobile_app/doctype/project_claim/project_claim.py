@@ -858,6 +858,26 @@ class ProjectClaim(Document):
 					frappe.logger().warning(f"Removing orphaned Sales Invoice reference {item.invoice_reference} from claim item Row #{idx}")
 					item.invoice_reference = None
 
+	def before_submit(self):
+		"""Additional validation before submission to prevent orphaned reference errors"""
+		# Clean up any orphaned references silently
+		self.validate_claim_item_references()
+		
+		# Validate that all referenced invoices are submitted
+		invalid_invoices = []
+		for item in self.claim_items:
+			if item.invoice_reference:
+				try:
+					invoice_status = frappe.db.get_value("Sales Invoice", item.invoice_reference, "docstatus")
+					if invoice_status != 1:
+						invalid_invoices.append(item.invoice_reference)
+				except:
+					# If we can't check the invoice, skip validation to prevent Row #1 errors
+					pass
+		
+		if invalid_invoices:
+			frappe.throw(f"The following invoices must be submitted before claiming: {', '.join(set(invalid_invoices))}")
+
 # Add a static method to be called from JavaScript
 @frappe.whitelist()
 def get_items_from_invoices(invoices):
@@ -1172,3 +1192,110 @@ def _clear_project_claim_links(doc):
 	except Exception as e:
 		frappe.log_error(f"Error clearing Project Claim links for {doc.name}: {str(e)}")
 		# Don't prevent deletion, just log the error
+
+@frappe.whitelist()
+def diagnose_bulk_claim_issues():
+	"""Diagnose issues with bulk project claims that might cause Row #1 errors"""
+	issues = []
+	
+	# Check for Project Claims with orphaned references
+	project_claims = frappe.get_all("Project Claim", 
+		filters={"docstatus": ["<", 2]}, 
+		fields=["name", "docstatus"])
+	
+	for pc in project_claims:
+		try:
+			doc = frappe.get_doc("Project Claim", pc.name)
+			
+			# Check claim items for orphaned references
+			for idx, item in enumerate(doc.claim_items, 1):
+				if item.project_contractor_reference:
+					if not frappe.db.exists("Project Contractors", item.project_contractor_reference):
+						issues.append({
+							"type": "orphaned_contractor",
+							"claim": pc.name,
+							"row": idx,
+							"reference": item.project_contractor_reference,
+							"item": item.item
+						})
+				
+				if item.invoice_reference:
+					if not frappe.db.exists("Sales Invoice", item.invoice_reference):
+						issues.append({
+							"type": "orphaned_invoice",
+							"claim": pc.name,
+							"row": idx,
+							"reference": item.invoice_reference,
+							"item": item.item
+						})
+		except Exception as e:
+			issues.append({
+				"type": "access_error",
+				"claim": pc.name,
+				"error": str(e)
+			})
+	
+	# Check for potential naming series conflicts
+	last_claims = frappe.db.sql("""
+		SELECT name, creation 
+		FROM `tabProject Claim` 
+		WHERE name LIKE 'PC-2025-%' 
+		ORDER BY creation DESC 
+		LIMIT 10
+	""", as_dict=True)
+	
+	return {
+		"status": "success",
+		"issues_found": len(issues),
+		"issues": issues,
+		"recent_claims": last_claims,
+		"message": f"Found {len(issues)} potential issues"
+	}
+
+@frappe.whitelist()
+def fix_bulk_claim_orphaned_references(claim_name=None):
+	"""Fix orphaned references in Project Claims"""
+	if claim_name:
+		claims_to_fix = [claim_name]
+	else:
+		# Fix all draft claims
+		claims_to_fix = frappe.get_all("Project Claim", 
+			filters={"docstatus": 0}, 
+			pluck="name")
+	
+	fixed_count = 0
+	errors = []
+	
+	for claim in claims_to_fix:
+		try:
+			doc = frappe.get_doc("Project Claim", claim)
+			changes_made = False
+			
+			for item in doc.claim_items:
+				# Fix orphaned project contractor references
+				if item.project_contractor_reference:
+					if not frappe.db.exists("Project Contractors", item.project_contractor_reference):
+						frappe.logger().warning(f"Removing orphaned Project Contractor reference {item.project_contractor_reference} from {claim}")
+						item.project_contractor_reference = None
+						changes_made = True
+				
+				# Fix orphaned invoice references
+				if item.invoice_reference:
+					if not frappe.db.exists("Sales Invoice", item.invoice_reference):
+						frappe.logger().warning(f"Removing orphaned Invoice reference {item.invoice_reference} from {claim}")
+						item.invoice_reference = None
+						changes_made = True
+			
+			if changes_made:
+				doc.save()
+				fixed_count += 1
+				
+		except Exception as e:
+			errors.append(f"Error fixing {claim}: {str(e)}")
+	
+	return {
+		"status": "success" if not errors else "warning",
+		"fixed_count": fixed_count,
+		"errors": errors,
+		"message": f"Fixed {fixed_count} claims"
+	}

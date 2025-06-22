@@ -153,46 +153,70 @@ class ProjectContractors(Document):
 		
 	@frappe.whitelist()
 	def check_paid_employee_advance_availability(self):
-		"""Check if there are paid Employee Advances available for this contractor"""
+		"""Check if there are paid Employee Advances from Project Advances system available for distribution
+		
+		CRITICAL LOGIC:
+		- Only count Employee Advances created BY Project Advances system (have custom_project_advance_reference)
+		- Only count those that are PAID (status = 'Paid')
+		- Calculate available amount as: paid_amount - what's already been distributed manually
+		"""
 		if self.docstatus != 1:
 			return {"available_amount": 0, "message": "Project Contractor must be submitted"}
 		
-		# Find Employee Advances that reference this Project Contractor and are PAID
-		employee_advances = frappe.get_all(
+		# Find Employee Advances created by Project Advances system that are PAID
+		project_advances_created = frappe.get_all(
 			"Employee Advance",
 			filters={
 				"project_contractors_reference": self.name,
-				"status": "Paid",  # CRITICAL: Only paid advances
+				"custom_project_advance_reference": ["is", "set"],  # Created by Project Advances
+				"status": "Paid",  # Must be paid to be available for distribution
 				"docstatus": 1
 			},
-			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "return_amount"]
+			fields=["name", "advance_amount", "paid_amount", "custom_project_advance_reference"]
 		)
 		
-		if not employee_advances:
-			return {"available_amount": 0, "message": "No paid Employee Advances found for this contractor"}
+		if not project_advances_created:
+			return {"available_amount": 0, "message": "No paid Employee Advances from Project Advances system found"}
 		
-		total_available = 0
+		# Calculate total paid amount from Project Advances system
+		total_paid_from_project_advances = 0
 		advance_details = []
 		
-		for advance in employee_advances:
-			# Calculate outstanding amount (what's available for distribution)
-			outstanding = flt(advance.paid_amount) - (flt(advance.claimed_amount) + flt(advance.return_amount))
-			
-			if outstanding > 0:
-				total_available += outstanding
-				advance_details.append({
-					"name": advance.name,
-					"advance_amount": advance.advance_amount,
-					"paid_amount": advance.paid_amount,
-					"claimed_amount": advance.claimed_amount,
-					"return_amount": advance.return_amount,
-					"outstanding": outstanding
-				})
+		for advance in project_advances_created:
+			total_paid_from_project_advances += flt(advance.paid_amount)
+			advance_details.append({
+				"name": advance.name,
+				"advance_amount": advance.advance_amount,
+				"paid_amount": advance.paid_amount,
+				"claimed_amount": 0,  # These don't have claimed amounts in the traditional sense
+				"return_amount": 0,   # These don't have return amounts in the traditional sense
+				"outstanding": advance.paid_amount  # The full paid amount is available for distribution
+			})
+		
+		# Calculate how much has already been distributed manually
+		manual_advances = frappe.get_all(
+			"Employee Advance",
+			filters={
+				"project_contractors_reference": self.name,
+				"custom_project_advance_reference": ["is", "not set"],  # Manual advances
+				"docstatus": 1
+			},
+			fields=["advance_amount"]
+		)
+		
+		total_manually_distributed = 0
+		for manual_advance in manual_advances:
+			total_manually_distributed += flt(manual_advance.advance_amount)
+		
+		# Available amount = Total paid from Project Advances - What's already distributed manually
+		available_amount = total_paid_from_project_advances - total_manually_distributed
 		
 		return {
-			"available_amount": total_available,
+			"available_amount": max(0, available_amount),  # Never negative
 			"advance_details": advance_details,
-			"message": f"Total available amount: {frappe.format(total_available, {'fieldtype': 'Currency'})}" if total_available > 0 else "No outstanding amount available"
+			"total_paid_from_project_advances": total_paid_from_project_advances,
+			"total_manually_distributed": total_manually_distributed,
+			"message": f"Available: {frappe.format(available_amount, {'fieldtype': 'Currency'})} (Paid: {frappe.format(total_paid_from_project_advances, {'fieldtype': 'Currency'})}, Distributed: {frappe.format(total_manually_distributed, {'fieldtype': 'Currency'})})" if available_amount > 0 else "No amount available for distribution"
 		}
 
 	@frappe.whitelist()

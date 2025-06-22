@@ -12,7 +12,6 @@
   "date",
   "status",
   "total_advance_amount",
-  "remaining_balance",
   "created_by",
   "section_break_contractors",
   "project_contractors",
@@ -75,13 +74,7 @@
    "label": "Total Advance Amount",
    "read_only": 1
   },
-  {
-   "fieldname": "remaining_balance",
-   "fieldtype": "Currency",
-   "in_list_view": 1,
-   "label": "Remaining Balance",
-   "read_only": 1
-  },
+
   {
    "default": "__user",
    "fieldname": "created_by",
@@ -181,6 +174,7 @@
   {
    "fieldname": "balance_remaining",
    "fieldtype": "Currency",
+   "in_list_view": 1,
    "label": "Balance Remaining",
    "read_only": 1
   },

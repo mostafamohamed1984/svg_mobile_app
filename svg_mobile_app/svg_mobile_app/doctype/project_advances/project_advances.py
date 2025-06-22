@@ -219,8 +219,11 @@ class ProjectAdvances(Document):
 		)
 		
 		related_claims = []
+		
 		for claim in submitted_claims:
-			# Check if this claim has items for this contractor
+			total_amount = 0
+			
+			# Method 1: Try exact match with project_contractor_reference
 			claim_items = frappe.get_all(
 				"Claim Items",
 				filters={
@@ -231,13 +234,89 @@ class ProjectAdvances(Document):
 				fields=["amount"]
 			)
 			
-			if claim_items:
-				total_amount = sum(flt(item.amount) for item in claim_items)
-				if total_amount > 0:
-					related_claims.append({
-						'name': claim.name,
-						'amount': total_amount
-					})
+			for item in claim_items:
+				total_amount += flt(item.amount)
+			
+			# Method 2: If no exact match, check if this claim references this contractor in other ways
+			if total_amount == 0:
+				claim_doc = frappe.get_doc("Project Claim", claim.name)
+				
+				# Check project_references field
+				if hasattr(claim_doc, 'project_references') and claim_doc.project_references:
+					if project_contractor in claim_doc.project_references:
+						# Get all claim items for this claim
+						all_claim_items = frappe.get_all(
+							"Claim Items",
+							filters={
+								"parent": claim.name,
+								"parenttype": "Project Claim"
+							},
+							fields=["amount"]
+						)
+						for item in all_claim_items:
+							total_amount += flt(item.amount)
+				
+				# Check for_project field
+				if total_amount == 0 and hasattr(claim_doc, 'for_project') and claim_doc.for_project == project_contractor:
+					# Get all claim items for this claim
+					all_claim_items = frappe.get_all(
+						"Claim Items",
+						filters={
+							"parent": claim.name,
+							"parenttype": "Project Claim"
+						},
+						fields=["amount"]
+					)
+					for item in all_claim_items:
+						total_amount += flt(item.amount)
+			
+			# Method 3: Check Sales Invoices from this Project Contractor
+			if total_amount == 0:
+				# Get Sales Invoices for this Project Contractor
+				sales_invoices = frappe.get_all(
+					"Sales Invoice",
+					filters={
+						"custom_for_project": project_contractor,
+						"docstatus": 1
+					},
+					pluck="name"
+				)
+				
+				if sales_invoices:
+					claim_doc = frappe.get_doc("Project Claim", claim.name)
+					
+					# Check if this claim references any of these invoices
+					claim_references_invoice = False
+					
+					# Check reference_invoice field
+					if hasattr(claim_doc, 'reference_invoice') and claim_doc.reference_invoice in sales_invoices:
+						claim_references_invoice = True
+					
+					# Check invoice_references field
+					if not claim_references_invoice and hasattr(claim_doc, 'invoice_references') and claim_doc.invoice_references:
+						for invoice in sales_invoices:
+							if invoice in claim_doc.invoice_references:
+								claim_references_invoice = True
+								break
+					
+					if claim_references_invoice:
+						# Get all claim items for this claim
+						all_claim_items = frappe.get_all(
+							"Claim Items",
+							filters={
+								"parent": claim.name,
+								"parenttype": "Project Claim"
+							},
+							fields=["amount"]
+						)
+						for item in all_claim_items:
+							total_amount += flt(item.amount)
+			
+			if total_amount > 0:
+				related_claims.append({
+					'name': claim.name,
+					'amount': total_amount
+				})
 		
 		return related_claims
 		
@@ -313,7 +392,7 @@ class ProjectAdvances(Document):
 			self.status = "Cancelled"
 		elif self.docstatus == 0:  # Draft
 			self.status = "Draft"
-		elif flt(self.remaining_balance) <= 0:
+		elif flt(self.balance_remaining) <= 0:
 			self.status = "Exhausted"
 		else:
 			self.status = "Active"
@@ -534,6 +613,7 @@ class ProjectAdvances(Document):
 	def get_advanced_amount_for_item(self, item_code, project_contractor):
 		"""Get total advanced amount for an item from Employee Advances"""
 		total_advanced = 0
+		counted_advances = set()  # Track which advances we've already counted
 		
 		# Method 1: Get advances created through Project Contractors system
 		# These are stored in the employee_advances field (comma-separated list)
@@ -550,6 +630,7 @@ class ProjectAdvances(Document):
 							advance_amount = frappe.get_cached_value("Employee Advance", advance_name, "advance_amount")
 							if advance_amount:
 								total_advanced += flt(advance_amount)
+								counted_advances.add(advance_name)  # Track this advance
 						except:
 							# Skip if Employee Advance doesn't exist
 							continue
@@ -558,6 +639,7 @@ class ProjectAdvances(Document):
 			pass
 		
 		# Method 2: Get advances created through Project Advances system (our new system)
+		# But exclude any that were already counted in Method 1
 		employee_advances = frappe.get_all(
 			"Employee Advance",
 			filters={
@@ -565,11 +647,13 @@ class ProjectAdvances(Document):
 				"item_reference": item_code,
 				"docstatus": 1
 			},
-			fields=["advance_amount"]
+			fields=["name", "advance_amount"]
 		)
 		
 		for advance in employee_advances:
-			total_advanced += flt(advance.advance_amount)
+			# Only count if not already counted in Method 1
+			if advance.name not in counted_advances:
+				total_advanced += flt(advance.advance_amount)
 			
 		return total_advanced
 		
@@ -829,8 +913,8 @@ class ProjectAdvances(Document):
 					frappe.throw(f"Failed to create Employee Advance for {item['item_code']}: {str(e)}")
 		
 		# Update remaining balance
-		self.remaining_balance = flt(self.advance_amount) - flt(self.total_distributed)
-		self.db_set('remaining_balance', self.remaining_balance, update_modified=False)
+		self.balance_remaining = flt(self.advance_amount) - flt(self.total_distributed)
+		self.db_set('balance_remaining', self.balance_remaining, update_modified=False)
 		
 		if created_advances:
 			frappe.msgprint(

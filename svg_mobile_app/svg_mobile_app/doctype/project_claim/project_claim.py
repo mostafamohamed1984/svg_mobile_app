@@ -361,57 +361,65 @@ class ProjectClaim(Document):
 
 	def update_project_contractors_fees_and_deposits(self):
 		"""Update the fees and deposits table in Project Contractors with claim references"""
-		# Get all invoices referenced in this claim
-		invoices = [self.reference_invoice]
-		if self.invoice_references:
-			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
-			invoices.extend(additional_invoices)
+		# Set a context flag to prevent Project Advances validation during this operation
+		frappe.local.skip_project_advances_validation = True
 		
-		# Get all Project Contractors that have these invoices
-		project_contractors = frappe.get_all(
-			"Sales Invoice",
-			filters={
-				"name": ["in", invoices],
-				"custom_for_project": ["!=", ""]
-			},
-			fields=["custom_for_project"],
-			distinct=True
-		)
-		
-		# Update each Project Contractors document
-		for pc_record in project_contractors:
-			project_contractor_name = pc_record.custom_for_project
+		try:
+			# Get all invoices referenced in this claim
+			invoices = [self.reference_invoice]
+			if self.invoice_references:
+				additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
+				invoices.extend(additional_invoices)
 			
-			try:
-				# Get the Project Contractors document
-				pc_doc = frappe.get_doc("Project Contractors", project_contractor_name)
+			# Get all Project Contractors that have these invoices
+			project_contractors = frappe.get_all(
+				"Sales Invoice",
+				filters={
+					"name": ["in", invoices],
+					"custom_for_project": ["!=", ""]
+				},
+				fields=["custom_for_project"],
+				distinct=True
+			)
+			
+			# Update each Project Contractors document
+			for pc_record in project_contractors:
+				project_contractor_name = pc_record.custom_for_project
 				
-				# Track if any changes were made
-				changes_made = False
-				
-				# Update fees and deposits items that match claim items
-				for claim_item in self.claim_items:
-					for fee_item in pc_doc.fees_and_deposits:
-						if fee_item.item == claim_item.item:
-							# Update the project_claim field if it exists
-							if hasattr(fee_item, 'project_claim'):
-								if not fee_item.project_claim:
-									fee_item.project_claim = self.name
-									changes_made = True
-								elif self.name not in fee_item.project_claim:
-									# If there are multiple claims, append this one
-									fee_item.project_claim = f"{fee_item.project_claim}, {self.name}"
-									changes_made = True
-				
-				# Save the document if changes were made
-				if changes_made:
-					pc_doc.save(ignore_permissions=True)
-					frappe.logger().info(f"Updated Project Contractors {project_contractor_name} with claim reference {self.name}")
-				
-			except Exception as e:
-				frappe.logger().error(f"Error updating Project Contractors {project_contractor_name}: {str(e)}")
-				# Don't fail the entire submission if this update fails
-				continue
+				try:
+					# Get the Project Contractors document
+					pc_doc = frappe.get_doc("Project Contractors", project_contractor_name)
+					
+					# Track if any changes were made
+					changes_made = False
+					
+					# Update fees and deposits items that match claim items
+					for claim_item in self.claim_items:
+						for fee_item in pc_doc.fees_and_deposits:
+							if fee_item.item == claim_item.item:
+								# Update the project_claim field if it exists
+								if hasattr(fee_item, 'project_claim'):
+									if not fee_item.project_claim:
+										fee_item.project_claim = self.name
+										changes_made = True
+									elif self.name not in fee_item.project_claim:
+										# If there are multiple claims, append this one
+										fee_item.project_claim = f"{fee_item.project_claim}, {self.name}"
+										changes_made = True
+					
+					# Save the document if changes were made
+					if changes_made:
+						pc_doc.save(ignore_permissions=True)
+						frappe.logger().info(f"Updated Project Contractors {project_contractor_name} with claim reference {self.name}")
+					
+				except Exception as e:
+					frappe.logger().error(f"Error updating Project Contractors {project_contractor_name}: {str(e)}")
+					# Don't fail the entire submission if this update fails
+					continue
+		finally:
+			# Always clear the context flag
+			if hasattr(frappe.local, 'skip_project_advances_validation'):
+				delattr(frappe.local, 'skip_project_advances_validation')
 	
 	def validate_claim_amount(self):
 		"""Validate that claim amount does not exceed outstanding amount"""

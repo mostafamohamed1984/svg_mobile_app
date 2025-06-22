@@ -173,6 +173,11 @@ class ProjectAdvances(Document):
 		Validate that all project claim references exist and are submitted.
 		Enhanced to handle database transaction timing issues.
 		"""
+		# Skip validation if we're in the context of Project Claim submission
+		if hasattr(frappe.local, 'skip_project_advances_validation') and frappe.local.skip_project_advances_validation:
+			frappe.logger().info("Skipping Project Advances validation due to Project Claim submission context")
+			return
+			
 		if not self.project_contractors:
 			return
 

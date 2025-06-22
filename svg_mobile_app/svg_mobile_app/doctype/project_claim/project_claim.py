@@ -389,9 +389,13 @@ class ProjectClaim(Document):
 				changes_made = False
 				
 				# Update fees and deposits items that match claim items
+				# ONLY process items that actually exist in the fees_and_deposits table
 				for claim_item in self.claim_items:
+					# First check if this item exists in fees_and_deposits before trying to update it
+					fee_item_exists = False
 					for fee_item in pc_doc.fees_and_deposits:
 						if fee_item.item == claim_item.item:
+							fee_item_exists = True
 							# Update the project_claim field if it exists
 							if hasattr(fee_item, 'project_claim'):
 								if not fee_item.project_claim:
@@ -401,6 +405,11 @@ class ProjectClaim(Document):
 									# If there are multiple claims, append this one
 									fee_item.project_claim = f"{fee_item.project_claim}, {self.name}"
 									changes_made = True
+							break  # Found the item, no need to continue inner loop
+					
+					# Log if claim item is not found in fees_and_deposits (this is normal for project items)
+					if not fee_item_exists:
+						frappe.logger().debug(f"Claim item {claim_item.item} not found in fees_and_deposits for {project_contractor_name} - this is normal for project items")
 				
 				# Save the document if changes were made
 				if changes_made:

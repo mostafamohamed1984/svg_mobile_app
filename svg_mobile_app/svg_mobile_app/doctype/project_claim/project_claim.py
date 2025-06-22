@@ -10,6 +10,7 @@ class ProjectClaim(Document):
 	def validate(self):
 		self.validate_claim_amount()
 		self.validate_claim_items()
+		self.validate_claim_item_references()
 	
 	def before_save(self):
 		# Set receiver based on current user if not already set
@@ -838,6 +839,24 @@ class ProjectClaim(Document):
 		"""Handle operations after document deletion"""
 		# Any cleanup operations after successful deletion
 		pass
+
+	def validate_claim_item_references(self):
+		"""Validate that all claim item references are valid"""
+		if not self.claim_items:
+			return
+		
+		for idx, item in enumerate(self.claim_items, 1):
+			# Validate project contractor reference if present
+			if item.project_contractor_reference:
+				if not frappe.db.exists("Project Contractors", item.project_contractor_reference):
+					frappe.logger().warning(f"Removing orphaned Project Contractor reference {item.project_contractor_reference} from claim item Row #{idx}")
+					item.project_contractor_reference = None
+			
+			# Validate invoice reference if present
+			if item.invoice_reference:
+				if not frappe.db.exists("Sales Invoice", item.invoice_reference):
+					frappe.logger().warning(f"Removing orphaned Sales Invoice reference {item.invoice_reference} from claim item Row #{idx}")
+					item.invoice_reference = None
 
 # Add a static method to be called from JavaScript
 @frappe.whitelist()

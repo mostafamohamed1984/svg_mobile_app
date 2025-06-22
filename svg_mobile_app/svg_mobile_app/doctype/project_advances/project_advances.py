@@ -173,23 +173,35 @@ class ProjectAdvances(Document):
 		if not self.project_contractors:
 			return
 			
-		for contractor_row in self.project_contractors:
+		for idx, contractor_row in enumerate(self.project_contractors, 1):
 			if not contractor_row.project_claim_reference:
-				frappe.throw(f"Project Claim Reference is required for contractor {contractor_row.project_contractor}")
+				frappe.throw(f"Project Claim Reference is required for contractor {contractor_row.project_contractor} in Row #{idx}")
 				
 			# Check if Project Claim exists and is submitted
 			try:
+				# First check if the document exists in the database
+				if not frappe.db.exists("Project Claim", contractor_row.project_claim_reference):
+					frappe.throw(f"Project Claim {contractor_row.project_claim_reference} does not exist (Row #{idx})")
+				
+				# Then try to get the document
 				project_claim = frappe.get_doc("Project Claim", contractor_row.project_claim_reference)
 				if project_claim.docstatus != 1:
-					frappe.throw(f"Project Claim {contractor_row.project_claim_reference} must be submitted before creating Project Advance")
+					frappe.throw(f"Project Claim {contractor_row.project_claim_reference} must be submitted before creating Project Advance (Row #{idx})")
 			except frappe.DoesNotExistError:
-				frappe.throw(f"Project Claim {contractor_row.project_claim_reference} does not exist")
+				frappe.throw(f"Project Claim {contractor_row.project_claim_reference} does not exist (Row #{idx})")
+			except Exception as e:
+				frappe.logger().error(f"Error accessing Project Claim {contractor_row.project_claim_reference} in Row #{idx}: {str(e)}")
+				frappe.throw(f"Error validating Project Claim {contractor_row.project_claim_reference} in Row #{idx}: {str(e)}")
 				
 			# Validate that this contractor has available items in this specific claim
 			contractor_name = contractor_row.project_contractor
 			has_available_items = False
 			
 			try:
+				# Check if the project contractor exists
+				if not frappe.db.exists("Project Contractors", contractor_name):
+					frappe.throw(f"Project Contractor {contractor_name} does not exist (Row #{idx})")
+				
 				contractor_doc = frappe.get_doc("Project Contractors", contractor_name)
 				
 				for fee_item in contractor_doc.fees_and_deposits:
@@ -204,12 +216,13 @@ class ProjectAdvances(Document):
 						break
 						
 			except Exception as e:
-				frappe.logger().error(f"Error validating contractor {contractor_name}: {str(e)}")
+				frappe.logger().error(f"Error validating contractor {contractor_name} in Row #{idx}: {str(e)}")
+				frappe.throw(f"Error validating contractor {contractor_name} in Row #{idx}: {str(e)}")
 				
 			if not has_available_items:
 				frappe.throw(
 					f"Project Contractor {contractor_name} has no available items in "
-					f"Project Claim {contractor_row.project_claim_reference}.<br><br>"
+					f"Project Claim {contractor_row.project_claim_reference} (Row #{idx}).<br><br>"
 					f"This could mean:<br>"
 					f"• This contractor is not part of this claim<br>"
 					f"• All items have already been fully advanced<br>"
@@ -955,6 +968,75 @@ class ProjectAdvances(Document):
 			error_html = f'<div class="alert alert-danger">Error loading available balances: {str(e)}<br><small>{traceback.format_exc()}</small></div>'
 			return error_html
 		
+	@frappe.whitelist()
+	def cleanup_orphaned_references(self):
+		"""Clean up any orphaned project claim references in child tables"""
+		if not self.project_contractors:
+			return {"status": "success", "message": "No project contractors to clean up"}
+		
+		cleaned_count = 0
+		errors = []
+		
+		for idx, contractor_row in enumerate(self.project_contractors, 1):
+			try:
+				# Check if project claim reference exists
+				if contractor_row.project_claim_reference:
+					if not frappe.db.exists("Project Claim", contractor_row.project_claim_reference):
+						frappe.logger().warning(f"Removing orphaned Project Claim reference {contractor_row.project_claim_reference} from Row #{idx}")
+						contractor_row.project_claim_reference = None
+						cleaned_count += 1
+				
+				# Check if project contractor exists
+				if contractor_row.project_contractor:
+					if not frappe.db.exists("Project Contractors", contractor_row.project_contractor):
+						errors.append(f"Project Contractor {contractor_row.project_contractor} does not exist (Row #{idx})")
+						
+			except Exception as e:
+				errors.append(f"Error checking Row #{idx}: {str(e)}")
+		
+		if cleaned_count > 0:
+			self.save()
+			frappe.db.commit()
+		
+		result = {
+			"status": "success" if not errors else "warning",
+			"cleaned_count": cleaned_count,
+			"message": f"Cleaned up {cleaned_count} orphaned references"
+		}
+		
+		if errors:
+			result["errors"] = errors
+			result["message"] += f". {len(errors)} errors found."
+		
+		return result
+
+@frappe.whitelist()
+def cleanup_all_orphaned_project_claim_references():
+	"""Clean up orphaned project claim references across all Project Advances documents"""
+	project_advances = frappe.get_all("Project Advances", 
+		filters={"docstatus": ["<", 2]}, 
+		fields=["name"])
+	
+	total_cleaned = 0
+	errors = []
+	
+	for pa in project_advances:
+		try:
+			doc = frappe.get_doc("Project Advances", pa.name)
+			result = doc.cleanup_orphaned_references()
+			total_cleaned += result.get("cleaned_count", 0)
+			if result.get("errors"):
+				errors.extend([f"{pa.name}: {error}" for error in result["errors"]])
+		except Exception as e:
+			errors.append(f"Error processing {pa.name}: {str(e)}")
+	
+	return {
+		"status": "success" if not errors else "warning",
+		"total_cleaned": total_cleaned,
+		"documents_processed": len(project_advances),
+		"errors": errors,
+		"message": f"Processed {len(project_advances)} documents, cleaned {total_cleaned} orphaned references"
+	}
 
 
 

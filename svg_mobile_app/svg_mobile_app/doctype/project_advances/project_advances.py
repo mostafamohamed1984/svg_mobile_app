@@ -9,15 +9,13 @@ import json
 
 class ProjectAdvances(Document):
 	def validate(self):
-		self.validate_project_claim_references()
+		self.validate_contractor_balances()
 		self.validate_advance_amount()
 		self.calculate_totals()
 		self.update_status()
 		
 	def before_save(self):
 		if self.project_contractors:
-			# Auto-populate project claim references for contractors if not set
-			self.auto_populate_project_claim_references()
 			self.load_available_fees_and_deposits()
 	
 	def on_load(self):
@@ -68,32 +66,7 @@ class ProjectAdvances(Document):
 		# Any cleanup operations after successful deletion
 		pass
 	
-	def auto_populate_project_claim_references(self):
-		"""Auto-populate project claim references for each contractor in the child table"""
-		if not self.project_contractors:
-			return
-			
-		for contractor_row in self.project_contractors:
-			if contractor_row.project_contractor and not contractor_row.project_claim_reference:
-				# Find Project Claims for this specific contractor
-				matching_claims = self.find_project_claims_with_available_items([contractor_row.project_contractor])
-				
-				if len(matching_claims) == 1:
-					# Perfect match - auto-populate
-					contractor_row.project_claim_reference = matching_claims[0]['claim_name']
-					frappe.logger().info(
-						f"Auto-populated Project Claim Reference for {contractor_row.project_contractor}: "
-						f"{matching_claims[0]['claim_name']}"
-					)
-				elif len(matching_claims) > 1:
-					frappe.logger().warning(
-						f"Multiple Project Claims found for {contractor_row.project_contractor}. "
-						f"Manual selection required."
-					)
-				else:
-					frappe.logger().warning(
-						f"No Project Claims found for {contractor_row.project_contractor}"
-					)
+
 	
 	def find_project_claims_with_available_items(self, contractor_list):
 		"""Find Project Claims that have available (claimable) items for specified contractors"""
@@ -177,60 +150,45 @@ class ProjectAdvances(Document):
 			frappe.logger().error(f"Error getting claimed amount for item {item_code} in claim {claim_name}: {str(e)}")
 			return 0
 
-	def validate_project_claim_references(self):
-		"""Validate that each contractor has a valid Project Claim reference with available items"""
+	def validate_contractor_balances(self):
+		"""Validate that each contractor has available balance from any submitted claims"""
 		if not self.project_contractors:
 			return
 			
 		for contractor_row in self.project_contractors:
-			if not contractor_row.project_claim_reference:
-				frappe.throw(f"Project Claim Reference is required for contractor {contractor_row.project_contractor}")
-				
-			# Check if Project Claim exists and is submitted
-			try:
-				# Validate that the reference is actually a Project Claim ID, not something else
-				if not frappe.db.exists("Project Claim", contractor_row.project_claim_reference):
-					frappe.throw(f"Project Claim {contractor_row.project_claim_reference} does not exist")
-					
-				project_claim = frappe.get_doc("Project Claim", contractor_row.project_claim_reference)
-				if project_claim.docstatus != 1:
-					frappe.throw(f"Project Claim {contractor_row.project_claim_reference} must be submitted before creating Project Advance")
-			except frappe.DoesNotExistError:
-				frappe.throw(f"Project Claim {contractor_row.project_claim_reference} does not exist")
-			except Exception as e:
-				frappe.logger().error(f"Error validating Project Claim {contractor_row.project_claim_reference}: {str(e)}")
-				frappe.throw(f"Invalid Project Claim reference: {contractor_row.project_claim_reference}")
-				
-			# Validate that this contractor has available items in this specific claim
 			contractor_name = contractor_row.project_contractor
+			
+			# Validate that this contractor has available items from any submitted claims
 			has_available_items = False
+			total_available_balance = 0
 			
 			try:
 				contractor_doc = frappe.get_doc("Project Contractors", contractor_name)
 				
 				for fee_item in contractor_doc.fees_and_deposits:
-					# Check if this item has available balance in the selected claim
-					claimed_amount = self.get_claimed_amount_for_item_in_claim(
-						fee_item.item, contractor_name, contractor_row.project_claim_reference
-					)
+					# Get total claimed amount from ALL submitted claims
+					claimed_amount = self.get_claimed_amount_for_item(fee_item.item, contractor_name)
 					advanced_amount = self.get_advanced_amount_for_item(fee_item.item, contractor_name)
 					
-					if claimed_amount > 0 and (claimed_amount - advanced_amount) > 0:
+					available_balance = claimed_amount - advanced_amount
+					if available_balance > 0:
 						has_available_items = True
-						break
+						total_available_balance += available_balance
 						
 			except Exception as e:
 				frappe.logger().error(f"Error validating contractor {contractor_name}: {str(e)}")
 				
 			if not has_available_items:
 				frappe.throw(
-					f"Project Contractor {contractor_name} has no available items in "
-					f"Project Claim {contractor_row.project_claim_reference}.<br><br>"
+					f"Project Contractor {contractor_name} has no available balance from any submitted Project Claims.<br><br>"
 					f"This could mean:<br>"
-					f"• This contractor is not part of this claim<br>"
-					f"• All items have already been fully advanced<br>"
-					f"• The claim amounts are zero for this contractor"
+					f"• No Project Claims have been submitted for this contractor<br>"
+					f"• All claimed amounts have already been fully advanced<br>"
+					f"• The contractor has no items in any submitted claims"
 				)
+				
+			# Update the total available balance for display
+			contractor_row.total_available_balance = total_available_balance
 		
 	def get_contractors_from_project_claim(self, project_claim_name):
 		"""Get list of project contractors related to a project claim"""
@@ -250,6 +208,38 @@ class ProjectAdvances(Document):
 				contractors.add(item.project_contractor_reference)
 		
 		return list(contractors)
+		
+	def get_project_claims_for_contractor(self, project_contractor):
+		"""Get list of Project Claims that have items for this contractor"""
+		# Get all submitted Project Claims
+		submitted_claims = frappe.get_all(
+			"Project Claim",
+			filters={"docstatus": 1},
+			fields=["name", "creation"]
+		)
+		
+		related_claims = []
+		for claim in submitted_claims:
+			# Check if this claim has items for this contractor
+			claim_items = frappe.get_all(
+				"Claim Items",
+				filters={
+					"parent": claim.name,
+					"parenttype": "Project Claim",
+					"project_contractor_reference": project_contractor
+				},
+				fields=["amount"]
+			)
+			
+			if claim_items:
+				total_amount = sum(flt(item.amount) for item in claim_items)
+				if total_amount > 0:
+					related_claims.append({
+						'name': claim.name,
+						'amount': total_amount
+					})
+		
+		return related_claims
 		
 	def validate_advance_amount(self):
 		"""Validate that advance amount and allocations are correct"""
@@ -366,15 +356,8 @@ class ProjectAdvances(Document):
 				for fee_item in project_contractor_doc.fees_and_deposits:
 					frappe.logger().info(f"Processing item: {fee_item.item}")
 					
-					# Get claimed amount from the specific Project Claim for this contractor
-					if contractor_row.project_claim_reference:
-						# Use the specific claim reference from the child table
-						claimed_amount = self.get_claimed_amount_for_item_in_claim(
-							fee_item.item, project_contractor_name, contractor_row.project_claim_reference
-						)
-					else:
-						# Fallback to general search if no specific claim reference
-						claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
+					# Get total claimed amount from ALL submitted claims
+					claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
 					
 					frappe.logger().info(f"Claimed amount for {fee_item.item}: {claimed_amount}")
 					
@@ -645,8 +628,7 @@ class ProjectAdvances(Document):
 			debug_info = []
 			for contractor_row in self.project_contractors:
 				project_contractor_name = contractor_row.project_contractor
-				claim_ref = contractor_row.project_claim_reference or "Not Set"
-				debug_info.append(f"• {project_contractor_name} (Claim: {claim_ref})")
+				debug_info.append(f"• {project_contractor_name}")
 			
 			debug_html = "<br>".join(debug_info)
 			self.available_fees_html = f'''
@@ -660,17 +642,20 @@ class ProjectAdvances(Document):
 			frappe.logger().info("Set HTML to warning message - no available data")
 			return
 		
-		# Group data by contractor for summary view
+		# Group data by contractor for summary view and get Project Claims info
 		contractor_summary = {}
 		for item in available_data:
 			contractor = item['project_contractor']
 			if contractor not in contractor_summary:
+				# Get all Project Claims for this contractor
+				related_claims = self.get_project_claims_for_contractor(contractor)
 				contractor_summary[contractor] = {
 					'project_name': item['project_name'],
 					'total_claimed': 0,
 					'total_advanced': 0,
 					'total_available': 0,
-					'item_count': 0
+					'item_count': 0,
+					'project_claims': related_claims
 				}
 			
 			contractor_summary[contractor]['total_claimed'] += flt(item['claimed_amount'])
@@ -687,6 +672,7 @@ class ProjectAdvances(Document):
 						<tr>
 							<th>Project Contractor</th>
 							<th>Project Name</th>
+							<th>Project Claims</th>
 							<th>Items</th>
 							<th>Total Claimed</th>
 							<th>Already Advanced</th>
@@ -705,10 +691,21 @@ class ProjectAdvances(Document):
 			total_claimed_all += summary['total_claimed']
 			total_advanced_all += summary['total_advanced']
 			
+			# Format Project Claims information
+			claims_info = ""
+			if summary['project_claims']:
+				claims_list = []
+				for claim in summary['project_claims']:
+					claims_list.append(f"<small>{claim['name']}<br/><span class='text-muted'>{frappe.format(claim['amount'], {'fieldtype': 'Currency'})}</span></small>")
+				claims_info = "<br/>".join(claims_list)
+			else:
+				claims_info = "<small class='text-muted'>No claims found</small>"
+			
 			html += f'''
 				<tr>
 					<td><strong>{contractor}</strong></td>
 					<td>{summary['project_name']}</td>
+					<td>{claims_info}</td>
 					<td class="text-center">{summary['item_count']}</td>
 					<td class="text-right">{frappe.format(summary['total_claimed'], {'fieldtype': 'Currency'})}</td>
 					<td class="text-right">{frappe.format(summary['total_advanced'], {'fieldtype': 'Currency'})}</td>
@@ -720,7 +717,7 @@ class ProjectAdvances(Document):
 					</tbody>
 					<tfoot>
 						<tr class="table-success">
-							<th colspan="3">Total Available for Advance</th>
+							<th colspan="4">Total Available for Advance</th>
 							<th class="text-right">{frappe.format(total_claimed_all, {'fieldtype': 'Currency'})}</th>
 							<th class="text-right">{frappe.format(total_advanced_all, {'fieldtype': 'Currency'})}</th>
 							<th class="text-right"><strong style="color: #28a745; font-size: 1.1em;">{frappe.format(total_available_all, {'fieldtype': 'Currency'})}</strong></th>
@@ -808,8 +805,7 @@ class ProjectAdvances(Document):
 					if frappe.get_meta("Employee Advance").has_field("custom_project_advance_reference"):
 						employee_advance.custom_project_advance_reference = self.name
 						
-					if frappe.get_meta("Employee Advance").has_field("custom_project_claim_reference"):
-						employee_advance.custom_project_claim_reference = contractor.project_claim_reference
+					# Note: custom_project_claim_reference field no longer used since we removed project_claim_reference
 						
 					if frappe.get_meta("Employee Advance").has_field("project_contractors_reference"):
 						employee_advance.project_contractors_reference = contractor.project_contractor
@@ -862,14 +858,8 @@ class ProjectAdvances(Document):
 		
 		# Process fees and deposits items for this contractor
 		for fee_item in project_contractor_doc.fees_and_deposits:
-			# Get claimed amount from the specific Project Claim for this contractor
-			if contractor_row.project_claim_reference:
-				claimed_amount = self.get_claimed_amount_for_item_in_claim(
-					fee_item.item, project_contractor, contractor_row.project_claim_reference
-				)
-			else:
-				# Fallback to general search if no specific claim reference
-				claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor)
+			# Get total claimed amount from ALL submitted claims
+			claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor)
 			
 			# Get already advanced amount from existing Employee Advances
 			advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor)
@@ -950,8 +940,7 @@ class ProjectAdvances(Document):
 			if not self.project_contractors:
 				return '<div class="alert alert-info">Please select project contractors first.</div>'
 			
-			# Auto-populate project claim references if missing
-			self.auto_populate_project_claim_references()
+
 			
 			# Get available data directly
 			available_data = self.get_available_fees_and_deposits()

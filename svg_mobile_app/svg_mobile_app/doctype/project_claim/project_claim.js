@@ -1744,23 +1744,19 @@ function create_bulk_project_claim(frm, dialog) {
 			// Force a complete refresh before showing alert
 			frm.refresh();
 			
-			// Show success message and properly reset validation
+			// Show success message
 			setTimeout(() => {
 				frappe.show_alert({
 					message: __('Project Claim created from {0} invoices. Please review and save.', [selected_invoices.length]),
 					indicator: 'green'
 				}, 5);
 				
-				// Re-enable save and reset validation immediately
+				// Re-enable save
 				frm.enable_save();
+				
+				// Reset validation
 				frm.validate = old_validate;
 				frm.skip_validation = false;
-				
-				// Clear any form dirty state that might cause issues
-				frm.doc.__unsaved = 1;
-				
-				// Ensure the form is marked as dirty so validation runs properly
-				frm.dirty();
 			}, 100);
 		}
 	});

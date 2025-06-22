@@ -215,18 +215,22 @@ class ProjectContractors(Document):
 			# Get claimed amount from Project Claims for this item
 			claimed_amount = self.get_claimed_amount_for_item(fee_item.item)
 			
-			# Calculate already advanced amount (from existing Employee Advances)
+			# Calculate already advanced amount (ONLY manual advances from Project Contractors)
+			# NOT the ones created by Project Advances system
 			already_advanced = 0
-			if hasattr(fee_item, "employee_advances") and fee_item.employee_advances:
-				advance_names = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
-				
-				for advance_name in advance_names:
-					try:
-						advance_amount = frappe.get_cached_value("Employee Advance", advance_name, "advance_amount")
-						if advance_amount:
-							already_advanced += flt(advance_amount)
-					except:
-						continue
+			manual_advances = frappe.get_all(
+				"Employee Advance",
+				filters={
+					"project_contractors_reference": self.name,
+					"item_reference": fee_item.item,
+					"docstatus": 1,
+					"custom_project_advance_reference": ["is", "not set"]  # Only manual advances
+				},
+				fields=["advance_amount"]
+			)
+			
+			for advance in manual_advances:
+				already_advanced += flt(advance.advance_amount)
 			
 			# Calculate maximum available for advance (limited by claimed amount)
 			max_available_by_claim = claimed_amount - already_advanced

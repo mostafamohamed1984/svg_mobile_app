@@ -486,6 +486,7 @@ class ProjectAdvances(Document):
 		)
 		
 		if not submitted_claims:
+			frappe.logger().warning(f"No submitted Project Claims found in the system")
 			return 0
 		
 		total_claimed = 0
@@ -499,15 +500,18 @@ class ProjectAdvances(Document):
 				"parenttype": "Project Claim",
 				"parent": ["in", submitted_claims]
 			},
-			fields=["amount"]
+			fields=["amount", "parent"]
 		)
 		
 		for claim_item in claim_items:
 			total_claimed += flt(claim_item.amount)
+			frappe.logger().info(f"Found claim item for {item_code} in {claim_item.parent}: {claim_item.amount}")
 		
 		# Method 2: If no exact match found, try broader search
 		# Look for claims where the Project Claim references this project contractor
 		if total_claimed == 0:
+			frappe.logger().info(f"No exact matches found for {project_contractor}, trying broader search")
+			
 			# Get Project Claims that reference this project contractor in various ways
 			project_claims_for_contractor = []
 			
@@ -521,6 +525,7 @@ class ProjectAdvances(Document):
 				pluck="name"
 			)
 			project_claims_for_contractor.extend(claims_by_project_refs)
+			frappe.logger().info(f"Found {len(claims_by_project_refs)} claims by project_references")
 			
 			# Check for_project field
 			claims_by_for_project = frappe.get_all(
@@ -532,11 +537,14 @@ class ProjectAdvances(Document):
 				pluck="name"
 			)
 			project_claims_for_contractor.extend(claims_by_for_project)
+			frappe.logger().info(f"Found {len(claims_by_for_project)} claims by for_project")
 			
 			# Remove duplicates
 			project_claims_for_contractor = list(set(project_claims_for_contractor))
 			
 			if project_claims_for_contractor:
+				frappe.logger().info(f"Found {len(project_claims_for_contractor)} total claims: {project_claims_for_contractor}")
+				
 				# Get claim items for this item from these claims
 				broader_claim_items = frappe.get_all(
 					"Claim Items",
@@ -545,14 +553,17 @@ class ProjectAdvances(Document):
 						"parenttype": "Project Claim",
 						"parent": ["in", project_claims_for_contractor]
 					},
-					fields=["amount"]
+					fields=["amount", "parent"]
 				)
 				
 				for claim_item in broader_claim_items:
 					total_claimed += flt(claim_item.amount)
+					frappe.logger().info(f"Found broader claim item for {item_code} in {claim_item.parent}: {claim_item.amount}")
 		
 		# Method 3: If still no match, check Sales Invoices from this Project Contractor
 		if total_claimed == 0:
+			frappe.logger().info(f"Still no claims found, checking Sales Invoices for {project_contractor}")
+			
 			# Get Sales Invoices for this Project Contractor
 			sales_invoices = frappe.get_all(
 				"Sales Invoice",
@@ -562,6 +573,8 @@ class ProjectAdvances(Document):
 				},
 				pluck="name"
 			)
+			
+			frappe.logger().info(f"Found {len(sales_invoices)} Sales Invoices for {project_contractor}")
 			
 			if sales_invoices:
 				# Find Project Claims that reference these invoices
@@ -593,6 +606,8 @@ class ProjectAdvances(Document):
 				# Remove duplicates
 				claims_by_invoice = list(set(claims_by_invoice))
 				
+				frappe.logger().info(f"Found {len(claims_by_invoice)} claims by invoice references")
+				
 				if claims_by_invoice:
 					# Get claim items for this item from these claims
 					invoice_claim_items = frappe.get_all(
@@ -602,59 +617,96 @@ class ProjectAdvances(Document):
 							"parenttype": "Project Claim",
 							"parent": ["in", claims_by_invoice]
 						},
-						fields=["amount"]
+						fields=["amount", "parent"]
 					)
 					
 					for claim_item in invoice_claim_items:
 						total_claimed += flt(claim_item.amount)
+						frappe.logger().info(f"Found invoice-based claim item for {item_code} in {claim_item.parent}: {claim_item.amount}")
+		
+		# Method 4: If still nothing found, try to find ANY claim items for this item and log what we find
+		if total_claimed == 0:
+			frappe.logger().warning(f"No claims found for {project_contractor} and {item_code}, checking all claim items for this item")
 			
+			all_claim_items_for_item = frappe.get_all(
+				"Claim Items",
+				filters={
+					"item": item_code,
+					"parenttype": "Project Claim"
+				},
+				fields=["amount", "parent", "project_contractor_reference"]
+			)
+			
+			frappe.logger().info(f"Found {len(all_claim_items_for_item)} total claim items for {item_code}: {all_claim_items_for_item}")
+			
+			# Check if any of these might match our contractor
+			for claim_item in all_claim_items_for_item:
+				if claim_item.project_contractor_reference == project_contractor:
+					total_claimed += flt(claim_item.amount)
+					frappe.logger().info(f"Found matching claim item by direct check: {claim_item}")
+			
+		frappe.logger().info(f"Final total claimed for {item_code} in {project_contractor}: {total_claimed}")
 		return total_claimed
 		
-	def get_advanced_amount_for_item(self, item_code, project_contractor):
-		"""Get total advanced amount for an item from Employee Advances"""
+	def get_advanced_amount_for_item(self, item_code, project_contractor, context="project_advances"):
+		"""Get total advanced amount for an item from Employee Advances
+		
+		Args:
+			item_code: The item to check
+			project_contractor: The project contractor
+			context: Either "project_advances" or "project_contractors"
+		
+		CRITICAL LOGIC:
+		- For Project Advances context: Count Employee Advances created by Project Advances system
+		- For Project Contractors context: Count only manual Employee Advances (not created by Project Advances)
+		"""
 		total_advanced = 0
-		counted_advances = set()  # Track which advances we've already counted
 		
-		# Method 1: Get advances created through Project Contractors system
-		# These are stored in the employee_advances field (comma-separated list)
-		try:
-			project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor)
+		if context == "project_contractors":
+			# For Project Contractors: ONLY count manual Employee Advances
+			# These are stored in the employee_advances field (comma-separated list)
+			# EXCLUDE any that were created by Project Advances system
+			try:
+				project_contractor_doc = frappe.get_doc("Project Contractors", project_contractor)
+				
+				for fee_item in project_contractor_doc.fees_and_deposits:
+					if fee_item.item == item_code and fee_item.employee_advances:
+						# Parse the comma-separated list of Employee Advance names
+						advance_names = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
+						
+						for advance_name in advance_names:
+							try:
+								# Check if this advance was created by Project Advances system
+								project_advance_ref = frappe.get_cached_value("Employee Advance", advance_name, "custom_project_advance_reference")
+								
+								# Only count if NOT created by Project Advances system
+								if not project_advance_ref:
+									advance_amount = frappe.get_cached_value("Employee Advance", advance_name, "advance_amount")
+									if advance_amount:
+										total_advanced += flt(advance_amount)
+							except:
+								# Skip if Employee Advance doesn't exist
+								continue
+			except:
+				# Skip if Project Contractors document doesn't exist
+				pass
+				
+		else:  # context == "project_advances"
+			# For Project Advances: Count Employee Advances created by Project Advances system
+			employee_advances = frappe.get_all(
+				"Employee Advance",
+				filters={
+					"project_contractors_reference": project_contractor,
+					"item_reference": item_code,
+					"docstatus": 1,
+					"custom_project_advance_reference": ["is", "set"]  # Only those created by Project Advances
+				},
+				fields=["name", "advance_amount"]
+			)
 			
-			for fee_item in project_contractor_doc.fees_and_deposits:
-				if fee_item.item == item_code and fee_item.employee_advances:
-					# Parse the comma-separated list of Employee Advance names
-					advance_names = [name.strip() for name in fee_item.employee_advances.split(',') if name.strip()]
-					
-					for advance_name in advance_names:
-						try:
-							advance_amount = frappe.get_cached_value("Employee Advance", advance_name, "advance_amount")
-							if advance_amount:
-								total_advanced += flt(advance_amount)
-								counted_advances.add(advance_name)  # Track this advance
-						except:
-							# Skip if Employee Advance doesn't exist
-							continue
-		except:
-			# Skip if Project Contractors document doesn't exist
-			pass
-		
-		# Method 2: Get advances created through Project Advances system (our new system)
-		# But exclude any that were already counted in Method 1
-		employee_advances = frappe.get_all(
-			"Employee Advance",
-			filters={
-				"project_contractors_reference": project_contractor,
-				"item_reference": item_code,
-				"docstatus": 1
-			},
-			fields=["name", "advance_amount"]
-		)
-		
-		for advance in employee_advances:
-			# Only count if not already counted in Method 1
-			if advance.name not in counted_advances:
+			for advance in employee_advances:
 				total_advanced += flt(advance.advance_amount)
-			
+		
 		return total_advanced
 		
 	def get_allocated_in_other_project_advances(self, item_code, project_contractor):

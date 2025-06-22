@@ -9,22 +9,12 @@ import json
 
 class ProjectAdvances(Document):
 	def validate(self):
-		# Skip validation if we're in the context of Project Claim submission
-		if hasattr(frappe.local, 'skip_project_advances_validation') and frappe.local.skip_project_advances_validation:
-			frappe.logger().info("Skipping Project Advances validation due to Project Claim submission context")
-			return
-			
 		self.validate_project_claim_references()
 		self.validate_advance_amount()
 		self.calculate_totals()
 		self.update_status()
 		
 	def before_save(self):
-		# Skip before_save operations if we're in the context of Project Claim submission
-		if hasattr(frappe.local, 'skip_project_advances_validation') and frappe.local.skip_project_advances_validation:
-			frappe.logger().info("Skipping Project Advances before_save due to Project Claim submission context")
-			return
-			
 		if self.project_contractors:
 			# Auto-populate project claim references for contractors if not set
 			self.auto_populate_project_claim_references()
@@ -183,10 +173,6 @@ class ProjectAdvances(Document):
 		Validate that all project claim references exist and are submitted.
 		Enhanced to handle database transaction timing issues.
 		"""
-		# Skip validation if we're in the context of Project Claim submission
-		if hasattr(frappe.local, 'skip_project_advances_validation') and frappe.local.skip_project_advances_validation:
-			frappe.logger().info("Skipping Project Advances validation due to Project Claim submission context")
-			return
 			
 		if not self.project_contractors:
 			return

@@ -232,6 +232,10 @@ class ProjectContractors(Document):
 		if total_available_from_advances <= 0:
 			return []
 		
+		# Get totals for context
+		total_paid_from_project_advances = flt(paid_advances_info.get("total_paid_from_project_advances", 0))
+		total_manually_distributed = flt(paid_advances_info.get("total_manually_distributed", 0))
+		
 		available_items = []
 		
 		# Process fees and deposits items
@@ -239,27 +243,23 @@ class ProjectContractors(Document):
 			# Get claimed amount from Project Claims for this item
 			claimed_amount = self.get_claimed_amount_for_item(fee_item.item)
 			
-			# Calculate already advanced amount (ONLY manual advances from Project Contractors)
-			# NOT the ones created by Project Advances system
-			already_advanced = 0
-			manual_advances = frappe.get_all(
-				"Employee Advance",
-				filters={
-					"project_contractors_reference": self.name,
-					"item_reference": fee_item.item,
-					"docstatus": 1,
-					"custom_project_advance_reference": ["is", "not set"]  # Only manual advances
-				},
-				fields=["advance_amount"]
-			)
+			if claimed_amount <= 0:
+				continue
 			
-			for advance in manual_advances:
-				already_advanced += flt(advance.advance_amount)
+			# For "Already Advanced" column, show only manual advances distributed through Project Contractors
+			# This represents what has actually been distributed through this system
+			already_advanced_display = total_manually_distributed
 			
-			# Calculate maximum available for advance (limited by claimed amount)
-			max_available_by_claim = claimed_amount - already_advanced
+			# For "Available for Advance", calculate what can still be distributed:
+			# 1. How much is left to claim: claimed_amount - already_advanced_display
+			# 2. How much money is available in the distribution pool: total_available_from_advances
 			
-			if max_available_by_claim > 0:
+			remaining_claimable = max(0, claimed_amount - already_advanced_display)
+			
+			# The actual available is limited by both claimable amount and available funds
+			actual_available = min(remaining_claimable, total_available_from_advances)
+			
+			if actual_available > 0 or claimed_amount > 0:  # Show item even if no availability for context
 				# Get item name from Item master
 				item_name = frappe.get_cached_value("Item", fee_item.item, "item_name") or fee_item.item
 				
@@ -268,9 +268,10 @@ class ProjectContractors(Document):
 					'item_name': item_name,
 					'original_rate': fee_item.rate,
 					'claimed_amount': claimed_amount,
-					'already_advanced': already_advanced,
-					'available_for_advance': max_available_by_claim,
-					'total_available_from_advances': total_available_from_advances  # Add this for reference
+					'already_advanced': already_advanced_display,  # Only manual advances through Project Contractors
+					'available_for_advance': actual_available,
+					'total_available_from_advances': total_available_from_advances,
+					'remaining_claimable': remaining_claimable
 				})
 		
 		return available_items

@@ -172,7 +172,7 @@ class ProjectContractors(Document):
 				"status": "Paid",  # Must be paid to be available for distribution
 				"docstatus": 1
 			},
-			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "return_amount", "outstanding_amount", "custom_project_advance_reference"]
+			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "return_amount", "pending_amount", "custom_project_advance_reference"]
 		)
 		
 		if not project_advances_created:
@@ -183,15 +183,15 @@ class ProjectContractors(Document):
 		advance_details = []
 		
 		for advance in project_advances_created:
-			outstanding_amount = flt(advance.outstanding_amount or advance.paid_amount)
-			total_outstanding_from_project_advances += outstanding_amount
+			pending_amount = flt(advance.pending_amount or advance.paid_amount)
+			total_outstanding_from_project_advances += pending_amount
 			advance_details.append({
 				"name": advance.name,
 				"advance_amount": advance.advance_amount,
 				"paid_amount": advance.paid_amount,
 				"claimed_amount": flt(advance.claimed_amount or 0),  # Real claimed amount from Employee Advance
 				"return_amount": flt(advance.return_amount or 0),    # Real return amount from Employee Advance
-				"outstanding": outstanding_amount  # Real outstanding amount
+				"outstanding": pending_amount  # Real pending amount (outstanding balance)
 			})
 		
 		# Calculate how much has already been distributed manually

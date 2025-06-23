@@ -185,15 +185,20 @@ class ProjectContractors(Document):
 		
 		for advance in project_advances_created:
 			paid_amount = flt(advance.paid_amount or 0)
-			pending_amount = flt(advance.pending_amount or advance.paid_amount)
+			claimed_amount = flt(advance.claimed_amount or 0)
+			return_amount = flt(advance.return_amount or 0)
+			
+			# Calculate outstanding correctly: Paid - Claimed - Returned
+			outstanding_amount = paid_amount - claimed_amount - return_amount
+			
 			total_paid_from_project_advances += paid_amount
 			advance_details.append({
 				"name": advance.name,
 				"advance_amount": advance.advance_amount,
 				"paid_amount": advance.paid_amount,
-				"claimed_amount": flt(advance.claimed_amount or 0),  # Real claimed amount from Employee Advance
-				"return_amount": flt(advance.return_amount or 0),    # Real return amount from Employee Advance
-				"outstanding": pending_amount  # Real pending amount (outstanding balance)
+				"claimed_amount": claimed_amount,
+				"return_amount": return_amount,
+				"outstanding": outstanding_amount  # Correctly calculated outstanding balance
 			})
 		
 		# Available amount = Total PAID amount from Project Advances

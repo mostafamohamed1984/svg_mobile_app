@@ -653,7 +653,7 @@ def get_available_leaves(employee_id):
                     "remaining_leaves": remaining_leaves
                 })
 
-        excuse_times = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4]
+        excuse_times = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 
         return {
             "status": "success",

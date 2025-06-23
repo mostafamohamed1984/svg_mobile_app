@@ -256,7 +256,7 @@ function calculate_totals(frm) {
 		} else {
 			// Reset to normal styling
 			if (total_field && total_field.$wrapper) {
-				total_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
+			total_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
 			}
 			if (advance_field && advance_field.$wrapper) {
 				advance_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');

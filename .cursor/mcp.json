@@ -1,15 +1,23 @@
 {
   "mcpServers": {
-    "hpkv-memory-server": {
+    "sequential-thinking": {
       "command": "npx",
       "args": [
         "-y",
-        "mcp-remote",
-        "https://memory-mcp.hpkv.io/sse",
-        "--transport",
-        "sse-only",
-        "--debug"
+        "@modelcontextprotocol/server-sequential-thinking"
       ]
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=rejexeulzbyiaxcjssnl"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_ab163554292c9031680899d2b589bbfe62795318"
+      }
     }
   }
 } 

@@ -141,10 +141,10 @@ function setup_item_filter(frm) {
     });
 }
 
-// Function to show Employee Advance distribution dialog
+// Function to show Employee Advance reference dialog
 function show_employee_advance_dialog(frm, advance_data) {
     let dialog = new frappe.ui.Dialog({
-        title: __('Distribute Employee Advances'),
+        title: __('Employee Advance References'),
         size: 'large',
         fields: [
             {
@@ -157,13 +157,8 @@ function show_employee_advance_dialog(frm, advance_data) {
                 fieldtype: 'HTML',
                 label: __('Employee Advance Details')
             }
-        ],
-        primary_action_label: __('Distribute Advances'),
-        primary_action(values) {
-            // Handle distribution logic here
-            distribute_employee_advances(frm, advance_data);
-            dialog.hide();
-        }
+        ]
+        // Removed primary_action - this is now reference-only
     });
 
     // Show available amount information
@@ -171,7 +166,7 @@ function show_employee_advance_dialog(frm, advance_data) {
         <div class="alert alert-info">
             <strong>Total Available Amount:</strong> ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}
             <br>
-            <small>This amount is from paid Employee Advances that can be distributed to project items.</small>
+            <small>This shows Employee Advances created from Project Advances for reference purposes.</small>
         </div>
     `;
     
@@ -217,257 +212,11 @@ function show_employee_advance_dialog(frm, advance_data) {
     dialog.show();
 }
 
-// Function to distribute employee advances to project items
-function distribute_employee_advances(frm, advance_data) {
-    if (!advance_data.advance_details || advance_data.advance_details.length === 0) {
-        frappe.msgprint(__('No Employee Advances available for distribution'));
-        return;
-    }
-    
-    // Show distribution dialog
-    let distribution_dialog = new frappe.ui.Dialog({
-        title: __('Distribute Advances to Project Items'),
-        size: 'large',
-        fields: [
-            {
-                fieldname: 'distribution_info',
-                fieldtype: 'HTML',
-                label: __('Distribution Information')
-            },
-            {
-                fieldname: 'employee',
-                fieldtype: 'Link',
-                label: __('Select Employee'),
-                options: 'Employee',
-                reqd: 1,
-                description: __('Employee who will receive the new advances')
-            },
-            {
-                fieldname: 'items_table',
-                fieldtype: 'HTML',
-                label: __('Project Items')
-            }
-        ],
-        primary_action_label: __('Confirm Distribution'),
-        primary_action(values) {
-            confirm_advance_distribution(frm, distribution_dialog);
-        }
-    });
-    
-    // Get project items that can receive advances
-    frm.call({
-        method: 'get_project_items_for_distribution',
-        doc: frm.doc,
-        callback: function(r) {
-            if (r.message && r.message.length > 0) {
-                render_distribution_interface(distribution_dialog, advance_data, r.message);
-                distribution_dialog.show();
-            } else {
-                frappe.msgprint(__('No project items available for advance distribution'));
-            }
-        }
-    });
-}
+// Distribution functions removed - functionality simplified to reference-only
 
-// Function to render the distribution interface
-function render_distribution_interface(dialog, advance_data, project_items) {
-    // Distribution info
-    let info_html = `
-        <div class="alert alert-info">
-            <strong>Total Available for Distribution:</strong> ${frappe.format(advance_data.available_amount, {'fieldtype': 'Currency'})}
-            <br>
-            <small>Create new Employee Advances by distributing amounts to specific project items.</small>
-        </div>
-    `;
-    
-    dialog.fields_dict.distribution_info.$wrapper.html(info_html);
-    
-    // Items table with distribution controls
-    let items_html = `
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Project Item</th>
-                        <th>Original Rate</th>
-                        <th>Project Claim Amount</th>
-                        <th>Already Advanced</th>
-                        <th>Available for Advance</th>
-                        <th>Distribute Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    project_items.forEach((item, idx) => {
-        // Use the backend-calculated available_for_advance value directly
-        // The backend already considers all the correct logic
-        let actual_available = flt(item.available_for_advance);
-        
-        items_html += `
-            <tr>
-                <td><strong>${item.item_name || item.item_code}</strong></td>
-                <td>${frappe.format(item.original_rate, {'fieldtype': 'Currency'})}</td>
-                <td>${frappe.format(item.claimed_amount, {'fieldtype': 'Currency'})}</td>
-                <td>${frappe.format(item.already_advanced, {'fieldtype': 'Currency'})}</td>
-                <td>
-                    <strong>${frappe.format(actual_available, {'fieldtype': 'Currency'})}</strong>
-                </td>
-                <td>
-                    <input type="number" 
-                           class="form-control distribution-amount" 
-                           data-item="${item.item_code}"
-                           data-max="${actual_available}"
-                           min="0" 
-                           max="${actual_available}"
-                           step="0.01"
-                           placeholder="0.00">
-                </td>
-            </tr>
-        `;
-    });
-    
-    // Calculate total available for distribution limit (use backend calculation)
-    let total_available_limit = advance_data.available_amount;
-    
-    items_html += `
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <th colspan="5">Total Distribution:</th>
-                        <th>
-                            <span class="total-distribution">0.00</span> / 
-                            <span class="available-limit">${frappe.format(total_available_limit, {'fieldtype': 'Currency'})}</span>
-                        </th>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    `;
-    
-    dialog.fields_dict.items_table.$wrapper.html(items_html);
-    
-    // Store total available limit for use in event handlers
-    dialog.total_available_limit = total_available_limit;
-    
-    // Add event listeners for distribution amount inputs after HTML is rendered
-    setTimeout(() => {
-        $(dialog.body).on('input', '.distribution-amount', function() {
-            let total = 0;
-            let valid = true;
-            
-            $('.distribution-amount').each(function() {
-                let value = flt($(this).val()) || 0;
-                let max = flt($(this).data('max')) || 0;
-                
-                // Validate against max available for this item
-                if (value > max) {
-                    $(this).addClass('has-error');
-                    valid = false;
-                } else {
-                    $(this).removeClass('has-error');
-                }
-                
-                total += value;
-            });
-            
-            // Update total display using system currency formatting
-            $('.total-distribution').text(format_currency(total));
-            
-            // Update button state based on validation
-            let confirm_btn = dialog.get_primary_btn();
-            let available_limit = dialog.total_available_limit;
-            
-            if (!valid) {
-                $('.total-distribution').css('color', 'red');
-                confirm_btn.addClass('btn-danger').removeClass('btn-primary');
-                confirm_btn.text(__('Individual amounts exceed limits'));
-                confirm_btn.prop('disabled', true);
-            } else if (total > available_limit) {
-                $('.total-distribution').css('color', 'red');
-                confirm_btn.addClass('btn-danger').removeClass('btn-primary');
-                confirm_btn.text(__('Total Exceeds Available ({0})', [format_currency(available_limit)]));
-                confirm_btn.prop('disabled', true);
-            } else if (total > 0) {
-                $('.total-distribution').css('color', 'green');
-                confirm_btn.removeClass('btn-danger').addClass('btn-primary');
-                confirm_btn.text(__('Confirm Distribution'));
-                confirm_btn.prop('disabled', false);
-            } else {
-                $('.total-distribution').css('color', 'black');
-                confirm_btn.removeClass('btn-danger').addClass('btn-primary');
-                confirm_btn.text(__('Confirm Distribution'));
-                confirm_btn.prop('disabled', false);
-            }
-        });
-    }, 100);
-}
 
-// Function to confirm and process the distribution
-function confirm_advance_distribution(frm, dialog) {
-    let distributions = [];
-    let total_distributed = 0;
-    
-    // Get selected employee
-    let employee = dialog.get_value('employee');
-    if (!employee) {
-        frappe.msgprint(__('Please select an employee'));
-        return;
-    }
-    
-    // Collect distribution data
-    $('.distribution-amount').each(function() {
-        let amount = parseFloat($(this).val()) || 0;
-        if (amount > 0) {
-            distributions.push({
-                item_code: $(this).data('item'),
-                amount: amount
-            });
-            total_distributed += amount;
-        }
-    });
-    
-    if (distributions.length === 0) {
-        frappe.msgprint(__('Please specify distribution amounts'));
-        return;
-    }
-    
-    // Process the distribution
-    frm.call({
-        method: 'process_advance_distribution',
-        doc: frm.doc,
-        args: {
-            distributions: distributions,
-            employee: employee,
-            total_amount: total_distributed
-        },
-        callback: function(r) {
-            if (r.message && r.message.status === 'success') {
-                frappe.msgprint({
-                    title: __('Distribution Successful'),
-                    message: r.message.message,
-                    indicator: 'green'
-                });
-                
-                dialog.hide();
-                
-                // Refresh the main form and also refresh the distribute advances button
-                frm.reload_doc().then(() => {
-                    // After reload, refresh the distribute advances functionality
-                    setTimeout(() => {
-                        check_project_claims_for_advances(frm);
-                    }, 1000);
-                });
-            } else {
-                frappe.msgprint({
-                    title: __('Distribution Failed'),
-                    message: r.message ? r.message.message : __('Unknown error occurred'),
-                    indicator: 'red'
-                });
-            }
-        }
-    });
-}
+
+
 
 function create_employee_advances(frm, eligible_items) {
     // Filter out items that have zero or negative remaining amounts

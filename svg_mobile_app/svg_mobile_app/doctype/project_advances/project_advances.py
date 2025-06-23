@@ -321,10 +321,7 @@ class ProjectAdvances(Document):
 		return related_claims
 		
 	def validate_advance_amount(self):
-		"""Validate that advance amount and allocations are correct"""
-		if not self.advance_amount:
-			frappe.throw("Advance Amount is required")
-			
+		"""Validate that allocations are correct and don't exceed available balances"""
 		if not self.project_contractors:
 			return
 			
@@ -334,15 +331,9 @@ class ProjectAdvances(Document):
 			if contractor.allocated_amount:
 				total_allocated += flt(contractor.allocated_amount)
 		
-		# CRITICAL VALIDATION: Total allocated cannot exceed advance amount
-		if total_allocated > flt(self.advance_amount):
-			frappe.throw(
-				f"<b>Invalid Allocation!</b><br>"
-				f"Total Allocated Amount: {frappe.format(total_allocated, {'fieldtype': 'Currency'})}<br>"
-				f"Advance Amount: {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})}<br>"
-				f"<b>You cannot allocate more than the advance amount!</b><br>"
-				f"Please reduce the allocated amounts or increase the advance amount."
-			)
+		# Ensure at least some allocation is made
+		if total_allocated <= 0:
+			frappe.throw("Please allocate amounts to at least one contractor.")
 		
 		# Validate each contractor's allocation doesn't exceed their available balance
 		for contractor in self.project_contractors:
@@ -355,45 +346,43 @@ class ProjectAdvances(Document):
 						f"Please reduce the allocated amount for this contractor."
 					)
 		
-		# Validate that advance amount doesn't exceed total available balance across all contractors
+		# Show warning if total allocation exceeds total available balance
 		total_available_balance = 0
 		for contractor in self.project_contractors:
 			if contractor.total_available_balance:
 				total_available_balance += flt(contractor.total_available_balance)
 		
-		if flt(self.advance_amount) > total_available_balance:
+		if total_allocated > total_available_balance:
 			frappe.msgprint(
-				f"<b>Warning:</b> Advance amount {frappe.format(self.advance_amount, {'fieldtype': 'Currency'})} "
+				f"<b>Warning:</b> Total allocated amount {frappe.format(total_allocated, {'fieldtype': 'Currency'})} "
 				f"exceeds total available balance {frappe.format(total_available_balance, {'fieldtype': 'Currency'})} "
 				f"across all selected contractors.",
-				title="High Advance Amount",
+				title="High Allocation Amount",
 				indicator="orange"
 			)
 			
 	def calculate_totals(self):
-		"""Calculate total distributed and balance remaining"""
-		total_distributed = 0
+		"""Calculate total allocated and total advance amount"""
+		total_allocated = 0
 		
 		# Calculate from contractor allocated amounts instead of advance items
 		for contractor in self.project_contractors:
 			if contractor.allocated_amount:
-				total_distributed += flt(contractor.allocated_amount)
+				total_allocated += flt(contractor.allocated_amount)
 		
-		self.total_distributed = total_distributed
-		self.balance_remaining = flt(self.advance_amount) - total_distributed
+		self.total_distributed = total_allocated
+		self.total_advance_amount = total_allocated
 		
-		# Update total advance amount if not set
-		if not self.total_advance_amount:
-			self.total_advance_amount = self.advance_amount
+		# Set legacy advance_amount for backward compatibility
+		if not self.advance_amount:
+			self.advance_amount = total_allocated
 			
 	def update_status(self):
-		"""Update status based on remaining balance and submission status"""
+		"""Update status based on submission status"""
 		if self.docstatus == 2:  # Cancelled
 			self.status = "Cancelled"
 		elif self.docstatus == 0:  # Draft
 			self.status = "Draft"
-		elif flt(self.balance_remaining) <= 0:
-			self.status = "Exhausted"
 		else:
 			self.status = "Active"
 			

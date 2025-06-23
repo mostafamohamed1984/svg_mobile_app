@@ -72,28 +72,17 @@ frappe.ui.form.on("Project Advance Contractors", {
 		// Recalculate totals
 		calculate_totals(frm);
 		
-		// Validate total doesn't exceed advance amount
-		let total_allocated = 0;
-		if (frm.doc.project_contractors) {
-			frm.doc.project_contractors.forEach(function(contractor) {
-				total_allocated += flt(contractor.allocated_amount);
-			});
-		}
-		
-		if (total_allocated > flt(frm.doc.advance_amount)) {
+		// Validate allocated amount doesn't exceed contractor's available balance
+		if (flt(row.allocated_amount) > flt(row.total_available_balance)) {
 			frappe.msgprint({
-				title: __('Invalid Allocation'),
-				message: __('Total allocated amount ({0}) cannot exceed advance amount ({1}). Please reduce the allocation.', 
-					[format_currency(total_allocated), format_currency(frm.doc.advance_amount)]),
+				title: __('Insufficient Balance'),
+				message: __('Allocated amount ({0}) cannot exceed available balance ({1}) for {2}.', 
+					[format_currency(row.allocated_amount), format_currency(row.total_available_balance), row.project_contractor]),
 				indicator: 'red'
 			});
 			
-			// Reset this allocation to prevent exceeding
-			let excess = total_allocated - flt(frm.doc.advance_amount);
-			let new_amount = flt(row.allocated_amount) - excess;
-			if (new_amount < 0) new_amount = 0;
-			
-			frappe.model.set_value(cdt, cdn, 'allocated_amount', new_amount);
+			// Reset to available balance
+			frappe.model.set_value(cdt, cdn, 'allocated_amount', row.total_available_balance || 0);
 			calculate_totals(frm);
 		}
 	},
@@ -230,45 +219,48 @@ function auto_populate_project_claim_reference_for_contractor(frm, cdt, cdn, row
 					indicator: 'orange'
 				});
 			} else {
-				frappe.show_alert({
-					message: __('No Project Claims found for {0}.', [row.project_contractor]),
-					indicator: 'red'
-				});
+				// Only show alert if user specifically requested project claim lookup
+				// Don't show for automatic population attempts
+				console.log('No Project Claims found for ' + row.project_contractor);
 			}
 		}
 	});
 }
 
 function calculate_totals(frm) {
-	let total_distributed = 0;
+	let total_allocated = 0;
 	
 	if (frm.doc.project_contractors) {
 		frm.doc.project_contractors.forEach(function(contractor) {
-			total_distributed += flt(contractor.allocated_amount);
+			total_allocated += flt(contractor.allocated_amount);
 		});
 	}
 	
-	frm.set_value('total_distributed', total_distributed);
-	let balance_remaining = flt(frm.doc.advance_amount) - total_distributed;
-	frm.set_value('balance_remaining', balance_remaining);
+	// Update both fields with the calculated total
+	frm.set_value('total_distributed', total_allocated);
+	frm.set_value('total_advance_amount', total_allocated);
 	
-	// Visual indicators for balance status
+	// Visual indicator for total allocated amount
 	setTimeout(() => {
-		let balance_field = frm.get_field('balance_remaining');
 		let total_field = frm.get_field('total_distributed');
+		let advance_field = frm.get_field('total_advance_amount');
 		
-		if (balance_remaining < 0) {
-			// Negative balance - red indicator
-			balance_field.$wrapper.find('.control-value').css('color', 'red').css('font-weight', 'bold');
-			total_field.$wrapper.find('.control-value').css('color', 'red').css('font-weight', 'bold');
-		} else if (balance_remaining === 0) {
-			// Exact match - green indicator
-			balance_field.$wrapper.find('.control-value').css('color', 'green').css('font-weight', 'bold');
-			total_field.$wrapper.find('.control-value').css('color', 'green').css('font-weight', 'normal');
+		if (total_allocated > 0) {
+			// Show positive allocation in green
+			if (total_field && total_field.$wrapper) {
+				total_field.$wrapper.find('.control-value').css('color', 'green').css('font-weight', 'bold');
+			}
+			if (advance_field && advance_field.$wrapper) {
+				advance_field.$wrapper.find('.control-value').css('color', 'green').css('font-weight', 'bold');
+			}
 		} else {
-			// Positive balance - normal
-			balance_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
-			total_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
+			// Reset to normal styling
+			if (total_field && total_field.$wrapper) {
+				total_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
+			}
+			if (advance_field && advance_field.$wrapper) {
+				advance_field.$wrapper.find('.control-value').css('color', '').css('font-weight', '');
+			}
 		}
 	}, 100);
 }

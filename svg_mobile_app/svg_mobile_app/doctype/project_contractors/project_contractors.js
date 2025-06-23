@@ -104,11 +104,11 @@ function check_project_claims_for_advances(frm) {
         doc: frm.doc,
         callback: function(r) {
             // Remove existing button first
-            frm.remove_custom_button(__('Create Employee Advances'));
+            frm.remove_custom_button(__('Employee Advance References'));
             
             if (r.message && r.message.available_amount > 0) {
                 // Show button with available amount information
-                frm.add_custom_button(__('Create Employee Advances'), function() {
+                frm.add_custom_button(__('Employee Advance References'), function() {
                     show_employee_advance_dialog(frm, r.message);
                 }).addClass('btn-primary');
                 

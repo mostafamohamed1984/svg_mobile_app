@@ -178,13 +178,15 @@ class ProjectContractors(Document):
 		if not project_advances_created:
 			return {"available_amount": 0, "message": "No paid Employee Advances from Project Advances system found"}
 		
-		# Calculate total outstanding amount from Project Advances system
-		total_outstanding_from_project_advances = 0
+		# Calculate total PAID amount from Project Advances system
+		# This represents money that has been paid out to employees and is available for distribution
+		total_paid_from_project_advances = 0
 		advance_details = []
 		
 		for advance in project_advances_created:
+			paid_amount = flt(advance.paid_amount or 0)
 			pending_amount = flt(advance.pending_amount or advance.paid_amount)
-			total_outstanding_from_project_advances += pending_amount
+			total_paid_from_project_advances += paid_amount
 			advance_details.append({
 				"name": advance.name,
 				"advance_amount": advance.advance_amount,
@@ -194,30 +196,15 @@ class ProjectContractors(Document):
 				"outstanding": pending_amount  # Real pending amount (outstanding balance)
 			})
 		
-		# Calculate how much has already been distributed manually
-		manual_advances = frappe.get_all(
-			"Employee Advance",
-			filters={
-				"project_contractors_reference": self.name,
-				"custom_project_advance_reference": ["is", "not set"],  # Manual advances
-				"docstatus": 1
-			},
-			fields=["advance_amount"]
-		)
-		
-		total_manually_distributed = 0
-		for manual_advance in manual_advances:
-			total_manually_distributed += flt(manual_advance.advance_amount)
-		
-		# Available amount = Total outstanding from Project Advances - What's already distributed manually
-		available_amount = total_outstanding_from_project_advances - total_manually_distributed
+		# Available amount = Total PAID amount from Project Advances
+		# No need to subtract manual advances - they are independent
+		available_amount = total_paid_from_project_advances
 		
 		return {
 			"available_amount": max(0, available_amount),  # Never negative
 			"advance_details": advance_details,
-			"total_outstanding_from_project_advances": total_outstanding_from_project_advances,
-			"total_manually_distributed": total_manually_distributed,
-			"message": f"Available: {frappe.format(available_amount, {'fieldtype': 'Currency'})} (Outstanding: {frappe.format(total_outstanding_from_project_advances, {'fieldtype': 'Currency'})}, Distributed: {frappe.format(total_manually_distributed, {'fieldtype': 'Currency'})})" if available_amount > 0 else "No amount available for distribution"
+			"total_paid_from_project_advances": total_paid_from_project_advances,
+			"message": f"Available for distribution: {frappe.format(available_amount, {'fieldtype': 'Currency'})} (from {len(advance_details)} paid Employee Advances)" if available_amount > 0 else "No paid Employee Advances available for distribution"
 		}
 
 	# get_project_items_for_distribution method removed - distribution functionality simplified

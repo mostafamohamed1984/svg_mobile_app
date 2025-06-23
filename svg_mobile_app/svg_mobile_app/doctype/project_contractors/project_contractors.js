@@ -107,24 +107,10 @@ function check_project_claims_for_advances(frm) {
             frm.remove_custom_button(__('Employee Advance References'));
             
             if (r.message && r.message.available_amount > 0) {
-                // Show button with available amount information
+                // Show button for Employee Advance references
                 frm.add_custom_button(__('Employee Advance References'), function() {
                     show_employee_advance_dialog(frm, r.message);
                 }).addClass('btn-primary');
-                
-                // Show available amount in a small message
-                frm.dashboard.add_comment(
-                    `Available for distribution: ${frappe.format(r.message.available_amount, {'fieldtype': 'Currency'})}`,
-                    'blue',
-                    true
-                );
-            } else {
-                // Show informational message about why button is not available
-                frm.dashboard.add_comment(
-                    r.message.message || 'No paid Employee Advances available for distribution',
-                    'orange',
-                    true
-                );
             }
         }
     });

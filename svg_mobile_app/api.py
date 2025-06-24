@@ -248,9 +248,12 @@ def get_employee_shift_and_checkin(employee_id):
 
 # employee make check in/out
 @frappe.whitelist(allow_guest=False)
-def mark_attendance(employee_id, lat, long, radius=None, distance=None, action="check-in"):
+def mark_attendance(employee_id, lat, long, action="check-in", **kwargs):
     try:
         # Handle both radius and distance parameters for backward compatibility
+        radius = kwargs.get('radius')
+        distance = kwargs.get('distance')
+        
         if radius is None and distance is not None:
             radius = distance
         elif radius is None and distance is None:

@@ -114,7 +114,7 @@ def get_company_details(employee_id):
             "latitude": branch.latitude,
             "longitude": branch.longitude,
             "description": branch_description,
-            "distance": branch.distance,
+            "radius": branch.radius,
         }
 
         return {
@@ -247,7 +247,7 @@ def get_employee_shift_and_checkin(employee_id):
 
 # employee make check in/out
 @frappe.whitelist(allow_guest=False)
-def mark_attendance(employee_id, lat, long, distance, action="check-in"):
+def mark_attendance(employee_id, lat, long, radius, action="check-in"):
     try:
         if not employee_id or not lat or not long:
             return {"status": "fail", "message": _("Employee ID and location are required.")}
@@ -303,10 +303,10 @@ def mark_attendance(employee_id, lat, long, distance, action="check-in"):
             # Allow check-in or check-out if Work from Home request exists
             return _create_employee_checkin(employee_id, log_type, lat, long)
 
-        # --- Step 4: Validate distance from company location ---
-        branchDistance = frappe.db.get_value("Branch", employee.branch, "distance")
+        # --- Step 4: Validate radius from company location ---
+        branchRadius = frappe.db.get_value("Branch", employee.branch, "radius")
 
-        if distance > float(branchDistance):
+        if radius > float(branchRadius):
             return {
                 "status": "fail",
                 "message": _("You are too far from the company location. Please get closer."),

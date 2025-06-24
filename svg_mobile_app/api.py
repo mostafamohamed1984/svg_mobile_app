@@ -82,6 +82,7 @@ def get_employee_details(employee_id):
             "default_shift_start": default_shift["start_time"] if default_shift else None,
             "default_shift_end": default_shift["end_time"] if default_shift else None,
             "image": employee.image,
+            "current_salary": employee.custom_salary,
         }
 
         return {
@@ -104,17 +105,17 @@ def get_company_details(employee_id):
         # Fetch employee details
         employee = frappe.get_doc("Employee", employee_id)
 
-        branch = frappe.get_doc("Branch", employee.branch)
-        branch_description = extract_text_from_html(branch.custom_description)
+        company = frappe.get_doc("Company", employee.company)
+        company_description = extract_text_from_html(company.custom_description)
 
         # Prepare response data
         employee_details = {
             "company": employee.company,
-            "branch": employee.branch,
-            "latitude": branch.latitude,
-            "longitude": branch.longitude,
-            "description": branch_description,
-            "radius": branch.radius,
+            "branch": employee.company,
+            "latitude": company.custom_latitude,
+            "longitude": company.custom_longitude,
+            "description": company_description,
+            "radius": company.custom_radius,
         }
 
         return {
@@ -220,11 +221,11 @@ def get_employee_shift_and_checkin(employee_id):
             paired_checkins.append({"check_in": temp_in, "check_out": None})
 
         # --- Company Address and Geolocation ---
-        branch = frappe.db.get_value("Employee", employee_id, "branch")
-        branch_details = None
+        company = frappe.db.get_value("Employee", employee_id, "company")
+        company_details = None
 
-        if branch:
-            address_details = frappe.get_doc("Branch", branch)
+        if company:
+            address_details = frappe.get_doc("Company", company)
 
         # --- Combined Response ---
         return {
@@ -235,8 +236,8 @@ def get_employee_shift_and_checkin(employee_id):
                 "checkins": paired_checkins,
                 "company_details": {
                     "address": address_details.address,
-                    "latitude": address_details.latitude,
-                    "longitude": address_details.longitude,
+                    "latitude": address_details.custom_latitude,
+                    "longitude": address_details.custom_longitude,
                 },
             },
         }
@@ -304,9 +305,9 @@ def mark_attendance(employee_id, lat, long, radius, action="check-in"):
             return _create_employee_checkin(employee_id, log_type, lat, long)
 
         # --- Step 4: Validate radius from company location ---
-        branchRadius = frappe.db.get_value("Branch", employee.branch, "radius")
+        companyRadius = frappe.db.get_value("Company", employee.company, "custom_radius")
 
-        if radius > float(branchRadius):
+        if radius > float(companyRadius):
             return {
                 "status": "fail",
                 "message": _("You are too far from the company location. Please get closer."),
@@ -605,11 +606,11 @@ def get_available_leaves(employee_id):
         if not employee:
             return {"status": "fail", "message": _("Employee not found")}
         
-        branch = employee.branch
-        branch_shifts = frappe.get_all(
+        company = employee.company
+        company_shifts = frappe.get_all(
             "Shift Type",
             filters={
-                "custom_branch": branch,
+                "custom_company": company,
                 "custom_enabled": 1,
                 "custom_is_request": 1
             },
@@ -658,7 +659,7 @@ def get_available_leaves(employee_id):
         return {
             "status": "success",
             "message": _("Available leaves retrieved successfully"),
-            "shifts": branch_shifts,
+            "shifts": company_shifts,
             "data": available_leaves,
             "excuse_times": excuse_times
         }
@@ -1174,12 +1175,12 @@ def update_request_status(employee_id, request_name, doctype, status, reason=Non
         if not access_check.get("has_access"):
             return {"status": "fail", "message": _("You don't have permission to update this request")}
         
-        # Get the request document
-        doc = frappe.get_doc(doctype, request_name)
+        # Get the request document with permission bypass for HR/Manager operations
+        doc = frappe.get_doc(doctype, request_name, ignore_permissions=True)
         
         # For managers, verify they are the manager of the employee in the request
         if not access_check.get("is_hr"):
-            employee = frappe.get_doc("Employee", doc.employee)
+            employee = frappe.get_doc("Employee", doc.employee, ignore_permissions=True)
             if employee.reports_to != employee_id:
                 return {"status": "fail", "message": _("You can only update requests for your direct reports")}
         
@@ -1218,7 +1219,7 @@ def update_request_status(employee_id, request_name, doctype, status, reason=Non
                 if reason:
                     doc.reason = reason
         
-        doc.save()
+        doc.save(ignore_permissions=True)
         frappe.db.commit()
         
         return {

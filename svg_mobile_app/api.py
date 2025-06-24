@@ -235,7 +235,7 @@ def get_employee_shift_and_checkin(employee_id):
                 "shift": shift_data,
                 "checkins": paired_checkins,
                 "company_details": {
-                    "address": address_details.address,
+                    "address": getattr(address_details, 'address', address_details.company_name),
                     "latitude": address_details.custom_latitude,
                     "longitude": address_details.custom_longitude,
                 },
@@ -248,8 +248,14 @@ def get_employee_shift_and_checkin(employee_id):
 
 # employee make check in/out
 @frappe.whitelist(allow_guest=False)
-def mark_attendance(employee_id, lat, long, radius, action="check-in"):
+def mark_attendance(employee_id, lat, long, radius=None, distance=None, action="check-in"):
     try:
+        # Handle both radius and distance parameters for backward compatibility
+        if radius is None and distance is not None:
+            radius = distance
+        elif radius is None and distance is None:
+            return {"status": "fail", "message": _("Employee ID, location, and radius/distance are required.")}
+            
         if not employee_id or not lat or not long:
             return {"status": "fail", "message": _("Employee ID and location are required.")}
 
@@ -1055,6 +1061,14 @@ def check_approval_screen_access(employee_id):
 def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only=1, request_type=None):
     """Get pending requests for employees reporting to this manager/HR"""
     try:
+        # Validate and convert parameters
+        if isinstance(pending_only, str):
+            pending_only = int(pending_only) if pending_only.isdigit() else 1
+        
+        # Normalize request_type parameter
+        if request_type:
+            request_type = request_type.strip().lower()
+        
         # Check if user is HR or manager
         access_check = check_approval_screen_access(employee_id)
         if not access_check.get("has_access"):
@@ -1113,52 +1127,8 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
         shift_requests = []
         overtime_requests = []
         
-        # Filter by request type if specified
-        if request_type:
-            if request_type.lower() == "leave application":
-                # Get leave applications only
-                leave_requests = frappe.get_all(
-                    "Leave Application",
-                    filters=leave_filters,
-                    fields=["name", "employee", "employee_name", "from_date", "to_date", 
-                            "leave_type as request_type", "status", "description as reason", 
-                            "creation"],
-                    order_by="creation desc"
-                )
-                # Add doctype information
-                for request in leave_requests:
-                    request["doctype"] = "Leave Application"
-                    
-            elif request_type.lower() == "shift request":
-                # Get shift requests only
-                shift_requests = frappe.get_all(
-                    "Shift Request",
-                    filters=shift_filters,
-                    fields=["name", "employee", "employee_name", "from_date", "to_date", 
-                            "shift_type as request_type", "status", 
-                            "creation"],
-                    order_by="creation desc"
-                )
-                # Add doctype information and a default reason
-                for request in shift_requests:
-                    request["doctype"] = "Shift Request"
-                    request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
-                    
-            elif request_type.lower() == "overtime request":
-                # Get overtime requests only
-                overtime_requests = frappe.get_all(
-                    "Overtime Request",
-                    filters=overtime_filters,
-                    fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
-                            "day_of_overtime as to_date", "'Overtime' as request_type", 
-                            "status", "reason", "creation"],
-                    order_by="creation desc"
-                )
-                # Add doctype information
-                for request in overtime_requests:
-                    request["doctype"] = "Overtime Request"
-        else:
-            # Get all request types if no specific type is requested
+        # Apply request type filter - get only requested types
+        if not request_type or request_type == "leave application":
             # Get leave applications
             leave_requests = frappe.get_all(
                 "Leave Application",
@@ -1168,10 +1138,12 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
                         "creation"],
                 order_by="creation desc"
             )
+            
             # Add doctype information
             for request in leave_requests:
                 request["doctype"] = "Leave Application"
-            
+        
+        if not request_type or request_type == "shift request":
             # Get shift requests
             shift_requests = frappe.get_all(
                 "Shift Request",
@@ -1181,11 +1153,13 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
                         "creation"],
                 order_by="creation desc"
             )
+            
             # Add doctype information and a default reason
             for request in shift_requests:
                 request["doctype"] = "Shift Request"
                 request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
-            
+        
+        if not request_type or request_type == "overtime request":
             # Get overtime requests
             overtime_requests = frappe.get_all(
                 "Overtime Request",
@@ -1195,6 +1169,7 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
                         "status", "reason", "creation"],
                 order_by="creation desc"
             )
+            
             # Add doctype information
             for request in overtime_requests:
                 request["doctype"] = "Overtime Request"

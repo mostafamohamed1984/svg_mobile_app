@@ -1052,7 +1052,7 @@ def check_approval_screen_access(employee_id):
 
 
 @frappe.whitelist(allow_guest=False)
-def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only=1):
+def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only=1, request_type=None):
     """Get pending requests for employees reporting to this manager/HR"""
     try:
         # Check if user is HR or manager
@@ -1108,48 +1108,96 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             shift_filters = filters.copy()
             overtime_filters = filters.copy()
         
-        # Get leave applications
-        leave_requests = frappe.get_all(
-            "Leave Application",
-            filters=leave_filters,
-            fields=["name", "employee", "employee_name", "from_date", "to_date", 
-                    "leave_type as request_type", "status", "description as reason", 
-                    "creation"],
-            order_by="creation desc"
-        )
+        # Initialize request lists
+        leave_requests = []
+        shift_requests = []
+        overtime_requests = []
         
-        # Add doctype information
-        for request in leave_requests:
-            request["doctype"] = "Leave Application"
-        
-        # Get shift requests
-        shift_requests = frappe.get_all(
-            "Shift Request",
-            filters=shift_filters,
-            fields=["name", "employee", "employee_name", "from_date", "to_date", 
-                    "shift_type as request_type", "status", 
-                    "creation"],
-            order_by="creation desc"
-        )
-        
-        # Add doctype information and a default reason
-        for request in shift_requests:
-            request["doctype"] = "Shift Request"
-            request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
-        
-        # Get overtime requests
-        overtime_requests = frappe.get_all(
-            "Overtime Request",
-            filters=overtime_filters,
-            fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
-                    "day_of_overtime as to_date", "'Overtime' as request_type", 
-                    "status", "reason", "creation"],
-            order_by="creation desc"
-        )
-        
-        # Add doctype information
-        for request in overtime_requests:
-            request["doctype"] = "Overtime Request"
+        # Filter by request type if specified
+        if request_type:
+            if request_type.lower() == "leave application":
+                # Get leave applications only
+                leave_requests = frappe.get_all(
+                    "Leave Application",
+                    filters=leave_filters,
+                    fields=["name", "employee", "employee_name", "from_date", "to_date", 
+                            "leave_type as request_type", "status", "description as reason", 
+                            "creation"],
+                    order_by="creation desc"
+                )
+                # Add doctype information
+                for request in leave_requests:
+                    request["doctype"] = "Leave Application"
+                    
+            elif request_type.lower() == "shift request":
+                # Get shift requests only
+                shift_requests = frappe.get_all(
+                    "Shift Request",
+                    filters=shift_filters,
+                    fields=["name", "employee", "employee_name", "from_date", "to_date", 
+                            "shift_type as request_type", "status", 
+                            "creation"],
+                    order_by="creation desc"
+                )
+                # Add doctype information and a default reason
+                for request in shift_requests:
+                    request["doctype"] = "Shift Request"
+                    request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
+                    
+            elif request_type.lower() == "overtime request":
+                # Get overtime requests only
+                overtime_requests = frappe.get_all(
+                    "Overtime Request",
+                    filters=overtime_filters,
+                    fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
+                            "day_of_overtime as to_date", "'Overtime' as request_type", 
+                            "status", "reason", "creation"],
+                    order_by="creation desc"
+                )
+                # Add doctype information
+                for request in overtime_requests:
+                    request["doctype"] = "Overtime Request"
+        else:
+            # Get all request types if no specific type is requested
+            # Get leave applications
+            leave_requests = frappe.get_all(
+                "Leave Application",
+                filters=leave_filters,
+                fields=["name", "employee", "employee_name", "from_date", "to_date", 
+                        "leave_type as request_type", "status", "description as reason", 
+                        "creation"],
+                order_by="creation desc"
+            )
+            # Add doctype information
+            for request in leave_requests:
+                request["doctype"] = "Leave Application"
+            
+            # Get shift requests
+            shift_requests = frappe.get_all(
+                "Shift Request",
+                filters=shift_filters,
+                fields=["name", "employee", "employee_name", "from_date", "to_date", 
+                        "shift_type as request_type", "status", 
+                        "creation"],
+                order_by="creation desc"
+            )
+            # Add doctype information and a default reason
+            for request in shift_requests:
+                request["doctype"] = "Shift Request"
+                request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
+            
+            # Get overtime requests
+            overtime_requests = frappe.get_all(
+                "Overtime Request",
+                filters=overtime_filters,
+                fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
+                        "day_of_overtime as to_date", "'Overtime' as request_type", 
+                        "status", "reason", "creation"],
+                order_by="creation desc"
+            )
+            # Add doctype information
+            for request in overtime_requests:
+                request["doctype"] = "Overtime Request"
         
         # Combine all requests
         all_requests = leave_requests + shift_requests + overtime_requests

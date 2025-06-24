@@ -1067,7 +1067,9 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
         
         # Normalize request_type parameter
         if request_type:
+            original_request_type = request_type
             request_type = request_type.strip().lower()
+            frappe.log_error(f"Request type filter: '{original_request_type}' normalized to '{request_type}'", "Get Pending Requests Debug")
         
         # Check if user is HR or manager
         access_check = check_approval_screen_access(employee_id)
@@ -1128,7 +1130,12 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
         overtime_requests = []
         
         # Apply request type filter - get only requested types
-        if not request_type or request_type == "leave application":
+        # Map frontend values to normalized values
+        leave_types = ["leave application", "leave request"]
+        shift_types = ["shift request"]
+        overtime_types = ["overtime request"]
+        
+        if not request_type or request_type in leave_types:
             # Get leave applications
             leave_requests = frappe.get_all(
                 "Leave Application",
@@ -1143,7 +1150,7 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             for request in leave_requests:
                 request["doctype"] = "Leave Application"
         
-        if not request_type or request_type == "shift request":
+        if not request_type or request_type in shift_types:
             # Get shift requests
             shift_requests = frappe.get_all(
                 "Shift Request",
@@ -1159,7 +1166,7 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
                 request["doctype"] = "Shift Request"
                 request["reason"] = "Shift request"  # Default reason since explanation field doesn't exist
         
-        if not request_type or request_type == "overtime request":
+        if not request_type or request_type in overtime_types:
             # Get overtime requests
             overtime_requests = frappe.get_all(
                 "Overtime Request",

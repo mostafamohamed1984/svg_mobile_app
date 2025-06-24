@@ -112,10 +112,10 @@ def get_company_details(employee_id):
         employee_details = {
             "company": employee.company,
             "branch": employee.company,
-            "latitude": company.custom_latitude,
-            "longitude": company.custom_longitude,
+            "latitude": company.latitude,
+            "longitude": company.longitude,
             "description": company_description,
-            "radius": company.custom_radius,
+            "radius": company.radius,
         }
 
         return {
@@ -236,8 +236,8 @@ def get_employee_shift_and_checkin(employee_id):
                 "checkins": paired_checkins,
                 "company_details": {
                     "address": getattr(address_details, 'address', address_details.company_name),
-                    "latitude": address_details.custom_latitude,
-                    "longitude": address_details.custom_longitude,
+                    "latitude": address_details.latitude,
+                    "longitude": address_details.longitude,
                 },
             },
         }
@@ -311,7 +311,7 @@ def mark_attendance(employee_id, lat, long, radius=None, distance=None, action="
             return _create_employee_checkin(employee_id, log_type, lat, long)
 
         # --- Step 4: Validate radius from company location ---
-        companyRadius = frappe.db.get_value("Company", employee.company, "custom_radius")
+        companyRadius = frappe.db.get_value("Company", employee.company, "radius")
 
         if radius > float(companyRadius):
             return {

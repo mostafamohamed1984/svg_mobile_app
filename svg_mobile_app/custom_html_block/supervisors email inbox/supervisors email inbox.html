@@ -1,0 +1,241 @@
+<div class="communication-inbox-container">
+    <!-- Header Section with Title and Filters -->
+    <div class="inbox-header">
+        <div class="inbox-title">
+            <h3>Email Inbox</h3>
+            <span class="inbox-subtitle">Showing communications assigned to you</span>
+        </div>
+    </div>
+    
+    <!-- Filter Section -->
+    <div class="inbox-filters-container">
+        <div class="row">
+            <div class="col-sm-9">
+                <div class="row">
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label for="communication-filter">View:</label>
+                            <select class="form-control" id="communication-filter">
+                                <option value="my_emails" selected>My Email Accounts</option>
+                                <option value="assigned_to_me">Assigned to Me</option>
+                                <option value="unread">Unread</option>
+                                <option value="read">Read</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label for="sent-received-filter">Direction:</label>
+                            <select class="form-control" id="sent-received-filter">
+                                <option value="all">All</option>
+                                <option value="Sent">Sent</option>
+                                <option value="Received">Received</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-4">
+                        <div class="form-group">
+                            <label for="status-filter">Status:</label>
+                            <select class="form-control" id="status-filter">
+                                <option value="all">All</option>
+                                <option value="Replied">Replied</option>
+                                <option value="Closed">Closed</option>
+                                <option value="Linked">Linked</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <div class="btn-group form-control" style="padding: 0; border: none; display: flex;">
+                        <button id="compose-email" class="btn btn-success" style="flex: 1; margin-right: 5px;">
+                            <i class="fa fa-pencil"></i> Compose
+                        </button>
+                        <button id="refresh-inbox" class="btn btn-primary" style="flex: 1;">
+                            <i class="fa fa-refresh"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row" style="margin-top: 10px;">
+            <div class="col-sm-4">
+                <div class="form-group">
+                    <label for="assigned-to-filter">Assigned to:</label>
+                    <select class="form-control" id="assigned-to-filter">
+                        <option value="">All Users</option>
+                        <!-- Users will be loaded dynamically -->
+                    </select>
+                </div>
+            </div>
+            <div class="col-sm-4 email-accounts-row" style="display: none;">
+                <div class="form-group">
+                    <label for="email-account-filter">Email Accounts:</label>
+                    <select class="form-control" id="email-account-filter">
+                        <option value="all">All Email Accounts</option>
+                        <!-- Personal and work email accounts will be loaded dynamically -->
+                    </select>
+                    <small class="text-muted">Personal emails and work email access</small>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="form-group">
+                    <label for="mail-tag-filter">Mail Tag:</label>
+                    <select class="form-control" id="mail-tag-filter">
+                        <option value="all">All Tags</option>
+                        <!-- Mail tags will be loaded dynamically -->
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Date Filter Controls -->
+        <div class="row" style="margin-top: 10px;">
+            <div class="col-sm-3">
+                <div class="form-group">
+                    <label>Date Filter:</label>
+                    <div class="btn-group btn-group-sm" data-toggle="buttons">
+                        <label class="btn btn-default active" id="date-range-btn">
+                            <input type="radio" name="date-filter-type" value="range" checked> Range
+                        </label>
+                        <label class="btn btn-default" id="single-date-btn">
+                            <input type="radio" name="date-filter-type" value="single"> Single Day
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3" id="from-date-control">
+                <div class="form-group">
+                    <label for="from-date">From Date:</label>
+                    <input type="date" class="form-control" id="from-date">
+                </div>
+            </div>
+            <div class="col-sm-3" id="to-date-control">
+                <div class="form-group">
+                    <label for="to-date">To Date:</label>
+                    <input type="date" class="form-control" id="to-date">
+                </div>
+            </div>
+            <div class="col-sm-3" id="single-date-control" style="display: none;">
+                <div class="form-group">
+                    <label for="single-date">Date:</label>
+                    <input type="date" class="form-control" id="single-date">
+                </div>
+            </div>
+            <div class="col-sm-3" id="clear-date-control">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-default btn-sm form-control" id="clear-date-filter">
+                        <i class="fa fa-times"></i> Clear Dates
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search Bar -->
+        <div class="row" style="margin-top: 10px;">
+            <div class="col-sm-12">
+                <div class="form-group">
+                    <label for="email-search">Search Emails:</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="email-search" placeholder="Search in subject, content, tags, and remarks...">
+                        <span class="input-group-btn">
+                            <button class="btn btn-default" type="button" id="clear-search">
+                                <i class="fa fa-times"></i>
+                            </button>
+                        </span>
+                    </div>
+                    <small class="text-muted">Search through email subjects, content, tags, and remarks</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="text-center" style="display: none;">
+        <div class="spinner">
+            <div class="bounce1"></div>
+            <div class="bounce2"></div>
+            <div class="bounce3"></div>
+        </div>
+        <p>Loading communications...</p>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="inbox-content">
+        <div class="inbox-list-container">
+            <div class="inbox-list-header">
+                <div class="row">
+                    <div class="col-sm-4">Subject</div>
+                    <div class="col-sm-3">From</div>
+                    <div class="col-sm-2">Date</div>
+                    <div class="col-sm-2">Tags</div>
+                    <div class="col-sm-1 text-center">Actions</div>
+                </div>
+            </div>
+            <div id="inbox-list" class="inbox-list-body">
+                <!-- Communications will be loaded here dynamically -->
+            </div>
+            <div id="no-records" class="text-center" style="display: none; padding: 20px;">
+                <p>No communications found</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="inbox-pagination">
+        <div class="row">
+            <div class="col-sm-6">
+                <span id="showing-records">Showing 1-10 of 0 records</span>
+            </div>
+            <div class="col-sm-6 text-right">
+                <!-- Page Size Options -->
+                <div class="btn-group" style="margin-right: 10px;">
+                    <button type="button" class="btn btn-default btn-sm btn-page-size active" data-size="10">10</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="20">20</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="50">50</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="100">100</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="2000">2000</button>
+                </div>
+                <!-- Navigation Buttons -->
+                <div class="btn-group">
+                    <button id="prev-page" class="btn btn-default btn-sm" disabled>
+                        <i class="fa fa-chevron-left"></i> Previous
+                    </button>
+                    <button id="next-page" class="btn btn-default btn-sm" disabled>
+                        Next <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Popup Template (Hidden) -->
+<div id="email-popup-template" style="display: none;">
+    <div class="email-popup-container">
+        <div class="email-header">
+            <h4 class="email-subject"></h4>
+            <div class="email-meta">
+                <div><strong>From:</strong> <span class="email-from"></span></div>
+                <div><strong>To:</strong> <span class="email-to"></span></div>
+                <div class="email-cc-bcc-info" style="display: none;">
+                    <div><strong>Recipient Type:</strong> <span class="email-recipient-type"></span></div>
+                    <div><strong>Total Recipients:</strong> <span class="email-total-recipients"></span></div>
+                </div>
+                <div><strong>Date:</strong> <span class="email-date"></span></div>
+                <div><strong>Status:</strong> <span class="email-status"></span></div>
+                <div><strong>Direction:</strong> <span class="email-direction"></span></div>
+                <div><strong>Email Account:</strong> <span class="email-account"></span></div>
+            </div>
+        </div>
+        <div class="email-body"></div>
+        <div class="email-attachments">
+            <h5>Attachments</h5>
+            <div class="attachments-list"></div>
+        </div>
+    </div>
+</div>

@@ -1617,3 +1617,208 @@ def add_work_email_access(user, email_account, access_type="Read Only", descript
             "message": str(e)
         }
 
+@frappe.whitelist()
+def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_length=20, user_email=None, current_user=None):
+    """
+    Enhanced method to get communications that includes BCC/CC recipient parsing
+    This method addresses the issue where BCC/CC emails don't show up in custom email blocks
+    """
+    import json
+    import re
+    from frappe.utils import cstr
+    
+    if isinstance(filters, str):
+        filters = json.loads(filters)
+    
+    if not filters:
+        filters = {}
+    
+    if not user_email:
+        user_email = frappe.session.user_email
+    
+    if not current_user:
+        current_user = frappe.session.user
+    
+    try:
+        # Base query conditions
+        conditions = []
+        values = []
+        
+        # Standard filters
+        conditions.append("communication_type = %s")
+        values.append("Communication")
+        
+        conditions.append("communication_medium = %s")
+        values.append("Email")
+        
+        # Apply other filters
+        for key, value in filters.items():
+            if key in ["communication_type", "communication_medium"]:
+                continue  # Already handled
+            
+            if key == "_assign":
+                if isinstance(value, list) and len(value) == 2 and value[0] == "like":
+                    conditions.append("_assign LIKE %s")
+                    values.append(value[1])
+            elif key == "email_account":
+                if isinstance(value, list) and value[0] == "in":
+                    placeholders = ",".join(["%s"] * len(value[1]))
+                    conditions.append(f"email_account IN ({placeholders})")
+                    values.extend(value[1])
+                else:
+                    conditions.append("email_account = %s")
+                    values.append(value)
+            elif key == "creation":
+                if isinstance(value, list) and len(value) == 3 and value[0] == "between":
+                    conditions.append("creation BETWEEN %s AND %s")
+                    values.extend(value[1:])
+            else:
+                conditions.append(f"{key} = %s")
+                values.append(value)
+        
+        # Enhanced recipient filtering to include BCC/CC
+        # This is the key enhancement to solve the BCC/CC visibility issue
+        recipient_conditions = []
+        
+        # 1. Standard recipient field (includes TO, CC, BCC as comma-separated)
+        recipient_conditions.append("recipients LIKE %s")
+        values.append(f"%{user_email}%")
+        
+        # 2. Sender field
+        recipient_conditions.append("sender = %s")
+        values.append(user_email)
+        
+        # 3. Check for email patterns in content (for forwarded emails with BCC info)
+        recipient_conditions.append("content LIKE %s")
+        values.append(f"%{user_email}%")
+        
+        # 4. Check email account ownership
+        user_email_accounts = frappe.get_all(
+            "User Email",
+            filters={"parent": current_user},
+            pluck="email_account"
+        )
+        
+        work_email_accounts = frappe.get_all(
+            "User Work Email Access",
+            filters={"parent": current_user},
+            pluck="email_account"
+        )
+        
+        all_user_accounts = list(set(user_email_accounts + work_email_accounts))
+        
+        if all_user_accounts:
+            placeholders = ",".join(["%s"] * len(all_user_accounts))
+            recipient_conditions.append(f"email_account IN ({placeholders})")
+            values.extend(all_user_accounts)
+        
+        # Combine recipient conditions with OR
+        if recipient_conditions:
+            conditions.append(f"({' OR '.join(recipient_conditions)})")
+        
+        # Build the final query
+        base_query = f"""
+            SELECT name, subject, sender, sender_full_name, recipients,
+                   creation, content, read_by_recipient, has_attachment,
+                   reference_doctype, reference_name, sent_or_received,
+                   status, email_account, custom_remark
+            FROM `tabCommunication`
+            WHERE {' AND '.join(conditions)}
+            ORDER BY creation DESC
+            LIMIT %s OFFSET %s
+        """
+        
+        values.extend([limit_page_length, limit_start])
+        
+        # Execute the query
+        communications = frappe.db.sql(base_query, values, as_dict=True)
+        
+        # Get total count for pagination
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM `tabCommunication`
+            WHERE {' AND '.join(conditions[:-1])}  -- Remove LIMIT/OFFSET conditions
+        """
+        
+        count_values = values[:-2]  # Remove LIMIT and OFFSET values
+        total_count = frappe.db.sql(count_query, count_values, as_dict=True)[0].total
+        
+        # Parse and enhance recipient information for better BCC/CC display
+        for comm in communications:
+            if comm.recipients:
+                # Parse recipients to identify TO, CC, BCC
+                recipients_info = parse_email_recipients(comm.recipients, user_email)
+                comm.recipient_type = recipients_info.get('user_type', 'TO')
+                comm.parsed_recipients = recipients_info
+        
+        return {
+            "communications": communications,
+            "total_count": total_count,
+            "user_email": user_email,
+            "message": f"Found {len(communications)} communications (including BCC/CC)"
+        }
+        
+    except Exception as e:
+        frappe.log_error(f"Error in get_communications_with_bcc_cc: {str(e)}")
+        return {
+            "communications": [],
+            "total_count": 0,
+            "error": str(e)
+        }
+
+def parse_email_recipients(recipients_string, user_email):
+    """
+    Parse the recipients string to identify if user is in TO, CC, or BCC
+    This helps identify how the user received the email
+    """
+    if not recipients_string or not user_email:
+        return {"user_type": "TO", "recipients": []}
+    
+    # Split recipients by common delimiters
+    recipients = []
+    for delimiter in [',', ';', '\n']:
+        if delimiter in recipients_string:
+            recipients = [r.strip() for r in recipients_string.split(delimiter)]
+            break
+    
+    if not recipients:
+        recipients = [recipients_string.strip()]
+    
+    # Clean up email addresses and find user position
+    clean_recipients = []
+    user_position = None
+    
+    for i, recipient in enumerate(recipients):
+        # Extract email from "Name <email>" format
+        email_match = re.search(r'<([^>]+)>', recipient)
+        if email_match:
+            email = email_match.group(1)
+        else:
+            email = recipient.strip()
+        
+        clean_recipients.append({
+            "original": recipient,
+            "email": email,
+            "position": i
+        })
+        
+        if email.lower() == user_email.lower():
+            user_position = i
+    
+    # Determine recipient type based on position and patterns
+    # This is heuristic since BCC info is often not preserved in IMAP
+    user_type = "TO"
+    if user_position is not None:
+        if user_position == 0:
+            user_type = "TO"
+        elif user_position > 0:
+            # Could be CC or BCC, but we can't definitively tell from stored data
+            user_type = "CC/BCC"
+    
+    return {
+        "user_type": user_type,
+        "recipients": clean_recipients,
+        "user_position": user_position,
+        "total_recipients": len(clean_recipients)
+    }
+

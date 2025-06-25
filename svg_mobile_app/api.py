@@ -1625,7 +1625,7 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
     """
     import json
     import re
-    from frappe.utils import cstr
+    from frappe.utils import cstr, cint
     
     if isinstance(filters, str):
         filters = json.loads(filters)
@@ -1638,6 +1638,10 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
     
     if not current_user:
         current_user = frappe.session.user
+    
+    # Convert limit parameters to integers
+    limit_start = cint(limit_start)
+    limit_page_length = cint(limit_page_length)
     
     try:
         # Base query conditions
@@ -1662,12 +1666,29 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
                     values.append(value[1])
             elif key == "email_account":
                 if isinstance(value, list) and value[0] == "in":
-                    placeholders = ",".join(["%s"] * len(value[1]))
-                    conditions.append(f"email_account IN ({placeholders})")
-                    values.extend(value[1])
+                    # Filter out invalid email account names (display text, etc.)
+                    valid_accounts = []
+                    for account in value[1]:
+                        # Skip display text and invalid entries
+                        if (account and 
+                            not account.startswith("---") and 
+                            not account.startswith("Personal") and
+                            not account.startswith("Work") and
+                            len(account.strip()) > 0):
+                            
+                            # Check if this is actually a valid email account
+                            if frappe.db.exists("Email Account", account):
+                                valid_accounts.append(account)
+                    
+                    if valid_accounts:
+                        placeholders = ",".join(["%s"] * len(valid_accounts))
+                        conditions.append(f"email_account IN ({placeholders})")
+                        values.extend(valid_accounts)
                 else:
-                    conditions.append("email_account = %s")
-                    values.append(value)
+                    # Single email account
+                    if value and frappe.db.exists("Email Account", value):
+                        conditions.append("email_account = %s")
+                        values.append(value)
             elif key == "creation":
                 if isinstance(value, list) and len(value) == 3 and value[0] == "between":
                     conditions.append("creation BETWEEN %s AND %s")
@@ -1707,10 +1728,16 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
         
         all_user_accounts = list(set(user_email_accounts + work_email_accounts))
         
-        if all_user_accounts:
-            placeholders = ",".join(["%s"] * len(all_user_accounts))
+        # Filter out invalid accounts and verify they exist
+        valid_user_accounts = []
+        for account in all_user_accounts:
+            if account and frappe.db.exists("Email Account", account):
+                valid_user_accounts.append(account)
+        
+        if valid_user_accounts:
+            placeholders = ",".join(["%s"] * len(valid_user_accounts))
             recipient_conditions.append(f"email_account IN ({placeholders})")
-            values.extend(all_user_accounts)
+            values.extend(valid_user_accounts)
         
         # Combine recipient conditions with OR
         if recipient_conditions:
@@ -1759,11 +1786,13 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
         }
         
     except Exception as e:
-        frappe.log_error(f"Error in get_communications_with_bcc_cc: {str(e)}")
+        frappe.log_error(f"Error in get_communications_with_bcc_cc: {str(e)}", "BCC CC Email API")
+        # Return fallback response instead of empty to trigger fallback method
         return {
             "communications": [],
             "total_count": 0,
-            "error": str(e)
+            "error": str(e),
+            "fallback_needed": True
         }
 
 def parse_email_recipients(recipients_string, user_email):

@@ -650,137 +650,89 @@
             "communication_medium": "Email"
         };
 
-        // Apply view filter
-        if (currentFilter === "assigned_to_me") {
-            filters["_assign"] = ["like", "%" + frappe.session.user + "%"];
-        } else if (currentFilter === "unread") {
-            filters["read_by_recipient"] = 0;
-        } else if (currentFilter === "read") {
-            filters["read_by_recipient"] = 1;
-        } else if (currentFilter === "my_emails") {
-            // For "My Email Accounts" view, we need to filter by the user's email accounts
-            if (selectedEmailAccount !== "all") {
-                // If specific account selected
-                filters["email_account"] = selectedEmailAccount;
-            } else if (userEmails && userEmails.length > 0) {
-                // If "All Email Accounts" selected, filter by all user's email accounts
-                // Use "in" operator which is supported by Frappe
-                // Get all email account names from the dropdown
-                const emailAccountSelect = root_element.querySelector('#email-account-filter');
-                if (emailAccountSelect && emailAccountSelect.options.length > 1) {
-                    const accountNames = [];
-                    // Skip the first "All Email Accounts" option
-                    for (let i = 1; i < emailAccountSelect.options.length; i++) {
-                        accountNames.push(emailAccountSelect.options[i].value);
-                    }
-                    if (accountNames.length > 0) {
-                        filters["email_account"] = ["in", accountNames];
-                    }
-                }
+        // Add email account filter if selected
+        const emailAccountFilter = root_element.querySelector('#email-account-filter');
+        if (emailAccountFilter && emailAccountFilter.value && emailAccountFilter.value !== 'all') {
+            // Get all selected values from multi-select
+            const selectedAccounts = Array.from(emailAccountFilter.selectedOptions).map(option => option.value);
+            if (selectedAccounts.length > 0 && !selectedAccounts.includes('all')) {
+                filters["email_account"] = ["in", selectedAccounts];
             }
         }
-        
-        // Apply "Assigned To" filter independently, unless "Assigned to Me" is selected
-        if (currentFilter !== "assigned_to_me" && selectedAssignedUser && selectedAssignedUser.trim() !== "") {
-            filters["_assign"] = ["like", "%" + selectedAssignedUser + "%"];
+
+        // Add date range filter if selected
+        const dateFromFilter = root_element.querySelector('#date-from-filter');
+        const dateToFilter = root_element.querySelector('#date-to-filter');
+        if (dateFromFilter && dateToFilter && dateFromFilter.value && dateToFilter.value) {
+            filters["creation"] = ["between", [dateFromFilter.value + " 00:00:00", dateToFilter.value + " 23:59:59"]];
         }
 
-        // Apply sent/received filter
-        if (sentReceivedFilter !== "all") {
-            filters["sent_or_received"] = sentReceivedFilter;
-        }
-
-        // Apply status filter
-        if (statusFilter !== "all") {
-            filters["status"] = statusFilter;
-        }
-
-        // Apply date filters
-        if (dateFilterType === "range" && fromDate && toDate) {
-            filters["creation"] = ["between", [fromDate, toDate]];
-        } else if (dateFilterType === "single" && singleDate) {
-            const startOfDay = singleDate + " 00:00:00";
-            const endOfDay = singleDate + " 23:59:59";
-            filters["creation"] = ["between", [startOfDay, endOfDay]];
-        }
-
-        // Calculate pagination
-        const fetchStart = (currentPage - 1) * pageSize;
-        const fetchLimit = pageSize;
-
-        // Check if we need to process tags
-        const shouldProcessTags = selectedMailTag !== "all" || searchTerm.trim() !== "";
-
-        if (shouldProcessTags) {
-            // Use the tag processing version
-            fetchCommunicationsWithTags(filters, fetchStart, fetchLimit);
-        } else {
-            // Use the standard version for better performance
-            fetchCommunicationsStandard(filters, fetchStart, fetchLimit);
-        }
-    }
-
-    // Enhanced communication fetching that includes BCC/CC recipients
-    function fetchCommunicationsStandard(filters, fetchStart, fetchLimit) {
-        const loadingIndicator = root_element.querySelector('#loading-indicator');
-        const noRecords = root_element.querySelector('#no-records');
-
-        // Enhanced query to include BCC/CC recipients
+        // Try enhanced BCC/CC method first
         frappe.call({
             method: 'svg_mobile_app.api.get_communications_with_bcc_cc',
             args: {
-                filters: filters,
-                limit_start: fetchStart,
-                limit_page_length: fetchLimit,
+                filters: JSON.stringify(filters),
+                limit_start: currentPage * pageSize,
+                limit_page_length: pageSize,
                 user_email: frappe.session.user_email,
                 current_user: frappe.session.user
             },
             callback: function(response) {
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
-
-                if (response.message && response.message.communications && response.message.communications.length > 0) {
-                    renderCommunications(response.message.communications);
-                    totalRecords = response.message.total_count || 0;
+                
+                if (response.message && !response.message.fallback_needed) {
+                    // Enhanced method succeeded
+                    const data = response.message;
+                    totalRecords = data.total_count || 0;
+                    renderCommunications(data.communications || []);
                     updatePagination();
+                    
+                    if (data.message) {
+                        console.log("BCC/CC Enhanced:", data.message);
+                    }
                 } else {
-                    // Fallback to standard method if custom method fails
-                    fetchCommunicationsStandardFallback(filters, fetchStart, fetchLimit);
+                    // Enhanced method failed, fallback to standard method
+                    console.log("Falling back to standard method due to:", response.message?.error || "Unknown error");
+                    fetchCommunicationsFallback(filters);
                 }
             },
-            error: function(err) {
-                console.error("Error fetching communications with BCC/CC:", err);
-                // Fallback to standard method
-                fetchCommunicationsStandardFallback(filters, fetchStart, fetchLimit);
+            error: function(error) {
+                console.error("Error fetching communications with BCC/CC:", error);
+                // Fallback to standard method on error
+                fetchCommunicationsFallback(filters);
             }
         });
     }
 
-    // Fallback method using standard Frappe client
-    function fetchCommunicationsStandardFallback(filters, fetchStart, fetchLimit) {
+    function fetchCommunicationsFallback(filters) {
         const loadingIndicator = root_element.querySelector('#loading-indicator');
+        const inboxList = root_element.querySelector('#inbox-list');
         const noRecords = root_element.querySelector('#no-records');
 
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+
+        // Standard Frappe query as fallback
         frappe.call({
             method: 'frappe.client.get_list',
             args: {
                 doctype: 'Communication',
-                fields: [
-                    'name', 'subject', 'sender', 'sender_full_name', 'recipients',
-                    'creation', 'content', 'read_by_recipient', 'has_attachment',
-                    'reference_doctype', 'reference_name', 'sent_or_received',
-                    'status', 'email_account', 'custom_remark'
-                ],
                 filters: filters,
-                order_by: 'creation desc',
-                limit_start: fetchStart,
-                limit_page_length: fetchLimit
+                fields: [
+                    "name", "subject", "sender", "sender_full_name", "recipients",
+                    "creation", "content", "read_by_recipient", "has_attachment",
+                    "reference_doctype", "reference_name", "sent_or_received",
+                    "status", "email_account", "custom_remark"
+                ],
+                order_by: "creation desc",
+                limit_start: currentPage * pageSize,
+                limit_page_length: pageSize
             },
             callback: function(response) {
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
-
-                if (response.message && response.message.length > 0) {
+                
+                if (response.message) {
                     renderCommunications(response.message);
-
+                    
                     // Get total count for pagination
                     frappe.call({
                         method: 'frappe.client.get_count',
@@ -788,24 +740,23 @@
                             doctype: 'Communication',
                             filters: filters
                         },
-                        callback: function(count_response) {
-                            totalRecords = count_response.message || 0;
+                        callback: function(countResponse) {
+                            totalRecords = countResponse.message || 0;
                             updatePagination();
                         }
                     });
                 } else {
-                    if (noRecords) noRecords.style.display = 'block';
+                    renderCommunications([]);
                     totalRecords = 0;
                     updatePagination();
                 }
             },
-            error: function(err) {
-                console.error("Error fetching communications:", err);
+            error: function(error) {
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
-                if (noRecords) {
-                    noRecords.textContent = 'Error loading communications';
-                    noRecords.style.display = 'block';
-                }
+                console.error("Error fetching Communication documents:", error);
+                renderCommunications([]);
+                totalRecords = 0;
+                updatePagination();
             }
         });
     }

@@ -758,7 +758,7 @@ def get_available_invoice_balances(invoices):
 			sii.amount,
 			COALESCE(
 				(SELECT rate FROM `tabSales Taxes and Charges` 
-				 WHERE parent = sii.parent AND account_head LIKE '%VAT%' 
+				 WHERE parent = sii.parent AND account_head LIKE '%%VAT%%' 
 				 ORDER BY idx LIMIT 1), 0
 			) as tax_rate
 		FROM `tabSales Invoice Item` sii

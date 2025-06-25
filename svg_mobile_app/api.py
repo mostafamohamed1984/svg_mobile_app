@@ -1665,30 +1665,40 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
                     conditions.append("_assign LIKE %s")
                     values.append(value[1])
             elif key == "email_account":
-                if isinstance(value, list) and value[0] == "in":
+                if isinstance(value, list) and len(value) >= 2 and value[0] == "in":
                     # Filter out invalid email account names (display text, etc.)
                     valid_accounts = []
-                    for account in value[1]:
+                    account_list = value[1] if len(value) > 1 else []
+                    
+                    for account in account_list:
                         # Skip display text and invalid entries
                         if (account and 
+                            isinstance(account, str) and
                             not account.startswith("---") and 
                             not account.startswith("Personal") and
                             not account.startswith("Work") and
                             len(account.strip()) > 0):
                             
                             # Check if this is actually a valid email account
-                            if frappe.db.exists("Email Account", account):
-                                valid_accounts.append(account)
+                            try:
+                                if frappe.db.exists("Email Account", account):
+                                    valid_accounts.append(account)
+                            except:
+                                continue  # Skip invalid accounts
                     
                     if valid_accounts:
                         placeholders = ",".join(["%s"] * len(valid_accounts))
                         conditions.append(f"email_account IN ({placeholders})")
                         values.extend(valid_accounts)
-                else:
+                elif isinstance(value, str):
                     # Single email account
-                    if value and frappe.db.exists("Email Account", value):
-                        conditions.append("email_account = %s")
-                        values.append(value)
+                    if value and len(value.strip()) > 0:
+                        try:
+                            if frappe.db.exists("Email Account", value):
+                                conditions.append("email_account = %s")
+                                values.append(value)
+                        except:
+                            pass  # Skip invalid account
             elif key == "creation":
                 if isinstance(value, list) and len(value) == 3 and value[0] == "between":
                     conditions.append("creation BETWEEN %s AND %s")
@@ -1714,25 +1724,35 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
         values.append(f"%{user_email}%")
         
         # 4. Check email account ownership
-        user_email_accounts = frappe.get_all(
-            "User Email",
-            filters={"parent": current_user},
-            pluck="email_account"
-        )
+        try:
+            user_email_accounts = frappe.get_all(
+                "User Email",
+                filters={"parent": current_user},
+                pluck="email_account"
+            ) or []
+        except:
+            user_email_accounts = []
         
-        work_email_accounts = frappe.get_all(
-            "User Work Email Access",
-            filters={"parent": current_user},
-            pluck="email_account"
-        )
+        try:
+            work_email_accounts = frappe.get_all(
+                "User Work Email Access",
+                filters={"parent": current_user},
+                pluck="email_account"
+            ) or []
+        except:
+            work_email_accounts = []
         
         all_user_accounts = list(set(user_email_accounts + work_email_accounts))
         
         # Filter out invalid accounts and verify they exist
         valid_user_accounts = []
         for account in all_user_accounts:
-            if account and frappe.db.exists("Email Account", account):
-                valid_user_accounts.append(account)
+            if account and isinstance(account, str) and len(account.strip()) > 0:
+                try:
+                    if frappe.db.exists("Email Account", account):
+                        valid_user_accounts.append(account)
+                except:
+                    continue  # Skip invalid accounts
         
         if valid_user_accounts:
             placeholders = ",".join(["%s"] * len(valid_user_accounts))
@@ -1755,19 +1775,28 @@ def get_communications_with_bcc_cc(filters=None, limit_start=0, limit_page_lengt
             LIMIT %s OFFSET %s
         """
         
+        # Store the values before adding LIMIT/OFFSET for count query
+        count_values = values.copy()
         values.extend([limit_page_length, limit_start])
+        
+        # Debug logging for troubleshooting
+        frappe.logger().debug(f"SQL Query: {base_query}")
+        frappe.logger().debug(f"Values count: {len(values)}")
+        frappe.logger().debug(f"Conditions: {conditions}")
         
         # Execute the query
         communications = frappe.db.sql(base_query, values, as_dict=True)
         
-        # Get total count for pagination
+        # Get total count for pagination (use the same conditions but without LIMIT/OFFSET)
         count_query = f"""
             SELECT COUNT(*) as total
             FROM `tabCommunication`
-            WHERE {' AND '.join(conditions[:-1])}  -- Remove LIMIT/OFFSET conditions
+            WHERE {' AND '.join(conditions)}
         """
         
-        count_values = values[:-2]  # Remove LIMIT and OFFSET values
+        frappe.logger().debug(f"Count Query: {count_query}")
+        frappe.logger().debug(f"Count Values count: {len(count_values)}")
+        
         total_count = frappe.db.sql(count_query, count_values, as_dict=True)[0].total
         
         # Parse and enhance recipient information for better BCC/CC display

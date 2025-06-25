@@ -1829,6 +1829,8 @@ def parse_email_recipients(recipients_string, user_email):
     Parse the recipients string to identify if user is in TO, CC, or BCC
     This helps identify how the user received the email
     """
+    import re
+    
     if not recipients_string or not user_email:
         return {"user_type": "TO", "recipients": []}
     

@@ -38,9 +38,6 @@ class OrbitClaim(Document):
 		
 		# Update project-specific claim tracking if needed
 		self.update_project_claim_tracking()
-		
-		# Set status to Reconciled automatically
-		self.db_set("status", "Reconciled")
 	
 	def process_multiple_invoice_references(self):
 		"""Process claims with multiple invoice references"""

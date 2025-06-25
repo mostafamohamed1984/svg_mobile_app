@@ -13,17 +13,11 @@
   "party_account",
   "reference_invoice",
   "invoice_references",
-  "status",
   "column_break_udiq",
   "date",
   "for_project",
   "project_name",
   "project_references",
-  "mode_of_payment",
-  "due_date",
-  "cheque_number",
-  "bank_name",
-  "visa_number",
   "payment_details_section",
   "claim_amount",
   "tax_ratio",
@@ -101,54 +95,8 @@
    "read_only": 1
   },
   {
-   "allow_on_submit": 1,
-   "default": "Unreconciled",
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Status",
-   "options": "\nUnreconciled\nReconciled",
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_udiq",
    "fieldtype": "Column Break"
-  },
-  {
-   "allow_on_submit": 1,
-   "fieldname": "mode_of_payment",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Mode Of Payment",
-   "options": "Mode of Payment",
-   "reqd": 1
-  },
-  {
-   "depends_on": "eval:doc.mode_of_payment=='Cheque'",
-   "fieldname": "due_date",
-   "fieldtype": "Date",
-   "label": "Due Date",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Cheque'"
-  },
-  {
-   "depends_on": "eval:doc.mode_of_payment=='Cheque'",
-   "fieldname": "cheque_number",
-   "fieldtype": "Data",
-   "label": "Cheque Number",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Cheque'"
-  },
-  {
-   "depends_on": "eval:doc.mode_of_payment=='Cheque'",
-   "fieldname": "bank_name",
-   "fieldtype": "Data",
-   "label": "Bank Name",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Cheque'"
-  },
-  {
-   "depends_on": "eval:doc.mode_of_payment=='Visa'",
-   "fieldname": "visa_number",
-   "fieldtype": "Data",
-   "label": "Visa Number",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Visa'"
   },
   {
    "fieldname": "payment_details_section",

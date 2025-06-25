@@ -76,21 +76,6 @@ frappe.ui.form.on("Orbit Claim", {
 		}
 	},
 	
-	mode_of_payment: function(frm) {
-		if (frm.doc.mode_of_payment) {
-			// Clear fields based on mode of payment change
-			if (frm.doc.mode_of_payment !== 'Cheque') {
-				frm.set_value('due_date', '');
-				frm.set_value('cheque_number', '');
-				frm.set_value('bank_name', '');
-			}
-			
-			if (frm.doc.mode_of_payment !== 'Visa') {
-				frm.set_value('visa_number', '');
-			}
-		}
-	},
-	
 	reference_invoice: function(frm) {
 		// Update current balance when reference invoice is changed
 		if (frm.doc.reference_invoice && frm.doc.claim_items && frm.doc.claim_items.length > 0) {
@@ -1637,10 +1622,6 @@ function create_bulk_orbit_claim(frm, dialog) {
 
 				// Set orbit-specific fields that are different from project claim
 				set_value_quietly('payment_type', 'Orbital');
-				set_value_quietly('mode_of_payment', 'Bank Transfer Orbit (AED)');
-
-				// Set default status for orbit claims
-				set_value_quietly('status', 'Unreconciled');
 				
 				// Set default currency if not already set
 				if (!frm.doc.currency) {

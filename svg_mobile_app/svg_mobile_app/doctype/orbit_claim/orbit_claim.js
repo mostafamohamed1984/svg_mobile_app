@@ -515,7 +515,7 @@ function render_invoices_table(dialog, invoices_data) {
 				${__('Found')} ${invoices_data.length} ${__('outstanding invoices - all automatically selected')}
 			</div>
 			<div class="table-responsive">
-				<table class="table table-bordered invoices-table">
+				<table class="table table-bordered">
 					<thead>
 						<tr>
 							<th>${__('Invoice')}</th>
@@ -978,7 +978,7 @@ function update_items_preview(dialog) {
 					// Add the HTML to the dialog
 					dialog.fields_dict.items_preview_html.html(html);
 					
-					// Add style for input spinners and table responsiveness
+					// Add style for input spinners
 					dialog.$wrapper.find('head').append(`
 						<style>
 							/* Remove spinners from number inputs */
@@ -1002,41 +1002,6 @@ function update_items_preview(dialog) {
 								font-size: 0.85em;
 								margin-right: 3px;
 								margin-bottom: 3px;
-							}
-							/* Fix table responsiveness and column widths */
-							.modal-dialog {
-								max-width: 95% !important;
-								width: 95% !important;
-							}
-							.table-responsive {
-								overflow-x: auto;
-								-webkit-overflow-scrolling: touch;
-							}
-							.item-allocation-table,
-							.invoices-table {
-								min-width: 100%;
-								white-space: nowrap;
-							}
-							.item-allocation-table th,
-							.item-allocation-table td,
-							.invoices-table th,
-							.invoices-table td {
-								padding: 8px 12px;
-								min-width: 100px;
-							}
-							.item-allocation-table th:first-child,
-							.item-allocation-table td:first-child,
-							.invoices-table th:first-child,
-							.invoices-table td:first-child {
-								min-width: 150px;
-								white-space: normal;
-							}
-							.item-allocation-table .text-right,
-							.invoices-table .text-right {
-								min-width: 120px;
-							}
-							.item-amount-input {
-								min-width: 100px;
 							}
 						</style>
 					`);

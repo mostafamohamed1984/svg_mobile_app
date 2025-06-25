@@ -33,28 +33,6 @@ frappe.ui.form.on("Orbit Claim", {
 				show_email_dialog(frm);
 			}).addClass('btn-primary');
 		}
-		
-		// Set query filters for accounts
-		frm.set_query("receiving_account", function() {
-			return {
-				filters: {
-					company: frappe.defaults.get_user_default('company'),
-					is_group: 0,
-					account_type: ['in', ['Bank', 'Cash']]
-				}
-			};
-		});
-		
-		// Filter Tax Account based on company
-		frm.set_query("tax_account", function() {
-			return {
-				filters: {
-					company: frappe.defaults.get_user_default('company'),
-					is_group: 0,
-					account_type: "Tax"
-				}
-			};
-		});
 	},
 	
 	onload: function(frm) {
@@ -100,29 +78,7 @@ frappe.ui.form.on("Orbit Claim", {
 	
 	mode_of_payment: function(frm) {
 		if (frm.doc.mode_of_payment) {
-			// Fetch the Mode of Payment's accounts table
-			frappe.call({
-				method: 'frappe.client.get',
-				args: {
-					doctype: 'Mode of Payment',
-					name: frm.doc.mode_of_payment
-				},
-				callback: function(r) {
-					if (r.message && r.message.accounts && r.message.accounts.length > 0) {
-						// Since there's only one row, get the first account
-						const default_account = r.message.accounts[0].default_account;
-						if (default_account) {
-							frm.set_value('receiving_account', default_account);
-						}
-					}
-				}
-			});
-			
 			// Clear fields based on mode of payment change
-			if (frm.doc.mode_of_payment !== 'Bank Transfer Orbit (AED)') {
-				frm.set_value('reference_number', '');
-			}
-			
 			if (frm.doc.mode_of_payment !== 'Cheque') {
 				frm.set_value('due_date', '');
 				frm.set_value('cheque_number', '');

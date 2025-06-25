@@ -20,19 +20,15 @@
   "project_name",
   "project_references",
   "mode_of_payment",
-  "reference_number",
   "due_date",
   "cheque_number",
   "bank_name",
   "visa_number",
-  "receiving_account",
-  "tax_account",
   "payment_details_section",
   "claim_amount",
   "tax_ratio",
   "tax_amount",
   "column_break_pyea",
-  "paid_amount",
   "outstanding_amount",
   "invoiced_items_section",
   "claim_items",
@@ -127,13 +123,6 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.mode_of_payment=='Bank Transfer Orbit (AED)'",
-   "fieldname": "reference_number",
-   "fieldtype": "Data",
-   "label": "Reference Number",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Bank Transfer Orbit (AED)'"
-  },
-  {
    "depends_on": "eval:doc.mode_of_payment=='Cheque'",
    "fieldname": "due_date",
    "fieldtype": "Date",
@@ -162,20 +151,6 @@
    "mandatory_depends_on": "eval:doc.mode_of_payment=='Visa'"
   },
   {
-   "fieldname": "receiving_account",
-   "fieldtype": "Link",
-   "label": "Receiving Account",
-   "options": "Account",
-   "reqd": 1
-  },
-  {
-   "fieldname": "tax_account",
-   "fieldtype": "Link",
-   "label": "Tax Account",
-   "options": "Account",
-   "reqd": 1
-  },
-  {
    "fieldname": "payment_details_section",
    "fieldtype": "Section Break",
    "label": "Payment Details"
@@ -202,12 +177,6 @@
   {
    "fieldname": "column_break_pyea",
    "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "paid_amount",
-   "fieldtype": "Currency",
-   "label": "Paid Amount",
-   "read_only": 1
   },
   {
    "fieldname": "outstanding_amount",

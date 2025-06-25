@@ -1381,7 +1381,7 @@ def get_user_profile_data():
         }
 
 @frappe.whitelist(allow_guest=False)
-def get_communications_with_tags(filters=None, tag_filter=None, search_term=None, limit_start=0, limit_page_length=10, order_by='creation desc'):
+def get_communications_with_tags(filters=None, tag_filter=None, search_term=None, limit_start=0, limit_page_length=10, order_by='creation desc', date_filter_type=None, from_date=None, to_date=None, single_date=None):
     """
     Efficiently get communications with tag filtering and search functionality
     """
@@ -1409,7 +1409,21 @@ def get_communications_with_tags(filters=None, tag_filter=None, search_term=None
         # Start with base filters for Communication doctype
         communication_filters = filters.copy()
         
-        # Handle tag filtering first
+        # Handle date filtering
+        if date_filter_type == "range" and from_date and to_date:
+            # Add date range filter
+            communication_filters['creation'] = ['between', [from_date, to_date]]
+        elif date_filter_type == "single" and single_date:
+            # Add single date filter (full day)
+            communication_filters['creation'] = ['between', [single_date + ' 00:00:00', single_date + ' 23:59:59']]
+        elif from_date and not to_date:
+            # Only from date specified
+            communication_filters['creation'] = ['>=', from_date]
+        elif to_date and not from_date:
+            # Only to date specified
+            communication_filters['creation'] = ['<=', to_date + ' 23:59:59']
+        
+        # Handle tag filtering
         if tag_filter:
             # Get communications that have this specific tag
             tagged_communications = frappe.db.sql("""

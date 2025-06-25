@@ -1,7 +1,7 @@
 (function() {
     // Initialize variables
     let currentPage = 1;
-    const pageSize = 10;
+    let pageSize = 10; // Make this dynamic instead of const
     let totalRecords = 0;
     let currentFilter = "my_emails";
     let sentReceivedFilter = "all";
@@ -12,6 +12,12 @@
     let mailTags = [];
     let searchTerm = "";
     let allEmailAccounts = []; // Store all email accounts with access types
+    
+    // Date filter variables
+    let dateFilterType = "range"; // "range" or "single"
+    let fromDate = "";
+    let toDate = "";
+    let singleDate = "";
 
     // Wait for DOM to be ready
     if (typeof root_element === 'undefined') {
@@ -183,6 +189,80 @@
             });
         }
 
+        // Date filter event handlers
+        const dateFilterRadios = root_element.querySelectorAll('input[name="date-filter-type"]');
+        dateFilterRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                dateFilterType = this.value;
+                toggleDateControls();
+                currentPage = 1;
+                fetchCommunications();
+            });
+        });
+        
+        // Date input handlers
+        const fromDateInput = root_element.querySelector('#from-date');
+        const toDateInput = root_element.querySelector('#to-date');
+        const singleDateInput = root_element.querySelector('#single-date');
+        const clearDateBtn = root_element.querySelector('#clear-date-filter');
+        
+        if (fromDateInput) {
+            fromDateInput.addEventListener('change', function() {
+                fromDate = this.value;
+                currentPage = 1;
+                fetchCommunications();
+            });
+        }
+        
+        if (toDateInput) {
+            toDateInput.addEventListener('change', function() {
+                toDate = this.value;
+                currentPage = 1;
+                fetchCommunications();
+            });
+        }
+        
+        if (singleDateInput) {
+            singleDateInput.addEventListener('change', function() {
+                singleDate = this.value;
+                currentPage = 1;
+                fetchCommunications();
+            });
+        }
+        
+        if (clearDateBtn) {
+            clearDateBtn.addEventListener('click', function() {
+                // Clear all date inputs
+                if (fromDateInput) fromDateInput.value = '';
+                if (toDateInput) toDateInput.value = '';
+                if (singleDateInput) singleDateInput.value = '';
+                
+                // Clear date variables
+                fromDate = '';
+                toDate = '';
+                singleDate = '';
+                
+                currentPage = 1;
+                fetchCommunications();
+            });
+        }
+        
+        // Page size selection handlers
+        const pageSizeButtons = root_element.querySelectorAll('.btn-page-size');
+        pageSizeButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all buttons
+                pageSizeButtons.forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Update page size and reset to first page
+                pageSize = parseInt(this.getAttribute('data-size'));
+                currentPage = 1;
+                fetchCommunications();
+            });
+        });
+
         // After DOM is ready
         // Make sure email accounts dropdown is visible
         if (emailAccountsRow) {
@@ -190,6 +270,31 @@
         }
 
         // Initial data fetch will be called after loading user emails
+    }
+
+    function toggleDateControls() {
+        const fromDateControl = root_element.querySelector('#from-date-control');
+        const toDateControl = root_element.querySelector('#to-date-control');
+        const singleDateControl = root_element.querySelector('#single-date-control');
+        const clearDateControl = root_element.querySelector('#clear-date-control');
+        
+        if (dateFilterType === "range") {
+            if (fromDateControl) fromDateControl.style.display = "block";
+            if (toDateControl) toDateControl.style.display = "block";
+            if (singleDateControl) singleDateControl.style.display = "none";
+        } else {
+            if (fromDateControl) fromDateControl.style.display = "none";
+            if (toDateControl) toDateControl.style.display = "none";
+            if (singleDateControl) singleDateControl.style.display = "block";
+        }
+        
+        // Always show clear button
+        if (clearDateControl) clearDateControl.style.display = "block";
+    }
+
+    function hasDateFilters() {
+        return (dateFilterType === "range" && (fromDate || toDate)) || 
+               (dateFilterType === "single" && singleDate);
     }
 
     function loadUserEmails() {
@@ -200,32 +305,23 @@
                 if (r.message && r.message.status === "success") {
                     const data = r.message.data;
                     
-                    // Get personal emails (from User Email) and work emails from the API response
+                    // Get all emails from unified User Email table (now includes access types)
                     const personalEmails = data.personal_emails || [];
-                    const workEmails = data.work_emails || [];
                     const fallbackEmails = data.user_emails || [];
                     
                     // Combine all email accounts for the dropdown
                     const emailAccountsData = [];
                     
-                    // Add personal emails (from existing User Email child table)
+                    // Process all emails from unified User Email table
                     personalEmails.forEach(email => {
                         emailAccountsData.push({
                             name: email.account_name,
                             email_id: email.email_id,
-                            type: "personal",
-                            is_primary: email.is_primary,
-                            description: email.description
-                        });
-                    });
-                    
-                    // Add work emails (from new User Work Email Access child table)
-                    workEmails.forEach(email => {
-                        emailAccountsData.push({
-                            name: email.account_name,
-                            email_id: email.email_id,
-                            type: "work",
+                            type: email.type, // Now determined by access_type in API
                             access_type: email.access_type,
+                            granted_by: email.granted_by,
+                            granted_date: email.granted_date,
+                            is_primary: email.is_primary,
                             description: email.description
                         });
                     });
@@ -284,35 +380,36 @@
             emailAccountSelect.remove(1);
         }
 
-        // Group emails by type
-        const personalEmails = emailAccounts.filter(acc => acc.type === "personal");
-        const workEmails = emailAccounts.filter(acc => acc.type === "work");
+        // Group emails by access type
+        const fullAccessEmails = emailAccounts.filter(acc => (acc.access_type || "Full Access") === "Full Access");
+        const restrictedEmails = emailAccounts.filter(acc => acc.access_type && acc.access_type !== "Full Access");
         const fallbackEmails = emailAccounts.filter(acc => acc.type === "fallback");
 
-        // Add personal emails section
-        if (personalEmails.length > 0) {
-            // Add section header
-            const personalHeader = document.createElement('option');
-            personalHeader.disabled = true;
-            personalHeader.style.fontWeight = 'bold';
-            personalHeader.style.backgroundColor = '#f8f9fa';
-            personalHeader.textContent = '--- Personal Emails ---';
-            emailAccountSelect.appendChild(personalHeader);
+        // Add full access emails section (Personal emails)
+        if (fullAccessEmails.length > 0) {
+            // // Add section header
+            // const personalHeader = document.createElement('option');
+            // personalHeader.disabled = true;
+            // personalHeader.style.fontWeight = 'bold';
+            // personalHeader.style.backgroundColor = '#f8f9fa';
+            // personalHeader.textContent = '--- Email Accounts ---';
+            // emailAccountSelect.appendChild(personalHeader);
 
-            personalEmails.forEach(function(account) {
+            fullAccessEmails.forEach(function(account) {
                 const option = document.createElement('option');
                 option.value = account.name;
                 let displayText = account.email_id;
                 if (account.is_primary) {
                     displayText += " (Primary)";
                 }
+                displayText += " 🔓"; // Full access indicator
                 option.textContent = displayText;
                 emailAccountSelect.appendChild(option);
             });
         }
 
-        // Add work emails section
-        if (workEmails.length > 0) {
+        // Add restricted access emails section (Work emails)
+        if (restrictedEmails.length > 0) {
             // Add section header
             const workHeader = document.createElement('option');
             workHeader.disabled = true;
@@ -321,23 +418,21 @@
             workHeader.textContent = '--- Work Email Access ---';
             emailAccountSelect.appendChild(workHeader);
 
-            workEmails.forEach(function(account) {
+            restrictedEmails.forEach(function(account) {
                 const option = document.createElement('option');
                 option.value = account.name;
                 let displayText = account.email_id;
                 if (account.access_type) {
                     displayText += " (" + account.access_type + ")";
                     
-                    // Add visual indicator for read-only access
+                    // Add visual indicator for access level
                     if (account.access_type === "Read Only") {
                         displayText += " 🔒";
                     } else if (account.access_type === "Read & Send") {
                         displayText += " ✉️";
-                    } else if (account.access_type === "Full Access") {
-                        displayText += " 🔓";
                     }
                 }
-                if (account.description && account.description !== "Work Email Access") {
+                if (account.description && account.description !== "Email Account") {
                     displayText += " - " + account.description;
                 }
                 option.textContent = displayText;
@@ -535,10 +630,11 @@
         let fetchLimit = pageSize;
         let fetchStart = (currentPage - 1) * pageSize;
 
-        // Check if we need special handling for tag filtering or search
+        // Check if we need special handling for tag filtering, search, or date filtering
         const needsTagProcessing = (selectedMailTag !== "all") || (searchTerm && searchTerm.length > 0);
+        const needsDateProcessing = hasDateFilters();
 
-        if (needsTagProcessing) {
+        if (needsTagProcessing || needsDateProcessing) {
             // Use a custom method that handles tag filtering server-side for better performance
             frappe.call({
                 method: "svg_mobile_app.api.get_communications_with_tags",
@@ -548,7 +644,11 @@
                     search_term: searchTerm || null,
                     limit_start: fetchStart,
                     limit_page_length: fetchLimit,
-                    order_by: 'creation desc'
+                    order_by: 'creation desc',
+                    date_filter_type: dateFilterType,
+                    from_date: fromDate || null,
+                    to_date: toDate || null,
+                    single_date: singleDate || null
                 },
                 callback: function(response) {
                     if (loadingIndicator) loadingIndicator.style.display = 'none';

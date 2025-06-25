@@ -80,6 +80,49 @@
             </div>
         </div>
         
+        <!-- Date Filter Controls -->
+        <div class="row" style="margin-top: 10px;">
+            <div class="col-sm-3">
+                <div class="form-group">
+                    <label>Date Filter:</label>
+                    <div class="btn-group btn-group-sm" data-toggle="buttons">
+                        <label class="btn btn-default active" id="date-range-btn">
+                            <input type="radio" name="date-filter-type" value="range" checked> Range
+                        </label>
+                        <label class="btn btn-default" id="single-date-btn">
+                            <input type="radio" name="date-filter-type" value="single"> Single Day
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3" id="from-date-control">
+                <div class="form-group">
+                    <label for="from-date">From Date:</label>
+                    <input type="date" class="form-control" id="from-date">
+                </div>
+            </div>
+            <div class="col-sm-3" id="to-date-control">
+                <div class="form-group">
+                    <label for="to-date">To Date:</label>
+                    <input type="date" class="form-control" id="to-date">
+                </div>
+            </div>
+            <div class="col-sm-3" id="single-date-control" style="display: none;">
+                <div class="form-group">
+                    <label for="single-date">Date:</label>
+                    <input type="date" class="form-control" id="single-date">
+                </div>
+            </div>
+            <div class="col-sm-3" id="clear-date-control">
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn btn-default btn-sm form-control" id="clear-date-filter">
+                        <i class="fa fa-times"></i> Clear Dates
+                    </button>
+                </div>
+            </div>
+        </div>
+        
         <!-- Search Bar -->
         <div class="row" style="margin-top: 10px;">
             <div class="col-sm-12">
@@ -137,12 +180,23 @@
                 <span id="showing-records">Showing 1-10 of 0 records</span>
             </div>
             <div class="col-sm-6 text-right">
-                <button id="prev-page" class="btn btn-default btn-sm" disabled>
-                    <i class="fa fa-chevron-left"></i> Previous
-                </button>
-                <button id="next-page" class="btn btn-default btn-sm" disabled>
-                    Next <i class="fa fa-chevron-right"></i>
-                </button>
+                <!-- Page Size Options -->
+                <div class="btn-group" style="margin-right: 10px;">
+                    <button type="button" class="btn btn-default btn-sm btn-page-size active" data-size="10">10</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="20">20</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="50">50</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="100">100</button>
+                    <button type="button" class="btn btn-default btn-sm btn-page-size" data-size="2000">2000</button>
+                </div>
+                <!-- Navigation Buttons -->
+                <div class="btn-group">
+                    <button id="prev-page" class="btn btn-default btn-sm" disabled>
+                        <i class="fa fa-chevron-left"></i> Previous
+                    </button>
+                    <button id="next-page" class="btn btn-default btn-sm" disabled>
+                        Next <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

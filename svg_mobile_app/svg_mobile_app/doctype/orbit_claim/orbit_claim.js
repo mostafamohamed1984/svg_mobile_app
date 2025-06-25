@@ -1749,11 +1749,20 @@ function create_bulk_orbit_claim(frm, dialog) {
 					tax_ratio = taxable_item.tax_rate;
 				}
 				
+				// Calculate total outstanding amount from selected invoices (same logic as Project Claim)
+				let total_outstanding_amount = 0;
+				selected_invoices.forEach(inv => {
+					// Use the outstanding amount from the invoice data if available
+					total_outstanding_amount += flt(inv.outstanding || 0);
+				});
+				
+				console.log("Total outstanding amount from selected invoices:", total_outstanding_amount);
+				
 				// Set amounts
 				let total_claimable_amount = total_claim_amount;
 				set_value_quietly('claim_amount', total_claimable_amount);
 				set_value_quietly('claimable_amount', total_claimable_amount);
-				set_value_quietly('outstanding_amount', total_claimable_amount);  // Ensure outstanding_amount is set
+				set_value_quietly('outstanding_amount', total_outstanding_amount);  // Set to sum of all invoice outstanding amounts
 				set_value_quietly('tax_amount', total_tax_amount);
 				set_value_quietly('tax_ratio', tax_ratio);
 				set_value_quietly('being', being_text);

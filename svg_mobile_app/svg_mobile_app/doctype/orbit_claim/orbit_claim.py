@@ -19,7 +19,7 @@ class OrbitClaim(Document):
 		# Check if we have multiple invoices in the description
 		if self.being and "Reference Invoices:" in self.being:
 			self.process_multiple_invoice_references()
-			
+		
 		# Ensure all claim items have an invoice_reference
 		if self.claim_items:
 			for item in self.claim_items:
@@ -541,5 +541,5 @@ def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield,
 	for pc in project_contractors:
 		description = f"{pc.project_name} - {frappe.format(pc.total_outstanding, {'fieldtype': 'Currency'})} outstanding ({pc.invoice_count} invoices)"
 		result.append([pc.name, description])
-	
+				
 	return result

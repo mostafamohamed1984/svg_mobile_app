@@ -1118,11 +1118,10 @@ function update_items_preview(dialog) {
 											data-item="${item.item_code}"
 											data-idx="${idx}"
 											data-tax-rate="${tax_rate}"
-											value="${Math.round(item.claim_amount * 100) / 100}" 
+											value="${item.claim_amount.toFixed(2)}" 
 											min="0"
 											max="${item.available_balance}"
 											style="text-align: right;"
-											onchange="this.value = Math.round(parseFloat(this.value || 0) * 100) / 100"
 											onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 										>
 									</td>
@@ -1161,6 +1160,46 @@ function update_items_preview(dialog) {
 					// Add responsive CSS styles
 					html += `
 						<style>
+							/* Remove spinners from number inputs */
+							input.no-spinner::-webkit-outer-spin-button,
+							input.no-spinner::-webkit-inner-spin-button {
+								-webkit-appearance: none;
+								margin: 0;
+							}
+							input.no-spinner[type=number] {
+								-moz-appearance: textfield;
+							}
+							/* Style for selected invoices badges */
+							.selected-invoices-summary {
+								font-size: 0.9em;
+								max-height: 150px;
+								overflow-y: auto;
+								display: flex;
+								flex-wrap: wrap;
+							}
+							.selected-invoices-summary .badge {
+								font-size: 0.85em;
+								margin-right: 3px;
+								margin-bottom: 3px;
+							}
+							/* Ensure table responsiveness and prevent overflow */
+							.table-responsive {
+								overflow-x: auto;
+								max-width: 100%;
+							}
+							.item-allocation-table {
+								min-width: 100%;
+								white-space: nowrap;
+							}
+							.item-allocation-table th,
+							.item-allocation-table td {
+								padding: 8px 12px;
+								vertical-align: middle;
+							}
+							.item-allocation-table .item-amount-input {
+								width: 100px;
+								min-width: 80px;
+							}
 							/* Invoice selection table responsive design */
 							.invoice-table-container {
 								overflow-x: auto;

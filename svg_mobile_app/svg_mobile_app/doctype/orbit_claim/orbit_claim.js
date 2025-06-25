@@ -112,6 +112,7 @@ function show_bulk_invoice_dialog(frm) {
 	// Create a dialog to select multiple invoices
 	let dialog = new frappe.ui.Dialog({
 		title: __('Select Sales Invoices for Bulk Claim'),
+		size: 'extra-large', // Make dialog wider to accommodate tax columns
 		fields: [
 			{
 				fieldname: 'customer',
@@ -978,7 +979,7 @@ function update_items_preview(dialog) {
 					// Add the HTML to the dialog
 					dialog.fields_dict.items_preview_html.html(html);
 					
-					// Add style for input spinners
+					// Add style for input spinners and table layout
 					dialog.$wrapper.find('head').append(`
 						<style>
 							/* Remove spinners from number inputs */
@@ -1002,6 +1003,30 @@ function update_items_preview(dialog) {
 								font-size: 0.85em;
 								margin-right: 3px;
 								margin-bottom: 3px;
+							}
+							/* Fix table layout for tax columns */
+							.item-allocation-table {
+								min-width: 100%;
+								table-layout: auto;
+							}
+							.item-allocation-table th,
+							.item-allocation-table td {
+								white-space: nowrap;
+								padding: 8px 4px;
+								font-size: 12px;
+							}
+							.item-allocation-table th:first-child,
+							.item-allocation-table td:first-child {
+								min-width: 120px;
+								white-space: normal;
+							}
+							.item-allocation-table .text-right {
+								text-align: right !important;
+								min-width: 80px;
+							}
+							.table-responsive {
+								overflow-x: auto;
+								-webkit-overflow-scrolling: touch;
 							}
 						</style>
 					`);

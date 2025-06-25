@@ -266,6 +266,7 @@ function show_bulk_invoice_dialog(frm) {
 	// Create a dialog to select multiple invoices
 	let dialog = new frappe.ui.Dialog({
 		title: __('Select Sales Invoices for Bulk Claim'),
+		size: 'extra-large',
 		fields: [
 			{
 				fieldname: 'customer',

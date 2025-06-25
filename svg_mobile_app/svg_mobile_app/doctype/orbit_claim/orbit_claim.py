@@ -12,10 +12,14 @@ class OrbitClaim(Document):
 		self.validate_claim_items()
 	
 	def before_save(self):
+		# Set receiver based on current user if not already set
+		if not self.receiver:
+			self.set_receiver_from_user()
+		
 		# Check if we have multiple invoices in the description
 		if self.being and "Reference Invoices:" in self.being:
 			self.process_multiple_invoice_references()
-		
+			
 		# Ensure all claim items have an invoice_reference
 		if self.claim_items:
 			for item in self.claim_items:
@@ -303,6 +307,47 @@ class OrbitClaim(Document):
 			
 			# Set the current balance
 			item.current_balance = available_balance
+			
+		return {"status": "success"}
+	
+	def set_receiver_from_user(self):
+		"""Set the receiver field based on the current user's visual identity"""
+		# Get current user
+		current_user = frappe.session.user
+		
+		# Check if there's a visual identity for this user with identity_for = "Receiver"
+		visual_identity = frappe.db.get_value(
+			"visual Identity", 
+			{"user": current_user, "identity_for": "Receiver"},
+			"name"
+		)
+		
+		if visual_identity:
+			self.receiver = visual_identity
+		else:
+			# Use default value if no visual identity found for the current user
+			self.receiver = self.get_default_receiver()
+	
+	def get_default_receiver(self):
+		"""Get the default receiver value"""
+		# Check if "Mahmoud Said" exists as a visual identity
+		default_identity = frappe.db.get_value(
+			"visual Identity",
+			{"name1": "Mahmoud Said", "identity_for": "Receiver"},
+			"name"
+		)
+		
+		if not default_identity:
+			# Create a default visual identity if it doesn't exist
+			default_doc = frappe.new_doc("visual Identity")
+			default_doc.name1 = "Mahmoud Said"
+			default_doc.identity_for = "Receiver"
+			default_doc.type = "Text"
+			default_doc.text = "Mahmoud Said"
+			default_doc.insert(ignore_permissions=True)
+			default_identity = default_doc.name
+		
+		return default_identity
 	
 	def get_item_balance(self, item_code):
 		"""Get the original amount and already claimed amount for an item"""
@@ -705,14 +750,19 @@ def get_available_invoice_balances(invoices):
 			
 	frappe.logger().debug(f"Getting balances for invoices: {invoices}")
 	
-	# Get all items from these invoices
+	# Get all items from these invoices including tax information
 	items_data = frappe.db.sql("""
 		SELECT 
-			parent as invoice,
-			item_code,
-			amount
-		FROM `tabSales Invoice Item`
-		WHERE parent IN %s
+			sii.parent as invoice,
+			sii.item_code,
+			sii.amount,
+			COALESCE(
+				(SELECT rate FROM `tabSales Taxes and Charges` 
+				 WHERE parent = sii.parent AND account_head LIKE '%VAT%' 
+				 ORDER BY idx LIMIT 1), 0
+			) as tax_rate
+		FROM `tabSales Invoice Item` sii
+		WHERE sii.parent IN %s
 	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
 	
 	# Group items by invoice
@@ -739,7 +789,8 @@ def get_available_invoice_balances(invoices):
 				'original_amount': amount,
 				'claimed_amount': 0,
 				'available_balance': amount,
-				'item_proportion': 0
+				'item_proportion': 0,
+				'tax_rate': flt(item.tax_rate or 0)
 			}
 	
 	# Simplified approach: Use direct tracking of item claims by invoice reference
@@ -793,4 +844,47 @@ def get_available_invoice_balances(invoices):
 					flt(item.amount) / invoice_total if invoice_total > 0 else 0
 				)
 				
+	return result
+
+@frappe.whitelist()
+def get_project_contractors_with_outstanding_invoices(doctype, txt, searchfield, start, page_len, filters):
+	"""Get project contractors that have outstanding invoices for the specified customer"""
+	customer = filters.get('customer')
+	if not customer:
+		return []
+	
+	# Get project contractors with outstanding invoices for this customer
+	project_contractors = frappe.db.sql("""
+		SELECT DISTINCT 
+			pc.name,
+			pc.project_name,
+			pc.customer_name,
+			COUNT(si.name) as invoice_count,
+			SUM(si.outstanding_amount) as total_outstanding
+		FROM 
+			`tabProject Contractors` pc
+			JOIN `tabSales Invoice` si ON si.custom_for_project = pc.name
+		WHERE 
+			si.customer = %s
+			AND si.docstatus = 1
+			AND si.status IN ('Partly Paid', 'Unpaid', 'Overdue')
+			AND si.outstanding_amount > 0
+			AND (pc.name LIKE %s OR pc.project_name LIKE %s OR pc.customer_name LIKE %s)
+		GROUP BY 
+			pc.name, pc.project_name, pc.customer_name
+		ORDER BY 
+			total_outstanding DESC
+		LIMIT %s OFFSET %s
+	""", [
+		customer,
+		f"%{txt}%", f"%{txt}%", f"%{txt}%",
+		page_len, start
+	], as_dict=True)
+	
+	# Format the results for the link field
+	result = []
+	for pc in project_contractors:
+		description = f"{pc.project_name} - {frappe.format(pc.total_outstanding, {'fieldtype': 'Currency'})} outstanding ({pc.invoice_count} invoices)"
+		result.append([pc.name, description])
+	
 	return result

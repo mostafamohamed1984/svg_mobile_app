@@ -27,6 +27,13 @@ frappe.ui.form.on("Orbit Claim", {
 			}).addClass('btn-primary');
 		}
 		
+		// Add email button if doc is submitted
+		if (frm.doc.docstatus === 1) {
+			frm.add_custom_button(__('Send Receipt Email'), function() {
+				show_email_dialog(frm);
+			}).addClass('btn-primary');
+		}
+		
 		// Set query filters for accounts
 		frm.set_query("receiving_account", function() {
 			return {
@@ -48,6 +55,47 @@ frappe.ui.form.on("Orbit Claim", {
 				}
 			};
 		});
+	},
+	
+	onload: function(frm) {
+		// Check if it's a new document and receiver is not set
+		if (frm.doc.__islocal && !frm.doc.receiver) {
+			// Check if current user has a visual identity
+			frappe.call({
+				method: "frappe.client.get_value",
+				args: {
+					doctype: "visual Identity",
+					filters: {
+						user: frappe.session.user,
+						identity_for: "Receiver"
+					},
+					fieldname: "name"
+				},
+				callback: function(r) {
+					if (r.message && r.message.name) {
+						frm.set_value('receiver', r.message.name);
+					} else {
+						// Get default receiver
+						frappe.call({
+							method: "frappe.client.get_value",
+							args: {
+								doctype: "visual Identity",
+								filters: {
+									name1: "Mahmoud Said",
+									identity_for: "Receiver"
+								},
+								fieldname: "name"
+							},
+							callback: function(r) {
+								if (r.message && r.message.name) {
+									frm.set_value('receiver', r.message.name);
+								}
+							}
+						});
+					}
+				}
+			});
+		}
 	},
 	
 	mode_of_payment: function(frm) {
@@ -149,9 +197,20 @@ function show_bulk_invoice_dialog(frm) {
 				fieldtype: 'Link',
 				options: 'Project Contractors',
 				get_query: function() {
+					let customer = dialog.get_value('customer');
+					if (!customer) {
+						return {
+							filters: {
+								'name': 'no-match' // Return no results if no customer selected
+							}
+						};
+					}
+					
+					// Return a query that filters project contractors based on having outstanding invoices
 					return {
+						query: 'svg_mobile_app.svg_mobile_app.doctype.orbit_claim.orbit_claim.get_project_contractors_with_outstanding_invoices',
 						filters: {
-							'customer': dialog.get_value('customer')
+							'customer': customer
 						}
 					};
 				},
@@ -202,6 +261,20 @@ function show_bulk_invoice_dialog(frm) {
 				label: __('Total Claim Amount'),
 				fieldtype: 'Currency',
 				read_only: 1
+			},
+			{
+				fieldname: 'include_taxes',
+				label: __('Include Taxes'),
+				fieldtype: 'Check',
+				default: 1,
+				onchange: function() {
+					// Refresh the items preview when tax inclusion setting changes
+					if (dialog.selected_invoices && dialog.selected_invoices.size > 0) {
+						update_items_preview(dialog);
+					}
+					// Update total calculations
+					update_total_claim_amount(dialog);
+				}
 			}
 		],
 		primary_action_label: __('Create Orbit Claim'),
@@ -279,6 +352,7 @@ function show_bulk_invoice_dialog(frm) {
 		const invoice = $(this).data('invoice');
 		const item = $(this).data('item');
 		const idx = $(this).data('idx');
+		const tax_rate = parseFloat($(this).data('tax-rate')) || 0;
 		const value = parseFloat($(this).val()) || 0;
 		console.log(`Amount for item ${item} in invoice ${invoice} changed to ${value}`);
 		
@@ -288,6 +362,14 @@ function show_bulk_invoice_dialog(frm) {
 			// Update the amount directly and recalculate ratios internally (hidden from user)
 			invoice_items[idx].claim_amount = value;
 			
+			// Calculate and update tax amount based on include_taxes setting
+			const include_taxes = dialog.get_value('include_taxes');
+			const tax_amount = include_taxes ? flt(value * tax_rate / 100) : 0;
+			invoice_items[idx].tax_amount = tax_amount;
+			
+			// Update the tax amount display
+			$(this).closest('tr').find('.tax-amount').text(format_currency(tax_amount));
+			
 			// Save the claim amount in our persistent storage
 			if (!dialog.saved_claim_amounts[invoice]) {
 				dialog.saved_claim_amounts[invoice] = {};
@@ -296,15 +378,21 @@ function show_bulk_invoice_dialog(frm) {
 			
 			// Recalculate the total for this invoice
 			let invoice_total = 0;
+			let tax_total = 0;
 			invoice_items.forEach(item => {
 				invoice_total += flt(item.claim_amount || 0);
+				tax_total += flt(item.tax_amount || 0);
 			});
 			
-			// Update the invoice's claim amount
+			// Update the invoice's claim amount and tax amount
 			let invoice_index = dialog.invoices_data.findIndex(inv => inv.invoice === invoice);
 			if (invoice_index !== -1) {
 				dialog.invoices_data[invoice_index].claim_amount = invoice_total;
+				dialog.invoices_data[invoice_index].tax_amount = tax_total;
 			}
+			
+			// Update invoice table totals
+			update_invoice_table_totals(dialog, invoice, invoice_total, tax_total);
 			
 			// Recalculate ratios internally based on the new amounts
 			if (invoice_total > 0) {
@@ -533,11 +621,16 @@ function render_invoices_table(dialog, invoices_data) {
 function update_total_claim_amount(dialog) {
 	console.log("Updating total claim amount");
 	let total = 0;
+	let total_tax = 0;
+	const include_taxes = dialog.get_value('include_taxes');
 	
 	// Sum up claim amounts for selected invoices in current view
 	dialog.invoices_data.forEach(inv => {
 		if (inv.select) {
 			total += flt(inv.claim_amount);
+			if (include_taxes) {
+				total_tax += flt(inv.tax_amount || 0);
+			}
 		}
 	});
 	
@@ -561,6 +654,20 @@ function update_total_claim_amount(dialog) {
 	
 	console.log("Total claim amount:", total);
 	dialog.set_value('total_claim_amount', total);
+	
+	// Store total tax amount for later use
+	dialog.total_tax_amount = total_tax;
+}
+
+function update_invoice_table_totals(dialog, invoice, total_amount, total_tax) {
+	// Update the invoice table totals if they exist in the UI
+	let invoice_row = dialog.$wrapper.find(`tr[data-invoice="${invoice}"]`);
+	if (invoice_row.length > 0) {
+		invoice_row.find('.claim-amount-total').text(format_currency(total_amount));
+		if (dialog.get_value('include_taxes')) {
+			invoice_row.find('.tax-amount-total').text(format_currency(total_tax));
+		}
+	}
 }
 
 function update_items_preview(dialog) {
@@ -722,15 +829,20 @@ function update_items_preview(dialog) {
 					}
 					
 					// Update available balance for each item
+					const include_taxes = dialog.get_value('include_taxes');
+					
 					all_items.forEach(item => {
 						if (balance_data[item.invoice] && balance_data[item.invoice][item.item_code]) {
 							item.original_amount = balance_data[item.invoice][item.item_code].original_amount;
 							item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
 							item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
+							// Add tax rate from balance data
+							item.tax_rate = balance_data[item.invoice][item.item_code].tax_rate || 0;
 							console.log(`Item ${item.item_code} from invoice ${item.invoice}: Original=${item.original_amount}, Claimed=${item.claimed_amount}, Available=${item.available_balance}`);  // Debug log
 						} else {
 							// Default to original amount if no balance data
 							item.available_balance = item.amount;
+							item.tax_rate = 0;
 							console.log(`No balance data for item ${item.item_code} from invoice ${item.invoice}, using original amount: ${item.amount}`);  // Debug log
 						}
 						
@@ -742,6 +854,9 @@ function update_items_preview(dialog) {
 						} else {
 							item.claim_amount = 0;
 						}
+						
+						// Calculate tax amount based on claim amount, tax rate, and include_taxes setting
+						item.tax_amount = include_taxes ? flt(item.claim_amount * item.tax_rate / 100) : 0;
 					});
 					
 					// Group items by invoice
@@ -826,6 +941,8 @@ function update_items_preview(dialog) {
 												<th>${__('Original Amount')}</th>
 												<th>${__('Available Balance')}</th>
 												<th>${__('Claim Amount')}</th>
+												${include_taxes ? `<th>${__('Tax Rate')}</th>` : ''}
+												${include_taxes ? `<th>${__('Tax Amount')}</th>` : ''}
 											</tr>
 										</thead>
 										<tbody>
@@ -843,6 +960,10 @@ function update_items_preview(dialog) {
 							}
 							total_amount += flt(item.claim_amount);
 							
+							let tax_rate = item.tax_rate || 0;
+							// Calculate tax amount based on include_taxes setting
+							let tax_amount = include_taxes ? flt(item.claim_amount * tax_rate / 100) : 0;
+							
 							html += `
 								<tr data-item="${item.item_code}" data-invoice="${inv.invoice}" data-idx="${idx}">
 									<td>${item.item_name || item.item_code}</td>
@@ -855,6 +976,7 @@ function update_items_preview(dialog) {
 											data-invoice="${inv.invoice}"
 											data-item="${item.item_code}"
 											data-idx="${idx}"
+											data-tax-rate="${tax_rate}"
 											value="${item.claim_amount.toFixed(2)}" 
 											min="0"
 											max="${item.available_balance}"
@@ -862,15 +984,30 @@ function update_items_preview(dialog) {
 											onkeypress="return (event.charCode >= 48 && event.charCode <= 57) || event.charCode === 46"
 										>
 									</td>
+									${include_taxes ? `<td class="text-right">${tax_rate}%</td>` : ''}
+									${include_taxes ? `<td class="text-right tax-amount" data-invoice="${inv.invoice}" data-item="${item.item_code}">${format_currency(tax_amount)}</td>` : ''}
 								</tr>
 							`;
 						});
 						
+						// Calculate total tax for this invoice
+						let total_tax = 0;
+						invoice_items.forEach(item => {
+							if (item.available_balance > 0) {
+								let tax_rate = item.tax_rate || 0;
+								let tax_amount = include_taxes ? flt(item.claim_amount * tax_rate / 100) : 0;
+								total_tax += tax_amount;
+							}
+						});
+						
 						// Add a totals row
+						let colspan = include_taxes ? 5 : 3;
 						html += `
 							<tr class="table-active">
-								<td colspan="3" class="text-right"><strong>${__('Total')}:</strong></td>
+								<td colspan="${colspan}" class="text-right"><strong>${__('Total')}:</strong></td>
 								<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_amount)}</td>
+								${include_taxes ? '<td></td>' : ''}
+								${include_taxes ? `<td class="text-right">${format_currency(total_tax)}</td>` : ''}
 							</tr>
 						`;
 						
@@ -1298,35 +1435,37 @@ function create_bulk_orbit_claim(frm, dialog) {
 		
 		console.log("Project contractor names collected:", project_contractor_names);
 		
-		// Process each invoice
-		selected_invoices.forEach(inv => {
-			let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
-			if (invoice_items.length === 0) return;
+					// Process each invoice
+			const include_taxes = dialog.get_value('include_taxes');
 			
-			let claim_amount = flt(inv.claim_amount);
-			
-			// Always add the project_contractor to unique_projects, regardless of whether it matches the project
-			if (inv.project_contractor) {
-				unique_projects.add(inv.project_contractor);
-				console.log(`Added project_contractor ${inv.project_contractor} from invoice ${inv.invoice}`);
-			}
-			
-			// Also add the project if it exists and differs from the project_contractor
-			if (inv.project) {
-				unique_projects.add(inv.project);
-				console.log(`Added project ${inv.project} from invoice ${inv.invoice}`);
-			}
+			selected_invoices.forEach(inv => {
+				let invoice_items = dialog.items_by_invoice[inv.invoice] || [];
+				if (invoice_items.length === 0) return;
+				
+				let claim_amount = flt(inv.claim_amount);
+				
+				// Always add the project_contractor to unique_projects, regardless of whether it matches the project
+				if (inv.project_contractor) {
+					unique_projects.add(inv.project_contractor);
+					console.log(`Added project_contractor ${inv.project_contractor} from invoice ${inv.invoice}`);
+				}
+				
+				// Also add the project if it exists and differs from the project_contractor
+				if (inv.project) {
+					unique_projects.add(inv.project);
+					console.log(`Added project ${inv.project} from invoice ${inv.invoice}`);
+				}
 
-			// Store reference for description
-			references.push({
-				invoice: inv.invoice,
-				amount: claim_amount,
-				date: inv.invoice_date,
-				due_date: inv.due_date,
-				project: inv.project,
-				project_contractor: inv.project_contractor || '',
-				status: inv.status
-			});
+				// Store reference for description
+				references.push({
+					invoice: inv.invoice,
+					amount: claim_amount,
+					date: inv.invoice_date,
+					due_date: inv.due_date,
+					project: inv.project,
+					project_contractor: inv.project_contractor || '',
+					status: inv.status
+				});
 			
 			// Process items from each invoice
 			if (dialog.saved_claim_amounts[inv.invoice]) {
@@ -1339,30 +1478,37 @@ function create_bulk_orbit_claim(frm, dialog) {
 					saved_total += flt(amount);
 				});
 				
-				// Process each item with its edited amount
-				invoice_items.forEach(item => {
-					const item_code = item.item_code;
-					if (!item_code || !savedAmounts[item_code]) return;
+									// Process each item with its edited amount
+					invoice_items.forEach(item => {
+						const item_code = item.item_code;
+						if (!item_code || !savedAmounts[item_code]) return;
+						
+						const amount = flt(savedAmounts[item_code]);
+						if (amount <= 0) return;
+						
+						// Get the tax rate and calculate tax amount based on include_taxes setting
+						let tax_rate = flt(item.tax_rate || 0);
+						const include_taxes = dialog.get_value('include_taxes');
+						let tax_amount = include_taxes ? flt(amount * tax_rate / 100) : 0;
 					
-					const amount = flt(savedAmounts[item_code]);
-					if (amount <= 0) return;
-				
-				// Add to total
-					total_claim_amount += amount;
-				
-					// Create claim item
-					claim_items.push({
-						item: item_code,
-						item_name: item.item_name,
-						amount: amount,
-						ratio: saved_total > 0 ? (amount / saved_total * 100) : 0,
-						invoice_reference: inv.invoice,
-						income_account: item.income_account || item.custom_default_earning_account,
-						unearned_account: item.income_account || '',
-						revenue_account: item.custom_default_earning_account || '',
-						project_contractor_reference: inv.project_contractor || '',
-						current_balance: item.available_balance || amount
-					});
+					// Add to total
+						total_claim_amount += amount;
+					
+						// Create claim item
+						claim_items.push({
+							item: item_code,
+							item_name: item.item_name,
+							amount: amount,
+							ratio: saved_total > 0 ? (amount / saved_total * 100) : 0,
+							invoice_reference: inv.invoice,
+							income_account: item.income_account || item.custom_default_earning_account,
+							unearned_account: item.income_account || '',
+							revenue_account: item.custom_default_earning_account || '',
+							project_contractor_reference: inv.project_contractor || '',
+							current_balance: item.available_balance || amount,
+							tax_rate: tax_rate,
+							tax_amount: tax_amount
+						});
 					
 					// Track for the being field
 					items_by_invoice_for_being[inv.invoice].push({
@@ -1571,11 +1717,28 @@ function create_bulk_orbit_claim(frm, dialog) {
 				// Set all multi-invoice references
 				set_value_quietly('invoice_references', references.map(ref => ref.invoice).join(", "));
 				
+				// Calculate tax amounts
+				let total_tax_amount = 0;
+				filtered_claim_items.forEach(item => {
+					total_tax_amount += flt(item.tax_amount || 0);
+				});
+				
+				// Calculate tax ratio from the first taxable item
+				let tax_ratio = 0;
+				// Always get tax ratio from taxable items (tax_rate > 0), not from first item
+				let taxable_item = filtered_claim_items.find(item => flt(item.tax_rate || 0) > 0);
+				if (taxable_item) {
+					// Use the tax rate from taxable items (should be 5% from UAE VAT template)
+					tax_ratio = taxable_item.tax_rate;
+				}
+				
 				// Set amounts
 				let total_claimable_amount = total_claim_amount;
 				set_value_quietly('claim_amount', total_claimable_amount);
 				set_value_quietly('claimable_amount', total_claimable_amount);
 				set_value_quietly('outstanding_amount', total_claimable_amount);  // Ensure outstanding_amount is set
+				set_value_quietly('tax_amount', total_tax_amount);
+				set_value_quietly('tax_ratio', tax_ratio);
 				set_value_quietly('being', being_text);
 				set_value_quietly('reference_invoice', primary_invoice);
 				set_value_quietly('invoice_references', invoice_names.join(", "));
@@ -1610,12 +1773,6 @@ function create_bulk_orbit_claim(frm, dialog) {
 				// Update form and close dialog
 				frm.refresh_fields();
 				
-				// Keep save disabled to prevent auto-save validation
-				// Leave it to the user to click save when ready
-				
-				// Force a complete refresh before showing alert
-				frm.refresh();
-				
 				// Re-enable save after everything is done
 				setTimeout(function() {
 					frm.enable_save();
@@ -1629,4 +1786,126 @@ function create_bulk_orbit_claim(frm, dialog) {
 			}
 		});
 	}
+}
+
+// Email dialog function
+window.show_email_dialog = function(frm) {
+	if (!frm.doc.customer || !frm.doc.customer_name) {
+		frappe.msgprint(__('Customer information is required to send email.'));
+		return;
+	}
+	
+	// Get customer email
+	frappe.call({
+		method: "frappe.client.get_value",
+		args: {
+			doctype: "Customer",
+			filters: {"name": frm.doc.customer},
+			fieldname: ["email_id", "customer_primary_contact"]
+		},
+		callback: function(r) {
+			let customer_email = '';
+			
+			if (r.message && r.message.email_id) {
+				customer_email = r.message.email_id;
+			} else if (r.message && r.message.customer_primary_contact) {
+				// Get email from primary contact
+				frappe.call({
+					method: "frappe.client.get_value",
+					args: {
+						doctype: "Contact",
+						filters: {"name": r.message.customer_primary_contact},
+						fieldname: "email_id"
+					},
+					callback: function(contact_r) {
+						if (contact_r.message && contact_r.message.email_id) {
+							customer_email = contact_r.message.email_id;
+						}
+						show_email_compose_dialog(frm, customer_email);
+					}
+				});
+				return;
+			}
+			
+			show_email_compose_dialog(frm, customer_email);
+		}
+	});
+};
+
+function show_email_compose_dialog(frm, customer_email) {
+	let dialog = new frappe.ui.Dialog({
+		title: __('Send Orbit Claim Receipt'),
+		fields: [
+			{
+				fieldname: 'to_email',
+				label: __('To Email'),
+				fieldtype: 'Data',
+				reqd: 1,
+				default: customer_email
+			},
+			{
+				fieldname: 'cc_email',
+				label: __('CC Email'),
+				fieldtype: 'Data'
+			},
+			{
+				fieldname: 'subject',
+				label: __('Subject'),
+				fieldtype: 'Data',
+				reqd: 1,
+				default: __('Orbit Claim Receipt - {0}', [frm.doc.name])
+			},
+			{
+				fieldname: 'message',
+				label: __('Message'),
+				fieldtype: 'Text Editor',
+				reqd: 1,
+				default: `
+					<p>Dear ${frm.doc.customer_name || frm.doc.customer},</p>
+					<p>Please find attached the Orbit Claim receipt for your reference.</p>
+					<p><strong>Claim Details:</strong></p>
+					<ul>
+						<li>Claim Number: ${frm.doc.name}</li>
+						<li>Claim Amount: ${frappe.format(frm.doc.claim_amount, {fieldtype: 'Currency'})}</li>
+						<li>Date: ${frm.doc.date}</li>
+						<li>Reference Invoice: ${frm.doc.reference_invoice}</li>
+					</ul>
+					<p>Thank you for your business.</p>
+					<p>Best regards,<br>SVG Team</p>
+				`
+			}
+		],
+		primary_action_label: __('Send Email'),
+		primary_action: function() {
+			let values = dialog.get_values();
+			if (!values) return;
+			
+			// Send email with PDF attachment
+			frappe.call({
+				method: "frappe.core.doctype.communication.email.make",
+				args: {
+					recipients: values.to_email,
+					cc: values.cc_email || '',
+					subject: values.subject,
+					content: values.message,
+					doctype: 'Orbit Claim',
+					name: frm.doc.name,
+					send_email: 1,
+					print_format: 'Orbit Claim',
+					attach_document_print: 1
+				},
+				callback: function(r) {
+					if (!r.exc) {
+						frappe.show_alert({
+							message: __('Email sent successfully'),
+							indicator: 'green'
+						}, 3);
+						dialog.hide();
+					}
+				}
+			});
+		}
+	});
+	
+	dialog.show();
 }

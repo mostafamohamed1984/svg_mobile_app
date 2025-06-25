@@ -650,89 +650,127 @@
             "communication_medium": "Email"
         };
 
-        // Add email account filter if selected
-        const emailAccountFilter = root_element.querySelector('#email-account-filter');
-        if (emailAccountFilter && emailAccountFilter.value && emailAccountFilter.value !== 'all') {
-            // Get all selected values from multi-select
-            const selectedAccounts = Array.from(emailAccountFilter.selectedOptions).map(option => option.value);
-            if (selectedAccounts.length > 0 && !selectedAccounts.includes('all')) {
-                filters["email_account"] = ["in", selectedAccounts];
-            }
-        }
-
-        // Add date range filter if selected
-        const dateFromFilter = root_element.querySelector('#date-from-filter');
-        const dateToFilter = root_element.querySelector('#date-to-filter');
-        if (dateFromFilter && dateToFilter && dateFromFilter.value && dateToFilter.value) {
-            filters["creation"] = ["between", [dateFromFilter.value + " 00:00:00", dateToFilter.value + " 23:59:59"]];
-        }
-
-        // Try enhanced BCC/CC method first
-        frappe.call({
-            method: 'svg_mobile_app.api.get_communications_with_bcc_cc',
-            args: {
-                filters: JSON.stringify(filters),
-                limit_start: currentPage * pageSize,
-                limit_page_length: pageSize,
-                user_email: frappe.session.user_email,
-                current_user: frappe.session.user
-            },
-            callback: function(response) {
-                if (loadingIndicator) loadingIndicator.style.display = 'none';
-                
-                if (response.message && !response.message.fallback_needed) {
-                    // Enhanced method succeeded
-                    const data = response.message;
-                    totalRecords = data.total_count || 0;
-                    renderCommunications(data.communications || []);
-                    updatePagination();
-                    
-                    if (data.message) {
-                        console.log("BCC/CC Enhanced:", data.message);
+        // Apply view filter
+        if (currentFilter === "assigned_to_me") {
+            filters["_assign"] = ["like", "%" + frappe.session.user + "%"];
+        } else if (currentFilter === "unread") {
+            filters["read_by_recipient"] = 0;
+        } else if (currentFilter === "read") {
+            filters["read_by_recipient"] = 1;
+        } else if (currentFilter === "my_emails") {
+            // For "My Email Accounts" view, we need to filter by the user's email accounts
+            if (selectedEmailAccount !== "all") {
+                // If specific account selected
+                filters["email_account"] = selectedEmailAccount;
+            } else if (userEmails && userEmails.length > 0) {
+                // If "All Email Accounts" selected, filter by all user's email accounts
+                // Use "in" operator which is supported by Frappe
+                // Get all email account names from the dropdown
+                const emailAccountSelect = root_element.querySelector('#email-account-filter');
+                if (emailAccountSelect && emailAccountSelect.options.length > 1) {
+                    const accountNames = [];
+                    // Skip the first "All Email Accounts" option
+                    for (let i = 1; i < emailAccountSelect.options.length; i++) {
+                        accountNames.push(emailAccountSelect.options[i].value);
                     }
-                } else {
-                    // Enhanced method failed, fallback to standard method
-                    console.log("Falling back to standard method due to:", response.message?.error || "Unknown error");
-                    fetchCommunicationsFallback(filters);
+                    if (accountNames.length > 0) {
+                        filters["email_account"] = ["in", accountNames];
+                    }
                 }
-            },
-            error: function(error) {
-                console.error("Error fetching communications with BCC/CC:", error);
-                // Fallback to standard method on error
-                fetchCommunicationsFallback(filters);
             }
-        });
+        }
+        
+        // Apply "Assigned To" filter independently, unless "Assigned to Me" is selected
+        if (currentFilter !== "assigned_to_me" && selectedAssignedUser && selectedAssignedUser.trim() !== "") {
+            filters["_assign"] = ["like", "%" + selectedAssignedUser + "%"];
+        }
+        // For "all" view, we don't add any additional filters - rely on permissions
+
+        // Apply sent/received filter
+        if (sentReceivedFilter !== "all") {
+            filters["sent_or_received"] = sentReceivedFilter;
+        }
+
+        // Apply status filter
+        if (statusFilter !== "all") {
+            filters["status"] = statusFilter;
+        }
+
+        // Use standard pagination for better performance
+        let fetchLimit = pageSize;
+        let fetchStart = (currentPage - 1) * pageSize;
+
+        // Check if we need special handling for tag filtering, search, or date filtering
+        const needsTagProcessing = (selectedMailTag !== "all") || (searchTerm && searchTerm.length > 0);
+        const needsDateProcessing = hasDateFilters();
+
+        if (needsTagProcessing || needsDateProcessing) {
+            // Use a custom method that handles tag filtering server-side for better performance
+            frappe.call({
+                method: "svg_mobile_app.api.get_communications_with_tags",
+                args: {
+                    filters: filters,
+                    tag_filter: selectedMailTag !== "all" ? selectedMailTag : null,
+                    search_term: searchTerm || null,
+                    limit_start: fetchStart,
+                    limit_page_length: fetchLimit,
+                    order_by: 'creation desc',
+                    date_filter_type: dateFilterType,
+                    from_date: fromDate || null,
+                    to_date: toDate || null,
+                    single_date: singleDate || null
+                },
+                callback: function(response) {
+                    if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+                    if (response.message && response.message.data && response.message.data.length > 0) {
+                        totalRecords = response.message.total_count || 0;
+                        renderCommunications(response.message.data);
+                        updatePagination();
+                    } else {
+                        if (noRecords) noRecords.style.display = 'block';
+                        totalRecords = 0;
+                        updatePagination();
+                    }
+                },
+                error: function(err) {
+                    console.error("Error fetching communications with tags:", err);
+                    // Fall back to standard method
+                    fetchCommunicationsStandard(filters, fetchStart, fetchLimit);
+                }
+            });
+        } else {
+            // Use standard method for better performance when no tag processing needed
+            fetchCommunicationsStandard(filters, fetchStart, fetchLimit);
+        }
     }
 
-    function fetchCommunicationsFallback(filters) {
+    // Standard communication fetching without tag processing
+    function fetchCommunicationsStandard(filters, fetchStart, fetchLimit) {
         const loadingIndicator = root_element.querySelector('#loading-indicator');
-        const inboxList = root_element.querySelector('#inbox-list');
         const noRecords = root_element.querySelector('#no-records');
 
-        if (loadingIndicator) loadingIndicator.style.display = 'block';
-
-        // Standard Frappe query as fallback
         frappe.call({
             method: 'frappe.client.get_list',
             args: {
                 doctype: 'Communication',
-                filters: filters,
                 fields: [
-                    "name", "subject", "sender", "sender_full_name", "recipients",
-                    "creation", "content", "read_by_recipient", "has_attachment",
-                    "reference_doctype", "reference_name", "sent_or_received",
-                    "status", "email_account", "custom_remark"
+                    'name', 'subject', 'sender', 'sender_full_name', 'recipients',
+                    'creation', 'content', 'read_by_recipient', 'has_attachment',
+                    'reference_doctype', 'reference_name', 'sent_or_received',
+                    'status', 'email_account', 'custom_remark'
                 ],
-                order_by: "creation desc",
-                limit_start: currentPage * pageSize,
-                limit_page_length: pageSize
+                filters: filters,
+                order_by: 'creation desc',
+                limit_start: fetchStart,
+                limit_page_length: fetchLimit
             },
             callback: function(response) {
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
-                
-                if (response.message) {
+
+                if (response.message && response.message.length > 0) {
                     renderCommunications(response.message);
-                    
+
                     // Get total count for pagination
                     frappe.call({
                         method: 'frappe.client.get_count',
@@ -740,23 +778,24 @@
                             doctype: 'Communication',
                             filters: filters
                         },
-                        callback: function(countResponse) {
-                            totalRecords = countResponse.message || 0;
+                        callback: function(count_response) {
+                            totalRecords = count_response.message || 0;
                             updatePagination();
                         }
                     });
                 } else {
-                    renderCommunications([]);
+                    if (noRecords) noRecords.style.display = 'block';
                     totalRecords = 0;
                     updatePagination();
                 }
             },
-            error: function(error) {
+            error: function(err) {
+                console.error("Error fetching communications:", err);
                 if (loadingIndicator) loadingIndicator.style.display = 'none';
-                console.error("Error fetching Communication documents:", error);
-                renderCommunications([]);
-                totalRecords = 0;
-                updatePagination();
+                if (noRecords) {
+                    noRecords.textContent = 'Error loading communications';
+                    noRecords.style.display = 'block';
+                }
             }
         });
     }
@@ -798,18 +837,6 @@
                 }
             }
 
-            // Add BCC/CC indicator if available
-            let recipientTypeIndicator = '';
-            if (comm.recipient_type && comm.recipient_type !== 'TO') {
-                recipientTypeIndicator = `<span class="label label-warning" style="margin-left: 5px; font-size: 10px;">${comm.recipient_type}</span>`;
-            }
-
-            // Enhanced sender display with recipient type info
-            let senderDisplay = comm.sender_full_name || comm.sender;
-            if (comm.parsed_recipients && comm.parsed_recipients.total_recipients > 1) {
-                senderDisplay += ` <span class="text-muted">(+${comm.parsed_recipients.total_recipients - 1} others)</span>`;
-            }
-
             // Create the row content
             row.innerHTML = `
                 <div class="row">
@@ -818,12 +845,11 @@
                             ${statusIndicator}
                             ${highlightedSubject}
                             ${comm.sent_or_received === 'Sent' ? '<span class="text-muted">(Sent)</span>' : ''}
-                            ${recipientTypeIndicator}
                         </div>
                     </div>
                     <div class="col-sm-3">
                         <div class="inbox-item-sender" title="${comm.sender_full_name || comm.sender}">
-                            ${senderDisplay}
+                            ${comm.sender_full_name || comm.sender}
                             ${emailIndicator}
                         </div>
                     </div>
@@ -914,9 +940,6 @@
                     // Get tags for this communication
                     const tags = await getCommunicationTags(doc.name);
 
-                    // Parse recipient information for BCC/CC display
-                    const recipientInfo = parse_email_recipients(doc.recipients || '', frappe.session.user_email);
-
                     // Create dialog
                     const dialog = new frappe.ui.Dialog({
                         title: __("Email: {0}", [doc.subject || "No Subject"]),
@@ -944,19 +967,23 @@
                         content.querySelector('.email-direction').textContent = doc.sent_or_received || "Unknown";
                         content.querySelector('.email-account').textContent = doc.email_account || "Not Specified";
 
-                        // Show BCC/CC information if available
-                        const ccBccInfo = content.querySelector('.email-cc-bcc-info');
-                        if (recipientInfo && (recipientInfo.user_type !== 'TO' || recipientInfo.total_recipients > 1)) {
-                            ccBccInfo.style.display = 'block';
-                            content.querySelector('.email-recipient-type').textContent = recipientInfo.user_type || 'TO';
-                            content.querySelector('.email-total-recipients').textContent = recipientInfo.total_recipients || 1;
+                        // Add tag information (now handling multiple tags from Table MultiSelect)
+                        if (tags && tags.length > 0) {
+                            const tagLabels = tags.map(tagName => {
+                                const tag = mailTags.find(t => t.name === tagName);
+                                const displayName = tag ? tag.tag_name || tagName : tagName;
+                                const tagColor = tag && tag.color ? tag.color : '#6c757d'; // Default gray color
+                                return `<span class="label" style="background-color: ${tagColor}; color: white; border: 1px solid ${tagColor};">${displayName}</span>`;
+                            });
+
+                            // Add tags to meta section
+                            const metaDiv = content.querySelector('.email-meta');
+                            const tagDiv = document.createElement('div');
+                            tagDiv.innerHTML = `<strong>Tags:</strong> <span class="email-tags">${tagLabels.join(' ')}</span>`;
+                            metaDiv.appendChild(tagDiv);
                         }
 
-                        // Set email body
-                        const emailBody = content.querySelector('.email-body');
-                        if (emailBody) {
-                            emailBody.innerHTML = doc.content || "No content available";
-                        }
+                        content.querySelector('.email-body').innerHTML = doc.content || "No content available";
 
                         // Handle attachments
                         const attachmentsList = content.querySelector('.attachments-list');
@@ -975,43 +1002,39 @@
                                     },
                                     callback: function(files_response) {
                                         if (files_response.message && files_response.message.length > 0) {
-                                            const attachmentsHtml = files_response.message.map(file => 
-                                                `<div class="attachment-item">
-                                                    <a href="${file.file_url}" target="_blank">
-                                                        <i class="fa fa-paperclip"></i> ${file.file_name}
-                                                    </a>
-                                                </div>`
-                                            ).join('');
-                                            attachmentsList.innerHTML = attachmentsHtml;
+                                            files_response.message.forEach(function(file) {
+                                                const attachmentItem = document.createElement('a');
+                                                attachmentItem.className = 'attachment-item';
+                                                attachmentItem.href = file.file_url;
+                                                attachmentItem.target = '_blank';
+                                                attachmentItem.innerHTML = `
+                                                    <i class="fa fa-paperclip"></i>
+                                                    ${file.file_name}
+                                                `;
+                                                attachmentsList.appendChild(attachmentItem);
+                                            });
                                         } else {
-                                            attachmentsList.innerHTML = '<p class="text-muted">No attachments found</p>';
+                                            content.querySelector('.email-attachments').style.display = 'none';
                                         }
                                     }
                                 });
                             } else {
-                                attachmentsList.innerHTML = '<p class="text-muted">No attachments</p>';
+                                content.querySelector('.email-attachments').style.display = 'none';
                             }
                         }
 
-                        // Add tags display if available
-                        if (tags && tags.length > 0) {
-                            const tagsHtml = tags.map(tagName => {
-                                const tag = mailTags.find(t => t.name === tagName);
-                                const displayName = tag ? tag.tag_name || tagName : tagName;
-                                const tagColor = tag && tag.color ? tag.color : '#6c757d';
-                                return `<span class="label" style="background-color: ${tagColor}; color: white; margin-right: 5px;">${displayName}</span>`;
-                            }).join('');
-                            
-                            const tagsSection = document.createElement('div');
-                            tagsSection.innerHTML = `<div style="margin-top: 15px;"><strong>Tags:</strong><br>${tagsHtml}</div>`;
-                            content.querySelector('.email-body').appendChild(tagsSection);
-                        }
-
-                        // Set the content in the dialog
-                        dialog.fields_dict.email_content.$wrapper.html(content.innerHTML);
+                        // Set dialog content
+                        dialog.fields_dict.email_content.$wrapper.html(content);
                     }
 
+                    // Show the dialog
                     dialog.show();
+
+                    // Add buttons
+                    dialog.set_secondary_action(__("Print"), function() {
+                        let print_content = dialog.$wrapper.find('.email-popup-container').clone().get(0);
+                        frappe.ui.print.report(print_content, doc.subject);
+                    });
 
                     dialog.add_custom_action(__("Open Document"), function() {
                         dialog.hide();
@@ -1041,63 +1064,6 @@
                 frappe.msgprint(__("Could not load email details"));
             }
         });
-    }
-
-    // Helper function to parse email recipients (client-side version)
-    function parse_email_recipients(recipients_string, user_email) {
-        if (!recipients_string || !user_email) {
-            return {"user_type": "TO", "recipients": [], "total_recipients": 0};
-        }
-        
-        // Split recipients by common delimiters
-        let recipients = [];
-        for (let delimiter of [',', ';', '\n']) {
-            if (recipients_string.includes(delimiter)) {
-                recipients = recipients_string.split(delimiter).map(r => r.trim());
-                break;
-            }
-        }
-        
-        if (recipients.length === 0) {
-            recipients = [recipients_string.trim()];
-        }
-        
-        // Clean up email addresses and find user position
-        let clean_recipients = [];
-        let user_position = null;
-        
-        recipients.forEach((recipient, i) => {
-            // Extract email from "Name <email>" format
-            let email_match = recipient.match(/<([^>]+)>/);
-            let email = email_match ? email_match[1] : recipient.trim();
-            
-            clean_recipients.push({
-                "original": recipient,
-                "email": email,
-                "position": i
-            });
-            
-            if (email.toLowerCase() === user_email.toLowerCase()) {
-                user_position = i;
-            }
-        });
-        
-        // Determine recipient type based on position
-        let user_type = "TO";
-        if (user_position !== null) {
-            if (user_position === 0) {
-                user_type = "TO";
-            } else if (user_position > 0) {
-                user_type = "CC/BCC";
-            }
-        }
-        
-        return {
-            "user_type": user_type,
-            "recipients": clean_recipients,
-            "user_position": user_position,
-            "total_recipients": clean_recipients.length
-        };
     }
 
     function updatePagination() {
@@ -1190,6 +1156,6 @@
             console.error("Error opening compose dialog:", error);
             frappe.msgprint("Error opening email composer. Please try again.");
         }
-         }
+    }
 
 })();

@@ -112,6 +112,7 @@ function show_bulk_invoice_dialog(frm) {
 	// Create a dialog to select multiple invoices
 	let dialog = new frappe.ui.Dialog({
 		title: __('Select Sales Invoices for Bulk Claim'),
+		size: 'extra-large',
 		fields: [
 			{
 				fieldname: 'customer',
@@ -514,18 +515,18 @@ function render_invoices_table(dialog, invoices_data) {
 			<div class="alert alert-info my-2">
 				${__('Found')} ${invoices_data.length} ${__('outstanding invoices - all automatically selected')}
 			</div>
-			<div class="table-responsive">
-				<table class="table table-bordered">
+			<div class="table-responsive invoice-table-container">
+				<table class="table table-bordered invoice-selection-table">
 					<thead>
 						<tr>
-							<th>${__('Invoice')}</th>
-							<th>${__('Date')}</th>
-							<th>${__('Project')}</th>
-							<th>${__('Status')}</th>
-							<th>${__('Due Date')}</th>
-							<th>${__('Total')}</th>
-							<th>${__('Outstanding')}</th>
-							<th>${__('Claimable')}</th>
+							<th class="invoice-col">${__('Invoice')}</th>
+							<th class="date-col d-none d-md-table-cell">${__('Date')}</th>
+							<th class="project-col d-none d-lg-table-cell">${__('Project')}</th>
+							<th class="status-col d-none d-sm-table-cell">${__('Status')}</th>
+							<th class="due-date-col d-none d-xl-table-cell">${__('Due Date')}</th>
+							<th class="total-col d-none d-md-table-cell">${__('Total')}</th>
+							<th class="outstanding-col">${__('Outstanding')}</th>
+							<th class="claimable-col">${__('Claimable')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -534,14 +535,14 @@ function render_invoices_table(dialog, invoices_data) {
 	invoices_data.forEach((inv, index) => {
 		html += `
 			<tr>
-				<td>${inv.invoice}</td>
-				<td>${inv.invoice_date}</td>
-				<td>${inv.project || ''}</td>
-				<td>${inv.status}</td>
-				<td>${inv.due_date || ''}</td>
-				<td class="text-right">${format_currency(inv.total)}</td>
-				<td class="text-right">${format_currency(inv.outstanding)}</td>
-				<td class="text-right">${format_currency(inv.claimable_amount)}</td>
+				<td class="invoice-col">${inv.invoice}</td>
+				<td class="date-col d-none d-md-table-cell">${inv.invoice_date}</td>
+				<td class="project-col d-none d-lg-table-cell">${inv.project || ''}</td>
+				<td class="status-col d-none d-sm-table-cell">${inv.status}</td>
+				<td class="due-date-col d-none d-xl-table-cell">${inv.due_date || ''}</td>
+				<td class="total-col d-none d-md-table-cell text-right">${format_currency(inv.total)}</td>
+				<td class="outstanding-col text-right">${format_currency(inv.outstanding)}</td>
+				<td class="claimable-col text-right">${format_currency(inv.claimable_amount)}</td>
 			</tr>
 		`;
 	});
@@ -549,6 +550,12 @@ function render_invoices_table(dialog, invoices_data) {
 	html += `
 					</tbody>
 				</table>
+			</div>
+			<div class="d-block d-md-none">
+				<small class="text-muted">
+					<i class="fa fa-info-circle"></i> 
+					${__('Some columns are hidden on smaller screens. Use landscape mode or larger screen for full details.')}
+				</small>
 			</div>
 		</div>
 	`;
@@ -942,12 +949,12 @@ function update_items_preview(dialog) {
 						});
 						
 						// Add a totals row
-						let colspan = include_taxes ? 5 : 3;
+						let colspan = include_taxes ? 3 : 3;
 						html += `
 							<tr class="table-active">
 								<td colspan="${colspan}" class="text-right"><strong>${__('Total')}:</strong></td>
 								<td class="amount-total" data-invoice="${inv.invoice}">${format_currency(total_amount)}</td>
-								${include_taxes ? '<td></td>' : ''}
+								${include_taxes ? `<td class="text-right"></td>` : ''}
 								${include_taxes ? `<td class="text-right">${format_currency(total_tax)}</td>` : ''}
 							</tr>
 						`;
@@ -978,7 +985,7 @@ function update_items_preview(dialog) {
 					// Add the HTML to the dialog
 					dialog.fields_dict.items_preview_html.html(html);
 					
-					// Add style for input spinners
+					// Add style for input spinners and table responsiveness
 					dialog.$wrapper.find('head').append(`
 						<style>
 							/* Remove spinners from number inputs */
@@ -1002,6 +1009,79 @@ function update_items_preview(dialog) {
 								font-size: 0.85em;
 								margin-right: 3px;
 								margin-bottom: 3px;
+							}
+							/* Ensure table responsiveness and prevent overflow */
+							.table-responsive {
+								overflow-x: auto;
+								max-width: 100%;
+							}
+							.item-allocation-table {
+								min-width: 100%;
+								white-space: nowrap;
+							}
+							.item-allocation-table th,
+							.item-allocation-table td {
+								padding: 8px 12px;
+								vertical-align: middle;
+							}
+							.item-allocation-table .item-amount-input {
+								width: 100px;
+								min-width: 80px;
+							}
+							/* Invoice selection table responsive design */
+							.invoice-table-container {
+								overflow-x: auto;
+								-webkit-overflow-scrolling: touch;
+							}
+							.invoice-selection-table {
+								min-width: 600px;
+								font-size: 0.9em;
+							}
+							.invoice-selection-table th,
+							.invoice-selection-table td {
+								padding: 8px 6px;
+								vertical-align: middle;
+								white-space: nowrap;
+							}
+							.invoice-selection-table .invoice-col {
+								min-width: 120px;
+								font-weight: 500;
+							}
+							.invoice-selection-table .date-col {
+								min-width: 90px;
+							}
+							.invoice-selection-table .project-col {
+								min-width: 100px;
+								max-width: 150px;
+								overflow: hidden;
+								text-overflow: ellipsis;
+							}
+							.invoice-selection-table .status-col {
+								min-width: 80px;
+							}
+							.invoice-selection-table .due-date-col {
+								min-width: 90px;
+							}
+							.invoice-selection-table .total-col,
+							.invoice-selection-table .outstanding-col,
+							.invoice-selection-table .claimable-col {
+								min-width: 100px;
+								text-align: right;
+							}
+							/* Better scrollbar styling */
+							.invoice-table-container::-webkit-scrollbar {
+								height: 8px;
+							}
+							.invoice-table-container::-webkit-scrollbar-track {
+								background: #f1f1f1;
+								border-radius: 4px;
+							}
+							.invoice-table-container::-webkit-scrollbar-thumb {
+								background: #c1c1c1;
+								border-radius: 4px;
+							}
+							.invoice-table-container::-webkit-scrollbar-thumb:hover {
+								background: #a8a8a8;
 							}
 						</style>
 					`);

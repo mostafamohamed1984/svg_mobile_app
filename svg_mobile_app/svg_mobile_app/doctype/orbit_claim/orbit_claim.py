@@ -185,10 +185,8 @@ class OrbitClaim(Document):
 	
 	def validate_claim_amount(self):
 		"""Validate that claim amount does not exceed outstanding amount"""
-		if flt(self.claim_amount) > flt(self.outstanding_amount):
-			frappe.throw(f"Claim Amount ({self.claim_amount}) cannot exceed Outstanding Amount ({self.outstanding_amount})")
-		
-		# Ensure that outstanding_amount is properly set from claimable_amount if it exists
+		# Skip financial validation for Orbit Claim as it's view-only
+		# Just ensure outstanding_amount is properly set from claimable_amount if it exists
 		if hasattr(self, 'claimable_amount') and self.claimable_amount and not self.outstanding_amount:
 			self.outstanding_amount = self.claimable_amount
 	
@@ -204,16 +202,16 @@ class OrbitClaim(Document):
 			total_amount += flt(item.amount)
 			total_ratio += flt(item.ratio)
 			
-			# Validate against current balance
-			if flt(item.amount) > flt(item.current_balance):
-				frappe.throw(f"Amount for {item.item} ({item.amount}) exceeds available balance ({item.current_balance})")
+			# Skip balance validation for Orbit Claim as it's view-only
+			# No need to validate against current balance
 		
-		# Allow small rounding difference (0.01)
+		# Allow small rounding difference (0.01) - only validate total consistency
 		if flt(total_amount, 2) > flt(self.claim_amount, 2):
 			frappe.throw(f"Total allocated amount ({total_amount}) exceeds claim amount ({self.claim_amount})")
 			
-		if flt(total_ratio, 2) > 100:
-			frappe.throw(f"Total ratio ({total_ratio:.2f}%) exceeds 100%")
+		# Skip ratio validation for Orbit Claim as it's view-only
+		# if flt(total_ratio, 2) > 100:
+		# 	frappe.throw(f"Total ratio ({total_ratio:.2f}%) exceeds 100%")
 	
 	@frappe.whitelist()
 	def update_claim_items_balance(self):
@@ -255,55 +253,22 @@ class OrbitClaim(Document):
 				item_total_map[item.item_code] = 0
 			item_total_map[item.item_code] += flt(item.amount)
 		
-		# Get all claims that have been submitted for these items, except this one
-		previous_claims = frappe.db.sql("""
-			SELECT 
-				ci.invoice_reference as invoice,
-				ci.item, 
-				SUM(ci.amount) as claimed_amount
-			FROM 
-				`tabClaim Items` ci
-				JOIN `tabOrbit Claim` pc ON ci.parent = pc.name
-			WHERE 
-				ci.invoice_reference IN %s
-				AND pc.docstatus = 1
-				AND pc.name != %s
-			GROUP BY 
-				ci.invoice_reference, ci.item
-		""", [
-			tuple(invoices) if len(invoices) > 1 else tuple(invoices + ['']),
-			self.name or ""
-		], as_dict=True)
-		
-		# Create a map of claimed amounts by invoice and item
-		claimed_map = {}
-		for claim in previous_claims:
-			invoice = claim.invoice
-			item_code = claim.item
-			if invoice not in claimed_map:
-				claimed_map[invoice] = {}
-			claimed_map[invoice][item_code] = flt(claim.claimed_amount)
-		
-		# Calculate available balance for each item in our claim
+		# For Orbit Claim (view-only), don't consider previous claims
+		# Always set current balance to the original amount since we don't affect financial data
 		for item in self.claim_items:
 			invoice_ref = getattr(item, 'invoice_reference', None)
 			item_code = item.item
 			
 			if invoice_ref and invoice_ref in item_invoice_map and item_code in item_invoice_map[invoice_ref]:
-				# We have a specific invoice reference, calculate based on that
+				# Use the original amount from the specific invoice
 				original_amount = item_invoice_map[invoice_ref][item_code]
-				claimed_amount = claimed_map.get(invoice_ref, {}).get(item_code, 0)
-				available_balance = max(0, original_amount - claimed_amount)
-				frappe.logger().debug(f"Item {item_code} in invoice {invoice_ref}: original={original_amount}, claimed={claimed_amount}, available={available_balance}")
+				item.current_balance = original_amount
+				frappe.logger().debug(f"Item {item_code} in invoice {invoice_ref}: original={original_amount}, available={original_amount} (view-only)")
 			else:
-				# No specific invoice reference, calculate across all invoices
+				# Use the total amount across all invoices
 				original_amount = item_total_map.get(item_code, 0)
-				claimed_amount = sum(inv_map.get(item_code, 0) for inv_map in claimed_map.values())
-				available_balance = max(0, original_amount - claimed_amount)
-				frappe.logger().debug(f"Item {item_code} (global): original={original_amount}, claimed={claimed_amount}, available={available_balance}")
-			
-			# Set the current balance
-			item.current_balance = available_balance
+				item.current_balance = original_amount
+				frappe.logger().debug(f"Item {item_code} (global): original={original_amount}, available={original_amount} (view-only)")
 			
 		return {"status": "success"}
 	
@@ -374,140 +339,7 @@ class OrbitClaim(Document):
 		
 		return original_amount, claimed_amount
 
-	def update_invoice_outstanding_amounts(self, invoices):
-		"""Update outstanding amounts for all invoices based on claim amounts"""
-		if not invoices or not self.claim_items:
-			return
-			
-		# Parse the being field to extract invoice-specific claim amounts
-		import re
-		
-		# Map to track claim amounts per invoice
-		invoice_claim_amounts = {}
-		
-		# Initialize with zero
-		for invoice in invoices:
-			invoice_claim_amounts[invoice] = 0
-		
-		# Parse the being field to extract invoice-specific amounts
-		if self.being:
-			lines = self.being.split('\n')
-			current_invoice = None
-			
-			for line in lines:
-				# Check for invoice line pattern like "- ACC-SINV-2025-00024 (Unpaid, PRO-00020, Due: 2025-04-28)"
-				invoice_match = re.search(r'- ([\w\d-]+)', line)
-				if invoice_match:
-					current_invoice = invoice_match.group(1).strip()
-					frappe.logger().debug(f"Found invoice reference: {current_invoice}")
-				
-				# Check for total claimed line pattern like "Total Claimed: د.إ 70,000.00 of د.إ 70,000.00 claimable"
-				if current_invoice and 'Total Claimed:' in line:
-					amount_match = re.search(r'Total Claimed: [^0-9]*([0-9,.]+)', line)
-					if amount_match:
-						amount_text = amount_match.group(1).replace(',', '')
-						try:
-							claim_amount = float(amount_text)
-							invoice_claim_amounts[current_invoice] = claim_amount
-							frappe.logger().debug(f"Parsed claim amount for {current_invoice}: {claim_amount}")
-						except (ValueError, KeyError) as e:
-							frappe.logger().error(f"Error parsing claim amount for {current_invoice}: {e}")
-							pass  # Ignore if we can't parse the amount
-		
-		# Log what we found from parsing
-		frappe.logger().debug(f"Parsed claim amounts from being: {invoice_claim_amounts}")
-		
-		# If we couldn't parse the being field, try to extract from claim items by invoice
-		if sum(invoice_claim_amounts.values()) == 0 and self.claim_items:
-			# Get the item-invoice mapping by checking the "being" text for item details under each invoice
-			item_invoice_map = {}
-			current_invoice = None
-			
-			if self.being:
-				lines = self.being.split('\n')
-				for line in lines:
-					invoice_match = re.search(r'- ([\w\d-]+)', line)
-					if invoice_match:
-						current_invoice = invoice_match.group(1).strip()
-						continue
-						
-					# Look for item lines under an invoice like "• اتعاب مناقصة (اتعاب مناقصة): د.إ 30,000.00 (42.9%)"
-					if current_invoice and '•' in line:
-						item_match = re.search(r'•\s+(.*?)\s+\((.*?)\):', line)
-						if item_match:
-							item_name = item_match.group(1).strip()
-							item_code = item_match.group(2).strip()
-							
-							# Find this item in claim_items
-							for item in self.claim_items:
-								if item.item == item_code:
-									# Create mapping
-									if item.item not in item_invoice_map:
-										item_invoice_map[item.item] = {}
-									
-									# Find the amount for this item in this invoice from the being field
-									amount_match = re.search(r':\s+[^0-9]*([0-9,.]+)', line)
-									if amount_match:
-										amount_text = amount_match.group(1).replace(',', '')
-										try:
-											item_amount = float(amount_text)
-											item_invoice_map[item.item][current_invoice] = item_amount
-											# Add to invoice total
-											invoice_claim_amounts[current_invoice] += item_amount
-										except ValueError:
-											pass
-			
-			# If we still couldn't determine specific amounts, use the total claim amount and distribute evenly
-			if sum(invoice_claim_amounts.values()) == 0 and len(invoices) > 0:
-				even_share = flt(self.claim_amount) / len(invoices)
-				for invoice in invoices:
-					invoice_claim_amounts[invoice] = even_share
-		
-		# Ensure we're not trying to reduce any invoice by more than our total claim amount
-		total_reductions = sum(invoice_claim_amounts.values())
-		if total_reductions > flt(self.claim_amount):
-			# Scale down proportionally
-			scale_factor = flt(self.claim_amount) / total_reductions
-			for invoice in invoice_claim_amounts:
-				invoice_claim_amounts[invoice] *= scale_factor
-				
-		# IMPORTANT: Double-check the math is correct before proceeding
-		frappe.logger().info(f"Final claim amounts: {invoice_claim_amounts}")
-		frappe.logger().info(f"Total claim amounts: {sum(invoice_claim_amounts.values())}")
-		frappe.logger().info(f"Document claim amount: {flt(self.claim_amount)}")
-		
-		# Update each invoice's outstanding amount
-		for invoice, claim_amount in invoice_claim_amounts.items():
-			if claim_amount > 0 and frappe.db.exists("Sales Invoice", invoice):
-				# Get current outstanding amount
-				current_outstanding = frappe.db.get_value("Sales Invoice", invoice, "outstanding_amount") or 0
-				
-				# CRITICAL FIX: Always subtract the claim amount, never add
-				# Make sure the amount is treated as positive for reduction
-				claim_reduction = abs(claim_amount)
-				
-				# Calculate new outstanding amount (ensure it doesn't go below zero)
-				new_outstanding = max(0, current_outstanding - claim_reduction)
-				
-				# Verify the calculation before updating
-				frappe.logger().info(f"Invoice {invoice}: {current_outstanding} - {claim_reduction} = {new_outstanding}")
-				
-				# Update the invoice only if the calculation is reasonable
-				if new_outstanding <= current_outstanding:
-					frappe.db.set_value("Sales Invoice", invoice, "outstanding_amount", new_outstanding)
-					
-					# Log the update
-					frappe.logger().info(f"Updated invoice {invoice} outstanding amount: {current_outstanding} -> {new_outstanding} (claimed {claim_amount})")
-					
-					# Update the Sales Invoice's status if needed
-					if new_outstanding == 0:
-						frappe.db.set_value("Sales Invoice", invoice, "status", "Paid")
-					elif new_outstanding < flt(frappe.db.get_value("Sales Invoice", invoice, "grand_total")):
-						frappe.db.set_value("Sales Invoice", invoice, "status", "Partly Paid")
-				else:
-					# Something is wrong with the calculation, log an error
-					frappe.logger().error(f"Invalid calculation for invoice {invoice}: {current_outstanding} -> {new_outstanding}")
-					frappe.throw(f"Invalid outstanding amount calculation for invoice {invoice}. Please check the logs.")
+	# Removed update_invoice_outstanding_amounts method - Orbit Claim is view-only and should not affect financial data
 
 	def get_items_from_invoices(self, invoices):
 		"""Get items from multiple invoices for bulk claim creation"""
@@ -649,42 +481,9 @@ def get_available_invoice_balances(invoices):
 				'tax_rate': flt(item.tax_rate or 0)
 			}
 	
-	# Simplified approach: Use direct tracking of item claims by invoice reference
-	claims_sql = """
-		SELECT 
-			ci.invoice_reference as invoice,
-			ci.item, 
-			SUM(ci.amount) as claimed_amount
-		FROM 
-			`tabClaim Items` ci
-			JOIN `tabOrbit Claim` pc ON ci.parent = pc.name
-		WHERE 
-			pc.docstatus = 1
-			AND ci.invoice_reference IN %s
-		GROUP BY 
-			ci.invoice_reference, ci.item
-	"""
-	
-	all_claims = frappe.db.sql(claims_sql, [
-		tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])
-	], as_dict=True)
-	
-	# Process claims by invoice and item
-	for claim in all_claims:
-		invoice = claim.invoice
-		item = claim.item
-		claimed_amount = flt(claim.claimed_amount)
-		
-		# Skip if we don't have this invoice or item in our results
-		if invoice not in result or item not in result[invoice]:
-			continue
-		
-		# Update claimed amount and available balance directly
-		result[invoice][item]['claimed_amount'] += claimed_amount
-		result[invoice][item]['available_balance'] = max(0, 
-			result[invoice][item]['original_amount'] - result[invoice][item]['claimed_amount'])
-		
-		frappe.logger().debug(f"Item {item} in invoice {invoice}: claimed={claimed_amount}, available={result[invoice][item]['available_balance']}")
+	# For Orbit Claim (view-only), we don't track previous claims
+	# Always show full original amounts as available since Orbit Claim doesn't affect financial data
+	# No need to query previous Orbit Claims or reduce available balances
 	
 	# Calculate proportion for each item within its invoice
 	for invoice, items in invoice_items.items():

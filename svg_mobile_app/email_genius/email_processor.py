@@ -222,12 +222,7 @@ Original Details:
         frappe.sendmail(
             recipients=[gmail_account],
             subject=forward_subject,
-            message=forward_body,
-            header={
-                'X-Frappe-BCC-Forward': 'true',
-                'X-Frappe-Original-Recipient': recipient,
-                'X-Frappe-Recipient-Type': recipient_type
-            }
+            message=forward_body
         )
         
         frappe.logger().info(f"Email Genius: Successfully forwarded email to {gmail_account} for recipient {recipient}")

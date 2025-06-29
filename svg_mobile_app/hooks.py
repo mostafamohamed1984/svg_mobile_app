@@ -175,11 +175,12 @@ doc_events = {
     }
 }
 
-# Email Hooks for BCC Processing
-# --------------------------------
-email_hooks = [
-    "svg_mobile_app.email_genius.email_processor.intercept_incoming_email"
-]
+# Email Processing Integration for BCC Processing
+# -----------------------------------------------
+# Override email processing methods to integrate BCC processing
+override_whitelisted_methods = {
+    "frappe.email.receive.pull_from_email_account": "svg_mobile_app.email_genius.email_processor.process_incoming_email"
+}
 
 # Scheduled Tasks
 # ---------------

@@ -445,7 +445,17 @@ def process_incoming_email(email_account):
         frappe.logger().info(f"Email Genius: Processing incoming emails for account {email_account}")
         
         # First, call the original function to get emails
-        from frappe.email.receive import pull_from_email_account as original_pull
+        try:
+            # Try different possible function names based on Frappe version
+            from frappe.email.doctype.email_account.email_account import pull_from_email_account as original_pull
+        except ImportError:
+            try:
+                from frappe.email.receive import pull_from_email_account as original_pull
+            except ImportError:
+                # Fallback - try to get the email account and call receive method
+                email_account_doc = frappe.get_doc("Email Account", email_account)
+                return email_account_doc.receive()
+        
         result = original_pull(email_account)
         
         # Now process any emails that need BCC processing
@@ -454,10 +464,14 @@ def process_incoming_email(email_account):
         return result
         
     except Exception as e:
-        frappe.log_error(f"Email Genius: Error in process_incoming_email: {str(e)}", "Email Genius Error")
-        # Fallback to original function
-        from frappe.email.receive import pull_from_email_account as original_pull
-        return original_pull(email_account)
+        frappe.log_error(f"BCC Error: {str(e)[:100]}", "Email Genius")
+        # Fallback - try to get the email account and call receive method
+        try:
+            email_account_doc = frappe.get_doc("Email Account", email_account)
+            return email_account_doc.receive()
+        except Exception as fallback_error:
+            frappe.log_error(f"BCC Fallback Error: {str(fallback_error)[:80]}", "Email Genius")
+            return None
 
 def process_account_for_bcc(email_account):
     """

@@ -1,0 +1,97 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-01-25 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_bcc_processing",
+  "gmail_forwarding_account",
+  "processing_method",
+  "preserve_original_headers",
+  "debug_mode",
+  "section_break_5",
+  "max_recipients_per_email",
+  "forwarding_subject_prefix",
+  "custom_message_id_domain"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "fieldname": "enable_bcc_processing",
+   "fieldtype": "Check",
+   "label": "Enable BCC Processing"
+  },
+  {
+   "default": "constr.sv@gmail.com",
+   "fieldname": "gmail_forwarding_account",
+   "fieldtype": "Data",
+   "label": "Gmail Forwarding Account",
+   "reqd": 1
+  },
+  {
+   "default": "Hook",
+   "fieldname": "processing_method",
+   "fieldtype": "Select",
+   "label": "Processing Method",
+   "options": "Hook\nForwarding\nAPI"
+  },
+  {
+   "default": "1",
+   "fieldname": "preserve_original_headers",
+   "fieldtype": "Check",
+   "label": "Preserve Original Headers"
+  },
+  {
+   "default": "0",
+   "fieldname": "debug_mode",
+   "fieldtype": "Check",
+   "label": "Debug Mode"
+  },
+  {
+   "fieldname": "section_break_5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "10",
+   "fieldname": "max_recipients_per_email",
+   "fieldtype": "Int",
+   "label": "Max Recipients Per Email"
+  },
+  {
+   "default": "[BCC-PROCESSED]",
+   "fieldname": "forwarding_subject_prefix",
+   "fieldtype": "Data",
+   "label": "Forwarding Subject Prefix"
+  },
+  {
+   "fieldname": "custom_message_id_domain",
+   "fieldtype": "Data",
+   "label": "Custom Message ID Domain"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-01-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "BCC Processing Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+} 

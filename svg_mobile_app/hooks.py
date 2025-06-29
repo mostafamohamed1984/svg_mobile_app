@@ -169,8 +169,17 @@ doc_events = {
         "on_cancel": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.on_cancel_hook",
         "on_trash": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.on_trash_hook",
         "after_delete": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.after_delete_hook"
+    },
+    "Communication": {
+        "before_insert": "svg_mobile_app.email_genius.email_processor.process_bcc_email"
     }
 }
+
+# Email Hooks for BCC Processing
+# --------------------------------
+email_hooks = [
+    "svg_mobile_app.email_genius.email_processor.intercept_incoming_email"
+]
 
 # Scheduled Tasks
 # ---------------

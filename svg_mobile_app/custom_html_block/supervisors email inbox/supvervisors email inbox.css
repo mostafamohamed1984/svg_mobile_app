@@ -560,3 +560,63 @@
         min-width: 40px;
     }
 }
+
+/* BCC/CC Indicator Styling */
+.label.label-warning {
+    background-color: #f0ad4e;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: normal;
+    margin-left: 5px;
+}
+
+.label.label-info {
+    background-color: #5bc0de;
+    color: white;
+    font-size: 0.75em;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: normal;
+    margin-left: 5px;
+}
+
+/* Enhanced inbox item for BCC/CC emails */
+.inbox-item[data-recipient-type="BCC"] {
+    border-left: 3px solid #f0ad4e;
+}
+
+.inbox-item[data-recipient-type="CC"] {
+    border-left: 3px solid #5bc0de;
+}
+
+/* Special styling for BCC/CC filter view */
+.inbox-item .recipient-type-indicator {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.recipient-type-indicator.bcc {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.recipient-type-indicator.cc {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.recipient-type-indicator.to {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}

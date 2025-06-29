@@ -1,0 +1,55 @@
+{
+ "custom_fields": [
+  {
+   "fieldname": "custom_recipient_type",
+   "fieldtype": "Select",
+   "label": "Recipient Type",
+   "options": "TO\nCC\nBCC",
+   "insert_after": "recipients",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "Type of recipient (TO, CC, or BCC) - set by BCC processing system"
+  },
+  {
+   "fieldname": "custom_original_message_id",
+   "fieldtype": "Data",
+   "label": "Original Message ID",
+   "insert_after": "message_id",
+   "read_only": 1,
+   "description": "Original message ID before BCC processing modifications"
+  },
+  {
+   "fieldname": "custom_bcc_processed",
+   "fieldtype": "Check",
+   "label": "BCC Processed",
+   "insert_after": "custom_original_message_id",
+   "read_only": 1,
+   "description": "Indicates if this email was processed by the BCC system"
+  },
+  {
+   "fieldname": "bcc_processing_section",
+   "fieldtype": "Section Break",
+   "label": "BCC Processing Information",
+   "insert_after": "custom_bcc_processed",
+   "depends_on": "eval:doc.custom_bcc_processed"
+  },
+  {
+   "fieldname": "custom_recipient_index",
+   "fieldtype": "Int",
+   "label": "Recipient Index",
+   "insert_after": "bcc_processing_section",
+   "read_only": 1,
+   "description": "Index of this recipient in the original email"
+  },
+  {
+   "fieldname": "custom_forwarded_to_gmail",
+   "fieldtype": "Check",
+   "label": "Forwarded to Gmail",
+   "insert_after": "custom_recipient_index",
+   "read_only": 1,
+   "description": "Indicates if this email was forwarded to Gmail for processing"
+  }
+ ],
+ "property_setters": [],
+ "sync_on_migrate": 1
+} 

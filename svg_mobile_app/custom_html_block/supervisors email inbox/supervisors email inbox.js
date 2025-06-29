@@ -657,6 +657,10 @@
             filters["read_by_recipient"] = 0;
         } else if (currentFilter === "read") {
             filters["read_by_recipient"] = 1;
+        } else if (currentFilter === "bcc_cc_emails") {
+            // Special handling for BCC/CC emails - force BCC enhanced fetching
+            forceBCCEnhancedFetching(filters, fetchStart, fetchLimit);
+            return;
         } else if (currentFilter === "my_emails") {
             // For "My Email Accounts" view, we need to filter by the user's email accounts
             if (selectedEmailAccount !== "all") {
@@ -740,9 +744,221 @@
                 }
             });
         } else {
-            // Use standard method for better performance when no tag processing needed
-            fetchCommunicationsStandard(filters, fetchStart, fetchLimit);
+            // Try BCC-enhanced email fetching first, then fallback to standard
+            tryBCCEnhancedFetching(filters, fetchStart, fetchLimit);
         }
+    }
+
+    // Try to fetch BCC/CC enhanced emails first
+    function tryBCCEnhancedFetching(filters, fetchStart, fetchLimit) {
+        frappe.call({
+            method: 'svg_mobile_app.email_genius.email_processor.get_processed_emails',
+            args: {
+                user: frappe.session.user,
+                include_bcc: true,
+                include_cc: true,
+                limit: fetchLimit
+            },
+            callback: function(r) {
+                if (r.message && r.message.length > 0) {
+                    // Filter and process BCC-enhanced emails
+                    let enhancedEmails = filterEnhancedEmails(r.message, filters);
+                    if (enhancedEmails.length > 0) {
+                        renderEnhancedCommunications(enhancedEmails);
+                        totalRecords = enhancedEmails.length;
+                        updatePagination();
+                        return;
+                    }
+                }
+                // Fallback to standard method
+                fetchCommunicationsStandard(filters, fetchStart, fetchLimit);
+            },
+            error: function() {
+                // Fallback to standard method on error
+                fetchCommunicationsStandard(filters, fetchStart, fetchLimit);
+            }
+        });
+    }
+
+    // Force BCC/CC enhanced fetching for BCC/CC filter
+    function forceBCCEnhancedFetching(filters, fetchStart, fetchLimit) {
+        const loadingIndicator = root_element.querySelector('#loading-indicator');
+        const inboxList = root_element.querySelector('#inbox-list');
+        const noRecords = root_element.querySelector('#no-records');
+        
+        if (loadingIndicator) loadingIndicator.style.display = 'block';
+        if (inboxList) inboxList.innerHTML = '';
+        if (noRecords) noRecords.style.display = 'none';
+
+        frappe.call({
+            method: 'svg_mobile_app.email_genius.email_processor.get_processed_emails',
+            args: {
+                user: frappe.session.user,
+                include_bcc: true,
+                include_cc: true,
+                limit: fetchLimit
+            },
+            callback: function(r) {
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                
+                if (r.message && r.message.length > 0) {
+                    // Filter to only show BCC/CC emails
+                    let bccCcEmails = r.message.filter(email => 
+                        email.recipient_type === 'BCC' || email.recipient_type === 'CC'
+                    );
+                    
+                    // Apply additional filters
+                    bccCcEmails = filterEnhancedEmails(bccCcEmails, filters);
+                    
+                    if (bccCcEmails.length > 0) {
+                        renderEnhancedCommunications(bccCcEmails);
+                        totalRecords = bccCcEmails.length;
+                        updatePagination();
+                    } else {
+                        if (noRecords) {
+                            noRecords.innerHTML = '<p>No BCC/CC emails found</p>';
+                            noRecords.style.display = 'block';
+                        }
+                        totalRecords = 0;
+                        updatePagination();
+                    }
+                } else {
+                    if (noRecords) {
+                        noRecords.innerHTML = '<p>No BCC/CC emails found</p>';
+                        noRecords.style.display = 'block';
+                    }
+                    totalRecords = 0;
+                    updatePagination();
+                }
+            },
+            error: function(err) {
+                console.error("Error fetching BCC/CC emails:", err);
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                if (noRecords) {
+                    noRecords.innerHTML = '<p>Error loading BCC/CC emails</p>';
+                    noRecords.style.display = 'block';
+                }
+                totalRecords = 0;
+                updatePagination();
+            }
+        });
+    }
+
+    // Filter enhanced emails based on current filters
+    function filterEnhancedEmails(emails, filters) {
+        return emails.filter(email => {
+            // Apply sent/received filter
+            if (filters.sent_or_received && email.sent_or_received !== filters.sent_or_received) {
+                return false;
+            }
+            
+            // Apply status filter
+            if (filters.status && email.status !== filters.status) {
+                return false;
+            }
+            
+            // Apply search term filter
+            if (searchTerm && searchTerm.length > 0) {
+                const searchLower = searchTerm.toLowerCase();
+                const subjectMatch = (email.subject || '').toLowerCase().includes(searchLower);
+                const senderMatch = (email.sender || '').toLowerCase().includes(searchLower);
+                const contentMatch = (email.content || '').toLowerCase().includes(searchLower);
+                
+                if (!subjectMatch && !senderMatch && !contentMatch) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+
+    // Render enhanced communications with BCC/CC indicators
+    function renderEnhancedCommunications(communications) {
+        const loadingIndicator = root_element.querySelector('#loading-indicator');
+        const inboxList = root_element.querySelector('#inbox-list');
+        const noRecords = root_element.querySelector('#no-records');
+        
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        if (!inboxList) return;
+
+        inboxList.innerHTML = '';
+
+        if (communications.length === 0) {
+            if (noRecords) noRecords.style.display = 'block';
+            return;
+        }
+
+        communications.forEach(function(comm) {
+            const row = document.createElement('div');
+            row.className = 'inbox-item' + (comm.read_by_recipient ? '' : ' unread');
+            row.setAttribute('data-name', comm.name);
+            if (comm.recipient_type) {
+                row.setAttribute('data-recipient-type', comm.recipient_type);
+            }
+
+            // Format the date
+            const creationDate = frappe.datetime.str_to_user(comm.creation);
+            const displayDate = frappe.datetime.comment_when(comm.creation);
+
+            // Get status indicator
+            const statusIndicator = getStatusIndicator(comm.status);
+
+            // Create BCC/CC indicator
+            let recipientTypeIndicator = '';
+            if (comm.recipient_type === 'BCC') {
+                recipientTypeIndicator = '<span class="label label-warning" style="margin-left: 5px;" title="You were BCC\'d on this email">BCC</span>';
+            } else if (comm.recipient_type === 'CC') {
+                recipientTypeIndicator = '<span class="label label-info" style="margin-left: 5px;" title="You were CC\'d on this email">CC</span>';
+            }
+
+            // Apply search highlighting to subject
+            const highlightedSubject = highlightSearchTerm(comm.subject || 'No Subject', searchTerm);
+
+            // Check if this email is from one of the user's email accounts
+            let emailIndicator = '';
+            if (comm.email_account) {
+                if (selectedEmailAccount !== "all" && comm.email_account === selectedEmailAccount) {
+                    emailIndicator = '<span class="label label-info" style="margin-left: 5px;">Selected Account</span>';
+                }
+            }
+
+            row.innerHTML = `
+                <div class="row inbox-row" onclick="showEmailPopup('${comm.name}')">
+                    <div class="col-md-1 text-center">
+                        <input type="checkbox" class="email-checkbox" data-name="${comm.name}">
+                    </div>
+                    <div class="col-md-3">
+                        <strong>${comm.sender_full_name || comm.sender || 'Unknown Sender'}</strong>
+                        ${recipientTypeIndicator}
+                        ${emailIndicator}
+                    </div>
+                    <div class="col-md-4">
+                        <span class="subject">${highlightedSubject}</span>
+                        ${statusIndicator}
+                        ${comm.has_attachment ? '<i class="fa fa-paperclip" title="Has Attachment"></i>' : ''}
+                    </div>
+                    <div class="col-md-2">
+                        <span class="tag-display" data-comm-name="${comm.name}">Loading tags...</span>
+                    </div>
+                    <div class="col-md-2 text-right">
+                        <small class="text-muted">${displayDate}</small>
+                    </div>
+                </div>
+            `;
+
+            inboxList.appendChild(row);
+
+            // Load tags asynchronously for this communication
+            const tagElement = row.querySelector('.tag-display');
+            if (tagElement) {
+                loadTagsForCommunication(comm.name, tagElement);
+            }
+        });
+    }
+
+    // Use standard method for better performance when no tag processing needed
+    function fetchCommunicationsStandard(filters, fetchStart, fetchLimit) {
     }
 
     // Standard communication fetching without tag processing

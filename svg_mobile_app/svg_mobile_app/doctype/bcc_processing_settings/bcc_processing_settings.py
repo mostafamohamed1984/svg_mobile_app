@@ -53,18 +53,30 @@ def test_email_forwarding():
         if not gmail_account:
             return {"status": "error", "message": "No Gmail forwarding account configured"}
         
-        # Send test email
-        frappe.sendmail(
-            recipients=[gmail_account],
-            subject="[TEST] BCC Processing Test Email",
-            message="This is a test email to verify BCC processing forwarding is working correctly.",
-            header={"X-Frappe-BCC-Test": "true"}
-        )
+        # Validate Gmail account format
+        if not gmail_account.endswith('@gmail.com'):
+            return {"status": "error", "message": "Gmail account must be a valid Gmail address"}
         
-        return {
-            "status": "success", 
-            "message": f"Test email sent successfully to {gmail_account}"
-        }
+        # Send test email with safe parameters
+        try:
+            frappe.sendmail(
+                recipients=gmail_account,  # Pass as string instead of list
+                subject="[TEST] BCC Processing Test Email",
+                message="This is a test email to verify BCC processing forwarding is working correctly.",
+                now=True
+            )
+            
+            return {
+                "status": "success", 
+                "message": f"Test email sent successfully to {gmail_account}"
+            }
+            
+        except Exception as send_error:
+            return {
+                "status": "error", 
+                "message": f"Failed to send test email: {str(send_error)}"
+            }
         
     except Exception as e:
-        return {"status": "error", "message": str(e)} 
+        frappe.logger().error(f"Test email forwarding error: {str(e)}")
+        return {"status": "error", "message": f"Test failed: {str(e)}"} 

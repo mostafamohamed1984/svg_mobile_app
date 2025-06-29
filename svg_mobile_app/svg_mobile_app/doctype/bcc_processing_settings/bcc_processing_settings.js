@@ -127,11 +127,25 @@ function test_email_forwarding(frm) {
         callback: function(r) {
             if (r.message) {
                 frappe.msgprint({
-                    title: 'Email Forwarding Test',
+                    title: 'Email Forwarding Test Results',
                     message: r.message.message,
                     indicator: r.message.status === 'success' ? 'green' : 'red'
                 });
+            } else {
+                frappe.msgprint({
+                    title: 'Email Forwarding Test',
+                    message: 'No response received from test',
+                    indicator: 'red'
+                });
             }
+        },
+        error: function(err) {
+            console.error('Email Forwarding Test Error:', err);
+            frappe.msgprint({
+                title: 'Email Forwarding Test Error',
+                message: 'Test failed with an error. Check console for details.',
+                indicator: 'red'
+            });
         }
     });
 }
@@ -143,12 +157,53 @@ function test_bcc_processing(frm) {
         method: 'svg_mobile_app.email_genius.email_processor.test_bcc_processing',
         callback: function(r) {
             if (r.message) {
+                let message = r.message.message;
+                
+                // Add details if available
+                if (r.message.details) {
+                    const details = r.message.details;
+                    message += '<br><br><strong>Test Details:</strong><br>';
+                    
+                    if (details.to_recipients) {
+                        message += `TO Recipients: ${details.to_recipients.join(', ')}<br>`;
+                    }
+                    if (details.cc_recipients) {
+                        message += `CC Recipients: ${details.cc_recipients.join(', ')}<br>`;
+                    }
+                    if (details.bcc_recipients) {
+                        message += `BCC Recipients: ${details.bcc_recipients.join(', ')}<br>`;
+                    }
+                    if (details.total_recipients) {
+                        message += `Total Recipients: ${details.total_recipients}<br>`;
+                    }
+                    if (details.bcc_processing_enabled !== undefined) {
+                        message += `BCC Processing Enabled: ${details.bcc_processing_enabled ? 'Yes' : 'No'}<br>`;
+                    }
+                    if (details.test_note) {
+                        message += `<em>${details.test_note}</em><br>`;
+                    }
+                }
+                
                 frappe.msgprint({
-                    title: 'BCC Processing Test',
-                    message: r.message.message,
+                    title: 'BCC Processing Test Results',
+                    message: message,
                     indicator: r.message.status === 'success' ? 'green' : 'red'
                 });
+            } else {
+                frappe.msgprint({
+                    title: 'BCC Processing Test',
+                    message: 'No response received from test',
+                    indicator: 'red'
+                });
             }
+        },
+        error: function(err) {
+            console.error('BCC Processing Test Error:', err);
+            frappe.msgprint({
+                title: 'BCC Processing Test Error',
+                message: 'Test failed with an error. Check console for details.',
+                indicator: 'red'
+            });
         }
     });
 }

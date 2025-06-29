@@ -2,6 +2,7 @@
  "doctype": "Communication",
  "custom_fields": [
   {
+   "dt": "Communication",
    "fieldname": "custom_recipient_type",
    "fieldtype": "Select",
    "label": "Recipient Type",
@@ -12,6 +13,7 @@
    "description": "Type of recipient (TO, CC, or BCC) - set by BCC processing system"
   },
   {
+   "dt": "Communication",
    "fieldname": "custom_original_message_id",
    "fieldtype": "Data",
    "label": "Original Message ID",
@@ -20,6 +22,7 @@
    "description": "Original message ID before BCC processing modifications"
   },
   {
+   "dt": "Communication",
    "fieldname": "custom_bcc_processed",
    "fieldtype": "Check",
    "label": "BCC Processed",
@@ -28,6 +31,7 @@
    "description": "Indicates if this email was processed by the BCC system"
   },
   {
+   "dt": "Communication",
    "fieldname": "bcc_processing_section",
    "fieldtype": "Section Break",
    "label": "BCC Processing Information",
@@ -35,6 +39,7 @@
    "depends_on": "eval:doc.custom_bcc_processed"
   },
   {
+   "dt": "Communication",
    "fieldname": "custom_recipient_index",
    "fieldtype": "Int",
    "label": "Recipient Index",
@@ -43,6 +48,7 @@
    "description": "Index of this recipient in the original email"
   },
   {
+   "dt": "Communication",
    "fieldname": "custom_forwarded_to_gmail",
    "fieldtype": "Check",
    "label": "Forwarded to Gmail",

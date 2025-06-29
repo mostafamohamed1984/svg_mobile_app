@@ -1,4 +1,5 @@
 {
+ "doctype": "Communication",
  "custom_fields": [
   {
    "fieldname": "custom_recipient_type",

@@ -410,11 +410,26 @@ def process_bcc_email(doc, method):
     Process BCC emails when Communication is created
     """
     try:
-        # Check if this is a BCC processed email
-        if hasattr(doc, 'custom_bcc_processed') and doc.custom_bcc_processed:
-            return
+        # Check if this is a BCC processed email by looking for custom headers
+        if hasattr(doc, 'message_id') and doc.message_id:
+            # Check if this email has BCC processing headers
+            if (hasattr(doc, 'custom_original_message_id') and doc.custom_original_message_id) or \
+               (doc.message_id and ('frappe.bcc.' in doc.message_id or '.bcc.' in doc.message_id)):
+                
+                # This is a BCC processed email - set the checkbox
+                if hasattr(doc, 'custom_bcc_processed'):
+                    doc.custom_bcc_processed = 1
+                    frappe.logger().info(f"Email Genius: Marked communication {doc.name} as BCC processed")
+                
+                # Try to determine recipient type from message content or headers
+                if hasattr(doc, 'custom_recipient_type') and not doc.custom_recipient_type:
+                    # Try to extract from subject if it has [BCC-PROCESSED-*] format
+                    if doc.subject and '[BCC-PROCESSED-' in doc.subject:
+                        type_match = re.search(r'\[BCC-PROCESSED-([A-Z]+)\]', doc.subject)
+                        if type_match:
+                            doc.custom_recipient_type = type_match.group(1)
+                            frappe.logger().info(f"Email Genius: Set recipient type to {doc.custom_recipient_type}")
         
-        # Add any additional processing here if needed
         frappe.logger().info(f"Email Genius: Processing communication {doc.name}")
         
     except Exception as e:

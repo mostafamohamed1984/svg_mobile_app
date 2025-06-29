@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-06-25 11:01:16.106752",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "id",
+  "old_password",
+  "new_password",
+  "status",
+  "assign_to",
+  "user",
+  "company",
+  "reference",
+  "password_applied"
+ ],
+ "fields": [
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "\nAvailable\nTemporary\nReserved"
+  },
+  {
+   "fieldname": "assign_to",
+   "fieldtype": "Link",
+   "label": "Assign to",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "assign_to.user_id",
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "old_password",
+   "fieldtype": "Data",
+   "label": "Old Password"
+  },
+  {
+   "fieldname": "new_password",
+   "fieldtype": "Data",
+   "label": "New Password"
+  },
+  {
+   "fieldname": "reference",
+   "fieldtype": "Link",
+   "label": "Reference",
+   "options": "Remote Access"
+  },
+  {
+   "default": "0",
+   "fieldname": "password_applied",
+   "fieldtype": "Check",
+   "label": "Password Applied"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-29 01:12:07.908214",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Remote Access Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

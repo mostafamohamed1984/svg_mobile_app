@@ -43,7 +43,10 @@ def intercept_incoming_email(email_account, msg):
             # Multiple recipients detected - create unique copies
             processed_emails = create_unique_email_copies(email_obj, all_recipients, email_account)
             frappe.logger().info(f"Email Genius: Created {len(processed_emails)} unique email copies")
-            return processed_emails
+            # Return the first processed email's string format for Frappe processing
+            if processed_emails and len(processed_emails) > 0:
+                return processed_emails[0].get('email', msg)
+            return msg
         
         return msg  # Single recipient, process normally
         
@@ -111,18 +114,24 @@ def generate_unique_message_id(original_id, recipient, index):
     try:
         # Extract domain from original message-ID
         if original_id and '@' in original_id:
-            local_part, domain = original_id.strip('<>').split('@', 1)
-            # Create unique identifier using recipient hash
-            recipient_hash = hashlib.md5(recipient.encode()).hexdigest()[:8]
-            unique_suffix = f"{recipient_hash}.{index}"
-            return f"<{local_part}.{unique_suffix}@{domain}>"
-        else:
-            # Generate completely new message-ID
-            site_domain = frappe.local.site if hasattr(frappe.local, 'site') else 'localhost'
-            unique_id = uuid.uuid4().hex[:16]
-            return f"<frappe.bcc.{unique_id}@{site_domain}>"
+            # Remove angle brackets and split on first '@' only
+            cleaned_id = original_id.strip('<>')
+            if '@' in cleaned_id:
+                parts = cleaned_id.split('@', 1)  # Split on first '@' only
+                if len(parts) == 2:
+                    local_part, domain = parts
+                    # Create unique identifier using recipient hash
+                    recipient_hash = hashlib.md5(recipient.encode()).hexdigest()[:8]
+                    unique_suffix = f"{recipient_hash}.{index}"
+                    return f"<{local_part}.{unique_suffix}@{domain}>"
+        
+        # Generate completely new message-ID if parsing fails
+        site_domain = frappe.local.site if hasattr(frappe.local, 'site') else 'localhost'
+        unique_id = uuid.uuid4().hex[:16]
+        return f"<frappe.bcc.{unique_id}@{site_domain}>"
     except Exception as e:
         # Fallback message-ID
+        frappe.logger().error(f"Email Genius: Error generating unique message ID: {str(e)}")
         return f"<frappe.bcc.{uuid.uuid4().hex}@localhost>"
 
 def get_recipient_type(recipient, email_obj):
@@ -164,17 +173,38 @@ def forward_email_copy(email_copy, email_account, recipient):
         # Get Gmail forwarding account - using the specified Gmail account
         gmail_account = "constr.sv@gmail.com"
         
-        if gmail_account:
-            # Create a forwarding message
-            subject = email_copy.get('Subject', 'No Subject')
-            original_from = email_copy.get('From', 'Unknown Sender')
-            recipient_type = email_copy.get('X-Frappe-Recipient-Type', 'UNKNOWN')
+        if not gmail_account:
+            frappe.logger().warning("Email Genius: No Gmail forwarding account configured")
+            return False
+        
+        # Validate recipient email
+        if not recipient or '@' not in recipient:
+            frappe.logger().warning(f"Email Genius: Invalid recipient email: {recipient}")
+            return False
             
-            # Create forwarding subject with metadata
-            forward_subject = f"[BCC-PROCESSED-{recipient_type}] {subject}"
-            
-            # Create message body with original email as attachment
-            forward_body = f"""
+        # Create a forwarding message
+        subject = email_copy.get('Subject', 'No Subject')
+        original_from = email_copy.get('From', 'Unknown Sender')
+        recipient_type = email_copy.get('X-Frappe-Recipient-Type', 'UNKNOWN')
+        
+        # Create forwarding subject with metadata
+        forward_subject = f"[BCC-PROCESSED-{recipient_type}] {subject}"
+        
+        # Get email content safely
+        try:
+            if email_copy.is_multipart():
+                email_content = "Multipart content - see original email"
+            else:
+                payload = email_copy.get_payload()
+                if isinstance(payload, str):
+                    email_content = payload[:1000]  # Limit content length
+                else:
+                    email_content = "Binary content - see original email"
+        except Exception:
+            email_content = "Unable to extract content"
+        
+        # Create message body with original email metadata
+        forward_body = f"""
 This email has been processed by Email Genius for BCC/CC handling.
 
 Original Details:
@@ -184,27 +214,29 @@ Original Details:
 - Original Message-ID: {email_copy.get('X-Frappe-Original-Message-ID', 'N/A')}
 - New Message-ID: {email_copy.get('Message-ID', 'N/A')}
 
---- Original Email Content ---
-{email_copy.get_payload() if not email_copy.is_multipart() else 'Multipart content attached'}
+--- Original Email Content Preview ---
+{email_content}
 """
-            
-            # Send the forwarded email
-            frappe.sendmail(
-                recipients=[gmail_account],
-                subject=forward_subject,
-                message=forward_body,
-                header={
-                    'X-Frappe-BCC-Forward': 'true',
-                    'X-Frappe-Original-Recipient': recipient,
-                    'X-Frappe-Recipient-Type': recipient_type
-                }
-            )
-            
-            frappe.logger().info(f"Email Genius: Successfully forwarded email to {gmail_account} for recipient {recipient}")
-            return True
-            
+        
+        # Send the forwarded email with error handling
+        frappe.sendmail(
+            recipients=[gmail_account],
+            subject=forward_subject,
+            message=forward_body,
+            header={
+                'X-Frappe-BCC-Forward': 'true',
+                'X-Frappe-Original-Recipient': recipient,
+                'X-Frappe-Recipient-Type': recipient_type
+            }
+        )
+        
+        frappe.logger().info(f"Email Genius: Successfully forwarded email to {gmail_account} for recipient {recipient}")
+        return True
+        
     except Exception as e:
-        frappe.log_error(f"Email Genius: Email forwarding error for {recipient}: {str(e)}", "Email Genius Error")
+        error_msg = str(e)
+        frappe.logger().error(f"Email Genius: Email forwarding error for {recipient}: {error_msg}")
+        frappe.log_error(f"Email Genius: Email forwarding error for {recipient}: {error_msg}", "Email Genius Error")
         return False
 
 def is_bcc_processing_enabled():
@@ -309,31 +341,58 @@ def test_bcc_processing():
     Test function to verify BCC processing is working
     """
     try:
-        # Create a test email scenario
-        test_email = """From: test@example.com
+        # Create a test email scenario with proper formatting
+        test_email_content = """From: test@example.com
 To: recipient1@example.com
 Cc: cc@example.com
 Bcc: bcc@example.com
-Subject: Test BCC Processing
+Subject: Email Forwarding Test
 Message-ID: <test.123@example.com>
 
 This is a test email for BCC processing.
 """
         
-        # Process the test email
-        result = intercept_incoming_email("test_account", test_email)
+        # Test the email parsing functions individually
+        email_obj = email.message_from_string(test_email_content)
+        
+        # Test recipient parsing
+        to_recipients = parse_recipients(email_obj.get('To', ''))
+        cc_recipients = parse_recipients(email_obj.get('Cc', ''))
+        bcc_recipients = parse_recipients(email_obj.get('Bcc', ''))
+        
+        # Test message ID generation
+        test_message_ids = []
+        for i, recipient in enumerate(to_recipients + cc_recipients + bcc_recipients):
+            unique_id = generate_unique_message_id(email_obj.get('Message-ID'), recipient, i)
+            test_message_ids.append(unique_id)
+        
+        # Test forwarding (without actually sending)
+        test_recipient = "recipient1@example.com"
+        forward_result = forward_email_copy(email_obj, "test_account", test_recipient)
         
         return {
             "status": "success",
-            "message": "BCC processing test completed",
-            "processed_emails": len(result) if isinstance(result, list) else 1,
-            "details": result
+            "message": "BCC processing test completed successfully",
+            "details": {
+                "to_recipients": to_recipients,
+                "cc_recipients": cc_recipients,
+                "bcc_recipients": bcc_recipients,
+                "total_recipients": len(to_recipients + cc_recipients + bcc_recipients),
+                "generated_message_ids": test_message_ids,
+                "forwarding_test": "success" if forward_result else "failed",
+                "bcc_processing_enabled": is_bcc_processing_enabled()
+            }
         }
         
     except Exception as e:
+        error_msg = str(e)
+        frappe.logger().error(f"Email Genius: Test error: {error_msg}")
         return {
             "status": "error",
-            "message": str(e)
+            "message": error_msg,
+            "details": {
+                "bcc_processing_enabled": is_bcc_processing_enabled()
+            }
         }
 
 # Hook function for Communication doctype

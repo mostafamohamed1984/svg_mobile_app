@@ -473,57 +473,69 @@ def process_incoming_email(email_account):
             frappe.log_error(f"BCC Fallback Error: {str(fallback_error)[:80]}", "Email Genius")
             return None
 
-def process_account_for_bcc(email_account):
+def process_account_for_bcc(email_account_name):
     """
-    Process emails in an email account for BCC handling
+    Process an email account to find emails with CC/BCC and create unique copies
     """
     try:
-        # Check if BCC processing is enabled
-        if not is_bcc_processing_enabled():
-            return
+        frappe.logger().info(f"BCC Processing: Checking account {email_account_name}")
         
-        # Get unprocessed emails from the account
-        unprocessed_emails = get_unprocessed_emails(email_account)
+        # Get recent unprocessed communications from this email account
+        communications = frappe.get_all("Communication", 
+            filters={
+                "email_account": email_account_name,
+                "communication_medium": "Email",
+                "sent_or_received": "Received",
+                "custom_bcc_processed": 0  # Only unprocessed emails
+            },
+            fields=["name", "subject", "content", "message_id", "sender", "recipients", "raw_email"],
+            limit=20,
+            order_by="creation desc"
+        )
         
-        for email_data in unprocessed_emails:
+        frappe.logger().info(f"BCC Processing: Found {len(communications)} unprocessed communications")
+        
+        processed_count = 0
+        for comm in communications:
             try:
-                # Parse the email
-                email_obj = email.message_from_string(email_data.get('raw_message', ''))
+                # Get the full communication document
+                comm_doc = frappe.get_doc("Communication", comm.name)
                 
-                # Check if this email has multiple recipients
-                to_recipients = parse_recipients(email_obj.get('To', ''))
-                cc_recipients = parse_recipients(email_obj.get('Cc', ''))
-                bcc_recipients = parse_recipients(email_obj.get('Bcc', ''))
-                
-                all_recipients = to_recipients + cc_recipients + bcc_recipients
-                
-                if len(all_recipients) > 1:
-                    frappe.logger().info(f"Email Genius: Found email with {len(all_recipients)} recipients, processing BCC")
+                # Check if this communication has raw email data to process
+                if comm_doc.raw_email:
+                    # Parse the raw email to check for CC/BCC recipients
+                    import email
+                    email_obj = email.message_from_string(comm_doc.raw_email)
                     
-                    # Process this email for BCC
-                    processed_emails = create_unique_email_copies(email_obj, all_recipients, email_account)
+                    # Extract recipients
+                    to_recipients = parse_recipients(email_obj.get('To', ''))
+                    cc_recipients = parse_recipients(email_obj.get('Cc', ''))
+                    bcc_recipients = parse_recipients(email_obj.get('Bcc', ''))
                     
-                    if processed_emails:
-                        frappe.logger().info(f"Email Genius: Created {len(processed_emails)} unique email copies")
+                    all_recipients = to_recipients + cc_recipients + bcc_recipients
+                    
+                    frappe.logger().info(f"BCC Processing: Email {comm.name} has {len(all_recipients)} total recipients")
+                    
+                    if len(all_recipients) > 1:
+                        # Multiple recipients detected - process for BCC
+                        processed_emails = create_unique_email_copies(email_obj, all_recipients, email_account_name)
+                        frappe.logger().info(f"BCC Processing: Created {len(processed_emails)} unique email copies")
+                        processed_count += 1
                 
-            except Exception as e:
-                frappe.logger().error(f"Email Genius: Error processing individual email: {str(e)}")
+                # Mark as processed regardless
+                frappe.db.set_value("Communication", comm.name, "custom_bcc_processed", 1)
+                frappe.db.set_value("Communication", comm.name, "custom_recipient_type", "TO")
+                
+            except Exception as comm_error:
+                frappe.logger().error(f"BCC Processing: Error processing communication {comm.name}: {str(comm_error)}")
                 continue
-                
-    except Exception as e:
-        frappe.log_error(f"Email Genius: Error in process_account_for_bcc: {str(e)}", "Email Genius Error")
-
-def get_unprocessed_emails(email_account):
-    """
-    Get emails that haven't been processed for BCC yet
-    This is a simplified version - in production you'd want to track processed emails
-    """
-    try:
-        # For now, return empty list as this is complex to implement
-        # In a full implementation, you'd connect to the email server and fetch new emails
-        frappe.logger().info(f"Email Genius: Checking for unprocessed emails in {email_account}")
-        return []
+        
+        if communications:
+            frappe.db.commit()
+            frappe.logger().info(f"BCC Processing: Processed {processed_count} emails with multiple recipients")
+        
+        return processed_count
         
     except Exception as e:
-        frappe.logger().error(f"Email Genius: Error getting unprocessed emails: {str(e)}")
-        return [] 
+        frappe.log_error(f"BCC Account Processing Error: {str(e)[:100]}", "Email Genius")
+        return 0 

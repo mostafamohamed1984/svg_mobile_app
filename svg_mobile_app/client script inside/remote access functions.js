@@ -493,3 +493,105 @@ function update_original_values(frm) {
     frm.doc.__original_password = frm.doc.password;
     frm.doc.__original_assign_to = frm.doc.assign_to;
 }
+
+// Function to show password history
+function show_password_history(frm) {
+    frappe.call({
+        method: 'frappe.client.get_list',
+        args: {
+            doctype: 'Remote Access Log',
+            filters: {
+                'reference': frm.doc.name
+            },
+            fields: ['name', 'creation', 'old_password', 'new_password', 'password_applied', 'connection_notes'],
+            order_by: 'creation desc',
+            limit_page_length: 20
+        },
+        callback: function(response) {
+            if (response.message && response.message.length > 0) {
+                show_password_history_dialog(frm, response.message);
+            } else {
+                frappe.msgprint({
+                    title: __('Password History'),
+                    message: __('No password history found for this remote access.'),
+                    indicator: 'blue'
+                });
+            }
+        }
+    });
+}
+
+// Function to show password history dialog
+function show_password_history_dialog(frm, history_data) {
+    let history_html = generate_password_history_html(history_data);
+    
+    let dialog = new frappe.ui.Dialog({
+        title: __('Password History - {0}', [frm.doc.id]),
+        fields: [
+            {
+                fieldname: 'history_content',
+                fieldtype: 'HTML',
+                options: history_html
+            }
+        ],
+        primary_action_label: __('Close'),
+        primary_action: function() {
+            dialog.hide();
+        }
+    });
+    
+    dialog.show();
+}
+
+// Function to generate password history HTML
+function generate_password_history_html(history_data) {
+    let html = `
+        <div style="font-family: Arial, sans-serif;">
+            <table class="table table-bordered" style="width: 100%; margin-top: 10px;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="padding: 8px;">Date</th>
+                        <th style="padding: 8px;">Action</th>
+                        <th style="padding: 8px;">Status</th>
+                        <th style="padding: 8px;">Applied</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    history_data.forEach(function(log) {
+        let date = frappe.datetime.str_to_user(log.creation);
+        let action = log.connection_notes || 'Password Change';
+        let status_badge = get_status_badge(log.password_applied);
+        let applied_status = log.password_applied ? 'Yes' : 'No';
+        
+        html += `
+            <tr>
+                <td style="padding: 8px;">${date}</td>
+                <td style="padding: 8px;">${action}</td>
+                <td style="padding: 8px;">${status_badge}</td>
+                <td style="padding: 8px;">${applied_status}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+            <p style="margin-top: 15px; font-size: 12px; color: #666;">
+                <strong>Note:</strong> Passwords are encrypted and not displayed for security reasons.
+            </p>
+        </div>
+    `;
+    
+    return html;
+}
+
+// Function to get status badge HTML
+function get_status_badge(applied) {
+    if (applied) {
+        return '<span class="badge badge-success">Applied</span>';
+    } else {
+        return '<span class="badge badge-warning">Pending</span>';
+    }
+}

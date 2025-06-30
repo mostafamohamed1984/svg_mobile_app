@@ -3,5 +3,6 @@
   "module": "Svg Mobile App",
   "icon": "octicon octicon-file-media",
   "order": 1,
-  "single_column": 1
+  "single_column": 1,
+  "doctype": "Page"
 } 

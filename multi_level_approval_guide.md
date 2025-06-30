@@ -611,3 +611,4 @@ class PendingRequest {
 - Handle intermediate states ("Manager Approved")
 - Show appropriate actions based on user role
 - Refresh pending requests after approval/rejection
+ 

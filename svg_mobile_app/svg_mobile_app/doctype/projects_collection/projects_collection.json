@@ -529,7 +529,7 @@
    "write": 1
   }
  ],
- "sort_field": "modified",
+ "sort_field": "name",
  "sort_order": "DESC",
  "states": []
 }

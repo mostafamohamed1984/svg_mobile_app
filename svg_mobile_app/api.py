@@ -1286,10 +1286,10 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
     """Handle Leave Application approval workflow"""
     try:
         if status.lower() == "rejected":
-            doc.status = "Rejected"
+                doc.status = "Rejected"
             doc.docstatus = 1
-            if reason:
-                doc.remark = reason
+                if reason:
+                    doc.remark = reason
             doc.save(ignore_permissions=True)
             frappe.db.commit()
             return {"status": "success", "message": _("Leave request rejected"), "data": {"name": doc.name, "status": doc.status}}
@@ -1312,7 +1312,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
-                    doc.status = "Approved"
+                doc.status = "Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1344,10 +1344,10 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
     """Handle Shift Request approval workflow"""
     try:
         if status.lower() == "rejected":
-            doc.status = "Rejected"
+                doc.status = "Rejected"
             doc.docstatus = 1
-            if reason:
-                frappe.add_comment("Comment", doc.name, text=f"Rejection reason: {reason}", comment_by=frappe.session.user)
+                if reason:
+                    frappe.add_comment("Comment", doc.name, text=f"Rejection reason: {reason}", comment_by=frappe.session.user)
             doc.save(ignore_permissions=True)
             frappe.db.commit()
             return {"status": "success", "message": _("Shift request rejected"), "data": {"name": doc.name, "status": doc.status}}
@@ -1368,7 +1368,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
-                    doc.status = "Approved"
+                doc.status = "Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1400,10 +1400,10 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
     """Handle Overtime Request approval workflow"""
     try:
         if status.lower() == "rejected":
-            doc.status = "Rejected"
+                doc.status = "Rejected"
             doc.docstatus = 1
-            if reason:
-                doc.reason = reason
+                if reason:
+                    doc.reason = reason
             doc.save(ignore_permissions=True)
             frappe.db.commit()
             return {"status": "success", "message": _("Overtime request rejected"), "data": {"name": doc.name, "status": doc.status}}
@@ -1415,8 +1415,8 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                 if is_direct_manager or is_designated_approver or is_hr:
                     doc.status = "Approved"
                     doc.docstatus = 1
-                    doc.save(ignore_permissions=True)
-                    frappe.db.commit()
+        doc.save(ignore_permissions=True)
+        frappe.db.commit()
                     return {"status": "success", "message": _("Overtime request approved"), 
                            "data": {"name": doc.name, "status": doc.status}}
                 else:

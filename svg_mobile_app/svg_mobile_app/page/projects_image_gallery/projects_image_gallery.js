@@ -19,6 +19,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     let current_page = 1;
     let page_length = 20;
     let last_query = '';
+    let sort_order = 'desc';
 
     function get_image_src(img) {
         if (!img) return '';
@@ -28,7 +29,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         return '/files/' + img;
     }
 
-    function fetch_and_render(query = '', page_num = 1) {
+    function fetch_and_render(query = '', page_num = 1, order = sort_order) {
         frappe.call({
             method: 'frappe.client.get_list',
             args: {
@@ -36,19 +37,20 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 fields: ['name', 'project_name', '3d_image', 'site_image'],
                 limit_start: (page_num - 1) * page_length,
                 limit_page_length: page_length,
-                order_by: 'numeric_sort_field desc',
+                order_by: `numeric_sort_field ${order}`,
                 filters: query ? [['project_name', 'like', `%${query}%`]] : []
             },
             callback: function(r) {
-                render_table(r.message, query, page_num);
-                fetch_total_count(query, page_num);
+                render_table(r.message, query, page_num, order);
+                fetch_total_count(query, page_num, order);
             }
         });
     }
 
-    function render_table(rows, query, page_num) {
+    function render_table(rows, query, page_num, order) {
+        let sort_icon = order === 'desc' ? '▼' : '▲';
         let html = '<table class="table table-bordered table-hover"><thead><tr>' +
-            '<th style="width: 80px;">ID</th>' +
+            `<th id="id-header" style="width: 80px; cursor:pointer;">ID ${sort_icon}</th>` +
             '<th style="width: 160px;">3D Image</th>' +
             '<th style="width: 160px;">Site Image</th>' +
             '</tr></thead><tbody>';
@@ -67,9 +69,16 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         }
         html += '</tbody></table>';
         $('#projects-table').html(html);
+
+        // Add click event for sorting
+        $('#id-header').off('click').on('click', function() {
+            sort_order = (sort_order === 'desc') ? 'asc' : 'desc';
+            current_page = 1;
+            fetch_and_render(last_query, current_page, sort_order);
+        });
     }
 
-    function fetch_total_count(query, page_num) {
+    function fetch_total_count(query, page_num, order) {
         frappe.call({
             method: 'frappe.client.get_count',
             args: {
@@ -77,12 +86,12 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 filters: query ? [['project_name', 'like', `%${query}%`]] : []
             },
             callback: function(r) {
-                render_pagination(r.message, page_num, query);
+                render_pagination(r.message, page_num, query, order);
             }
         });
     }
 
-    function render_pagination(total_count, page_num, query) {
+    function render_pagination(total_count, page_num, query, order) {
         let total_pages = Math.ceil(total_count / page_length);
         let html = '';
         if (total_pages > 1) {
@@ -121,7 +130,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
             let page = parseInt($(this).data('page'));
             if (page && page !== page_num) {
                 current_page = page;
-                fetch_and_render(last_query, current_page);
+                fetch_and_render(last_query, current_page, sort_order);
             }
         });
     }

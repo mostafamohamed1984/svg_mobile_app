@@ -87,8 +87,30 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         let html = '';
         if (total_pages > 1) {
             html += `<nav><ul class="pagination">`;
-            for (let i = 1; i <= total_pages; i++) {
+            // Previous button
+            if (page_num > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" data-page="${page_num - 1}">&laquo;</a></li>`;
+            }
+            let start = Math.max(1, page_num - 2);
+            let end = Math.min(total_pages, page_num + 2);
+            if (start > 1) {
+                html += `<li class="page-item"><a class="page-link" href="#" data-page="1">1</a></li>`;
+                if (start > 2) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+            for (let i = start; i <= end; i++) {
                 html += `<li class="page-item${i === page_num ? ' active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+            }
+            if (end < total_pages) {
+                if (end < total_pages - 1) {
+                    html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+                html += `<li class="page-item"><a class="page-link" href="#" data-page="${total_pages}">${total_pages}</a></li>`;
+            }
+            // Next button
+            if (page_num < total_pages) {
+                html += `<li class="page-item"><a class="page-link" href="#" data-page="${page_num + 1}">&raquo;</a></li>`;
             }
             html += `</ul></nav>`;
         }

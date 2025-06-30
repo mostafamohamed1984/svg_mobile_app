@@ -20,6 +20,14 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     let page_length = 20;
     let last_query = '';
 
+    function get_image_src(img) {
+        if (!img) return '';
+        if (img.startsWith('http')) return img;
+        if (img.startsWith('/files/') || img.startsWith('/private/files/')) return img;
+        if (img.startsWith('/')) return img;
+        return '/files/' + img;
+    }
+
     function fetch_and_render(query = '', page_num = 1) {
         frappe.call({
             method: 'frappe.client.get_list',
@@ -48,10 +56,12 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
             html += '<tr><td colspan="3" class="text-center">No projects found.</td></tr>';
         } else {
             rows.forEach(row => {
+                let img3d_src = get_image_src(row['3d_image']);
+                let site_img_src = get_image_src(row['site_image']);
                 html += `<tr>
                     <td>${frappe.utils.escape_html(row.project_name || row.name)}</td>
-                    <td>${row['3d_image'] ? `<img src="/files/${frappe.utils.escape_html(row['3d_image'])}" height="80" style="object-fit:cover;max-width:140px;"/>` : '<span class="text-muted">No Image</span>'}</td>
-                    <td>${row['site_image'] ? `<img src="/files/${frappe.utils.escape_html(row['site_image'])}" height="80" style="object-fit:cover;max-width:140px;"/>` : '<span class="text-muted">No Image</span>'}</td>
+                    <td>${img3d_src ? `<img src="${img3d_src}" height="80" style="object-fit:cover;max-width:140px;"/>` : '<span class="text-muted">No Image</span>'}</td>
+                    <td>${site_img_src ? `<img src="${site_img_src}" height="80" style="object-fit:cover;max-width:140px;"/>` : '<span class="text-muted">No Image</span>'}</td>
                 </tr>`;
             });
         }

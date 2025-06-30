@@ -11,7 +11,22 @@
   "status",
   "assign_to",
   "user",
-  "company"
+  "company",
+  "section_break_expiration",
+  "expiration_datetime",
+  "auto_expire",
+  "expiration_reminder_sent",
+  "column_break_expiration",
+  "last_expiration_check",
+  "expiration_notification_hours",
+  "section_break_password_security",
+  "password_encrypted",
+  "password_complexity_level",
+  "password_last_changed",
+  "column_break_password_security",
+  "password_generation_algorithm",
+  "password_history_count",
+  "force_password_change"
  ],
  "fields": [
   {
@@ -34,7 +49,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "\nAvailable\nTemporary\nReserved",
+   "options": "\nAvailable\nTemporary\nReserved\nExpired",
    "read_only": 1
   },
   {
@@ -63,6 +78,94 @@
    "fieldtype": "Link",
    "label": "App Type",
    "options": "App Type"
+  },
+  {
+   "fieldname": "section_break_expiration",
+   "fieldtype": "Section Break",
+   "label": "Expiration Settings"
+  },
+  {
+   "depends_on": "eval:doc.status == 'Temporary' || doc.status == 'Reserved'",
+   "fieldname": "expiration_datetime",
+   "fieldtype": "Datetime",
+   "label": "Expiration Date & Time",
+   "description": "When this assignment will automatically expire"
+  },
+  {
+   "default": "1",
+   "depends_on": "eval:doc.status == 'Temporary' || doc.status == 'Reserved'",
+   "fieldname": "auto_expire",
+   "fieldtype": "Check",
+   "label": "Auto Expire",
+   "description": "Automatically change status to Available when expired"
+  },
+  {
+   "fieldname": "expiration_reminder_sent",
+   "fieldtype": "Check",
+   "label": "Expiration Reminder Sent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_expiration",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_expiration_check",
+   "fieldtype": "Datetime",
+   "label": "Last Expiration Check",
+   "read_only": 1
+  },
+  {
+   "default": "24",
+   "fieldname": "expiration_notification_hours",
+   "fieldtype": "Int",
+   "label": "Notification Hours Before Expiry",
+   "description": "Send reminder email X hours before expiration"
+  },
+  {
+   "fieldname": "section_break_password_security",
+   "fieldtype": "Section Break",
+   "label": "Password Security"
+  },
+  {
+   "fieldname": "password_encrypted",
+   "fieldtype": "Check",
+   "label": "Password Encrypted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "password_complexity_level",
+   "fieldtype": "Int",
+   "label": "Password Complexity Level",
+   "read_only": 1
+  },
+  {
+   "fieldname": "password_last_changed",
+   "fieldtype": "Datetime",
+   "label": "Password Last Changed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_password_security",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "password_generation_algorithm",
+   "fieldtype": "Data",
+   "label": "Password Generation Algorithm",
+   "read_only": 1
+  },
+  {
+   "fieldname": "password_history_count",
+   "fieldtype": "Int",
+   "label": "Password History Count",
+   "read_only": 1
+  },
+  {
+   "fieldname": "force_password_change",
+   "fieldtype": "Check",
+   "label": "Force Password Change",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,

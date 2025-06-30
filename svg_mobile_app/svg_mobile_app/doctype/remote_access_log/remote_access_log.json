@@ -14,7 +14,23 @@
   "user",
   "company",
   "reference",
-  "password_applied"
+  "password_applied",
+  "section_break_usage_tracking",
+  "connection_start_time",
+  "connection_end_time",
+  "connection_duration",
+  "column_break_usage_tracking",
+  "connection_purpose",
+  "connection_notes",
+  "connection_verified",
+  "section_break_reporting",
+  "usage_reported_by",
+  "usage_report_date",
+  "manual_check_in",
+  "column_break_reporting",
+  "manual_check_out",
+  "session_rating",
+  "issues_encountered"
  ],
  "fields": [
   {
@@ -68,6 +84,95 @@
    "fieldname": "password_applied",
    "fieldtype": "Check",
    "label": "Password Applied"
+  },
+  {
+   "fieldname": "section_break_usage_tracking",
+   "fieldtype": "Section Break",
+   "label": "Usage Tracking"
+  },
+  {
+   "fieldname": "connection_start_time",
+   "fieldtype": "Datetime",
+   "label": "Connection Start Time",
+   "description": "When the remote session started"
+  },
+  {
+   "fieldname": "connection_end_time",
+   "fieldtype": "Datetime",
+   "label": "Connection End Time",
+   "description": "When the remote session ended"
+  },
+  {
+   "fieldname": "connection_duration",
+   "fieldtype": "Duration",
+   "label": "Connection Duration",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_usage_tracking",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "connection_purpose",
+   "fieldtype": "Select",
+   "label": "Connection Purpose",
+   "options": "\nTechnical Support\nMaintenance\nTraining\nTroubleshooting\nSoftware Installation\nData Transfer\nOther"
+  },
+  {
+   "fieldname": "connection_notes",
+   "fieldtype": "Small Text",
+   "label": "Connection Notes",
+   "description": "Brief description of work performed"
+  },
+  {
+   "fieldname": "connection_verified",
+   "fieldtype": "Check",
+   "label": "Connection Verified",
+   "description": "Verified by IT administrator"
+  },
+  {
+   "fieldname": "section_break_reporting",
+   "fieldtype": "Section Break",
+   "label": "Manual Reporting"
+  },
+  {
+   "fieldname": "usage_reported_by",
+   "fieldtype": "Link",
+   "label": "Usage Reported By",
+   "options": "User"
+  },
+  {
+   "fieldname": "usage_report_date",
+   "fieldtype": "Date",
+   "label": "Usage Report Date"
+  },
+  {
+   "fieldname": "manual_check_in",
+   "fieldtype": "Datetime",
+   "label": "Manual Check-in",
+   "description": "User reported start time"
+  },
+  {
+   "fieldname": "column_break_reporting",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "manual_check_out",
+   "fieldtype": "Datetime",
+   "label": "Manual Check-out",
+   "description": "User reported end time"
+  },
+  {
+   "fieldname": "session_rating",
+   "fieldtype": "Rating",
+   "label": "Session Rating",
+   "description": "User experience rating (1-5 stars)"
+  },
+  {
+   "fieldname": "issues_encountered",
+   "fieldtype": "Small Text",
+   "label": "Issues Encountered",
+   "description": "Any problems during the session"
   }
  ],
  "grid_page_length": 50,

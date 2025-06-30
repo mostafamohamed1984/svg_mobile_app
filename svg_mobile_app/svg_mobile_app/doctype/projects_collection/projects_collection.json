@@ -9,6 +9,7 @@
  "field_order": [
   "project_filter_section",
   "project_name",
+  "numeric_sort_field",
   "client_name",
   "new_type",
   "type",
@@ -97,6 +98,13 @@
    "label": "Project Number",
    "reqd": 1,
    "unique": 1
+  },
+  {
+   "fieldname": "numeric_sort_field",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Numeric Sort Field",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_ncuk",
@@ -529,7 +537,7 @@
    "write": 1
   }
  ],
- "sort_field": "name",
+ "sort_field": "numeric_sort_field",
  "sort_order": "DESC",
  "states": []
 }

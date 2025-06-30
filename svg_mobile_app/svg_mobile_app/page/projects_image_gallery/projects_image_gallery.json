@@ -4,5 +4,6 @@
   "icon": "octicon octicon-file-media",
   "order": 1,
   "single_column": 1,
-  "doctype": "Page"
+  "doctype": "Page",
+  "name": "projects_image_gallery"
 } 

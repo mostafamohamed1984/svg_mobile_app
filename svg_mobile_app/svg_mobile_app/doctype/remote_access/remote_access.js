@@ -44,10 +44,18 @@ frappe.ui.form.on('Remote Access', {
                 let expiration_date = frappe.datetime.add_to_date(frappe.datetime.now_datetime(), 0, 0, 0, hours_to_add);
                 frm.set_value('expiration_datetime', expiration_date);
             }
-            frm.set_value('auto_expire', 1);
+            // Only set auto_expire if it's not already 1
+            if (frm.doc.auto_expire !== 1) {
+                frm.set_value('auto_expire', 1);
+            }
         } else if (frm.doc.status === 'Available') {
-            frm.set_value('expiration_datetime', null);
-            frm.set_value('expiration_reminder_sent', 0);
+            // Only set values if they need to be changed
+            if (frm.doc.expiration_datetime) {
+                frm.set_value('expiration_datetime', null);
+            }
+            if (frm.doc.expiration_reminder_sent !== 0) {
+                frm.set_value('expiration_reminder_sent', 0);
+            }
         }
     },
     

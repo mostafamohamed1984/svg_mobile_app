@@ -479,7 +479,8 @@ class NetworkDevicesDashboard {
                         indicator: 'green'
                     });
                     this.refresh();
-                    this.show_connection_details(r.message.device_details);
+                    // Use credentials returned directly from start_connection
+                    this.render_connection_modal(r.message.device_details, r.message.credentials);
                 } else {
                     frappe.show_alert({
                         message: r.message ? r.message.message : 'Failed to connect to device',

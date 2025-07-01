@@ -305,20 +305,24 @@ def start_connection(device_name, purpose=None):
         
         frappe.db.commit()
         
-        # Only return sensitive information to authorized users
+        # Return device details with credentials since user is now authorized
         device_details = device.as_dict()
-        
-        # Remove sensitive fields if user is not authorized
-        if not can_user_connect_device(device):
-            device_details.pop('password', None)
-            device_details.pop('new_password', None)
-            device_details.pop('old_password', None)
         
         return {
             'success': True,
             'message': f'Connection to {device.id} started successfully',
             'connection_id': log.name,
-            'device_details': device_details
+            'device_details': device_details,
+            'credentials': {
+                'device_id': device.id,
+                'password': device.password,
+                'new_password': device.new_password,
+                'connection_info': {
+                    'ip_address': getattr(device, 'ip_address', None),
+                    'port': getattr(device, 'port', None),
+                    'protocol': getattr(device, 'protocol', None)
+                }
+            }
         }
         
     except Exception as e:

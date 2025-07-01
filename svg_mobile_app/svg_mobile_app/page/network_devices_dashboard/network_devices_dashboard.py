@@ -22,8 +22,8 @@ def get_network_devices(filters=None):
     
     if filters.get('search'):
         search_term = f"%{filters['search']}%"
-        conditions.append("(device_name LIKE %s OR ip_address LIKE %s OR description LIKE %s)")
-        params.extend([search_term, search_term, search_term])
+        conditions.append("(id LIKE %s)")
+        params.append(search_term)
     
     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
     
@@ -31,14 +31,12 @@ def get_network_devices(filters=None):
     query = f"""
         SELECT 
             name,
-            device_name,
-            ip_address,
+            id,
             app_type,
             status,
-            assigned_to,
+            assign_to,
             password,
-            expiry_date,
-            description,
+            expiration_datetime,
             creation,
             modified,
             password_complexity_level,
@@ -48,7 +46,7 @@ def get_network_devices(filters=None):
              AND connection_end_time IS NULL) as active_connections
         FROM `tabRemote Access`
         WHERE 1=1 {where_clause}
-        ORDER BY device_name
+        ORDER BY id
     """
     
     devices = frappe.db.sql(query, tuple(params), as_dict=True)
@@ -64,14 +62,13 @@ def get_network_devices(filters=None):
         
         processed_device = {
             'name': device.name,
-            'device_name': device.device_name,
-            'ip_address': device.ip_address,
+            'device_name': device.id,  # Using id as device name
+            'id': device.id,
             'app_type': device.app_type,
             'status': actual_status,
-            'assigned_to': device.assigned_to,
-            'description': device.description,
+            'assigned_to': device.assign_to,
             'has_password': bool(device.password),
-            'expiry_date': device.expiry_date,
+            'expiry_date': device.expiration_datetime,
             'password_complexity': device.password_complexity_level,
             'active_connections': device.active_connections,
             'last_activity': last_activity,
@@ -87,7 +84,7 @@ def get_device_actual_status(device):
     """Determine the actual status of a device based on various factors"""
     
     # Check if expired
-    if device.expiry_date and getdate(device.expiry_date) < getdate():
+    if device.expiration_datetime and getdate(device.expiration_datetime) < getdate():
         return 'Expired'
     
     # Check if has active connections
@@ -176,7 +173,7 @@ def can_user_connect_device(device):
         return False
     
     # If device is reserved, only the assigned user can connect
-    if device.status == 'Reserved' and device.assigned_to != frappe.session.user:
+    if device.status == 'Reserved' and device.assign_to != frappe.session.user:
         return False
     
     # Check if user has permission
@@ -191,7 +188,7 @@ def get_user_device_permissions(device):
         'can_read': frappe.has_permission('Remote Access', 'read', device.name),
         'can_write': frappe.has_permission('Remote Access', 'write', device.name),
         'can_delete': frappe.has_permission('Remote Access', 'delete', device.name),
-        'is_assigned_user': device.assigned_to == frappe.session.user
+        'is_assigned_user': device.assign_to == frappe.session.user
     }
 
 @frappe.whitelist()
@@ -205,7 +202,7 @@ def reserve_device(device_name, purpose=None):
         
         # Update device status
         device.status = 'Reserved'
-        device.assigned_to = frappe.session.user
+        device.assign_to = frappe.session.user
         device.save()
         
         # Create log entry
@@ -220,7 +217,7 @@ def reserve_device(device_name, purpose=None):
         
         return {
             'success': True,
-            'message': f'Device {device.device_name} has been reserved successfully'
+            'message': f'Device {device.id} has been reserved successfully'
         }
         
     except Exception as e:
@@ -237,19 +234,19 @@ def release_device(device_name):
         device = frappe.get_doc('Remote Access', device_name)
         
         # Check if user can release this device
-        if device.assigned_to != frappe.session.user and not frappe.has_permission('Remote Access', 'write', device.name):
+        if device.assign_to != frappe.session.user and not frappe.has_permission('Remote Access', 'write', device.name):
             frappe.throw(_("You cannot release this device"))
         
         # Update device status
         device.status = 'Available'
-        device.assigned_to = None
+        device.assign_to = None
         device.save()
         
         frappe.db.commit()
         
         return {
             'success': True,
-            'message': f'Device {device.device_name} has been released successfully'
+            'message': f'Device {device.id} has been released successfully'
         }
         
     except Exception as e:
@@ -280,14 +277,14 @@ def start_connection(device_name, purpose=None):
         # Update device status if it was available
         if device.status == 'Available':
             device.status = 'Temporary'
-            device.assigned_to = frappe.session.user
+            device.assign_to = frappe.session.user
             device.save()
         
         frappe.db.commit()
         
         return {
             'success': True,
-            'message': f'Connection to {device.device_name} started successfully',
+            'message': f'Connection to {device.id} started successfully',
             'connection_id': log.name,
             'device_details': device.as_dict()
         }

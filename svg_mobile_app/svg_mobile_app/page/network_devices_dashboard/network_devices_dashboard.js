@@ -75,7 +75,7 @@ class NetworkDevicesDashboard {
                 <div class="filters-row">
                     <div class="filter-group">
                         <label>Search Devices</label>
-                        <input type="text" id="search-filter" placeholder="Search by name, IP, or description...">
+                        <input type="text" id="search-filter" placeholder="Search by device ID...">
                     </div>
                     <div class="filter-group">
                         <label>Device Type</label>
@@ -207,7 +207,7 @@ class NetworkDevicesDashboard {
             method: 'frappe.client.get_list',
             args: {
                 doctype: 'App Type',
-                fields: ['name', 'app_type'],
+                fields: ['name'],
                 limit_page_length: 100
             },
             callback: (r) => {
@@ -225,7 +225,7 @@ class NetworkDevicesDashboard {
         select.find('option:not(:first)').remove();
         
         app_types.forEach(type => {
-            select.append(`<option value="${type.name}">${type.app_type || type.name}</option>`);
+            select.append(`<option value="${type.name}">${type.name}</option>`);
         });
         
         if (current_value) {
@@ -273,7 +273,7 @@ class NetworkDevicesDashboard {
                     </div>
                     <div class="device-info">
                         <h4>${device.device_name}</h4>
-                        <div class="ip-address">${device.ip_address}</div>
+                        <div class="ip-address">ID: ${device.id}</div>
                     </div>
                 </div>
 
@@ -348,7 +348,7 @@ class NetworkDevicesDashboard {
             <div class="device-modal" id="device-modal">
                 <div class="device-modal-content">
                     <div class="device-modal-header">
-                        <h3 class="device-modal-title">${device.device_name}</h3>
+                        <h3 class="device-modal-title">${device.id}</h3>
                         <button class="device-modal-close">&times;</button>
                     </div>
                     
@@ -357,10 +357,9 @@ class NetworkDevicesDashboard {
                             <div class="col-md-6">
                                 <h5>Device Information</h5>
                                 <table class="table table-borderless">
-                                    <tr><td><strong>IP Address:</strong></td><td>${device.ip_address}</td></tr>
+                                    <tr><td><strong>Device ID:</strong></td><td>${device.id}</td></tr>
                                     <tr><td><strong>Type:</strong></td><td>${device.app_type || 'Unknown'}</td></tr>
                                     <tr><td><strong>Status:</strong></td><td><span class="badge badge-${this.get_status_class(device.status)}">${device.status}</span></td></tr>
-                                    <tr><td><strong>Description:</strong></td><td>${device.description || 'No description'}</td></tr>
                                     ${device.assigned_to ? `<tr><td><strong>Assigned to:</strong></td><td>${device.assigned_to}</td></tr>` : ''}
                                     ${device.expiry_date ? `<tr><td><strong>Expires:</strong></td><td>${frappe.datetime.str_to_user(device.expiry_date)}</td></tr>` : ''}
                                 </table>
@@ -431,7 +430,7 @@ class NetworkDevicesDashboard {
             </button>`;
         }
 
-        if (device.status === 'Reserved' && device.assigned_to === frappe.session.user) {
+        if (device.status === 'Reserved' && device.assign_to === frappe.session.user) {
             buttons += `<button class="action-btn primary" data-action="release">
                 <i class="fa fa-unlock"></i> Release
             </button>`;
@@ -544,13 +543,13 @@ class NetworkDevicesDashboard {
                     
                     <div class="device-modal-body">
                         <div class="alert alert-success">
-                            <h5>Successfully connected to ${device.device_name}</h5>
+                            <h5>Successfully connected to ${device.id}</h5>
                         </div>
                         
                         <h6>Connection Details:</h6>
                         <table class="table">
-                            <tr><td><strong>Device:</strong></td><td>${device.device_name}</td></tr>
-                            <tr><td><strong>IP Address:</strong></td><td>${device.ip_address}</td></tr>
+                            <tr><td><strong>Device:</strong></td><td>${device.id}</td></tr>
+                            <tr><td><strong>Device ID:</strong></td><td>${device.id}</td></tr>
                             ${device.password ? `<tr><td><strong>Password:</strong></td><td><code>${device.password}</code></td></tr>` : ''}
                             <tr><td><strong>Connection Time:</strong></td><td>${frappe.datetime.str_to_user(frappe.datetime.now_datetime())}</td></tr>
                         </table>
@@ -625,7 +624,7 @@ class NetworkDevicesDashboard {
                     <i class="fa fa-desktop"></i>
                 </div>
                 <h3>No Devices Found</h3>
-                <p>No network devices match your current filters. Try adjusting your search criteria or check if devices have been added to the system.</p>
+                <p>No remote access devices match your current filters. Try adjusting your search criteria or check if devices have been added to the system.</p>
                 <button class="action-btn primary" onclick="frappe.network_devices_dashboard.refresh()">
                     <i class="fa fa-refresh"></i> Refresh
                 </button>

@@ -544,6 +544,9 @@ class NetworkDevicesDashboard {
     }
 
     render_connection_modal(device, credentials) {
+        // Only show End Connection button if user has credentials (meaning they have active connection)
+        const showEndButton = credentials && credentials.success;
+        
         const connection_modal = $(`
             <div class="device-modal" id="connection-modal">
                 <div class="device-modal-content">
@@ -578,7 +581,7 @@ class NetworkDevicesDashboard {
                     </div>
                     
                     <div class="device-modal-footer">
-                        <button class="action-btn danger" onclick="window.network_dashboard.end_connection('${device.name}'); $('#connection-modal').remove()">End Connection</button>
+                        ${showEndButton ? `<button class="action-btn danger" onclick="window.network_dashboard.end_connection('${device.name}'); $('#connection-modal').remove()">End Connection</button>` : ''}
                         <button class="action-btn primary" onclick="$('#connection-modal').remove()">Got it</button>
                     </div>
                 </div>

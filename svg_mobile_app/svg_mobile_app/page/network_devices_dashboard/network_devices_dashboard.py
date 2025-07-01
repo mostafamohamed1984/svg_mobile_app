@@ -193,9 +193,11 @@ def can_user_connect_device(device):
     if active_connection and active_connection[0].user != frappe.session.user:
         return False
     
-    # Check if user has permission
+    # Check if user has permission (allow if user is assigned or device is available)
     if not frappe.has_permission('Remote Access', 'read', device.name):
-        return False
+        # Allow connection if device is available or user is assigned
+        if device.status != 'Available' and device.assign_to != frappe.session.user:
+            return False
     
     return True
 

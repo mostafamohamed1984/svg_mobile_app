@@ -39,7 +39,7 @@
   {
    "depends_on": "eval:doc.__islocal || doc.status != 'Available'",
    "fieldname": "password",
-   "fieldtype": "Data",
+   "fieldtype": "Text",
    "in_list_view": 1,
    "label": "Password",
    "reqd": 1

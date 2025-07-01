@@ -578,7 +578,6 @@ class NetworkDevicesDashboard {
                             <tr><td><strong>Device:</strong></td><td>${device.id}</td></tr>
                             <tr><td><strong>Device ID:</strong></td><td>${device.id}</td></tr>
                             ${credentials && credentials.password ? `<tr><td><strong>Password:</strong></td><td><code>${credentials.password}</code></td></tr>` : ''}
-                            ${credentials && credentials.new_password ? `<tr><td><strong>New Password:</strong></td><td><code>${credentials.new_password}</code></td></tr>` : ''}
                             <tr><td><strong>Connection Time:</strong></td><td>${frappe.datetime.str_to_user(frappe.datetime.now_datetime())}</td></tr>
                         </table>
                         

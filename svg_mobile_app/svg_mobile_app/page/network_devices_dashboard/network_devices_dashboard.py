@@ -316,7 +316,6 @@ def start_connection(device_name, purpose=None):
             'credentials': {
                 'device_id': device.id,
                 'password': device.password,
-                'new_password': device.new_password,
                 'connection_info': {
                     'ip_address': getattr(device, 'ip_address', None),
                     'port': getattr(device, 'port', None),
@@ -453,7 +452,6 @@ def get_connection_credentials(device_name):
             'success': True,
             'device_id': device.id,
             'password': device.password,
-            'new_password': device.new_password,
             'connection_info': {
                 'ip_address': getattr(device, 'ip_address', None),
                 'port': getattr(device, 'port', None),

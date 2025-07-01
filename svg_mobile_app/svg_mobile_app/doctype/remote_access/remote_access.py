@@ -365,6 +365,5 @@ def decrypt_password(name):
 @frappe.whitelist()
 def generate_secure_password(length=12, algorithm='secure_random'):
 	"""Generate secure password - whitelisted function"""
-	# Create a temporary instance to use the class method
-	temp_doc = RemoteAccess()
-	return temp_doc.generate_secure_password(int(length), algorithm)
+	# Call the static method directly
+	return RemoteAccess.generate_secure_password(int(length), algorithm)

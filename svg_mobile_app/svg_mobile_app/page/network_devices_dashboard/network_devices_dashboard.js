@@ -204,12 +204,7 @@ class NetworkDevicesDashboard {
 
     load_device_types() {
         return frappe.call({
-            method: 'frappe.client.get_list',
-            args: {
-                doctype: 'App Type',
-                fields: ['name'],
-                limit_page_length: 100
-            },
+            method: 'svg_mobile_app.svg_mobile_app.page.network_devices_dashboard.network_devices_dashboard.get_app_types',
             callback: (r) => {
                 if (r.message) {
                     this.populate_device_type_filter(r.message);
@@ -225,7 +220,7 @@ class NetworkDevicesDashboard {
         select.find('option:not(:first)').remove();
         
         app_types.forEach(type => {
-            select.append(`<option value="${type.name}">${type.name}</option>`);
+            select.append(`<option value="${type.name}">${type.name1 || type.name}</option>`);
         });
         
         if (current_value) {

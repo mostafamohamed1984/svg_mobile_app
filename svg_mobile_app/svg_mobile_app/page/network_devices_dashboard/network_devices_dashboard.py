@@ -313,4 +313,15 @@ def get_device_statistics():
         FROM `tabRemote Access`
     """, as_dict=True)
     
-    return stats[0] if stats else {} 
+    return stats[0] if stats else {}
+
+@frappe.whitelist()
+def get_app_types():
+    """Get all app types for filtering"""
+    app_types = frappe.db.sql("""
+        SELECT name, name1
+        FROM `tabApp Type`
+        ORDER BY name1
+    """, as_dict=True)
+    
+    return app_types 

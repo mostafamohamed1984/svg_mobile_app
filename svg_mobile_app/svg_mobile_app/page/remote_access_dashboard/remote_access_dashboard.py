@@ -2,8 +2,13 @@ import frappe
 from frappe import _
 from frappe.utils import getdate, add_to_date, now, get_datetime
 
-def get_filter_conditions(filters):
-    """Generate SQL filter conditions based on provided filters"""
+def get_filter_conditions(filters, table_alias=None):
+    """Generate SQL filter conditions based on provided filters
+    
+    Args:
+        filters: The filter dictionary
+        table_alias: Optional table alias to prefix column names (e.g., 'ra' for `tabRemote Access`)
+    """
     conditions = ""
     params = []
     
@@ -14,13 +19,19 @@ def get_filter_conditions(filters):
     # Get company filter
     company = filters.get('company')
     if company:
-        conditions += " AND company = %s"
+        if table_alias:
+            conditions += f" AND {table_alias}.company = %s"
+        else:
+            conditions += " AND company = %s"
         params.append(company)
     
     # Get app type filter
     app_type = filters.get('app_type')
     if app_type:
-        conditions += " AND app_type = %s"
+        if table_alias:
+            conditions += f" AND {table_alias}.app_type = %s"
+        else:
+            conditions += " AND app_type = %s"
         params.append(app_type)
     
     return conditions, params, from_date, to_date
@@ -29,6 +40,7 @@ def get_filter_conditions(filters):
 def get_summary_data(filters=None):
     filters = frappe.parse_json(filters)
     
+    # For single table queries
     conditions, params, from_date, to_date = get_filter_conditions(filters)
     
     # Get total remote access count
@@ -63,15 +75,18 @@ def get_summary_data(filters=None):
     expired_count_params = [from_date, to_date] + params
     expired_count = frappe.db.sql(expired_count_query, tuple(expired_count_params))[0][0] or 0
     
+    # For joined table queries, use table alias
+    ra_conditions, ra_params, from_date, to_date = get_filter_conditions(filters, table_alias='ra')
+    
     # Get total usage count
     usage_count_query = f"""
         SELECT COUNT(*) as count
         FROM `tabRemote Access Log` log
         LEFT JOIN `tabRemote Access` ra ON log.reference = ra.name
         WHERE log.creation BETWEEN %s AND %s
-        {conditions}
+        {ra_conditions}
     """
-    usage_count_params = [from_date, to_date] + params
+    usage_count_params = [from_date, to_date] + ra_params
     usage_count = frappe.db.sql(usage_count_query, tuple(usage_count_params))[0][0] or 0
     
     # Get average usage duration
@@ -81,17 +96,48 @@ def get_summary_data(filters=None):
         LEFT JOIN `tabRemote Access` ra ON log.reference = ra.name
         WHERE log.connection_duration > 0
         AND log.creation BETWEEN %s AND %s
-        {conditions}
+        {ra_conditions}
     """
-    avg_duration_params = [from_date, to_date] + params
+    avg_duration_params = [from_date, to_date] + ra_params
     avg_duration = frappe.db.sql(avg_duration_query, tuple(avg_duration_params))[0][0] or 0
     
+    # Break down active count into specific statuses
+    available_query = f"""
+        SELECT COUNT(*) as count
+        FROM `tabRemote Access`
+        WHERE status = 'Available'
+        AND creation BETWEEN %s AND %s
+        {conditions}
+    """
+    available_params = [from_date, to_date] + params
+    available_count = frappe.db.sql(available_query, tuple(available_params))[0][0] or 0
+    
+    temporary_query = f"""
+        SELECT COUNT(*) as count
+        FROM `tabRemote Access`
+        WHERE status = 'Temporarily Assigned'
+        AND creation BETWEEN %s AND %s
+        {conditions}
+    """
+    temporary_params = [from_date, to_date] + params
+    temporary_count = frappe.db.sql(temporary_query, tuple(temporary_params))[0][0] or 0
+    
+    reserved_query = f"""
+        SELECT COUNT(*) as count
+        FROM `tabRemote Access`
+        WHERE status = 'Reserved'
+        AND creation BETWEEN %s AND %s
+        {conditions}
+    """
+    reserved_params = [from_date, to_date] + params
+    reserved_count = frappe.db.sql(reserved_query, tuple(reserved_params))[0][0] or 0
+    
     return {
-        'total_count': total_count,
-        'active_count': active_count,
-        'expired_count': expired_count,
-        'usage_count': usage_count,
-        'avg_duration': round(avg_duration, 2) if avg_duration else 0
+        'total_remote_access': total_count,
+        'available_count': available_count,
+        'temporary_count': temporary_count,
+        'reserved_count': reserved_count,
+        'expired_count': expired_count
     }
 
 @frappe.whitelist()
@@ -99,6 +145,7 @@ def get_status_distribution(filters=None):
     """Get status distribution data for Remote Access dashboard"""
     filters = frappe.parse_json(filters)
     
+    # Single table query, no need for table alias
     conditions, params, from_date, to_date = get_filter_conditions(filters)
     
     # Get status distribution
@@ -142,6 +189,7 @@ def get_app_distribution(filters=None):
     """Get application type distribution data for Remote Access dashboard"""
     filters = frappe.parse_json(filters)
     
+    # Single table query, no need for table alias
     conditions, params, from_date, to_date = get_filter_conditions(filters)
     
     # Get app type distribution
@@ -175,7 +223,8 @@ def get_usage_analytics(filters=None):
     """Get usage analytics data for Remote Access dashboard"""
     filters = frappe.parse_json(filters)
     
-    conditions, params, from_date, to_date = get_filter_conditions(filters)
+    # Pass 'ra' as table alias for Remote Access table
+    conditions, params, from_date, to_date = get_filter_conditions(filters, table_alias='ra')
     
     # Create date range
     date_range = []
@@ -219,6 +268,7 @@ def get_security_metrics(filters=None):
     """Get security metrics data for Remote Access dashboard"""
     filters = frappe.parse_json(filters)
     
+    # Single table query, no need for table alias
     conditions, params, from_date, to_date = get_filter_conditions(filters)
     
     # Get password complexity distribution

@@ -125,7 +125,7 @@ def get_device_details(device_name):
             connection_end_time,
             connection_duration,
             connection_purpose,
-            user_rating,
+            session_rating,
             creation
         FROM `tabRemote Access Log`
         WHERE reference = %s

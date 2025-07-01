@@ -475,13 +475,10 @@ class RemoteAccessDashboard {
                         title: 'Remote Access Status Distribution',
                         data: {
                             labels: data.labels,
-                            datasets: [{
-                                name: 'Status Count',
-                                values: data.values
-                            }]
+                            datasets: data.datasets
                         },
                         type: 'pie',
-                        colors: ['#28a745', '#fd7e14', '#6f42c1', '#dc3545'],
+                        colors: data.colors || ['#28a745', '#fd7e14', '#6f42c1', '#dc3545'],
                         height: 300
                     });
                 }
@@ -519,10 +516,7 @@ class RemoteAccessDashboard {
                         title: 'Application Type Distribution',
                         data: {
                             labels: data.labels,
-                            datasets: [{
-                                name: 'App Count',
-                                values: data.values
-                            }]
+                            datasets: data.datasets
                         },
                         type: 'bar',
                         height: 300
@@ -562,11 +556,7 @@ class RemoteAccessDashboard {
                         title: 'Remote Access Usage Over Time',
                         data: {
                             labels: data.labels,
-                            datasets: [{
-                                name: 'Usage Count',
-                                values: data.values,
-                                chartType: 'line'
-                            }]
+                            datasets: data.datasets
                         },
                         type: 'axis-mixed',
                         height: 300,
@@ -611,12 +601,10 @@ class RemoteAccessDashboard {
                         title: 'Password Complexity Distribution',
                         data: {
                             labels: data.labels,
-                            datasets: [{
-                                name: 'Count',
-                                values: data.values
-                            }]
+                            datasets: data.datasets
                         },
                         type: 'percentage',
+                        colors: data.colors || ['#dc3545', '#ffc107', '#28a745'],
                         height: 300
                     });
                 }

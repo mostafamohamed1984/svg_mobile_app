@@ -139,24 +139,8 @@ frappe.ui.form.on('Remote Access Log', {
     },
     
     calculate_duration: function(frm) {
-        if (frm.doc.connection_start_time && frm.doc.connection_end_time) {
-            let start = new Date(frm.doc.connection_start_time);
-            let end = new Date(frm.doc.connection_end_time);
-            
-            if (end > start) {
-                let duration_seconds = Math.floor((end - start) / 1000);
-                let hours = Math.floor(duration_seconds / 3600);
-                let minutes = Math.floor((duration_seconds % 3600) / 60);
-                let seconds = duration_seconds % 60;
-                
-                let duration_string = '';
-                if (hours > 0) duration_string += hours + 'h ';
-                if (minutes > 0) duration_string += minutes + 'm ';
-                duration_string += seconds + 's';
-                
-                frm.set_value('connection_duration', duration_string);
-            }
-        }
+        // Duration is now calculated automatically server-side in before_save
+        // The server calculates it as seconds, which displays properly as a Duration field
     },
     
     validate_connection_times: function(frm) {

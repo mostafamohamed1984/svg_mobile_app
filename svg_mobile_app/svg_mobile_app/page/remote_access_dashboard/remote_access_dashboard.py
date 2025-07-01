@@ -259,7 +259,8 @@ def get_usage_analytics(filters=None):
         'labels': date_range,
         'datasets': [{
             'name': 'Usage Count',
-            'values': values
+            'values': values,
+            'chartType': 'line'
         }]
     }
 

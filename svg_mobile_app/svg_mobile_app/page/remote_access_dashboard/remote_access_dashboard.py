@@ -57,7 +57,7 @@ def get_summary_data(filters=None):
     active_count_query = f"""
         SELECT COUNT(*) as count
         FROM `tabRemote Access`
-        WHERE status IN ('Available', 'Temporarily Assigned', 'Reserved')
+        WHERE status IN ('Available', 'Temporary', 'Reserved')
         AND creation BETWEEN %s AND %s
         {conditions}
     """
@@ -115,7 +115,7 @@ def get_summary_data(filters=None):
     temporary_query = f"""
         SELECT COUNT(*) as count
         FROM `tabRemote Access`
-        WHERE status = 'Temporarily Assigned'
+        WHERE status = 'Temporary'
         AND creation BETWEEN %s AND %s
         {conditions}
     """
@@ -166,7 +166,7 @@ def get_status_distribution(filters=None):
     
     status_colors = {
         'Available': '#28a745',       # Green
-        'Temporarily Assigned': '#17a2b8',  # Blue
+        'Temporary': '#17a2b8',  # Blue
         'Reserved': '#ffc107',       # Yellow
         'Expired': '#dc3545'         # Red
     }

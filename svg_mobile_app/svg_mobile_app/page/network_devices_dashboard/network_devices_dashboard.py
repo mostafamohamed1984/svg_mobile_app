@@ -209,7 +209,7 @@ def reserve_device(device_name, purpose=None):
         log = frappe.get_doc({
             'doctype': 'Remote Access Log',
             'reference': device_name,
-            'connection_purpose': purpose or 'Device Reserved'
+            'connection_purpose': purpose or 'Other'
         })
         log.insert()
         
@@ -270,7 +270,7 @@ def start_connection(device_name, purpose=None):
             'doctype': 'Remote Access Log',
             'reference': device_name,
             'connection_start_time': now(),
-            'connection_purpose': purpose or 'Remote Access Session'
+            'connection_purpose': purpose or 'Other'
         })
         log.insert()
         

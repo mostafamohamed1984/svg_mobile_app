@@ -84,6 +84,12 @@ class NetworkDevicesDashboard {
                         </select>
                     </div>
                     <div class="filter-group">
+                        <label>Company</label>
+                        <select id="company-filter">
+                            <option value="">All Companies</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
                         <label>Status</label>
                         <select id="status-filter">
                             <option value="">All Status</option>
@@ -134,6 +140,11 @@ class NetworkDevicesDashboard {
             this.apply_filters();
         });
 
+        $('#company-filter').on('change', () => {
+            this.filters.company = $('#company-filter').val();
+            this.apply_filters();
+        });
+
         $('#status-filter').on('change', () => {
             this.filters.status = $('#status-filter').val();
             this.apply_filters();
@@ -156,7 +167,8 @@ class NetworkDevicesDashboard {
         Promise.all([
             this.load_statistics(),
             this.load_devices(),
-            this.load_device_types()
+            this.load_device_types(),
+            this.load_companies()
         ]).then(() => {
             this.render_devices();
             this.update_statistics();
@@ -213,6 +225,17 @@ class NetworkDevicesDashboard {
         });
     }
 
+    load_companies() {
+        return frappe.call({
+            method: 'svg_mobile_app.svg_mobile_app.page.network_devices_dashboard.network_devices_dashboard.get_companies',
+            callback: (r) => {
+                if (r.message) {
+                    this.populate_company_filter(r.message);
+                }
+            }
+        });
+    }
+
     populate_device_type_filter(app_types) {
         const select = $('#device-type-filter');
         const current_value = select.val();
@@ -221,6 +244,21 @@ class NetworkDevicesDashboard {
         
         app_types.forEach(type => {
             select.append(`<option value="${type.name}">${type.name1 || type.name}</option>`);
+        });
+        
+        if (current_value) {
+            select.val(current_value);
+        }
+    }
+
+    populate_company_filter(companies) {
+        const select = $('#company-filter');
+        const current_value = select.val();
+        
+        select.find('option:not(:first)').remove();
+        
+        companies.forEach(company => {
+            select.append(`<option value="${company.name}">${company.company_name}</option>`);
         });
         
         if (current_value) {
@@ -277,10 +315,14 @@ class NetworkDevicesDashboard {
                         <span class="device-detail-label">Type:</span>
                         <span class="device-detail-value">${device.app_type || 'Unknown'}</span>
                     </div>
+                    <div class="device-detail-row">
+                        <span class="device-detail-label">Company:</span>
+                        <span class="device-detail-value">${device.company || 'Not Set'}</span>
+                    </div>
                     ${device.assigned_to ? `
                         <div class="device-detail-row">
                             <span class="device-detail-label">Assigned to:</span>
-                            <span class="device-detail-value assigned-user">${device.assigned_to}</span>
+                            <span class="device-detail-value assigned-user">${device.assigned_to_name || device.assigned_to}</span>
                         </div>
                     ` : ''}
                     <div class="device-detail-row">
@@ -354,9 +396,10 @@ class NetworkDevicesDashboard {
                                 <table class="table table-borderless">
                                     <tr><td><strong>Device ID:</strong></td><td>${device.id}</td></tr>
                                     <tr><td><strong>Type:</strong></td><td>${device.app_type || 'Unknown'}</td></tr>
+                                    <tr><td><strong>Company:</strong></td><td>${device.company || 'Not Set'}</td></tr>
                                     <tr><td><strong>Status:</strong></td><td><span class="badge badge-${this.get_status_class(device.status)}">${device.status}</span></td></tr>
-                                    ${device.assigned_to ? `<tr><td><strong>Assigned to:</strong></td><td>${device.assigned_to}</td></tr>` : ''}
-                                    ${device.expiry_date ? `<tr><td><strong>Expires:</strong></td><td>${frappe.datetime.str_to_user(device.expiry_date)}</td></tr>` : ''}
+                                    ${device.assign_to ? `<tr><td><strong>Assigned to:</strong></td><td>${device.assigned_to_name || device.assign_to}</td></tr>` : ''}
+                                    ${device.expiration_datetime ? `<tr><td><strong>Expires:</strong></td><td>${frappe.datetime.str_to_user(device.expiration_datetime)}</td></tr>` : ''}
                                 </table>
                             </div>
                             

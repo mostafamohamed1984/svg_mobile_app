@@ -20,6 +20,10 @@ def get_network_devices(filters=None):
         conditions.append("status = %s")
         params.append(filters['status'])
     
+    if filters.get('company'):
+        conditions.append("company = %s")
+        params.append(filters['company'])
+    
     if filters.get('search'):
         search_term = f"%{filters['search']}%"
         conditions.append("(id LIKE %s)")
@@ -27,26 +31,29 @@ def get_network_devices(filters=None):
     
     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
     
-    # Get all remote access devices
+    # Get all remote access devices with company and employee name
     query = f"""
         SELECT 
-            name,
-            id,
-            app_type,
-            status,
-            assign_to,
-            password,
-            expiration_datetime,
-            creation,
-            modified,
-            password_complexity_level,
+            ra.name,
+            ra.id,
+            ra.app_type,
+            ra.status,
+            ra.assign_to,
+            ra.password,
+            ra.expiration_datetime,
+            ra.creation,
+            ra.modified,
+            ra.company,
+            ra.password_complexity_level,
+            emp.employee_name,
             (SELECT COUNT(*) FROM `tabRemote Access Log` 
-             WHERE reference = `tabRemote Access`.name 
+             WHERE reference = ra.name 
              AND connection_start_time IS NOT NULL 
              AND connection_end_time IS NULL) as active_connections
-        FROM `tabRemote Access`
+        FROM `tabRemote Access` ra
+        LEFT JOIN `tabEmployee` emp ON ra.assign_to = emp.name
         WHERE 1=1 {where_clause}
-        ORDER BY id
+        ORDER BY ra.id
     """
     
     devices = frappe.db.sql(query, tuple(params), as_dict=True)
@@ -67,6 +74,8 @@ def get_network_devices(filters=None):
             'app_type': device.app_type,
             'status': actual_status,
             'assigned_to': device.assign_to,
+            'assigned_to_name': device.employee_name,  # Add employee name
+            'company': device.company,  # Add company
             'has_password': bool(device.password),
             'expiry_date': device.expiration_datetime,
             'password_complexity': device.password_complexity_level,
@@ -118,6 +127,15 @@ def get_device_details(device_name):
     """Get detailed information about a specific device"""
     device = frappe.get_doc('Remote Access', device_name)
     
+    # Get employee name if assigned
+    employee_name = None
+    if device.assign_to:
+        try:
+            employee = frappe.get_doc('Employee', device.assign_to)
+            employee_name = employee.employee_name
+        except:
+            employee_name = device.assign_to
+    
     # Get connection history
     connection_history = frappe.db.sql("""
         SELECT 
@@ -147,8 +165,12 @@ def get_device_details(device_name):
         LIMIT 1
     """, (device_name,), as_dict=True)
     
+    # Add employee name to device dict
+    device_dict = device.as_dict()
+    device_dict['assigned_to_name'] = employee_name
+    
     return {
-        'device': device.as_dict(),
+        'device': device_dict,
         'connection_history': connection_history,
         'active_connection': active_connection[0] if active_connection else None,
         'can_reserve': can_user_reserve_device(device),
@@ -157,12 +179,17 @@ def get_device_details(device_name):
     }
 
 def can_user_reserve_device(device):
-    """Check if current user can reserve this device"""
+    """Check if current user can reserve this device - only System Managers can reserve"""
     if device.status != 'Available':
         return False
     
-    # Check if user has permission
+    # Only System Managers can reserve devices
     if not frappe.has_permission('Remote Access', 'write', device.name):
+        return False
+    
+    # Additional check - user must have System Manager role
+    user_roles = frappe.get_roles(frappe.session.user)
+    if 'System Manager' not in user_roles:
         return False
     
     return True
@@ -305,6 +332,9 @@ def start_connection(device_name, purpose=None):
         
         frappe.db.commit()
         
+        # Get the actual decrypted password
+        decrypted_password = device.decrypt_password()
+        
         # Return device details with credentials since user is now authorized
         device_details = device.as_dict()
         
@@ -315,7 +345,7 @@ def start_connection(device_name, purpose=None):
             'device_details': device_details,
             'credentials': {
                 'device_id': device.id,
-                'password': device.password,
+                'password': decrypted_password,  # Use decrypted password
                 'connection_info': {
                     'ip_address': getattr(device, 'ip_address', None),
                     'port': getattr(device, 'port', None),
@@ -533,4 +563,16 @@ def end_connection(device_name):
         return {
             'success': False,
             'message': str(e)
-        } 
+        }
+
+@frappe.whitelist()
+def get_companies():
+    """Get all companies for filtering"""
+    companies = frappe.db.sql("""
+        SELECT DISTINCT company
+        FROM `tabRemote Access`
+        WHERE company IS NOT NULL AND company != ''
+        ORDER BY company
+    """, as_dict=True)
+    
+    return [{'name': c.company, 'company_name': c.company} for c in companies] 

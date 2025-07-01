@@ -12,21 +12,39 @@ def get_network_devices(filters=None):
     conditions = []
     params = []
     
+    # Default filtering: show Available devices and user's own Reserved devices
+    # Only skip default filtering if explicit filters are provided
+    if not any(filters.get(key) for key in ['device_type', 'status', 'company', 'search']):
+        # Get current user's employee record
+        current_user_employee = None
+        try:
+            current_user_employee = frappe.db.get_value("Employee", {"user_id": frappe.session.user}, "name")
+        except:
+            pass
+        
+        if current_user_employee:
+            conditions.append("(ra.status = 'Available' OR (ra.status = 'Reserved' AND ra.assign_to = %s))")
+            params.append(current_user_employee)
+        else:
+            # If no employee record found, just show Available devices
+            conditions.append("ra.status = 'Available'")
+    
+    # Apply explicit filters if provided
     if filters.get('device_type'):
-        conditions.append("app_type = %s")
+        conditions.append("ra.app_type = %s")
         params.append(filters['device_type'])
     
     if filters.get('status'):
-        conditions.append("status = %s")
+        conditions.append("ra.status = %s")
         params.append(filters['status'])
     
     if filters.get('company'):
-        conditions.append("company = %s")
+        conditions.append("ra.company = %s")
         params.append(filters['company'])
     
     if filters.get('search'):
         search_term = f"%{filters['search']}%"
-        conditions.append("(id LIKE %s)")
+        conditions.append("(ra.id LIKE %s)")
         params.append(search_term)
     
     where_clause = " AND " + " AND ".join(conditions) if conditions else ""
@@ -183,13 +201,13 @@ def can_user_reserve_device(device):
     if device.status != 'Available':
         return False
     
-    # Only System Managers can reserve devices
-    if not frappe.has_permission('Remote Access', 'write', device.name):
-        return False
-    
-    # Additional check - user must have System Manager role
+    # Check if user has System Manager role - more robust checking
     user_roles = frappe.get_roles(frappe.session.user)
     if 'System Manager' not in user_roles:
+        return False
+    
+    # Additional permission check
+    if not frappe.has_permission('Remote Access', 'write', device.name):
         return False
     
     return True

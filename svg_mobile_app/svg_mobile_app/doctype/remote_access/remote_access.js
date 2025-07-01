@@ -41,7 +41,8 @@ frappe.ui.form.on('Remote Access', {
         if (frm.doc.status === 'Temporary' || frm.doc.status === 'Reserved') {
             if (!frm.doc.expiration_datetime) {
                 let hours_to_add = frm.doc.status === 'Temporary' ? 24 : 168; // 24h for Temporary, 7 days for Reserved
-                let expiration_date = frappe.datetime.add_to_date(frappe.datetime.now_datetime(), 0, 0, 0, hours_to_add);
+                // Use moment.js for date manipulation (available in Frappe)
+                let expiration_date = moment().add(hours_to_add, 'hours').format('YYYY-MM-DD HH:mm:ss');
                 frm.set_value('expiration_datetime', expiration_date);
             }
             // Only set auto_expire if it's not already 1
@@ -234,8 +235,8 @@ function show_assign_dialog(frm, status_type) {
                 fieldtype: 'Datetime',
                 label: __('Expiration Date & Time'),
                 default: status_type === 'Temporary' ? 
-                    frappe.datetime.add_to_date(frappe.datetime.now_datetime(), 0, 0, 0, 24) :
-                    frappe.datetime.add_to_date(frappe.datetime.now_datetime(), 0, 0, 7),
+                    moment().add(24, 'hours').format('YYYY-MM-DD HH:mm:ss') :
+                    moment().add(7, 'days').format('YYYY-MM-DD HH:mm:ss'),
                 reqd: 1
             },
             {
@@ -264,7 +265,7 @@ function show_extend_expiration_dialog(frm) {
                 fieldname: 'new_expiration',
                 fieldtype: 'Datetime',
                 label: __('New Expiration Date & Time'),
-                default: frappe.datetime.add_to_date(frm.doc.expiration_datetime, 0, 0, 0, 24),
+                default: moment(frm.doc.expiration_datetime).add(24, 'hours').format('YYYY-MM-DD HH:mm:ss'),
                 reqd: 1
             },
             {

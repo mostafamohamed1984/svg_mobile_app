@@ -231,8 +231,9 @@ class RemoteAccess(Document):
 			return "-".join(selected_words) + str(secrets.randbelow(100))
 		
 		else:
-			# Default fallback
-			return RemoteAccess.generate_secure_password(length, "secure_random")
+			# Default fallback - use secure_random algorithm directly
+			alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+			return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 
 @frappe.whitelist()

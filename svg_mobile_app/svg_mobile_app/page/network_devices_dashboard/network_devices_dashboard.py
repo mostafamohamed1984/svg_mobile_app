@@ -176,6 +176,23 @@ def can_user_connect_device(device):
     if device.status == 'Reserved' and device.assign_to != frappe.session.user:
         return False
     
+    # If device is in use (Temporary), only the assigned user can connect
+    if device.status == 'Temporary' and device.assign_to != frappe.session.user:
+        return False
+    
+    # Check if there's an active connection by someone else
+    active_connection = frappe.db.sql("""
+        SELECT user FROM `tabRemote Access Log`
+        WHERE reference = %s
+        AND connection_start_time IS NOT NULL
+        AND connection_end_time IS NULL
+        ORDER BY creation DESC
+        LIMIT 1
+    """, (device.name,), as_dict=True)
+    
+    if active_connection and active_connection[0].user != frappe.session.user:
+        return False
+    
     # Check if user has permission
     if not frappe.has_permission('Remote Access', 'read', device.name):
         return False
@@ -282,11 +299,20 @@ def start_connection(device_name, purpose=None):
         
         frappe.db.commit()
         
+        # Only return sensitive information to authorized users
+        device_details = device.as_dict()
+        
+        # Remove sensitive fields if user is not authorized
+        if not can_user_connect_device(device):
+            device_details.pop('password', None)
+            device_details.pop('new_password', None)
+            device_details.pop('old_password', None)
+        
         return {
             'success': True,
             'message': f'Connection to {device.id} started successfully',
             'connection_id': log.name,
-            'device_details': device.as_dict()
+            'device_details': device_details
         }
         
     except Exception as e:
@@ -324,4 +350,91 @@ def get_app_types():
         ORDER BY name1
     """, as_dict=True)
     
-    return app_types 
+    return app_types
+
+@frappe.whitelist()
+def get_connection_credentials(device_name):
+    """Get connection credentials for authorized users only"""
+    try:
+        device = frappe.get_doc('Remote Access', device_name)
+        
+        # Strict validation - user must be able to connect AND be the assigned user
+        if not can_user_connect_device(device):
+            frappe.throw(_("You are not authorized to access this device"))
+        
+        # Additional check - must be assigned to this user or have active connection
+        active_connection = frappe.db.sql("""
+            SELECT user FROM `tabRemote Access Log`
+            WHERE reference = %s
+            AND connection_start_time IS NOT NULL
+            AND connection_end_time IS NULL
+            AND user = %s
+            ORDER BY creation DESC
+            LIMIT 1
+        """, (device_name, frappe.session.user), as_dict=True)
+        
+        if not active_connection and device.assign_to != frappe.session.user:
+            frappe.throw(_("You must have an active connection to access credentials"))
+        
+        return {
+            'success': True,
+            'device_id': device.id,
+            'password': device.password,
+            'new_password': device.new_password,
+            'connection_info': {
+                'ip_address': getattr(device, 'ip_address', None),
+                'port': getattr(device, 'port', None),
+                'protocol': getattr(device, 'protocol', None)
+            }
+        }
+        
+    except Exception as e:
+        return {
+            'success': False,
+            'message': str(e)
+        }
+
+@frappe.whitelist()
+def end_connection(device_name):
+    """End an active connection"""
+    try:
+        device = frappe.get_doc('Remote Access', device_name)
+        
+        # Find active connection for current user
+        active_log = frappe.db.sql("""
+            SELECT name FROM `tabRemote Access Log`
+            WHERE reference = %s
+            AND connection_start_time IS NOT NULL
+            AND connection_end_time IS NULL
+            AND user = %s
+            ORDER BY creation DESC
+            LIMIT 1
+        """, (device_name, frappe.session.user), as_dict=True)
+        
+        if not active_log:
+            frappe.throw(_("No active connection found for this device"))
+        
+        # Update the log entry
+        log = frappe.get_doc('Remote Access Log', active_log[0].name)
+        log.connection_end_time = now()
+        log.save()
+        
+        # Update device status if it was temporary
+        if device.status == 'Temporary' and device.assign_to == frappe.session.user:
+            device.status = 'Available'
+            device.assign_to = None
+            device.save()
+        
+        frappe.db.commit()
+        
+        return {
+            'success': True,
+            'message': f'Connection to {device.id} ended successfully'
+        }
+        
+    except Exception as e:
+        frappe.db.rollback()
+        return {
+            'success': False,
+            'message': str(e)
+        } 

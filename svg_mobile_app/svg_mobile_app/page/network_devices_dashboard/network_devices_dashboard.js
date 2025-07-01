@@ -528,6 +528,22 @@ class NetworkDevicesDashboard {
     }
 
     show_connection_details(device) {
+        // Fetch secure credentials
+        frappe.call({
+            method: 'svg_mobile_app.svg_mobile_app.page.network_devices_dashboard.network_devices_dashboard.get_connection_credentials',
+            args: { device_name: device.name },
+            callback: (r) => {
+                if (r.message && r.message.success) {
+                    this.render_connection_modal(device, r.message);
+                } else {
+                    // Show basic connection info without credentials
+                    this.render_connection_modal(device, null);
+                }
+            }
+        });
+    }
+
+    render_connection_modal(device, credentials) {
         const connection_modal = $(`
             <div class="device-modal" id="connection-modal">
                 <div class="device-modal-content">
@@ -545,9 +561,16 @@ class NetworkDevicesDashboard {
                         <table class="table">
                             <tr><td><strong>Device:</strong></td><td>${device.id}</td></tr>
                             <tr><td><strong>Device ID:</strong></td><td>${device.id}</td></tr>
-                            ${device.password ? `<tr><td><strong>Password:</strong></td><td><code>${device.password}</code></td></tr>` : ''}
+                            ${credentials && credentials.password ? `<tr><td><strong>Password:</strong></td><td><code>${credentials.password}</code></td></tr>` : ''}
+                            ${credentials && credentials.new_password ? `<tr><td><strong>New Password:</strong></td><td><code>${credentials.new_password}</code></td></tr>` : ''}
                             <tr><td><strong>Connection Time:</strong></td><td>${frappe.datetime.str_to_user(frappe.datetime.now_datetime())}</td></tr>
                         </table>
+                        
+                        ${!credentials ? `
+                            <div class="alert alert-warning">
+                                <strong>Note:</strong> Connection credentials are only available to authorized users with active connections.
+                            </div>
+                        ` : ''}
                         
                         <div class="alert alert-info">
                             <strong>Note:</strong> Please remember to end your connection when finished to allow others to use the device.
@@ -555,6 +578,7 @@ class NetworkDevicesDashboard {
                     </div>
                     
                     <div class="device-modal-footer">
+                        <button class="action-btn danger" onclick="window.network_dashboard.end_connection('${device.name}'); $('#connection-modal').remove()">End Connection</button>
                         <button class="action-btn primary" onclick="$('#connection-modal').remove()">Got it</button>
                     </div>
                 </div>
@@ -569,6 +593,29 @@ class NetworkDevicesDashboard {
                 connection_modal.remove();
             }
         });
+    }
+
+    end_connection(device_name) {
+        if (confirm('Are you sure you want to end this connection?')) {
+            frappe.call({
+                method: 'svg_mobile_app.svg_mobile_app.page.network_devices_dashboard.network_devices_dashboard.end_connection',
+                args: { device_name: device_name },
+                callback: (r) => {
+                    if (r.message && r.message.success) {
+                        frappe.show_alert({
+                            message: r.message.message,
+                            indicator: 'green'
+                        });
+                        this.refresh();
+                    } else {
+                        frappe.show_alert({
+                            message: r.message ? r.message.message : 'Failed to end connection',
+                            indicator: 'red'
+                        });
+                    }
+                }
+            });
+        }
     }
 
     apply_quick_filter(status) {

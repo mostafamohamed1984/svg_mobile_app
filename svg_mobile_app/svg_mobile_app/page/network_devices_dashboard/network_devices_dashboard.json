@@ -1,0 +1,25 @@
+{
+ "creation": "2025-01-01 12:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-01-01 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SVG Mobile App",
+ "name": "network-devices-dashboard",
+ "owner": "Administrator",
+ "page_name": "Network Devices Dashboard",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Employee"
+  }
+ ],
+ "script": "network_devices_dashboard.js",
+ "standard": "Yes",
+ "style": "network_devices_dashboard.css",
+ "system_page": 0,
+ "title": "Network Devices Dashboard"
+} 

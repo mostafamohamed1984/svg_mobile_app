@@ -359,6 +359,69 @@ def get_app_types():
     return app_types
 
 @frappe.whitelist()
+def fix_existing_logs():
+    """Fix existing Remote Access Log entries that have missing user fields"""
+    # Find logs with missing user field but have assign_to
+    logs_to_fix = frappe.db.sql("""
+        SELECT name, assign_to, owner
+        FROM `tabRemote Access Log`
+        WHERE (user IS NULL OR user = '')
+        AND assign_to IS NOT NULL
+        AND assign_to != ''
+    """, as_dict=True)
+    
+    fixed_count = 0
+    for log_data in logs_to_fix:
+        try:
+            # Get the employee's user_id
+            employee = frappe.get_doc("Employee", log_data.assign_to)
+            if employee.user_id:
+                # Update the log
+                frappe.db.set_value("Remote Access Log", log_data.name, "user", employee.user_id)
+                fixed_count += 1
+        except:
+            # If employee not found, use owner as fallback
+            frappe.db.set_value("Remote Access Log", log_data.name, "user", log_data.owner)
+            fixed_count += 1
+    
+    frappe.db.commit()
+    return f"Fixed {fixed_count} log entries"
+
+@frappe.whitelist()
+def debug_active_connections(device_name):
+    """Debug function to see what's in the database"""
+    # Check all logs for this device
+    all_logs = frappe.db.sql("""
+        SELECT name, user, assign_to, connection_start_time, connection_end_time, creation, owner
+        FROM `tabRemote Access Log`
+        WHERE reference = %s
+        ORDER BY creation DESC
+        LIMIT 5
+    """, (device_name,), as_dict=True)
+    
+    # Check specifically for active connections
+    active_logs = frappe.db.sql("""
+        SELECT name, user, assign_to, connection_start_time, connection_end_time, creation, owner
+        FROM `tabRemote Access Log`
+        WHERE reference = %s
+        AND connection_start_time IS NOT NULL
+        AND connection_end_time IS NULL
+        ORDER BY creation DESC
+        LIMIT 5
+    """, (device_name,), as_dict=True)
+    
+    # Check current user
+    current_user = frappe.session.user
+    
+    return {
+        'device_name': device_name,
+        'current_user': current_user,
+        'all_logs': all_logs,
+        'active_logs': active_logs,
+        'active_logs_count': len(active_logs)
+    }
+
+@frappe.whitelist()
 def get_connection_credentials(device_name):
     """Get connection credentials for authorized users only"""
     try:
@@ -406,7 +469,7 @@ def end_connection(device_name):
     try:
         device = frappe.get_doc('Remote Access', device_name)
         
-        # Find active connection for current user
+        # First try to find active connection for current user
         active_log = frappe.db.sql("""
             SELECT name FROM `tabRemote Access Log`
             WHERE reference = %s
@@ -417,8 +480,33 @@ def end_connection(device_name):
             LIMIT 1
         """, (device_name, frappe.session.user), as_dict=True)
         
+        # If not found, try to find by owner (fallback for older logs)
         if not active_log:
-            frappe.throw(_("No active connection found for this device"))
+            active_log = frappe.db.sql("""
+                SELECT name FROM `tabRemote Access Log`
+                WHERE reference = %s
+                AND connection_start_time IS NOT NULL
+                AND connection_end_time IS NULL
+                AND owner = %s
+                ORDER BY creation DESC
+                LIMIT 1
+            """, (device_name, frappe.session.user), as_dict=True)
+        
+        # If still not found, but user is assigned to device, find any active connection
+        if not active_log and device.assign_to == frappe.session.user:
+            active_log = frappe.db.sql("""
+                SELECT name FROM `tabRemote Access Log`
+                WHERE reference = %s
+                AND connection_start_time IS NOT NULL
+                AND connection_end_time IS NULL
+                ORDER BY creation DESC
+                LIMIT 1
+            """, (device_name,), as_dict=True)
+        
+        if not active_log:
+            # Get debug info
+            debug_info = debug_active_connections(device_name)
+            frappe.throw(_(f"No active connection found for this device. Debug: {debug_info}"))
         
         # Update the log entry
         log = frappe.get_doc('Remote Access Log', active_log[0].name)

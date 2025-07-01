@@ -346,3 +346,24 @@ def create_expiration_log(doc):
 	})
 	log_doc.insert()
 	frappe.db.commit()
+
+
+@frappe.whitelist()
+def decrypt_password(name):
+	"""Decrypt password for display - whitelisted function"""
+	doc = frappe.get_doc("Remote Access", name)
+	
+	# Check permissions
+	if not frappe.has_permission("Remote Access", "read", name):
+		frappe.throw(_("You don't have permission to view this password"))
+	
+	# Return decrypted password
+	return doc.decrypt_password()
+
+
+@frappe.whitelist()
+def generate_secure_password(length=12, algorithm='secure_random'):
+	"""Generate secure password - whitelisted function"""
+	# Create a temporary instance to use the class method
+	temp_doc = RemoteAccess()
+	return temp_doc.generate_secure_password(int(length), algorithm)

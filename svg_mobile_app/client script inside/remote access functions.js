@@ -168,7 +168,7 @@ frappe.ui.form.on('Remote Access', {
     
     generate_new_password: function(frm) {
         frappe.call({
-            method: 'svg_mobile_app.svg_mobile_app.doctype.remote_access.remote_access.RemoteAccess.generate_secure_password',
+            method: 'svg_mobile_app.svg_mobile_app.doctype.remote_access.remote_access.generate_secure_password',
             args: {
                 length: 12,
                 algorithm: 'secure_random'
@@ -302,7 +302,7 @@ function show_password_generation_dialog(frm) {
         primary_action_label: __('Generate'),
         primary_action: function(values) {
             frappe.call({
-                method: 'svg_mobile_app.svg_mobile_app.doctype.remote_access.remote_access.RemoteAccess.generate_secure_password',
+                method: 'svg_mobile_app.svg_mobile_app.doctype.remote_access.remote_access.generate_secure_password',
                 args: {
                     length: values.length || 12,
                     algorithm: values.algorithm

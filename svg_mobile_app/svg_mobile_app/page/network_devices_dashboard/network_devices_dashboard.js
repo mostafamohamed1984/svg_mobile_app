@@ -413,7 +413,14 @@ class NetworkDevicesDashboard {
     get_device_action_buttons(device, can_reserve, can_connect, active_connection) {
         let buttons = '';
 
-        if (can_connect && device.status !== 'Expired') {
+        // Show End Connection button if user has active connection
+        if (active_connection && device.assign_to === frappe.session.user) {
+            buttons += `<button class="action-btn danger" data-action="end-connection">
+                <i class="fa fa-stop"></i> End Connection
+            </button>`;
+        }
+        // Show Connect button if user can connect and no active connection
+        else if (can_connect && device.status !== 'Expired') {
             buttons += `<button class="action-btn success" data-action="connect">
                 <i class="fa fa-play"></i> Connect
             </button>`;
@@ -447,6 +454,11 @@ class NetworkDevicesDashboard {
 
         modal.find('[data-action="release"]').on('click', () => {
             this.release_device(device.name);
+            modal.remove();
+        });
+
+        modal.find('[data-action="end-connection"]').on('click', () => {
+            this.end_connection(device.name);
             modal.remove();
         });
     }

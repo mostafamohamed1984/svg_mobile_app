@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "autoname": "field:dashboard_name",
+ "creation": "2023-07-10 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "dashboard_name",
+  "is_default",
+  "filters_section",
+  "company",
+  "app_type",
+  "date_range",
+  "from_date",
+  "to_date",
+  "chart_settings_section",
+  "show_summary_cards",
+  "show_status_distribution",
+  "show_app_distribution",
+  "show_usage_analytics",
+  "show_security_metrics",
+  "refresh_interval"
+ ],
+ "fields": [
+  {
+   "fieldname": "dashboard_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Dashboard Name",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_default",
+   "fieldtype": "Check",
+   "label": "Is Default"
+  },
+  {
+   "fieldname": "filters_section",
+   "fieldtype": "Section Break",
+   "label": "Filters"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "app_type",
+   "fieldtype": "Link",
+   "label": "App Type",
+   "options": "App Type"
+  },
+  {
+   "fieldname": "date_range",
+   "fieldtype": "Select",
+   "label": "Date Range",
+   "options": "Last 7 Days\nLast 30 Days\nLast 90 Days\nLast 365 Days\nCustom Range"
+  },
+  {
+   "depends_on": "eval:doc.date_range==\"Custom Range\"",
+   "fieldname": "from_date",
+   "fieldtype": "Date",
+   "label": "From Date"
+  },
+  {
+   "depends_on": "eval:doc.date_range==\"Custom Range\"",
+   "fieldname": "to_date",
+   "fieldtype": "Date",
+   "label": "To Date"
+  },
+  {
+   "fieldname": "chart_settings_section",
+   "fieldtype": "Section Break",
+   "label": "Chart Settings"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_summary_cards",
+   "fieldtype": "Check",
+   "label": "Show Summary Cards"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_status_distribution",
+   "fieldtype": "Check",
+   "label": "Show Status Distribution"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_app_distribution",
+   "fieldtype": "Check",
+   "label": "Show App Distribution"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_usage_analytics",
+   "fieldtype": "Check",
+   "label": "Show Usage Analytics"
+  },
+  {
+   "default": "1",
+   "fieldname": "show_security_metrics",
+   "fieldtype": "Check",
+   "label": "Show Security Metrics"
+  },
+  {
+   "default": "0",
+   "description": "Auto-refresh interval in minutes (0 for no auto-refresh)",
+   "fieldname": "refresh_interval",
+   "fieldtype": "Int",
+   "label": "Refresh Interval (minutes)"
+  }
+ ],
+ "links": [],
+ "modified": "2023-07-10 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Remote Access Dashboard Config",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

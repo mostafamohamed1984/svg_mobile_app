@@ -1,0 +1,129 @@
+.remote-access-dashboard-wrapper {
+    padding: 15px;
+}
+
+.remote-access-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.dashboard-section {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.dashboard-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 18px;
+    color: #1a3e6f;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 10px;
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: space-between;
+}
+
+.summary-card {
+    flex: 1;
+    min-width: 150px;
+    padding: 15px;
+    border-radius: 6px;
+    color: white;
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-5px);
+}
+
+.card-value {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.card-title {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* Card Colors */
+.blue-card {
+    background: linear-gradient(135deg, #2196f3, #0d47a1);
+}
+
+.green-card {
+    background: linear-gradient(135deg, #4caf50, #1b5e20);
+}
+
+.orange-card {
+    background: linear-gradient(135deg, #ff9800, #e65100);
+}
+
+.purple-card {
+    background: linear-gradient(135deg, #9c27b0, #4a148c);
+}
+
+.red-card {
+    background: linear-gradient(135deg, #f44336, #b71c1c);
+}
+
+/* Chart Areas */
+.status-chart-area,
+.app-chart-area,
+.usage-chart-area,
+.security-chart-area {
+    height: 300px;
+    position: relative;
+}
+
+/* Responsive Design */
+@media (min-width: 992px) {
+    .remote-access-dashboard {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-areas:
+            "summary summary"
+            "status app"
+            "usage security";
+        gap: 20px;
+    }
+
+    .summary-section {
+        grid-area: summary;
+    }
+
+    .status-section {
+        grid-area: status;
+    }
+
+    .app-section {
+        grid-area: app;
+    }
+
+    .usage-section {
+        grid-area: usage;
+    }
+
+    .security-section {
+        grid-area: security;
+    }
+}
+
+/* Loading State */
+.text-muted {
+    color: #6c757d;
+    text-align: center;
+    padding: 20px;
+}

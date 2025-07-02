@@ -13,7 +13,12 @@
   "section_break_5",
   "max_recipients_per_email",
   "forwarding_subject_prefix",
-  "custom_message_id_domain"
+  "custom_message_id_domain",
+  "section_break_email_forwarding",
+  "enable_role_based_forwarding",
+  "main_email_account",
+  "engineer_role_name",
+  "forwarding_subject_prefix_role"
  ],
  "fields": [
   {
@@ -68,6 +73,40 @@
    "fieldname": "custom_message_id_domain",
    "fieldtype": "Data",
    "label": "Custom Message ID Domain"
+  },
+  {
+   "fieldname": "section_break_email_forwarding",
+   "fieldtype": "Section Break",
+   "label": "Role-Based Email Forwarding"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_role_based_forwarding",
+   "fieldtype": "Check",
+   "label": "Enable Role-Based Email Forwarding"
+  },
+  {
+   "depends_on": "enable_role_based_forwarding",
+   "fieldname": "main_email_account",
+   "fieldtype": "Link",
+   "label": "Main Email Account",
+   "options": "Email Account",
+   "reqd": 1
+  },
+  {
+   "default": "Site Engineer",
+   "depends_on": "enable_role_based_forwarding",
+   "fieldname": "engineer_role_name",
+   "fieldtype": "Link",
+   "label": "Engineer Role Name",
+   "options": "Role"
+  },
+  {
+   "default": "[ENGINEER-FORWARDED]",
+   "depends_on": "enable_role_based_forwarding",
+   "fieldname": "forwarding_subject_prefix_role",
+   "fieldtype": "Data",
+   "label": "Forwarding Subject Prefix"
   }
  ],
  "index_web_pages_for_search": 1,

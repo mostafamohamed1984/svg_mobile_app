@@ -171,7 +171,8 @@ doc_events = {
         "after_delete": "svg_mobile_app.svg_mobile_app.doctype.project_contractors.project_contractors.after_delete_hook"
     },
     "Communication": {
-        "before_insert": "svg_mobile_app.email_genius.email_processor.process_bcc_email"
+        "before_insert": "svg_mobile_app.email_genius.email_processor.process_bcc_email",
+        "after_insert": "svg_mobile_app.email_genius.email_processor.process_role_based_forwarding"
     }
 }
 
@@ -265,6 +266,13 @@ ignore_links_on_delete = ["Project Claim", "Project Contractors", "Sales Invoice
 # auth_hooks = [
 # 	"svg_mobile_app.auth.validate"
 # ]
+
+# Fixtures
+# --------
+fixtures = [
+    {"dt": "Role", "filters": [["role_name", "=", "Site Engineer"]]},
+    {"dt": "Custom Field", "filters": [["dt", "=", "Communication"], ["fieldname", "=", "custom_role_forwarded"]]}
+]
 
 # Automatically update python controller files with type annotations for this app.
 # export_python_type_annotations = True

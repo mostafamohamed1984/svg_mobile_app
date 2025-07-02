@@ -9,9 +9,24 @@ class BCCProcessingSettings(Document):
         """Validate BCC Processing Settings"""
         if self.enable_bcc_processing and not self.gmail_forwarding_account:
             frappe.throw("Gmail Forwarding Account is required when BCC Processing is enabled")
-        
+
         if self.max_recipients_per_email and self.max_recipients_per_email < 1:
             frappe.throw("Max Recipients Per Email must be at least 1")
+
+        # Validate role-based forwarding settings
+        if self.enable_role_based_forwarding:
+            if not self.main_email_account:
+                frappe.throw("Main Email Account is required when Role-Based Email Forwarding is enabled")
+            if not self.engineer_role_name:
+                frappe.throw("Engineer Role Name is required when Role-Based Email Forwarding is enabled")
+
+            # Validate that the main email account exists
+            if not frappe.db.exists("Email Account", self.main_email_account):
+                frappe.throw(f"Email Account '{self.main_email_account}' does not exist")
+
+            # Validate that the role exists
+            if not frappe.db.exists("Role", self.engineer_role_name):
+                frappe.throw(f"Role '{self.engineer_role_name}' does not exist")
     
     def on_update(self):
         """Called when settings are updated"""
@@ -19,6 +34,11 @@ class BCCProcessingSettings(Document):
             frappe.logger().info("BCC Processing has been enabled")
         else:
             frappe.logger().info("BCC Processing has been disabled")
+
+        if self.enable_role_based_forwarding:
+            frappe.logger().info(f"Role-Based Email Forwarding enabled for role: {self.engineer_role_name}")
+        else:
+            frappe.logger().info("Role-Based Email Forwarding has been disabled")
 
 @frappe.whitelist()
 def get_bcc_settings():
@@ -35,7 +55,11 @@ def get_bcc_settings():
                 "preserve_original_headers": 1,
                 "debug_mode": 0,
                 "max_recipients_per_email": 10,
-                "forwarding_subject_prefix": "[BCC-PROCESSED]"
+                "forwarding_subject_prefix": "[BCC-PROCESSED]",
+                "enable_role_based_forwarding": 0,
+                "main_email_account": "",
+                "engineer_role_name": "Site Engineer",
+                "forwarding_subject_prefix_role": "[ENGINEER-FORWARDED]"
             }
     except Exception as e:
         frappe.log_error(f"Error getting BCC settings: {str(e)}", "BCC Settings Error")

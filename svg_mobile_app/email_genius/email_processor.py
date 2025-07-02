@@ -262,6 +262,124 @@ def is_bcc_processing_enabled():
         frappe.logger().error(f"Email Genius: Error checking BCC settings: {str(e)}")
         return False
 
+def is_role_based_forwarding_enabled():
+    """
+    Check if role-based email forwarding is enabled in settings
+    """
+    try:
+        # Check if we have the settings doctype
+        if frappe.db.exists("DocType", "BCC Processing Settings"):
+            if frappe.db.exists("BCC Processing Settings", "BCC Processing Settings"):
+                settings = frappe.get_single('BCC Processing Settings')
+                enabled = settings.get('enable_role_based_forwarding', 0)
+                frappe.logger().info(f"Email Genius: Role-based forwarding enabled: {enabled}")
+                return enabled
+            else:
+                frappe.logger().warning("Email Genius: BCC Processing Settings record not found")
+                return False
+        else:
+            frappe.logger().warning("Email Genius: BCC Processing Settings DocType not found")
+            return False
+    except Exception as e:
+        frappe.log_error(f"Email Genius: Error checking role-based forwarding settings: {str(e)}", "Email Genius")
+        frappe.logger().error(f"Email Genius: Error checking role-based forwarding settings: {str(e)}")
+        return False
+
+def should_forward_email_by_role(comm):
+    """
+    Check if email should be forwarded based on sender's role
+    """
+    try:
+        # Get settings
+        settings = frappe.get_single('BCC Processing Settings')
+        engineer_role = settings.get('engineer_role_name', 'Site Engineer')
+
+        # Get sender's email
+        sender_email = comm.get('sender', '')
+        if not sender_email:
+            return False
+
+        # Find user by email
+        user = frappe.db.get_value('User', {'email': sender_email}, 'name')
+        if not user:
+            frappe.logger().info(f"Email Genius: No user found for email {sender_email}")
+            return False
+
+        # Check if user has the engineer role
+        user_roles = frappe.get_roles(user)
+        has_engineer_role = engineer_role in user_roles
+
+        frappe.logger().info(f"Email Genius: User {user} has engineer role '{engineer_role}': {has_engineer_role}")
+        return has_engineer_role
+
+    except Exception as e:
+        frappe.logger().error(f"Email Genius: Error checking role for forwarding: {str(e)}")
+        return False
+
+def forward_email_to_main_account(comm):
+    """
+    Forward email to the main account configured in settings
+    """
+    try:
+        # Get settings
+        settings = frappe.get_single('BCC Processing Settings')
+        main_email_account = settings.get('main_email_account')
+        subject_prefix = settings.get('forwarding_subject_prefix_role', '[ENGINEER-FORWARDED]')
+
+        if not main_email_account:
+            frappe.logger().error("Email Genius: No main email account configured for role forwarding")
+            return False
+
+        # Get main email account details
+        main_account_email = frappe.db.get_value('Email Account', main_email_account, 'email_id')
+        if not main_account_email:
+            frappe.logger().error(f"Email Genius: Main email account {main_email_account} not found")
+            return False
+
+        # Create forwarded email subject
+        original_subject = comm.get('subject', 'No Subject')
+        forwarded_subject = f"{subject_prefix} {original_subject}"
+
+        # Create forwarded email content
+        original_content = comm.get('content', '')
+        sender_info = comm.get('sender', 'Unknown Sender')
+        forwarded_content = f"""
+--- Forwarded Email from Engineer ---
+From: {sender_info}
+Original Subject: {original_subject}
+Message ID: {comm.get('message_id', 'N/A')}
+
+{original_content}
+"""
+
+        # Create new Communication record for the forwarded email
+        new_comm = frappe.new_doc("Communication")
+        new_comm.communication_medium = "Email"
+        new_comm.sent_or_received = "Received"
+        new_comm.email_account = main_email_account
+        new_comm.subject = forwarded_subject
+        new_comm.sender = sender_info
+        new_comm.recipients = main_account_email
+        new_comm.content = forwarded_content
+        new_comm.message_id = f"<forwarded.{comm.get('name', 'unknown')}.{frappe.utils.now()}@role.forwarded>"
+
+        # Set custom fields to track forwarding
+        new_comm.custom_role_forwarded = 1
+        new_comm.custom_original_message_id = comm.get('message_id', '')
+        new_comm.custom_recipient_type = 'FORWARDED'
+
+        # Insert the new Communication record
+        new_comm.insert(ignore_permissions=True)
+        frappe.db.commit()
+
+        frappe.logger().info(f"Email Genius: Successfully forwarded email {comm['name']} to main account {main_account_email}")
+        return True
+
+    except Exception as e:
+        frappe.logger().error(f"Email Genius: Error forwarding email to main account: {str(e)}")
+        frappe.log_error(f"Email Genius: Error forwarding email to main account: {str(e)}", "Email Genius Role Forwarding")
+        return False
+
 @frappe.whitelist()
 def get_processed_emails(user=None, include_bcc=True, include_cc=True, limit=100):
     """
@@ -568,6 +686,58 @@ def create_bcc_communication_record(original_doc, recipient_email, recipient_typ
         frappe.log_error(f"Email Genius: Error creating Communication for {recipient_email}: {str(e)}", "Email Genius Error")
         return None
 
+# Hook function for Role-Based Email Forwarding
+def process_role_based_forwarding(doc, method=None):
+    """
+    Process role-based email forwarding when Communication is created
+    """
+    try:
+        frappe.logger().info(f"Email Genius: Checking role-based forwarding for communication {doc.name}")
+
+        # Check if role-based forwarding is enabled
+        if not is_role_based_forwarding_enabled():
+            frappe.logger().info("Email Genius: Role-based forwarding disabled, skipping")
+            return
+
+        # Skip if this is an outgoing email
+        if getattr(doc, 'sent_or_received', '') != 'Received':
+            frappe.logger().info(f"Email Genius: Skipping non-received email: {doc.name}")
+            return
+
+        # Skip if already processed
+        if getattr(doc, 'custom_role_forwarded', 0):
+            frappe.logger().info(f"Email Genius: Email {doc.name} already processed for role forwarding")
+            return
+
+        # Convert doc to dict for processing
+        comm_dict = {
+            'name': doc.name,
+            'subject': getattr(doc, 'subject', ''),
+            'content': getattr(doc, 'content', ''),
+            'sender': getattr(doc, 'sender', ''),
+            'recipients': getattr(doc, 'recipients', ''),
+            'message_id': getattr(doc, 'message_id', ''),
+            'email_account': getattr(doc, 'email_account', '')
+        }
+
+        # Check if this email should be forwarded
+        if should_forward_email_by_role(comm_dict):
+            if forward_email_to_main_account(comm_dict):
+                # Mark as processed
+                frappe.db.set_value("Communication", doc.name, "custom_role_forwarded", 1)
+                frappe.db.commit()
+                frappe.logger().info(f"Email Genius: Successfully processed role forwarding for {doc.name}")
+            else:
+                frappe.logger().error(f"Email Genius: Failed to forward email {doc.name}")
+        else:
+            # Mark as processed even if not forwarded to avoid reprocessing
+            frappe.db.set_value("Communication", doc.name, "custom_role_forwarded", 1)
+            frappe.logger().info(f"Email Genius: Email {doc.name} does not require role forwarding")
+
+    except Exception as e:
+        frappe.log_error(f"Email Genius: Error in process_role_based_forwarding: {str(e)}", "Email Genius Role Forwarding")
+        frappe.logger().error(f"Email Genius: Error in process_role_based_forwarding: {str(e)}")
+
 @frappe.whitelist()
 def process_incoming_email(email_account):
     """
@@ -587,6 +757,9 @@ def process_incoming_email(email_account):
 
         # After emails are processed normally, check for any that need BCC processing
         process_recent_emails_for_bcc(email_account)
+
+        # Check for role-based email forwarding
+        process_recent_emails_for_role_forwarding(email_account)
 
         return result
 
@@ -659,6 +832,58 @@ Message-ID: {comm_doc.message_id or f'<generated-{comm_doc.name}@localhost>'}
 
     except Exception as e:
         frappe.log_error(f"Email Genius: Error in process_recent_emails_for_bcc: {str(e)}", "Email Genius")
+        return 0
+
+def process_recent_emails_for_role_forwarding(email_account):
+    """
+    Process recently received emails for role-based forwarding
+    """
+    try:
+        frappe.logger().info(f"Email Genius: Checking recent emails for role-based forwarding in account {email_account}")
+
+        # Check if role-based forwarding is enabled
+        if not is_role_based_forwarding_enabled():
+            frappe.logger().info("Email Genius: Role-based forwarding disabled, skipping")
+            return 0
+
+        # Get recent unprocessed communications from this email account
+        communications = frappe.get_all("Communication",
+            filters={
+                "email_account": email_account,
+                "communication_medium": "Email",
+                "sent_or_received": "Received",
+                "custom_role_forwarded": 0,  # Only unprocessed emails
+                "creation": [">=", frappe.utils.add_hours(frappe.utils.now(), -1)]  # Last hour only
+            },
+            fields=["name", "subject", "content", "message_id", "sender", "recipients", "email_account"],
+            limit=10,
+            order_by="creation desc"
+        )
+
+        processed_count = 0
+        for comm in communications:
+            try:
+                if should_forward_email_by_role(comm):
+                    if forward_email_to_main_account(comm):
+                        # Mark as processed
+                        frappe.db.set_value("Communication", comm["name"], "custom_role_forwarded", 1)
+                        frappe.db.commit()
+                        processed_count += 1
+                        frappe.logger().info(f"Email Genius: Role-forwarded email {comm['name']}")
+                else:
+                    # Mark as processed even if not forwarded to avoid reprocessing
+                    frappe.db.set_value("Communication", comm["name"], "custom_role_forwarded", 1)
+            except Exception as e:
+                frappe.logger().error(f"Email Genius: Error processing email {comm['name']} for role forwarding: {str(e)}")
+                continue
+
+        if communications:
+            frappe.db.commit()
+
+        frappe.logger().info(f"Email Genius: Processed {processed_count} recent emails for role forwarding")
+        return processed_count
+    except Exception as e:
+        frappe.log_error(f"Error processing recent emails for role forwarding: {str(e)}", "Email Genius Role Forwarding")
         return 0
 
 def call_original_pull_function(email_account):

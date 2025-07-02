@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """
 Quick test script for Email Genius BCC processing
-Run this from the Frappe site directory
+
+USAGE:
+Method 1 (Recommended): Use bench console
+cd ~/frappe-bench
+bench --site smartvision.com console
+
+Then run:
+exec(open('apps/svg_mobile_app/test_email_genius.py').read())
+
+Method 2: Direct execution (if frappe is in PATH)
+cd ~/frappe-bench
+python3 apps/svg_mobile_app/test_email_genius.py
 """
-
-import sys
-import os
-
-# Add the current directory to Python path
-sys.path.insert(0, os.getcwd())
 
 def test_email_genius():
     """Test the Email Genius implementation"""
     try:
-        # Initialize Frappe
+        # Try to import frappe (should work in bench console or if properly set up)
         import frappe
-        frappe.init(site='smartvision.com')  # Site name from directory
-        frappe.connect()
         
         print("🔍 Testing Email Genius BCC Processing...")
         print("=" * 50)
@@ -114,8 +117,29 @@ def test_email_genius():
 if __name__ == "__main__":
     print("Email Genius BCC Processing Test")
     print("Site: smartvision.com (erp.smartvgroup.com)")
-    print("Run this from your Frappe site directory")
+    print()
+    print("RECOMMENDED: Use bench console instead:")
+    print("cd ~/frappe-bench")
+    print("bench --site smartvision.com console")
+    print("exec(open('apps/svg_mobile_app/test_email_genius.py').read())")
     print()
 
-    # Test the Email Genius implementation
-    test_email_genius()
+    # Try to test directly (may fail if frappe not in PATH)
+    try:
+        test_email_genius()
+    except ImportError as e:
+        print(f"❌ Direct execution failed: {e}")
+        print()
+        print("Please use bench console method instead:")
+        print("1. cd ~/frappe-bench")
+        print("2. bench --site smartvision.com console")
+        print("3. exec(open('apps/svg_mobile_app/test_email_genius.py').read())")
+
+# If running in bench console, automatically run the test
+try:
+    import frappe
+    if frappe.local and frappe.local.site:
+        print(f"Running in Frappe context for site: {frappe.local.site}")
+        test_email_genius()
+except:
+    pass

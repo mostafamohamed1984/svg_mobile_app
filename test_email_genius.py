@@ -112,31 +112,16 @@ def test_email_genius():
             pass
 
 if __name__ == "__main__":
-    print("Email Genius BCC Processing Test")
-    print("Site: smartvision.com (erp.smartvgroup.com)")
+    print("❌ This script must be run in Frappe environment!")
     print()
-    print("RECOMMENDED: Use bench console instead:")
+    print("Use bench console:")
     print("cd ~/frappe-bench")
     print("bench --site smartvision.com console")
     print("exec(open('apps/svg_mobile_app/test_email_genius.py').read())")
-    print()
-
-    # Try to test directly (may fail if frappe not in PATH)
-    try:
-        test_email_genius()
-    except ImportError as e:
-        print(f"❌ Direct execution failed: {e}")
-        print()
-        print("Please use bench console method instead:")
-        print("1. cd ~/frappe-bench")
-        print("2. bench --site smartvision.com console")
-        print("3. exec(open('apps/svg_mobile_app/test_email_genius.py').read())")
-
-# If running in bench console, automatically run the test
-try:
-    import frappe
+else:
+    # Running in Frappe context (bench console)
     if frappe.local and frappe.local.site:
-        print(f"Running in Frappe context for site: {frappe.local.site}")
+        print(f"🔍 Running Email Genius test for site: {frappe.local.site}")
         test_email_genius()
-except:
-    pass
+    else:
+        print("⚠️ No site context found. Make sure you're in bench console with --site parameter")

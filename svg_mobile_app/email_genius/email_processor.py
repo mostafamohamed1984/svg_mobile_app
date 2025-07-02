@@ -457,16 +457,84 @@ def process_incoming_email(email_account):
             frappe.logger().info("Email Genius: BCC processing disabled, using original function")
             return call_original_pull_function(email_account)
 
-        # Get the email account document to access email settings
-        email_account_doc = frappe.get_doc("Email Account", email_account)
+        # Call the original function to get emails normally
+        result = call_original_pull_function(email_account)
 
-        # Custom email processing with BCC interception
-        return process_emails_with_bcc_interception(email_account_doc)
+        # After emails are processed normally, check for any that need BCC processing
+        process_recent_emails_for_bcc(email_account)
+
+        return result
 
     except Exception as e:
         frappe.log_error(f"Email Genius Error: {str(e)}", "Email Genius")
         # Fallback to original processing
         return call_original_pull_function(email_account)
+
+def process_recent_emails_for_bcc(email_account):
+    """
+    Process recently received emails for BCC/CC handling
+    """
+    try:
+        frappe.logger().info(f"Email Genius: Checking recent emails for BCC processing in account {email_account}")
+
+        # Get recent unprocessed communications from this email account
+        communications = frappe.get_all("Communication",
+            filters={
+                "email_account": email_account,
+                "communication_medium": "Email",
+                "sent_or_received": "Received",
+                "custom_bcc_processed": 0,  # Only unprocessed emails
+                "creation": [">=", frappe.utils.add_hours(frappe.utils.now(), -1)]  # Last hour only
+            },
+            fields=["name", "subject", "content", "message_id", "sender", "recipients"],
+            limit=10,
+            order_by="creation desc"
+        )
+
+        frappe.logger().info(f"Email Genius: Found {len(communications)} recent unprocessed communications")
+
+        processed_count = 0
+        for comm in communications:
+            try:
+                # Get the full communication document
+                comm_doc = frappe.get_doc("Communication", comm.name)
+
+                # Try to reconstruct email content for BCC processing
+                if comm_doc.content:
+                    # Create a basic email structure for processing
+                    reconstructed_email = f"""From: {comm_doc.sender or 'unknown@example.com'}
+To: {comm_doc.recipients or 'unknown@example.com'}
+Subject: {comm_doc.subject or 'No Subject'}
+Message-ID: {comm_doc.message_id or f'<generated-{comm_doc.name}@localhost>'}
+
+{comm_doc.content}"""
+
+                    # Check if this email has multiple recipients by parsing the content
+                    if comm_doc.recipients and (',' in comm_doc.recipients or 'cc' in comm_doc.content.lower() or 'bcc' in comm_doc.content.lower()):
+                        # Process with BCC interception
+                        processed_email = intercept_incoming_email(email_account, reconstructed_email)
+
+                        if processed_email != reconstructed_email:
+                            processed_count += 1
+                            frappe.logger().info(f"Email Genius: Processed communication {comm.name} for BCC")
+
+                # Mark as processed regardless
+                frappe.db.set_value("Communication", comm.name, "custom_bcc_processed", 1)
+                frappe.db.set_value("Communication", comm.name, "custom_recipient_type", "TO")
+
+            except Exception as comm_error:
+                frappe.logger().error(f"Email Genius: Error processing communication {comm.name}: {str(comm_error)}")
+                continue
+
+        if communications:
+            frappe.db.commit()
+            frappe.logger().info(f"Email Genius: Processed {processed_count} emails with BCC processing")
+
+        return processed_count
+
+    except Exception as e:
+        frappe.log_error(f"Email Genius: Error in process_recent_emails_for_bcc: {str(e)}", "Email Genius")
+        return 0
 
 def call_original_pull_function(email_account):
     """Call the original Frappe email processing function"""

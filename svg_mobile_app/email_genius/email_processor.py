@@ -241,13 +241,21 @@ def is_bcc_processing_enabled():
     try:
         # Check if we have the settings doctype
         if frappe.db.exists("DocType", "BCC Processing Settings"):
-            settings = frappe.get_single('BCC Processing Settings')
-            return settings.get('enable_bcc_processing', 0)
+            if frappe.db.exists("BCC Processing Settings", "BCC Processing Settings"):
+                settings = frappe.get_single('BCC Processing Settings')
+                enabled = settings.get('enable_bcc_processing', 0)
+                frappe.logger().info(f"Email Genius: BCC processing enabled: {enabled}")
+                return enabled
+            else:
+                frappe.logger().warning("Email Genius: BCC Processing Settings record not found")
+                return False
         else:
-            # Default to enabled if no settings found
-            return True
-    except Exception:
-        return True
+            frappe.logger().warning("Email Genius: BCC Processing Settings DocType not found")
+            return False
+    except Exception as e:
+        frappe.log_error(f"Email Genius: Error checking BCC settings: {str(e)}", "Email Genius")
+        frappe.logger().error(f"Email Genius: Error checking BCC settings: {str(e)}")
+        return False
 
 @frappe.whitelist()
 def get_processed_emails(user=None, include_bcc=True, include_cc=True, limit=100):
@@ -405,7 +413,7 @@ This is a test email for BCC processing.
         }
 
 # Hook function for Communication doctype
-def process_bcc_email(doc, method):
+def process_bcc_email(doc, method=None):
     """
     Process BCC emails when Communication is created
     """
@@ -443,45 +451,196 @@ def process_incoming_email(email_account):
     """
     try:
         frappe.logger().info(f"Email Genius: Processing incoming emails for account {email_account}")
-        
-        # First, call the original function to get emails
-        try:
-            # Try different possible function names based on Frappe version
-            from frappe.email.doctype.email_account.email_account import pull_from_email_account as original_pull
-        except ImportError:
-            try:
-                from frappe.email.receive import pull_from_email_account as original_pull
-            except ImportError:
-                # Fallback - try to get the email account and call receive method
-                email_account_doc = frappe.get_doc("Email Account", email_account)
-                return email_account_doc.receive()
-        
-        result = original_pull(email_account)
-        
-        # Now process any emails that need BCC processing
-        process_account_for_bcc(email_account)
-        
-        return result
-        
+
+        # Check if BCC processing is enabled
+        if not is_bcc_processing_enabled():
+            frappe.logger().info("Email Genius: BCC processing disabled, using original function")
+            return call_original_pull_function(email_account)
+
+        # Get the email account document to access email settings
+        email_account_doc = frappe.get_doc("Email Account", email_account)
+
+        # Custom email processing with BCC interception
+        return process_emails_with_bcc_interception(email_account_doc)
+
     except Exception as e:
-        frappe.log_error(f"BCC Error: {str(e)[:100]}", "Email Genius")
-        # Fallback - try to get the email account and call receive method
+        frappe.log_error(f"Email Genius Error: {str(e)}", "Email Genius")
+        # Fallback to original processing
+        return call_original_pull_function(email_account)
+
+def call_original_pull_function(email_account):
+    """Call the original Frappe email processing function"""
+    try:
+        # Try different possible function names based on Frappe version
+        from frappe.email.doctype.email_account.email_account import pull_from_email_account as original_pull
+        return original_pull(email_account)
+    except ImportError:
         try:
+            from frappe.email.receive import pull_from_email_account as original_pull
+            return original_pull(email_account)
+        except ImportError:
+            # Fallback - try to get the email account and call receive method
             email_account_doc = frappe.get_doc("Email Account", email_account)
             return email_account_doc.receive()
-        except Exception as fallback_error:
-            frappe.log_error(f"BCC Fallback Error: {str(fallback_error)[:80]}", "Email Genius")
-            return None
+
+def process_emails_with_bcc_interception(email_account_doc):
+    """
+    Process emails with BCC interception at the message level
+    """
+    try:
+        frappe.logger().info(f"Email Genius: Starting BCC interception for {email_account_doc.name}")
+
+        # Import required modules for email processing
+        import imaplib
+        import poplib
+        import email
+        from email.header import decode_header
+
+        processed_count = 0
+
+        # Connect to email server based on account type
+        if email_account_doc.use_imap:
+            processed_count = process_imap_emails_with_bcc(email_account_doc)
+        else:
+            processed_count = process_pop_emails_with_bcc(email_account_doc)
+
+        frappe.logger().info(f"Email Genius: Processed {processed_count} emails with BCC interception")
+        return processed_count
+
+    except Exception as e:
+        frappe.log_error(f"Email Genius BCC Interception Error: {str(e)}", "Email Genius")
+        # Fallback to original processing
+        return call_original_pull_function(email_account_doc.name)
+
+def process_imap_emails_with_bcc(email_account_doc):
+    """
+    Process IMAP emails with BCC interception
+    """
+    try:
+        import imaplib
+        import ssl
+
+        frappe.logger().info(f"Email Genius: Connecting to IMAP server for {email_account_doc.name}")
+
+        # Connect to IMAP server
+        if email_account_doc.use_ssl:
+            mail = imaplib.IMAP4_SSL(email_account_doc.email_server, email_account_doc.incoming_port or 993)
+        else:
+            mail = imaplib.IMAP4(email_account_doc.email_server, email_account_doc.incoming_port or 143)
+
+        # Login
+        mail.login(email_account_doc.email_id, email_account_doc.get_password())
+
+        # Select inbox
+        mail.select('INBOX')
+
+        # Search for unread emails
+        status, messages = mail.search(None, 'UNSEEN')
+        email_ids = messages[0].split()
+
+        processed_count = 0
+
+        for email_id in email_ids[-10:]:  # Process last 10 unread emails
+            try:
+                # Fetch the email
+                status, msg_data = mail.fetch(email_id, '(RFC822)')
+                raw_email = msg_data[0][1].decode('utf-8')
+
+                # Process with BCC interception
+                processed_email = intercept_incoming_email(email_account_doc.name, raw_email)
+
+                # Create Communication record with processed email
+                if processed_email and processed_email != raw_email:
+                    create_communication_from_processed_email(processed_email, email_account_doc.name)
+                    processed_count += 1
+                    frappe.logger().info(f"Email Genius: Processed email {email_id} with BCC interception")
+                else:
+                    # Process normally if no BCC processing needed
+                    create_communication_from_processed_email(raw_email, email_account_doc.name)
+
+                # Mark as read
+                mail.store(email_id, '+FLAGS', '\\Seen')
+
+            except Exception as e:
+                frappe.log_error(f"Email Genius: Error processing email {email_id}: {str(e)}", "Email Genius")
+                continue
+
+        mail.close()
+        mail.logout()
+
+        return processed_count
+
+    except Exception as e:
+        frappe.log_error(f"Email Genius IMAP Error: {str(e)}", "Email Genius")
+        return 0
+
+def process_pop_emails_with_bcc(email_account_doc):
+    """
+    Process POP emails with BCC interception
+    """
+    try:
+        import poplib
+
+        frappe.logger().info(f"Email Genius: Connecting to POP server for {email_account_doc.name}")
+
+        # Connect to POP server
+        if email_account_doc.use_ssl:
+            mail = poplib.POP3_SSL(email_account_doc.email_server, email_account_doc.incoming_port or 995)
+        else:
+            mail = poplib.POP3(email_account_doc.email_server, email_account_doc.incoming_port or 110)
+
+        # Login
+        mail.user(email_account_doc.email_id)
+        mail.pass_(email_account_doc.get_password())
+
+        # Get message count
+        num_messages = len(mail.list()[1])
+        processed_count = 0
+
+        # Process last 10 messages
+        for i in range(max(1, num_messages - 9), num_messages + 1):
+            try:
+                # Retrieve the email
+                raw_email_lines = mail.retr(i)[1]
+                raw_email = b'\n'.join(raw_email_lines).decode('utf-8')
+
+                # Process with BCC interception
+                processed_email = intercept_incoming_email(email_account_doc.name, raw_email)
+
+                # Create Communication record with processed email
+                if processed_email and processed_email != raw_email:
+                    create_communication_from_processed_email(processed_email, email_account_doc.name)
+                    processed_count += 1
+                    frappe.logger().info(f"Email Genius: Processed email {i} with BCC interception")
+                else:
+                    # Process normally if no BCC processing needed
+                    create_communication_from_processed_email(raw_email, email_account_doc.name)
+
+                # Delete the email if configured to do so
+                if not email_account_doc.use_imap:  # POP typically deletes after retrieval
+                    mail.dele(i)
+
+            except Exception as e:
+                frappe.log_error(f"Email Genius: Error processing POP email {i}: {str(e)}", "Email Genius")
+                continue
+
+        mail.quit()
+        return processed_count
+
+    except Exception as e:
+        frappe.log_error(f"Email Genius POP Error: {str(e)}", "Email Genius")
+        return 0
 
 def process_account_for_bcc(email_account_name):
     """
     Process an email account to find emails with CC/BCC and create unique copies
+    DEPRECATED: This function is kept for backward compatibility
     """
     try:
-        frappe.logger().info(f"BCC Processing: Checking account {email_account_name}")
-        
+        frappe.logger().info(f"BCC Processing: Checking account {email_account_name} (deprecated method)")
+
         # Get recent unprocessed communications from this email account
-        communications = frappe.get_all("Communication", 
+        communications = frappe.get_all("Communication",
             filters={
                 "email_account": email_account_name,
                 "communication_medium": "Email",
@@ -492,28 +651,28 @@ def process_account_for_bcc(email_account_name):
             limit=20,
             order_by="creation desc"
         )
-        
+
         frappe.logger().info(f"BCC Processing: Found {len(communications)} unprocessed communications")
-        
+
         processed_count = 0
         for comm in communications:
             try:
                 # Get the full communication document
                 comm_doc = frappe.get_doc("Communication", comm.name)
-                
+
                 # Check if this communication has raw email data to process
                 if comm_doc.raw_email:
                     # Parse the raw email to check for CC/BCC recipients
                     import email
                     email_obj = email.message_from_string(comm_doc.raw_email)
-                    
+
                     # Extract recipients
                     to_recipients = parse_recipients(email_obj.get('To', ''))
                     cc_recipients = parse_recipients(email_obj.get('Cc', ''))
                     bcc_recipients = parse_recipients(email_obj.get('Bcc', ''))
-                    
+
                     all_recipients = to_recipients + cc_recipients + bcc_recipients
-                    
+
                     frappe.logger().info(f"BCC Processing: Email {comm.name} has {len(all_recipients)} total recipients")
                     
                     if len(all_recipients) > 1:
@@ -538,4 +697,65 @@ def process_account_for_bcc(email_account_name):
         
     except Exception as e:
         frappe.log_error(f"BCC Account Processing Error: {str(e)[:100]}", "Email Genius")
-        return 0 
+        return 0
+
+def create_communication_from_processed_email(raw_email, email_account_name):
+    """
+    Create a Communication record from processed email
+    """
+    try:
+        # Get the email account document
+        email_account_doc = frappe.get_doc("Email Account", email_account_name)
+
+        # Process the email using Frappe's standard method
+        if hasattr(email_account_doc, 'insert_communication'):
+            email_account_doc.insert_communication(raw_email)
+        else:
+            # Fallback: create Communication manually
+            import email as email_lib
+            email_obj = email_lib.message_from_string(raw_email)
+
+            comm = frappe.new_doc("Communication")
+            comm.communication_medium = "Email"
+            comm.sent_or_received = "Received"
+            comm.email_account = email_account_name
+            comm.subject = email_obj.get('Subject', 'No Subject')
+            comm.sender = email_obj.get('From', '')
+            comm.content = email_obj.get_payload()
+            comm.message_id = email_obj.get('Message-ID', '')
+            comm.raw_email = raw_email
+            comm.insert(ignore_permissions=True)
+
+        frappe.logger().info(f"Email Genius: Created Communication record for email account {email_account_name}")
+
+    except Exception as e:
+        frappe.log_error(f"Email Genius: Error creating Communication: {str(e)}", "Email Genius")
+
+# Test function for debugging
+@frappe.whitelist()
+def test_bcc_processing():
+    """
+    Test function to verify BCC processing is working
+    """
+    try:
+        from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
+        settings = get_bcc_settings()
+        if not settings:
+            return {"status": "error", "message": "BCC settings not found"}
+
+        enabled = settings.get("enable_bcc_processing", 0)
+        gmail_account = settings.get("gmail_forwarding_account", "")
+
+        return {
+            "status": "success",
+            "message": "BCC processing test completed",
+            "settings": {
+                "enabled": enabled,
+                "gmail_account": gmail_account,
+                "processing_method": settings.get("processing_method", ""),
+                "debug_mode": settings.get("debug_mode", 0)
+            }
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

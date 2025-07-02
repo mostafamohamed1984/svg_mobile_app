@@ -15,7 +15,7 @@ def test_email_genius():
     try:
         # Initialize Frappe
         import frappe
-        frappe.init(site='your-site-name')  # Replace with your actual site name
+        frappe.init(site='smartvision.com')  # Site name from directory
         frappe.connect()
         
         print("🔍 Testing Email Genius BCC Processing...")
@@ -113,11 +113,9 @@ def test_email_genius():
 
 if __name__ == "__main__":
     print("Email Genius BCC Processing Test")
-    print("Make sure to update the site name in the script!")
+    print("Site: smartvision.com (erp.smartvgroup.com)")
     print("Run this from your Frappe site directory")
     print()
-    
-    # Uncomment the line below and update with your site name
-    # test_email_genius()
-    
-    print("Please edit this script and set your site name, then uncomment the test_email_genius() call")
+
+    # Test the Email Genius implementation
+    test_email_genius()

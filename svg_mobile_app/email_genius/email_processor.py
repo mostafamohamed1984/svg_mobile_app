@@ -444,50 +444,62 @@ def process_bcc_email(doc, method=None):
                 frappe.logger().info(f"Email Genius: Marked communication {doc.name} as BCC processed (already processed)")
             return
 
-        # Check if this email has multiple recipients that need BCC processing
-        recipients_text = getattr(doc, 'recipients', '') or ''
-        content = getattr(doc, 'content', '') or ''
+        # Check if this email has CC/BCC recipients that need processing
+        has_cc = bool(getattr(doc, 'cc', None))
+        has_bcc = bool(getattr(doc, 'bcc', None))
+        has_multiple_to = ',' in (getattr(doc, 'recipients', '') or '')
 
-        # Look for multiple recipients in various formats
-        has_multiple_recipients = False
-        recipient_indicators = [
-            ',' in recipients_text,  # Comma-separated recipients
-            ';' in recipients_text,  # Semicolon-separated recipients
-            'cc:' in content.lower(),  # CC mentioned in content
-            'bcc:' in content.lower(),  # BCC mentioned in content
-            'to:' in content.lower() and ('cc:' in content.lower() or 'bcc:' in content.lower())
-        ]
+        should_process = has_cc or has_bcc or has_multiple_to
 
-        has_multiple_recipients = any(recipient_indicators)
+        frappe.logger().info(f"Email Genius: Email {doc.name} - CC: {has_cc}, BCC: {has_bcc}, Multiple TO: {has_multiple_to}, Should process: {should_process}")
 
-        frappe.logger().info(f"Email Genius: Email {doc.name} - Recipients: '{recipients_text}' - Multiple recipients detected: {has_multiple_recipients}")
+        if should_process:
+            # This email needs BCC processing - create separate Communication records
+            frappe.logger().info(f"Email Genius: Processing email {doc.name} for CC/BCC recipients")
 
-        if has_multiple_recipients:
-            # This email needs BCC processing
-            frappe.logger().info(f"Email Genius: Processing email {doc.name} for BCC/CC recipients")
-
-            # Try to process this email for BCC
             try:
-                # Reconstruct email from Communication data
-                reconstructed_email = f"""From: {getattr(doc, 'sender', '')}
-To: {recipients_text}
-Subject: {getattr(doc, 'subject', '')}
-Message-ID: {getattr(doc, 'message_id', '')}
+                # Mark original as TO recipient and processed
+                if hasattr(doc, 'custom_bcc_processed'):
+                    doc.custom_bcc_processed = 1
+                if hasattr(doc, 'custom_recipient_type') and not doc.custom_recipient_type:
+                    doc.custom_recipient_type = "TO"
 
-{content}"""
+                # Process CC recipients
+                if has_cc and getattr(doc, 'cc', None):
+                    cc_recipients = [r.strip() for r in doc.cc.split(',')]
+                    frappe.logger().info(f"Email Genius: Processing {len(cc_recipients)} CC recipients")
 
-                # Process with BCC interception
-                processed_email = intercept_incoming_email(getattr(doc, 'email_account', ''), reconstructed_email)
+                    for i, cc_recipient in enumerate(cc_recipients):
+                        # Extract email from format like '"email@domain.com" <email@domain.com>'
+                        import re
+                        email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', cc_recipient)
+                        if email_match:
+                            clean_email = email_match.group(1)
+                            create_bcc_communication_record(doc, clean_email, "CC", i + 1)
 
-                if processed_email != reconstructed_email:
-                    frappe.logger().info(f"Email Genius: Successfully processed email {doc.name} for BCC")
-                    # Mark as processed
-                    if hasattr(doc, 'custom_bcc_processed'):
-                        doc.custom_bcc_processed = 1
-                    if hasattr(doc, 'custom_recipient_type') and not doc.custom_recipient_type:
-                        doc.custom_recipient_type = "TO"
-                else:
-                    frappe.logger().info(f"Email Genius: No BCC processing needed for email {doc.name}")
+                # Process BCC recipients
+                if has_bcc and getattr(doc, 'bcc', None):
+                    bcc_recipients = [r.strip() for r in doc.bcc.split(',')]
+                    frappe.logger().info(f"Email Genius: Processing {len(bcc_recipients)} BCC recipients")
+
+                    for i, bcc_recipient in enumerate(bcc_recipients):
+                        import re
+                        email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', bcc_recipient)
+                        if email_match:
+                            clean_email = email_match.group(1)
+                            create_bcc_communication_record(doc, clean_email, "BCC", i + 1)
+
+                # Process multiple TO recipients
+                if has_multiple_to:
+                    to_recipients = [r.strip() for r in doc.recipients.split(',')]
+                    frappe.logger().info(f"Email Genius: Processing {len(to_recipients)} TO recipients")
+
+                    for i, to_recipient in enumerate(to_recipients[1:], 1):  # Skip first one (already exists)
+                        import re
+                        email_match = re.search(r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})', to_recipient)
+                        if email_match:
+                            clean_email = email_match.group(1)
+                            create_bcc_communication_record(doc, clean_email, "TO", i + 1)
 
             except Exception as process_error:
                 frappe.logger().error(f"Email Genius: Error processing BCC for {doc.name}: {str(process_error)}")
@@ -502,6 +514,59 @@ Message-ID: {getattr(doc, 'message_id', '')}
     except Exception as e:
         frappe.log_error(f"Email Genius: Error in process_bcc_email: {str(e)}", "Email Genius Error")
         frappe.logger().error(f"Email Genius: Error in process_bcc_email for {getattr(doc, 'name', 'unknown')}: {str(e)}")
+
+def create_bcc_communication_record(original_doc, recipient_email, recipient_type, recipient_index):
+    """
+    Create a new Communication record for a CC/BCC recipient
+    """
+    try:
+        # Create new Communication record for this recipient
+        new_comm = frappe.copy_doc(original_doc)
+        new_comm.recipients = recipient_email
+        new_comm.custom_recipient_type = recipient_type
+        new_comm.custom_original_message_id = original_doc.message_id
+        new_comm.custom_bcc_processed = 1
+        new_comm.custom_recipient_index = recipient_index
+
+        # Generate unique message ID
+        import hashlib
+        unique_id = hashlib.md5(f"{original_doc.message_id}{recipient_email}{recipient_index}".encode()).hexdigest()[:8]
+        new_comm.message_id = f"<{unique_id}.{recipient_type.lower()}.{recipient_index}@bcc.processed>"
+
+        # Clear CC/BCC fields for individual recipient records
+        if hasattr(new_comm, 'cc'):
+            new_comm.cc = None
+        if hasattr(new_comm, 'bcc'):
+            new_comm.bcc = None
+
+        # Insert the new Communication record
+        new_comm.insert()
+        frappe.logger().info(f"Email Genius: Created Communication {new_comm.name} for {recipient_type} recipient {recipient_email}")
+
+        # Forward to Gmail if configured
+        try:
+            # Create email object for forwarding
+            import email
+            forward_email = email.message.EmailMessage()
+            forward_email['Subject'] = new_comm.subject
+            forward_email['From'] = new_comm.sender
+            forward_email['To'] = recipient_email
+            forward_email['Message-ID'] = new_comm.message_id
+            forward_email.set_content(new_comm.content)
+
+            # Forward to Gmail processing account
+            forward_result = forward_email_copy(forward_email, new_comm.email_account, recipient_email)
+            frappe.logger().info(f"Email Genius: Gmail forwarding for {recipient_email}: {forward_result}")
+
+        except Exception as forward_error:
+            frappe.logger().error(f"Email Genius: Error forwarding to Gmail for {recipient_email}: {str(forward_error)}")
+
+        return new_comm.name
+
+    except Exception as e:
+        frappe.logger().error(f"Email Genius: Error creating Communication for {recipient_email}: {str(e)}")
+        frappe.log_error(f"Email Genius: Error creating Communication for {recipient_email}: {str(e)}", "Email Genius Error")
+        return None
 
 @frappe.whitelist()
 def process_incoming_email(email_account):

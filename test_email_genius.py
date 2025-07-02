@@ -3,23 +3,20 @@
 Quick test script for Email Genius BCC processing
 
 USAGE:
-Method 1 (Recommended): Use bench console
+Use bench console:
 cd ~/frappe-bench
 bench --site smartvision.com console
 
 Then run:
 exec(open('apps/svg_mobile_app/test_email_genius.py').read())
-
-Method 2: Direct execution (if frappe is in PATH)
-cd ~/frappe-bench
-python3 apps/svg_mobile_app/test_email_genius.py
 """
+
+# Import frappe at module level - will only work in proper Frappe environment
+import frappe
 
 def test_email_genius():
     """Test the Email Genius implementation"""
     try:
-        # Try to import frappe (should work in bench console or if properly set up)
-        import frappe
         
         print("🔍 Testing Email Genius BCC Processing...")
         print("=" * 50)

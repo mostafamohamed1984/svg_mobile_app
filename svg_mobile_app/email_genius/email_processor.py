@@ -170,9 +170,14 @@ def forward_email_copy(email_copy, email_account, recipient):
     Forwards the modified email copy to Gmail processing account
     """
     try:
-        # Get Gmail forwarding account - using the specified Gmail account
-        gmail_account = "constr.sv@gmail.com"
-        
+        # Get Gmail forwarding account from settings
+        try:
+            from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
+            settings = get_bcc_settings()
+            gmail_account = settings.get('gmail_forwarding_account') if settings else "constr.sv@gmail.com"
+        except Exception:
+            gmail_account = "constr.sv@gmail.com"  # Fallback
+
         if not gmail_account:
             frappe.logger().warning("Email Genius: No Gmail forwarding account configured")
             return False
@@ -418,30 +423,85 @@ def process_bcc_email(doc, method=None):
     Process BCC emails when Communication is created
     """
     try:
-        # Check if this is a BCC processed email by looking for custom headers
-        if hasattr(doc, 'message_id') and doc.message_id:
-            # Check if this email has BCC processing headers
-            if (hasattr(doc, 'custom_original_message_id') and doc.custom_original_message_id) or \
-               (doc.message_id and ('frappe.bcc.' in doc.message_id or '.bcc.' in doc.message_id)):
-                
-                # This is a BCC processed email - set the checkbox
-                if hasattr(doc, 'custom_bcc_processed'):
-                    doc.custom_bcc_processed = 1
-                    frappe.logger().info(f"Email Genius: Marked communication {doc.name} as BCC processed")
-                
-                # Try to determine recipient type from message content or headers
-                if hasattr(doc, 'custom_recipient_type') and not doc.custom_recipient_type:
-                    # Try to extract from subject if it has [BCC-PROCESSED-*] format
-                    if doc.subject and '[BCC-PROCESSED-' in doc.subject:
-                        type_match = re.search(r'\[BCC-PROCESSED-([A-Z]+)\]', doc.subject)
-                        if type_match:
-                            doc.custom_recipient_type = type_match.group(1)
-                            frappe.logger().info(f"Email Genius: Set recipient type to {doc.custom_recipient_type}")
-        
-        frappe.logger().info(f"Email Genius: Processing communication {doc.name}")
-        
+        frappe.logger().info(f"Email Genius: Processing communication {doc.name} - Subject: {getattr(doc, 'subject', 'No Subject')}")
+
+        # Check if BCC processing is enabled
+        if not is_bcc_processing_enabled():
+            frappe.logger().info("Email Genius: BCC processing disabled, skipping")
+            return
+
+        # Skip if this is an outgoing email
+        if getattr(doc, 'sent_or_received', '') != 'Received':
+            frappe.logger().info(f"Email Genius: Skipping non-received email: {doc.name}")
+            return
+
+        # Check if this is already a BCC processed email
+        if (hasattr(doc, 'custom_original_message_id') and doc.custom_original_message_id) or \
+           (doc.message_id and ('frappe.bcc.' in doc.message_id or '.bcc.' in doc.message_id)):
+            # This is already a BCC processed email - just mark it
+            if hasattr(doc, 'custom_bcc_processed'):
+                doc.custom_bcc_processed = 1
+                frappe.logger().info(f"Email Genius: Marked communication {doc.name} as BCC processed (already processed)")
+            return
+
+        # Check if this email has multiple recipients that need BCC processing
+        recipients_text = getattr(doc, 'recipients', '') or ''
+        content = getattr(doc, 'content', '') or ''
+
+        # Look for multiple recipients in various formats
+        has_multiple_recipients = False
+        recipient_indicators = [
+            ',' in recipients_text,  # Comma-separated recipients
+            ';' in recipients_text,  # Semicolon-separated recipients
+            'cc:' in content.lower(),  # CC mentioned in content
+            'bcc:' in content.lower(),  # BCC mentioned in content
+            'to:' in content.lower() and ('cc:' in content.lower() or 'bcc:' in content.lower())
+        ]
+
+        has_multiple_recipients = any(recipient_indicators)
+
+        frappe.logger().info(f"Email Genius: Email {doc.name} - Recipients: '{recipients_text}' - Multiple recipients detected: {has_multiple_recipients}")
+
+        if has_multiple_recipients:
+            # This email needs BCC processing
+            frappe.logger().info(f"Email Genius: Processing email {doc.name} for BCC/CC recipients")
+
+            # Try to process this email for BCC
+            try:
+                # Reconstruct email from Communication data
+                reconstructed_email = f"""From: {getattr(doc, 'sender', '')}
+To: {recipients_text}
+Subject: {getattr(doc, 'subject', '')}
+Message-ID: {getattr(doc, 'message_id', '')}
+
+{content}"""
+
+                # Process with BCC interception
+                processed_email = intercept_incoming_email(getattr(doc, 'email_account', ''), reconstructed_email)
+
+                if processed_email != reconstructed_email:
+                    frappe.logger().info(f"Email Genius: Successfully processed email {doc.name} for BCC")
+                    # Mark as processed
+                    if hasattr(doc, 'custom_bcc_processed'):
+                        doc.custom_bcc_processed = 1
+                    if hasattr(doc, 'custom_recipient_type') and not doc.custom_recipient_type:
+                        doc.custom_recipient_type = "TO"
+                else:
+                    frappe.logger().info(f"Email Genius: No BCC processing needed for email {doc.name}")
+
+            except Exception as process_error:
+                frappe.logger().error(f"Email Genius: Error processing BCC for {doc.name}: {str(process_error)}")
+        else:
+            # Single recipient email - mark as processed but no BCC needed
+            if hasattr(doc, 'custom_bcc_processed'):
+                doc.custom_bcc_processed = 1
+            if hasattr(doc, 'custom_recipient_type') and not doc.custom_recipient_type:
+                doc.custom_recipient_type = "TO"
+            frappe.logger().info(f"Email Genius: Single recipient email {doc.name} - marked as processed")
+
     except Exception as e:
         frappe.log_error(f"Email Genius: Error in process_bcc_email: {str(e)}", "Email Genius Error")
+        frappe.logger().error(f"Email Genius: Error in process_bcc_email for {getattr(doc, 'name', 'unknown')}: {str(e)}")
 
 @frappe.whitelist()
 def process_incoming_email(email_account):
@@ -824,6 +884,94 @@ def test_bcc_processing():
                 "debug_mode": settings.get("debug_mode", 0)
             }
         }
+    except Exception as e:
+        frappe.log_error(f"BCC test error: {str(e)}", "BCC Test Error")
+        return {"status": "error", "message": str(e)}
+
+@frappe.whitelist()
+def diagnose_bcc_system():
+    """
+    Comprehensive diagnostic function for BCC processing system
+    """
+    try:
+        results = {
+            "status": "success",
+            "timestamp": frappe.utils.now(),
+            "checks": {}
+        }
+
+        # Check 1: BCC Processing Settings
+        try:
+            from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
+            settings = get_bcc_settings()
+            if settings:
+                results["checks"]["settings"] = {
+                    "status": "ok",
+                    "enabled": settings.get("enable_bcc_processing", 0),
+                    "gmail_account": settings.get("gmail_forwarding_account", ""),
+                    "processing_method": settings.get("processing_method", ""),
+                    "debug_mode": settings.get("debug_mode", 0)
+                }
+            else:
+                results["checks"]["settings"] = {"status": "error", "message": "Settings not found"}
+        except Exception as e:
+            results["checks"]["settings"] = {"status": "error", "message": str(e)}
+
+        # Check 2: Recent Communications
+        try:
+            recent_comms = frappe.get_all("Communication",
+                filters={
+                    "communication_medium": "Email",
+                    "sent_or_received": "Received",
+                    "creation": [">=", frappe.utils.add_hours(frappe.utils.now(), -24)]
+                },
+                fields=["name", "subject", "sender", "recipients", "custom_bcc_processed", "message_id"],
+                limit=10,
+                order_by="creation desc"
+            )
+
+            total_emails = len(recent_comms)
+            processed_emails = len([c for c in recent_comms if c.get("custom_bcc_processed")])
+            multi_recipient_emails = len([c for c in recent_comms if c.get("recipients") and ("," in c.get("recipients", "") or ";" in c.get("recipients", ""))])
+
+            results["checks"]["recent_emails"] = {
+                "status": "ok",
+                "total_last_24h": total_emails,
+                "bcc_processed": processed_emails,
+                "multi_recipient": multi_recipient_emails,
+                "sample_emails": recent_comms[:3]
+            }
+        except Exception as e:
+            results["checks"]["recent_emails"] = {"status": "error", "message": str(e)}
+
+        # Check 3: Custom Fields
+        try:
+            custom_fields = frappe.get_all("Custom Field",
+                filters={"dt": "Communication", "fieldname": ["like", "custom_%"]},
+                fields=["fieldname", "fieldtype", "label"]
+            )
+            results["checks"]["custom_fields"] = {
+                "status": "ok",
+                "fields": custom_fields
+            }
+        except Exception as e:
+            results["checks"]["custom_fields"] = {"status": "error", "message": str(e)}
+
+        # Check 4: Hook Configuration
+        try:
+            import svg_mobile_app.hooks as hooks_module
+            doc_events = getattr(hooks_module, 'doc_events', {})
+            override_methods = getattr(hooks_module, 'override_whitelisted_methods', {})
+
+            results["checks"]["hooks"] = {
+                "status": "ok",
+                "communication_hooks": doc_events.get("Communication", {}),
+                "email_overrides": override_methods
+            }
+        except Exception as e:
+            results["checks"]["hooks"] = {"status": "error", "message": str(e)}
+
+        return results
 
     except Exception as e:
         return {"status": "error", "message": str(e)}

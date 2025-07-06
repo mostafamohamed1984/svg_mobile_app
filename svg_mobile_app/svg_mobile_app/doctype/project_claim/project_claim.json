@@ -28,6 +28,7 @@
   "receiving_account",
   "tax_account",
   "payment_details_section",
+  "currency",
   "claim_amount",
   "tax_ratio",
   "tax_amount",
@@ -180,6 +181,14 @@
    "fieldname": "payment_details_section",
    "fieldtype": "Section Break",
    "label": "Payment Details"
+  },
+  {
+   "default": "AED",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "reqd": 1
   },
   {
    "fieldname": "claim_amount",

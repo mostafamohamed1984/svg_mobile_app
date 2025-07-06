@@ -174,7 +174,7 @@
 
         <div class="spaced-line">
             <p class="bold-text">Amount</p>
-            <p class="inline-text">({{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }} {{ invoice.currency }})&nbsp;&nbsp;</p>
+            <p class="inline-text">({{ frappe.format(doc.claim_amount, { fieldtype: "Currency" }) }} {{ doc.currency or invoice.currency }})&nbsp;&nbsp;</p>
             <p class="bold-text">المبلغ</p>
             
            <p class="bold-text">Payment Type</p>

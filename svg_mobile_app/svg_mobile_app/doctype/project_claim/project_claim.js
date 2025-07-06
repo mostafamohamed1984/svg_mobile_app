@@ -3,13 +3,45 @@
 
 frappe.ui.form.on("Project Claim", {
 	refresh: function(frm) {
-		// Update current balance in claim items
+		// Add custom button to manually update balances
+		if (!frm.doc.__islocal && frm.doc.docstatus === 0) {
+			frm.add_custom_button(__('Update Item Balances'), function() {
+				frm.call({
+					method: "update_claim_items_balance",
+					doc: frm.doc,
+					callback: function(r) {
+						if (r.message && r.message.status === "error") {
+							frappe.msgprint({
+								title: __('Error'),
+								message: r.message.message,
+								indicator: 'red'
+							});
+						} else {
+							frappe.msgprint({
+								title: __('Success'),
+								message: __('Item balances updated successfully'),
+								indicator: 'green'
+							});
+							frm.refresh_field('claim_items');
+						}
+					}
+				});
+			}, __('Actions'));
+
+
+		}
+
+		// Update current balance in claim items automatically
 		if (frm.doc.reference_invoice && frm.doc.claim_items && frm.doc.claim_items.length > 0) {
 			frm.call({
 				method: "update_claim_items_balance",
 				doc: frm.doc,
 				callback: function(r) {
-					frm.refresh_field('claim_items');
+					if (r.message && r.message.status === "error") {
+						console.warn("Failed to update item balances:", r.message.message);
+					} else {
+						frm.refresh_field('claim_items');
+					}
 				}
 			});
 		}

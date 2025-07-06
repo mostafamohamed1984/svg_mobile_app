@@ -8,6 +8,8 @@ from frappe.utils import flt
 
 class ProjectClaim(Document):
 	def validate(self):
+		# Ensure current_balance is updated before validation
+		self.ensure_claim_items_balance()
 		self.validate_claim_amount()
 		self.validate_claim_items()
 	
@@ -30,25 +32,38 @@ class ProjectClaim(Document):
 	def update_claim_items_balance(self):
 		"""Update the current balance for each item in the claim items table"""
 		if not self.reference_invoice:
-			return
-		
+			frappe.logger().warning(f"No reference_invoice found for {self.name}")
+			return {"status": "error", "message": "No reference invoice found"}
+
 		# Check if we have multiple invoice references
 		invoices = [self.reference_invoice]
 		if self.invoice_references:
 			additional_invoices = [inv.strip() for inv in self.invoice_references.split(',') if inv.strip()]
 			invoices.extend(additional_invoices)
-		
-		frappe.logger().debug(f"Updating claim items balance for {self.name}, invoices: {invoices}")
-		
+
+		frappe.logger().info(f"Updating claim items balance for {self.name}, invoices: {invoices}")
+
+		# Validate that invoices exist
+		valid_invoices = []
+		for invoice in invoices:
+			if frappe.db.exists("Sales Invoice", invoice):
+				valid_invoices.append(invoice)
+			else:
+				frappe.logger().warning(f"Invoice {invoice} does not exist")
+
+		if not valid_invoices:
+			frappe.logger().error(f"No valid invoices found for {self.name}")
+			return {"status": "error", "message": "No valid invoices found"}
+
 		# Get all items from the referenced invoices
 		items_data = frappe.db.sql("""
-			SELECT 
+			SELECT
 				parent as invoice,
 				item_code,
 				amount
 			FROM `tabSales Invoice Item`
 			WHERE parent IN %s
-		""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
+		""", [tuple(valid_invoices) if len(valid_invoices) > 1 else tuple(valid_invoices + [''])], as_dict=True)
 		
 		# Create a map of item totals by invoice and item
 		item_invoice_map = {}
@@ -96,27 +111,35 @@ class ProjectClaim(Document):
 			claimed_map[invoice][item_code] = flt(claim.claimed_amount)
 		
 		# Calculate available balance for each item in our claim
+		items_updated = 0
 		for item in self.claim_items:
 			invoice_ref = getattr(item, 'invoice_reference', None)
 			item_code = item.item
-			
+
 			if invoice_ref and invoice_ref in item_invoice_map and item_code in item_invoice_map[invoice_ref]:
 				# We have a specific invoice reference, calculate based on that
 				original_amount = item_invoice_map[invoice_ref][item_code]
 				claimed_amount = claimed_map.get(invoice_ref, {}).get(item_code, 0)
 				available_balance = max(0, original_amount - claimed_amount)
 				frappe.logger().debug(f"Item {item_code} in invoice {invoice_ref}: original={original_amount}, claimed={claimed_amount}, available={available_balance}")
-			else:
+			elif item_code in item_total_map:
 				# No specific invoice reference, calculate across all invoices
 				original_amount = item_total_map.get(item_code, 0)
 				claimed_amount = sum(inv_map.get(item_code, 0) for inv_map in claimed_map.values())
 				available_balance = max(0, original_amount - claimed_amount)
 				frappe.logger().debug(f"Item {item_code} (global): original={original_amount}, claimed={claimed_amount}, available={available_balance}")
-			
+			else:
+				# Item not found in any invoice - this might be a data issue
+				frappe.logger().warning(f"Item {item_code} not found in any referenced invoice for claim {self.name}")
+				available_balance = 0
+
 			# Set the current balance
 			item.current_balance = available_balance
+			items_updated += 1
+
+		frappe.logger().info(f"Updated {items_updated} claim items with balance information")
 			
-		return {"status": "success"}
+		return {"status": "success", "items_updated": items_updated}
 	
 	def set_receiver_from_user(self):
 		"""Set the receiver field based on the current user's visual identity"""
@@ -430,26 +453,55 @@ class ProjectClaim(Document):
 		if hasattr(self, 'claimable_amount') and self.claimable_amount and not self.outstanding_amount:
 			self.outstanding_amount = self.claimable_amount
 	
+	def ensure_claim_items_balance(self):
+		"""Ensure all claim items have current_balance populated"""
+		if not self.claim_items:
+			return
+
+		# Check if any items have None or missing current_balance
+		needs_update = False
+		for item in self.claim_items:
+			if item.current_balance is None:
+				needs_update = True
+				break
+
+		if needs_update:
+			frappe.logger().info(f"Updating claim items balance for {self.name} due to None values")
+			try:
+				self.update_claim_items_balance()
+			except Exception as e:
+				frappe.logger().error(f"Failed to update claim items balance for {self.name}: {str(e)}")
+				# Set default balance to prevent validation errors
+				for item in self.claim_items:
+					if item.current_balance is None:
+						item.current_balance = 0
+						frappe.logger().warning(f"Set current_balance to 0 for item {item.item} due to calculation failure")
+
 	def validate_claim_items(self):
 		"""Validate claim items totals and balances"""
 		if not self.claim_items:
 			return
-			
+
 		total_amount = 0
 		total_ratio = 0
-		
+
 		for item in self.claim_items:
 			total_amount += flt(item.amount)
 			total_ratio += flt(item.ratio)
-			
+
+			# Ensure current_balance is not None before validation
+			if item.current_balance is None:
+				frappe.logger().warning(f"current_balance is None for item {item.item}, setting to 0")
+				item.current_balance = 0
+
 			# Validate against current balance
 			if flt(item.amount) > flt(item.current_balance):
 				frappe.throw(f"Amount for {item.item} ({item.amount}) exceeds available balance ({item.current_balance})")
-		
+
 		# Allow small rounding difference (0.01)
 		if flt(total_amount, 2) > flt(self.claim_amount, 2):
 			frappe.throw(f"Total allocated amount ({total_amount}) exceeds claim amount ({self.claim_amount})")
-			
+
 		if flt(total_ratio, 2) > 100:
 			frappe.throw(f"Total ratio ({total_ratio:.2f}%) exceeds 100%")
 	

@@ -146,6 +146,7 @@ has_permission = {
 doc_events = {
     "Sales Invoice": {
         "validate": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.validate",
+        "on_submit": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_submit_sales_invoice",
         "before_cancel": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.before_cancel",
         "on_cancel": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_cancel",
         "on_trash": "svg_mobile_app.svg_mobile_app.doctype.sales_invoice_hooks.on_trash",

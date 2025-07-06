@@ -721,8 +721,8 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                 "leave_type": sub_type,
                 "from_date": start_date,
                 "to_date": end_date,
-                "status": "Open",
-                "description": reason or _("No reason provided"), 
+                "status": "Requested",
+                "description": reason or _("No reason provided"),
                 "leave_approver": leave_approver
             })
             leave_request.insert()
@@ -759,7 +759,7 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                     "from_date": start_date,
                     "to_date": end_date,
                     "custom_excuse_hours": excuse_time,
-                    "status": "Draft",
+                    "status": "Requested",
                 })
                 shift_request.insert()
                 
@@ -780,7 +780,7 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                     "shift_type": sub_type,
                     "from_date": start_date,
                     "to_date": end_date,
-                    "status": "Draft",
+                    "status": "Requested",
                 })
                 shift_request.insert()
                 
@@ -959,7 +959,7 @@ def overtime_request(employee_id, date, start_time, end_time, reason=None):
             "day_of_overtime": date,
             "time_from": start_time,
             "time_to": end_time,
-            "status": "Open",
+            "status": "Requested",
             "reason": reason or _("No reason provided")
         })
         overtime_request.insert()
@@ -1120,9 +1120,9 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
         # Add status filter for pending requests
         if pending_only:
             # Include both initial status and intermediate approval statuses
-            leave_filters = filters + [["status", "in", ["Open", "Manager Approved"]]]
-            shift_filters = filters + [["status", "in", ["Draft", "Manager Approved"]]]
-            overtime_filters = filters + [["status", "=", "Open"]]
+            leave_filters = filters + [["status", "in", ["Requested", "Manager Approved"]]]
+            shift_filters = filters + [["status", "in", ["Requested", "Manager Approved"]]]
+            overtime_filters = filters + [["status", "in", ["Requested", "Manager Approved"]]]
         else:
             leave_filters = filters.copy()
             shift_filters = filters.copy()
@@ -1296,7 +1296,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
         
         elif status.lower() == "approved":
             # Check current status and determine next step
-            if doc.status == "Open":
+            if doc.status == "Requested":
                 # First level approval
                 if is_direct_manager and employee_doc.leave_approver and employee_doc.leave_approver != frappe.session.user:
                     # Manager approved, now send to designated leave approver
@@ -1305,31 +1305,31 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    
+
                     # Send notification to leave approver (you can implement this)
-                    return {"status": "success", "message": _("Request approved and forwarded to leave approver"), 
+                    return {"status": "success", "message": _("Request approved and forwarded to leave approver"),
                            "data": {"name": doc.name, "status": doc.status}}
-                
+
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
-                    doc.status = "Approved"
+                    doc.status = "HR Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Leave request approved"), 
+                    return {"status": "success", "message": _("Leave request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
-                
+
                 else:
                     return {"status": "fail", "message": _("You don't have permission to approve this request")}
-            
+
             elif doc.status == "Manager Approved":
                 # Second level approval
                 if is_designated_approver or is_hr:
-                    doc.status = "Approved"
+                    doc.status = "HR Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Leave request approved"), 
+                    return {"status": "success", "message": _("Leave request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
                 else:
                     return {"status": "fail", "message": _("You don't have permission to approve this request at this level")}
@@ -1354,7 +1354,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
         
         elif status.lower() == "approved":
             # Check current status and determine next step
-            if doc.status == "Draft":
+            if doc.status == "Requested":
                 # First level approval
                 if is_direct_manager and employee_doc.shift_request_approver and employee_doc.shift_request_approver != frappe.session.user:
                     # Manager approved, now send to designated shift approver
@@ -1363,29 +1363,29 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Request approved and forwarded to shift approver"), 
+                    return {"status": "success", "message": _("Request approved and forwarded to shift approver"),
                            "data": {"name": doc.name, "status": doc.status}}
-                
+
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
-                    doc.status = "Approved"
+                    doc.status = "HR Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Shift request approved"), 
+                    return {"status": "success", "message": _("Shift request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
-                
+
                 else:
                     return {"status": "fail", "message": _("You don't have permission to approve this request")}
-            
+
             elif doc.status == "Manager Approved":
                 # Second level approval
                 if is_designated_approver or is_hr:
-                    doc.status = "Approved"
+                    doc.status = "HR Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Shift request approved"), 
+                    return {"status": "success", "message": _("Shift request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
                 else:
                     return {"status": "fail", "message": _("You don't have permission to approve this request at this level")}
@@ -1409,18 +1409,42 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
             return {"status": "success", "message": _("Overtime request rejected"), "data": {"name": doc.name, "status": doc.status}}
         
         elif status.lower() == "approved":
-            # For overtime, we typically only need manager approval
-            if doc.status == "Open":
-                # Check if user has permission (direct manager, designated approver, or HR)
-                if is_direct_manager or is_designated_approver or is_hr:
-                    doc.status = "Approved"
+            # Check current status and determine next step
+            if doc.status == "Requested":
+                # First level approval
+                if is_direct_manager and employee_doc.reports_to and employee_doc.reports_to != frappe.session.user:
+                    # Manager approved, now send to HR or designated approver
+                    doc.status = "Manager Approved"
+                    doc.custom_manager_approved_by = frappe.session.user
+                    doc.custom_manager_approved_on = frappe.utils.now()
+                    doc.save(ignore_permissions=True)
+                    frappe.db.commit()
+                    return {"status": "success", "message": _("Request approved and forwarded to HR"),
+                           "data": {"name": doc.name, "status": doc.status}}
+
+                elif is_designated_approver or is_hr:
+                    # Direct approval by designated approver or HR
+                    doc.status = "HR Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Overtime request approved"), 
+                    return {"status": "success", "message": _("Overtime request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
+
                 else:
                     return {"status": "fail", "message": _("You don't have permission to approve this request")}
+
+            elif doc.status == "Manager Approved":
+                # Second level approval
+                if is_designated_approver or is_hr:
+                    doc.status = "HR Approved"
+                    doc.docstatus = 1
+                    doc.save(ignore_permissions=True)
+                    frappe.db.commit()
+                    return {"status": "success", "message": _("Overtime request approved"),
+                           "data": {"name": doc.name, "status": doc.status}}
+                else:
+                    return {"status": "fail", "message": _("You don't have permission to approve this request at this level")}
         
         return {"status": "fail", "message": _("Invalid status")}
         

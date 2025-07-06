@@ -798,7 +798,8 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                 
                 # Add reason as a comment since explanation field doesn't exist
                 if reason:
-                    frappe.add_comment("Comment", shift_request.name, text=f"Reason: {reason or 'No explanation provided'}", comment_by=frappe.session.user)
+                    from frappe.desk.form.utils import add_comment
+                    add_comment("Shift Request", shift_request.name, f"Reason: {reason or 'No explanation provided'}")
                 
                 return {
                     "status": "success",
@@ -819,7 +820,8 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                 
                 # Add reason as a comment since explanation field doesn't exist
                 if reason:
-                    frappe.add_comment("Comment", shift_request.name, text=f"Reason: {reason or 'No explanation provided'}", comment_by=frappe.session.user)
+                    from frappe.desk.form.utils import add_comment
+                    add_comment("Shift Request", shift_request.name, f"Reason: {reason or 'No explanation provided'}")
                 
                 return {
                     "status": "success",
@@ -1380,7 +1382,8 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
             doc.status = "Rejected"
             doc.docstatus = 1
             if reason:
-                frappe.add_comment("Comment", doc.name, text=f"Rejection reason: {reason}", comment_by=frappe.session.user)
+                from frappe.desk.form.utils import add_comment
+                add_comment("Shift Request", doc.name, f"Rejection reason: {reason}")
             doc.save(ignore_permissions=True)
             frappe.db.commit()
             return {"status": "success", "message": _("Shift request rejected"), "data": {"name": doc.name, "status": doc.status}}

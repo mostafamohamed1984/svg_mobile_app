@@ -799,7 +799,8 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                 # Add reason as a comment since explanation field doesn't exist
                 if reason:
                     from frappe.desk.form.utils import add_comment
-                    add_comment("Shift Request", shift_request.name, f"Reason: {reason or 'No explanation provided'}")
+                    add_comment("Shift Request", shift_request.name, f"Reason: {reason or 'No explanation provided'}",
+                               comment_email=frappe.session.user, comment_by=frappe.session.user)
                 
                 return {
                     "status": "success",
@@ -821,7 +822,8 @@ def leave_shift_request(employee_id, type, start_date, end_date, sub_type, reaso
                 # Add reason as a comment since explanation field doesn't exist
                 if reason:
                     from frappe.desk.form.utils import add_comment
-                    add_comment("Shift Request", shift_request.name, f"Reason: {reason or 'No explanation provided'}")
+                    add_comment("Shift Request", shift_request.name, f"Reason: {reason or 'No explanation provided'}",
+                               comment_email=frappe.session.user, comment_by=frappe.session.user)
                 
                 return {
                     "status": "success",
@@ -1383,7 +1385,8 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
             doc.docstatus = 1
             if reason:
                 from frappe.desk.form.utils import add_comment
-                add_comment("Shift Request", doc.name, f"Rejection reason: {reason}")
+                add_comment("Shift Request", doc.name, f"Rejection reason: {reason}",
+                           comment_email=frappe.session.user, comment_by=frappe.session.user)
             doc.save(ignore_permissions=True)
             frappe.db.commit()
             return {"status": "success", "message": _("Shift request rejected"), "data": {"name": doc.name, "status": doc.status}}
@@ -1391,31 +1394,22 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
         elif status.lower() == "approved":
             # Check current status and determine next step
             if doc.status == "Requested":
-                # First level approval
-                if is_direct_manager and employee_doc.shift_request_approver and employee_doc.shift_request_approver != frappe.session.user:
-                    # Manager approved, now send to designated shift approver
+                # First level approval - ONLY MANAGER can approve
+                if is_direct_manager:
+                    # Manager approved, now send to HR/designated approver
                     doc.status = "Manager Approved"
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
-                    return {"status": "success", "message": _("Request approved and forwarded to shift approver"),
-                           "data": {"name": doc.name, "status": doc.status}}
-
-                elif is_designated_approver or is_hr:
-                    # Direct approval by designated approver or HR
-                    doc.status = "HR Approved"
-                    doc.docstatus = 1
-                    doc.save(ignore_permissions=True)
-                    frappe.db.commit()
-                    return {"status": "success", "message": _("Shift request approved"),
+                    return {"status": "success", "message": _("Request approved and forwarded to HR for final approval"),
                            "data": {"name": doc.name, "status": doc.status}}
 
                 else:
-                    return {"status": "fail", "message": _("You don't have permission to approve this request")}
+                    return {"status": "fail", "message": _("Only direct manager can approve this request at first level")}
 
             elif doc.status == "Manager Approved":
-                # Second level approval
+                # Second level approval - ONLY HR/Designated Approver can approve
                 if is_designated_approver or is_hr:
                     doc.status = "HR Approved"
                     doc.docstatus = 1
@@ -1424,7 +1418,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     return {"status": "success", "message": _("Shift request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
                 else:
-                    return {"status": "fail", "message": _("You don't have permission to approve this request at this level")}
+                    return {"status": "fail", "message": _("Only HR or designated approver can approve this request at second level")}
         
         return {"status": "fail", "message": _("Invalid status")}
         

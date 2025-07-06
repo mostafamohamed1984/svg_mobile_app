@@ -296,7 +296,40 @@ def mark_attendance(employee_id, lat, long, action="check-in", **kwargs):
             # Directly allow check-in or check-out
             return _create_employee_checkin(employee_id, log_type, lat, long)
 
-        # --- Step 3: Check for "Work from Home" request ---
+        # --- Step 3: Check shift type allow checkin on request ---
+        today = frappe.utils.nowdate()
+
+        # First check for assigned shift
+        assigned_shift_type = frappe.db.sql(
+            """
+            SELECT st.name, st.custom_allow_checkin_on_request
+            FROM `tabShift Assignment` sa
+            JOIN `tabShift Type` st ON sa.shift_type = st.name
+            WHERE sa.employee = %s
+            AND sa.start_date <= %s
+            AND (sa.end_date IS NULL OR sa.end_date >= %s)
+            ORDER BY sa.start_date DESC
+            LIMIT 1
+            """,
+            (employee_id, today, today),
+            as_dict=True,
+        )
+
+        # If no assigned shift, check default shift
+        if not assigned_shift_type and employee.default_shift:
+            assigned_shift_type = frappe.db.get_all(
+                "Shift Type",
+                filters={"name": employee.default_shift},
+                fields=["name", "custom_allow_checkin_on_request"],
+                limit=1
+            )
+
+        # Check if shift type allows checkin on request
+        if assigned_shift_type and assigned_shift_type[0].get("custom_allow_checkin_on_request"):
+            # Directly allow check-in or check-out if shift type permits
+            return _create_employee_checkin(employee_id, log_type, lat, long)
+
+        # --- Step 4: Check for "Work from Home" request ---
         attendance_request = frappe.db.sql(
             """
             SELECT name
@@ -313,7 +346,7 @@ def mark_attendance(employee_id, lat, long, action="check-in", **kwargs):
             # Allow check-in or check-out if Work from Home request exists
             return _create_employee_checkin(employee_id, log_type, lat, long)
 
-        # --- Step 4: Validate radius from company location ---
+        # --- Step 5: Validate radius from company location ---
         companyRadius = frappe.db.get_value("Company", employee.company, "radius")
 
         if radius > float(companyRadius):
@@ -322,7 +355,7 @@ def mark_attendance(employee_id, lat, long, action="check-in", **kwargs):
                 "message": _("You are too far from the company location. Please get closer."),
             }
 
-        # --- Step 5: Create check-in ---
+        # --- Step 6: Create check-in ---
         return _create_employee_checkin(employee_id, log_type, lat, long)
 
     except frappe.DoesNotExistError:

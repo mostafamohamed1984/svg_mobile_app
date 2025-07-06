@@ -183,7 +183,7 @@
   },
   {
    "fieldname": "claim_amount",
-   "fieldtype": "Data",
+   "fieldtype": "Currency",
    "in_standard_filter": 1,
    "label": "Claim Amount",
    "reqd": 1

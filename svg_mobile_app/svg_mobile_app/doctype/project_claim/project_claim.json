@@ -10,6 +10,8 @@
   "naming_series",
   "customer",
   "customer_name",
+  "tax_id",
+  "address",
   "party_account",
   "reference_invoice",
   "invoice_references",
@@ -323,12 +325,26 @@
    "fieldtype": "Table",
    "label": "Claim Items",
    "options": "Claim Items"
+  },
+  {
+   "fetch_from": "customer.tax_id",
+   "fieldname": "tax_id",
+   "fieldtype": "Data",
+   "label": "Tax ID",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "customer.custom_main_address",
+   "fieldname": "address",
+   "fieldtype": "Small Text",
+   "label": "Address",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 00:50:32.716078",
+ "modified": "2025-07-06 14:06:31.189452",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Claim",

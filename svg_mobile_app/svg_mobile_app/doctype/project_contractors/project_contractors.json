@@ -8,6 +8,7 @@
  "field_order": [
   "naming_series",
   "company",
+  "date",
   "project_name",
   "customer",
   "customer_name",
@@ -31,7 +32,8 @@
   "section_break_a2ic",
   "details",
   "created_by",
-  "amended_from"
+  "amended_from",
+  "column_break_12"
  ],
  "fields": [
   {
@@ -82,11 +84,11 @@
    "read_only": 1
   },
   {
+   "description": "Tax template to apply on project items (taxable items only)",
    "fieldname": "tax_template",
    "fieldtype": "Link",
    "label": "Tax Template",
-   "options": "Sales Taxes and Charges Template",
-   "description": "Tax template to apply on project items (taxable items only)"
+   "options": "Sales Taxes and Charges Template"
   },
   {
    "fieldname": "column_break_12",
@@ -191,6 +193,11 @@
   {
    "fieldname": "column_break_gvsf",
    "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
   }
  ],
  "index_web_pages_for_search": 1,
@@ -201,7 +208,7 @@
    "link_fieldname": "for_project"
   }
  ],
- "modified": "2025-06-03 09:58:02.855628",
+ "modified": "2025-07-02 14:26:09.362996",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",
@@ -225,6 +232,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "search_fields": "project_name,customer_name,customer",
  "sort_field": "modified",
  "sort_order": "DESC",

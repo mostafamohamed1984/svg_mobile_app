@@ -67,7 +67,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Open\nApproved\nRejected"
+   "options": "Requested\nManager Approved\nHR Approved\nRejected\nCancelled"
   },
   {
    "fieldname": "section_break_2jhu",

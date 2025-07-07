@@ -12,6 +12,7 @@
   "current_balance",
   "tax_rate",
   "tax_amount",
+  "tax_account",
   "unearned_account",
   "revenue_account",
   "invoice_reference",
@@ -55,6 +56,13 @@
    "fieldtype": "Currency",
    "label": "Tax Amount",
    "default": 0
+  },
+  {
+   "fieldname": "tax_account",
+   "fieldtype": "Link",
+   "label": "Tax Account",
+   "options": "Account",
+   "read_only": 1
   },
   {
    "fieldname": "unearned_account",

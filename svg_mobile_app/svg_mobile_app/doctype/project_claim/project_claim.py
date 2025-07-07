@@ -715,8 +715,9 @@ class ProjectClaim(Document):
 			
 		# Calculate amounts
 		import datetime
-		today = datetime.datetime.now().strftime("%Y-%m-%d")
-		
+		# Use the Project Claim's date field instead of today's date
+		posting_date = self.date or frappe.utils.today()
+
 		# Get company from the reference invoice since it's not in the Project Claim
 		default_company = frappe.db.get_value("Sales Invoice", self.reference_invoice, "company") or frappe.defaults.get_user_default('company')
 		
@@ -773,10 +774,10 @@ class ProjectClaim(Document):
 					# Removed reference_type and reference_name to avoid double impact on outstanding amounts
 				})
 		
-		# Debit receiving account (amount excluding tax)
+		# Debit receiving account (amount INCLUDING tax - full amount customer pays)
 		accounts.append({
 			'account': self.receiving_account,
-			'debit_in_account_currency': claim_amount
+			'debit_in_account_currency': claim_amount + tax_amount
 		})
 		
 		# Add entries for each claim item
@@ -797,12 +798,53 @@ class ProjectClaim(Document):
 					'credit_in_account_currency': item_amount
 				})
 		
-		# Add tax row if applicable
-		if tax_amount > 0 and hasattr(self, 'tax_account') and self.tax_account:
-			accounts.append({
-				'account': self.tax_account,
-				'debit_in_account_currency': tax_amount
-			})
+		# Add tax entries if applicable - both debit to tax account and credit to unearned tax account
+		if tax_amount > 0:
+			# Group tax amounts by tax account from claim items
+			tax_account_amounts = {}
+			unearned_tax_amounts = {}
+
+			for item in self.claim_items:
+				if hasattr(item, 'tax_amount') and flt(item.tax_amount) > 0:
+					# Get tax account from item or fallback to Project Claim tax account
+					if hasattr(item, 'tax_account') and item.tax_account:
+						tax_acc = item.tax_account
+					elif hasattr(self, 'tax_account') and self.tax_account:
+						tax_acc = self.tax_account
+					else:
+						continue
+
+					# For unearned tax account, use the same unearned account as the item
+					# This represents the unearned portion of the tax
+					if hasattr(item, 'unearned_account') and item.unearned_account:
+						unearned_acc = item.unearned_account
+					else:
+						continue
+
+					# Accumulate amounts by account
+					if tax_acc not in tax_account_amounts:
+						tax_account_amounts[tax_acc] = 0
+					tax_account_amounts[tax_acc] += flt(item.tax_amount)
+
+					if unearned_acc not in unearned_tax_amounts:
+						unearned_tax_amounts[unearned_acc] = 0
+					unearned_tax_amounts[unearned_acc] += flt(item.tax_amount)
+
+			# Create debit entries for tax accounts
+			for tax_acc, amount in tax_account_amounts.items():
+				if amount > 0:
+					accounts.append({
+						'account': tax_acc,
+						'debit_in_account_currency': amount
+					})
+
+			# Create credit entries for unearned tax accounts
+			for unearned_acc, amount in unearned_tax_amounts.items():
+				if amount > 0:
+					accounts.append({
+						'account': unearned_acc,
+						'credit_in_account_currency': amount
+					})
 			
 		# Verify and fix balance if needed
 		total_debit = sum(account.get('debit_in_account_currency', 0) for account in accounts)
@@ -818,7 +860,7 @@ class ProjectClaim(Document):
 		# Create the journal entry
 		je = frappe.new_doc("Journal Entry")
 		je.voucher_type = "Journal Entry"
-		je.posting_date = today
+		je.posting_date = posting_date
 		je.company = default_company
 		je.user_remark = f"for Project Claim {self.name} Being {self.being}"
 		
@@ -969,18 +1011,21 @@ def get_available_invoice_balances(invoices):
 	
 	# Get tax information for these invoices
 	tax_data = frappe.db.sql("""
-		SELECT 
+		SELECT
 			parent as invoice,
-			rate
+			rate,
+			account_head
 		FROM `tabSales Taxes and Charges`
 		WHERE parent IN %s
 		ORDER BY idx ASC
 	""", [tuple(invoices) if len(invoices) > 1 else tuple(invoices + [''])], as_dict=True)
-	
-	# Map tax rates by invoice
+
+	# Map tax rates and accounts by invoice
 	invoice_tax_rates = {}
+	invoice_tax_accounts = {}
 	for tax_entry in tax_data:
 		invoice_tax_rates[tax_entry.invoice] = flt(tax_entry.rate)
+		invoice_tax_accounts[tax_entry.invoice] = tax_entry.account_head
 	
 	# Group items by invoice
 	result = {}
@@ -1101,11 +1146,13 @@ def get_available_invoice_balances(invoices):
 				result[invoice][item_code]['available_balance'] *= scale_factor
 				frappe.logger().info(f"Scaled {item_code} by {scale_factor}: new available={result[invoice][item_code]['available_balance']}")
 	
-	# Add tax rate to each item's data - AFTER balance calculations are done
+	# Add tax rate and tax account to each item's data - AFTER balance calculations are done
 	for invoice in result:
 		tax_rate = invoice_tax_rates.get(invoice, 0)
+		tax_account = invoice_tax_accounts.get(invoice, '')
 		for item_code in result[invoice]:
 			result[invoice][item_code]['tax_rate'] = tax_rate
+			result[invoice][item_code]['tax_account'] = tax_account
 	
 	return result
 

@@ -1015,9 +1015,11 @@ function update_items_preview(dialog) {
 							item.claimed_amount = balance_data[item.invoice][item.item_code].claimed_amount;
 							item.available_balance = balance_data[item.invoice][item.item_code].available_balance;
 							item.tax_rate = balance_data[item.invoice][item.item_code].tax_rate || 0;
+							item.tax_account = balance_data[item.invoice][item.item_code].tax_account || '';
 						} else {
 							item.available_balance = item.amount;
 							item.tax_rate = 0;
+							item.tax_account = '';
 						}
 						
 						// Initialize claim amount to 0 or a saved value
@@ -1610,6 +1612,7 @@ function create_bulk_project_claim(frm, dialog) {
 					ratio: 0, // Placeholder, will be calculated later
 					tax_rate: tax_rate,
 					tax_amount: tax_amount,
+					tax_account: item.tax_account || '',
 					unearned_account: item.income_account || '',
 					revenue_account: item.custom_default_earning_account || '',
 					invoice_reference: inv.invoice, // Critical for proper invoice-level tracking

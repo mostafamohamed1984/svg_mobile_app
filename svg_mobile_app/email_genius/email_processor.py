@@ -366,7 +366,7 @@ Message ID: {comm.get('message_id', 'N/A')}
         # Set custom fields to track forwarding
         new_comm.custom_role_forwarded = 1
         new_comm.custom_original_message_id = comm.get('message_id', '')
-        new_comm.custom_recipient_type = 'FORWARDED'
+        new_comm.custom_recipient_type = 'TO'  # Use valid recipient type instead of 'FORWARDED'
 
         # Insert the new Communication record
         new_comm.insert(ignore_permissions=True)

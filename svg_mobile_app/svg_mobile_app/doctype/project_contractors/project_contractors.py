@@ -17,6 +17,11 @@ class ProjectContractors(Document):
 		if self.docstatus == 1:
 			self.create_sales_invoices_for_new_items()
 
+	def on_update_after_submit(self):
+		"""Handle updates after submission to create sales invoices for new items"""
+		# This method is called when submitted documents are updated
+		self.create_sales_invoices_for_new_items()
+
 	def on_submit(self):
 		"""Create Sales Invoices when Project Contractors is submitted"""
 		# Create automatic sales invoices for both taxable and non-taxable items
@@ -557,6 +562,9 @@ class ProjectContractors(Document):
 				"invoiced": 1,
 				"sales_invoice": sales_invoice.name
 			})
+
+		# Commit the changes to ensure they're persisted immediately
+		frappe.db.commit()
 		
 		return sales_invoice.name
 
@@ -818,6 +826,9 @@ class ProjectContractors(Document):
 				"sales_invoice": sales_invoice.name
 			})
 
+		# Commit the changes to ensure they're persisted immediately
+		frappe.db.commit()
+
 		return sales_invoice.name
 
 	def create_non_taxable_sales_invoice_for_items(self, items_list):
@@ -871,6 +882,9 @@ class ProjectContractors(Document):
 		# Update the database directly to avoid triggering calculate_totals() and validation issues
 		for fee in items_list:
 			frappe.db.set_value("Fees and Deposits", fee.name, "sales_invoice", sales_invoice.name)
+
+		# Commit the changes to ensure they're persisted immediately
+		frappe.db.commit()
 
 		return sales_invoice.name
 

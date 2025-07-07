@@ -336,7 +336,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "customer.custom_main_address",
    "fieldname": "address",
    "fieldtype": "Small Text",
    "label": "Address",

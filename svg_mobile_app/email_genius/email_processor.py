@@ -306,11 +306,18 @@ def should_forward_email_by_role(comm):
             if not recipient_email:
                 continue
 
-            # Find user by email
+            # Find user by email - check both User.email and User Email associations
             user = frappe.db.get_value('User', {'email': recipient_email}, 'name')
+
+            # If not found in User.email, check User Email associations
             if not user:
-                frappe.logger().info(f"Email Genius: No user found for email {recipient_email}")
-                continue
+                user_email_record = frappe.db.get_value('User Email', {'email_id': recipient_email}, 'parent')
+                if user_email_record:
+                    user = user_email_record
+                    frappe.logger().info(f"Email Genius: Found user {user} via User Email association for {recipient_email}")
+                else:
+                    frappe.logger().info(f"Email Genius: No user found for email {recipient_email} in User.email or User Email")
+                    continue
 
             # Check if user has the engineer role
             user_roles = frappe.get_roles(user)

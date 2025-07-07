@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-The Role-Based Email Forwarding System automatically forwards emails from Site Engineers to the main supervision email account (`supervision@svec.ae`). This system was implemented to solve ERPNext's BCC functionality limitations.
+The Role-Based Email Forwarding System automatically forwards emails TO Site Engineers to the main supervision email account (`supervision@svec.ae`). This system was implemented to solve ERPNext's BCC functionality limitations.
 
 ## 🏗️ System Architecture
 
@@ -14,7 +14,7 @@ The Role-Based Email Forwarding System automatically forwards emails from Site E
 
 ### Workflow
 ```
-Engineer Email → ERPNext Communication → Role Check → Forward to Main Account → New Communication Record
+Email TO Engineer → ERPNext Communication → Recipient Role Check → Forward to Main Account → New Communication Record
 ```
 
 ## ⚙️ Configuration

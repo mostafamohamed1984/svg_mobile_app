@@ -287,30 +287,44 @@ def is_role_based_forwarding_enabled():
 
 def should_forward_email_by_role(comm):
     """
-    Check if email should be forwarded based on sender's role
+    Check if email should be forwarded based on recipient's role
     """
     try:
         # Get settings
         settings = frappe.get_single('BCC Processing Settings')
         engineer_role = settings.get('engineer_role_name', 'Site Engineer')
 
-        # Get sender's email
-        sender_email = comm.get('sender', '')
-        if not sender_email:
+        # Get recipients email(s)
+        recipients = comm.get('recipients', '')
+        if not recipients:
             return False
 
-        # Find user by email
-        user = frappe.db.get_value('User', {'email': sender_email}, 'name')
-        if not user:
-            frappe.logger().info(f"Email Genius: No user found for email {sender_email}")
-            return False
+        # Recipients can be comma-separated, so split and check each
+        recipient_emails = [email.strip() for email in recipients.split(',')]
 
-        # Check if user has the engineer role
-        user_roles = frappe.get_roles(user)
-        has_engineer_role = engineer_role in user_roles
+        for recipient_email in recipient_emails:
+            if not recipient_email:
+                continue
 
-        frappe.logger().info(f"Email Genius: User {user} has engineer role '{engineer_role}': {has_engineer_role}")
-        return has_engineer_role
+            # Find user by email
+            user = frappe.db.get_value('User', {'email': recipient_email}, 'name')
+            if not user:
+                frappe.logger().info(f"Email Genius: No user found for email {recipient_email}")
+                continue
+
+            # Check if user has the engineer role
+            user_roles = frappe.get_roles(user)
+            has_engineer_role = engineer_role in user_roles
+
+            if has_engineer_role:
+                frappe.logger().info(f"Email Genius: Recipient {user} ({recipient_email}) has engineer role '{engineer_role}': forwarding email")
+                return True
+            else:
+                frappe.logger().info(f"Email Genius: Recipient {user} ({recipient_email}) does not have engineer role '{engineer_role}'")
+
+        # No recipients with engineer role found
+        frappe.logger().info(f"Email Genius: No recipients with engineer role found in: {recipients}")
+        return False
 
     except Exception as e:
         frappe.logger().error(f"Email Genius: Error checking role for forwarding: {str(e)}")

@@ -14,7 +14,8 @@ class ProjectContractors(Document):
 	def on_update(self):
 		"""Handle updates to create sales invoices for new items"""
 		# Only process if document is submitted (allow_on_submit is enabled)
-		if self.docstatus == 1:
+		# AND sales invoices have already been created (to avoid duplicates during initial submission)
+		if self.docstatus == 1 and getattr(self, 'sales_invoice_created', 0) == 1:
 			self.create_sales_invoices_for_new_items()
 
 	def on_update_after_submit(self):

@@ -550,9 +550,13 @@ class ProjectContractors(Document):
 		for item in items_to_mark:
 			item.invoiced = 1
 			item.sales_invoice = sales_invoice.name
-		
-		# Save the updated document
-		self.save()
+
+		# Update the database directly to avoid triggering calculate_totals() and validation issues
+		for item in items_to_mark:
+			frappe.db.set_value("Project Items", item.name, {
+				"invoiced": 1,
+				"sales_invoice": sales_invoice.name
+			})
 		
 		return sales_invoice.name
 
@@ -807,8 +811,12 @@ class ProjectContractors(Document):
 			item.invoiced = 1
 			item.sales_invoice = sales_invoice.name
 
-		# Save the updated document
-		self.save()
+		# Update the database directly to avoid triggering calculate_totals() and validation issues
+		for item in items_list:
+			frappe.db.set_value("Project Items", item.name, {
+				"invoiced": 1,
+				"sales_invoice": sales_invoice.name
+			})
 
 		return sales_invoice.name
 
@@ -860,8 +868,9 @@ class ProjectContractors(Document):
 		for fee in items_list:
 			fee.sales_invoice = sales_invoice.name
 
-		# Save the updated document
-		self.save()
+		# Update the database directly to avoid triggering calculate_totals() and validation issues
+		for fee in items_list:
+			frappe.db.set_value("Fees and Deposits", fee.name, "sales_invoice", sales_invoice.name)
 
 		return sales_invoice.name
 

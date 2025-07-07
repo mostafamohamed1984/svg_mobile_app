@@ -268,6 +268,8 @@
    "fetch_from": "for_project.project_name",
    "fieldname": "project_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Project Name",
    "read_only": 1
   },
@@ -344,7 +346,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-06 14:06:31.189452",
+ "modified": "2025-07-06 17:54:59.230716",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Claim",

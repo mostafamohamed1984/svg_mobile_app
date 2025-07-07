@@ -171,6 +171,7 @@
    "label": "Fees and Deposits Items"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "fees_and_deposits",
    "fieldtype": "Table",
    "label": "Fees and Deposits",
@@ -208,7 +209,7 @@
    "link_fieldname": "for_project"
   }
  ],
- "modified": "2025-07-02 14:26:09.362996",
+ "modified": "2025-07-07 12:05:25.297603",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",

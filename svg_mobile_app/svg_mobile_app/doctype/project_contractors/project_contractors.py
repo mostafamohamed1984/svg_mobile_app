@@ -20,7 +20,12 @@ class ProjectContractors(Document):
 	def on_update_after_submit(self):
 		"""Handle updates after submission to create sales invoices for new items"""
 		# This method is called when submitted documents are updated
-		self.create_sales_invoices_for_new_items()
+		# Only process if sales invoices have already been created (indicating this is a genuine update)
+		if getattr(self, 'sales_invoice_created', 0) == 1:
+			self.create_sales_invoices_for_new_items()
+		else:
+			# Skip during initial submission to avoid duplicate invoice creation
+			frappe.logger().info(f"Skipping on_update_after_submit for initial submission of {self.name}")
 
 	def on_submit(self):
 		"""Create Sales Invoices when Project Contractors is submitted"""

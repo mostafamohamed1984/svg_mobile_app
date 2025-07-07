@@ -300,7 +300,18 @@ def should_forward_email_by_role(comm):
             return False
 
         # Recipients can be comma-separated, so split and check each
-        recipient_emails = [email.strip() for email in recipients.split(',')]
+        # Also handle email format like "Name" <email@domain.com>
+        recipient_emails = []
+        for email in recipients.split(','):
+            email = email.strip()
+            # Extract email from format like "Name" <email@domain.com> or Name <email@domain.com>
+            if '<' in email and '>' in email:
+                # Extract email between < and >
+                email = email.split('<')[1].split('>')[0].strip()
+            elif '"' in email:
+                # Remove quotes if present
+                email = email.replace('"', '').strip()
+            recipient_emails.append(email)
 
         for recipient_email in recipient_emails:
             if not recipient_email:

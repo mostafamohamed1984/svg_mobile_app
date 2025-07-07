@@ -10,7 +10,13 @@ from frappe.utils import flt, cstr
 class ProjectContractors(Document):
 	def validate(self):
 		self.calculate_totals()
-		
+
+	def on_update(self):
+		"""Handle updates to create sales invoices for new items"""
+		# Only process if document is submitted (allow_on_submit is enabled)
+		if self.docstatus == 1:
+			self.create_sales_invoices_for_new_items()
+
 	def on_submit(self):
 		"""Create Sales Invoices when Project Contractors is submitted"""
 		# Create automatic sales invoices for both taxable and non-taxable items
@@ -317,6 +323,58 @@ class ProjectContractors(Document):
 				message=f"Project Contractors: {self.name}\nError: {str(e)}"
 			)
 			frappe.throw(f"Failed to create sales invoices: {error_msg}")
+
+	def create_sales_invoices_for_new_items(self):
+		"""Create sales invoices for newly added items that don't have invoice references yet"""
+		created_invoices = []
+
+		try:
+			# Check for new project items (taxable) that don't have sales_invoice reference
+			new_project_items = [
+				item for item in self.items
+				if hasattr(item, 'rate') and item.rate and item.rate > 0
+				and (not hasattr(item, 'sales_invoice') or not item.sales_invoice)
+				and (not hasattr(item, 'invoiced') or not item.invoiced)
+			]
+
+			# Check for new fees and deposits (non-taxable) that don't have sales_invoice reference
+			new_fee_items = [
+				fee for fee in self.fees_and_deposits
+				if hasattr(fee, 'rate') and fee.rate and fee.rate > 0
+				and (not hasattr(fee, 'sales_invoice') or not fee.sales_invoice)
+			]
+
+			# Create invoice for new project items (taxable) if any exist
+			if new_project_items:
+				taxable_invoice = self.create_taxable_sales_invoice_for_items(new_project_items)
+				if taxable_invoice:
+					created_invoices.append(f"Taxable Invoice: {taxable_invoice}")
+
+			# Create invoice for new fees and deposits (non-taxable) if any exist
+			if new_fee_items:
+				non_taxable_invoice = self.create_non_taxable_sales_invoice_for_items(new_fee_items)
+				if non_taxable_invoice:
+					created_invoices.append(f"Non-Taxable Invoice: {non_taxable_invoice}")
+
+			# Show success message if any invoices were created
+			if created_invoices:
+				frappe.msgprint(
+					"<br>".join(created_invoices),
+					title="Sales Invoices Created for New Items",
+					indicator="green"
+				)
+
+		except Exception as e:
+			# Create a shorter error message for logging
+			error_msg = str(e)
+			if len(error_msg) > 100:
+				error_msg = error_msg[:100] + "..."
+
+			frappe.log_error(
+				title=f"New Items Sales Invoice Creation Error",
+				message=f"Project Contractors: {self.name}\nError: {str(e)}"
+			)
+			frappe.throw(f"Failed to create sales invoices for new items: {error_msg}")
 
 	def create_taxable_sales_invoice(self):
 		"""Create sales invoice for project items with taxes"""
@@ -685,6 +743,127 @@ class ProjectContractors(Document):
 		except Exception as e:
 			frappe.log_error(f"Error creating additional fees invoice: {str(e)}")
 			frappe.throw(f"Failed to create additional fees invoice: {str(e)}")
+
+	def create_taxable_sales_invoice_for_items(self, items_list):
+		"""Create sales invoice for specific project items with taxes"""
+		if not items_list:
+			return None
+
+		# Get customer and company details for currency handling
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		company_doc = frappe.get_doc("Company", self.company)
+
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.project_name = self.project_name
+		sales_invoice.posting_date = frappe.utils.today()
+		sales_invoice.custom_for_project = self.name  # Link back to project contractors
+
+		# Set currency and price list from customer or company
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		else:
+			# Fallback to company currency
+			sales_invoice.currency = company_doc.default_currency
+			sales_invoice.price_list_currency = company_doc.default_currency
+
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+
+		sales_invoice.ignore_pricing_rule = 1
+
+		# Add project items to invoice
+		for item in items_list:
+			sales_invoice.append("items", {
+				"item_code": item.item,
+				"qty": getattr(item, 'qty', 1) or 1,
+				"rate": item.rate,
+				"amount": item.rate
+			})
+
+		# Apply tax template if available
+		if self.tax_template:
+			sales_invoice.taxes_and_charges = self.tax_template
+
+			# Get taxes from template and add them
+			taxes = self.get_tax_template_taxes()
+			for tax in taxes:
+				sales_invoice.append("taxes", {
+					"charge_type": tax.charge_type,
+					"account_head": tax.account_head,
+					"description": tax.description,
+					"rate": tax.rate
+				})
+
+		# Save and submit
+		sales_invoice.save()
+		sales_invoice.submit()
+
+		# Mark items as invoiced and update sales_invoice reference
+		for item in items_list:
+			item.invoiced = 1
+			item.sales_invoice = sales_invoice.name
+
+		# Save the updated document
+		self.save()
+
+		return sales_invoice.name
+
+	def create_non_taxable_sales_invoice_for_items(self, items_list):
+		"""Create sales invoice for specific fees and deposits items (non-taxable)"""
+		if not items_list:
+			return None
+
+		# Get customer and company details for currency handling
+		customer_doc = frappe.get_doc("Customer", self.customer)
+		company_doc = frappe.get_doc("Company", self.company)
+
+		# Create sales invoice
+		sales_invoice = frappe.new_doc("Sales Invoice")
+		sales_invoice.customer = self.customer
+		sales_invoice.company = self.company
+		sales_invoice.project_name = f"{self.project_name} - Fees"
+		sales_invoice.posting_date = frappe.utils.today()
+		sales_invoice.custom_for_project = self.name  # Link back to project contractors
+
+		# Set currency and price list from customer or company
+		if hasattr(customer_doc, 'default_currency') and customer_doc.default_currency:
+			sales_invoice.currency = customer_doc.default_currency
+			sales_invoice.price_list_currency = customer_doc.default_currency
+		else:
+			# Fallback to company currency
+			sales_invoice.currency = company_doc.default_currency
+			sales_invoice.price_list_currency = company_doc.default_currency
+
+		if hasattr(customer_doc, 'default_price_list') and customer_doc.default_price_list:
+			sales_invoice.selling_price_list = customer_doc.default_price_list
+
+		sales_invoice.ignore_pricing_rule = 1
+
+		# Add fees and deposits items to invoice (no taxes applied)
+		for fee in items_list:
+			sales_invoice.append("items", {
+				"item_code": fee.item,
+				"qty": getattr(fee, 'qty', 1) or 1,
+				"rate": fee.rate,
+				"amount": fee.rate
+			})
+
+		# Save and submit (no taxes for fees)
+		sales_invoice.save()
+		sales_invoice.submit()
+
+		# Update sales_invoice reference for fees
+		for fee in items_list:
+			fee.sales_invoice = sales_invoice.name
+
+		# Save the updated document
+		self.save()
+
+		return sales_invoice.name
 
 
 @frappe.whitelist()

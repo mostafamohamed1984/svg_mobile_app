@@ -814,10 +814,10 @@ class ProjectClaim(Document):
 					else:
 						continue
 
-					# For unearned tax account, use the same unearned account as the item
-					# This represents the unearned portion of the tax
-					if hasattr(item, 'unearned_account') and item.unearned_account:
-						unearned_acc = item.unearned_account
+					# For unearned tax account, use the Project Claim's tax_account
+					# This represents the tax exempted account that balances the VAT debit
+					if hasattr(self, 'tax_account') and self.tax_account:
+						unearned_acc = self.tax_account
 					else:
 						continue
 

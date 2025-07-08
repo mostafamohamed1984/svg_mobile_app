@@ -1,6 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
+ "autoname": "field:app_mail",
  "creation": "2025-07-06 14:41:50.335996",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -27,7 +28,8 @@
   {
    "fieldname": "app_mail",
    "fieldtype": "Data",
-   "label": "App Mail"
+   "label": "App Mail",
+   "unique": 1
   },
   {
    "fieldname": "password",
@@ -43,10 +45,11 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-06 14:57:11.421189",
+ "modified": "2025-07-07 14:06:53.507933",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Auto Desk Accounts",
+ "naming_rule": "By fieldname",
  "owner": "Administrator",
  "permissions": [
   {

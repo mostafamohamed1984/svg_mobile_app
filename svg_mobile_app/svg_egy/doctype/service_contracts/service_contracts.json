@@ -1,0 +1,166 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-07-07 14:16:36.179940",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "customer",
+  "customer_name",
+  "responsible_employee",
+  "employee_name",
+  "employee_email",
+  "column_break_12vj",
+  "contract_type",
+  "start_date",
+  "end_date",
+  "renewal_date",
+  "ended",
+  "section_break_fiuo",
+  "services_provided",
+  "section_break_49jg",
+  "project_details",
+  "contract_log",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Service Contracts",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Serial",
+   "options": "CONTRACT-"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "contract_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Contract Type",
+   "options": "\nOne Time\nAnnual\nBiannual\nQuarterly\nMonthly",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_date",
+   "fieldtype": "Date",
+   "label": "Start Date"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "allow_on_submit": 1,
+   "depends_on": "eval:doc.contract_type != 'One Time'&& doc.contract_type != ''",
+   "fieldname": "renewal_date",
+   "fieldtype": "Data",
+   "label": "Renewal Date"
+  },
+  {
+   "fieldname": "responsible_employee",
+   "fieldtype": "Link",
+   "label": "Responsible Employee",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "responsible_employee.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fetch_from": "responsible_employee.user_id",
+   "fieldname": "employee_email",
+   "fieldtype": "Data",
+   "label": "Employee Email"
+  },
+  {
+   "default": "0",
+   "fieldname": "ended",
+   "fieldtype": "Check",
+   "label": "Ended"
+  },
+  {
+   "fieldname": "project_details",
+   "fieldtype": "Text Editor",
+   "label": "Project Details"
+  },
+  {
+   "fieldname": "services_provided",
+   "fieldtype": "Table",
+   "label": "Services Provided",
+   "options": "Service Items"
+  },
+  {
+   "fieldname": "column_break_12vj",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_fiuo",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_49jg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "contract_log",
+   "fieldtype": "Table",
+   "label": "Contract Log",
+   "options": "Contract Log"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-07-07 17:30:44.005966",
+ "modified_by": "Administrator",
+ "module": "SVG-EGY",
+ "name": "Service Contracts",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

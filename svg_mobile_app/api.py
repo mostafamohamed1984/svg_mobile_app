@@ -248,17 +248,27 @@ def get_employee_shift_and_checkin(employee_id):
 
 # employee make check in/out
 @frappe.whitelist(allow_guest=False)
-def mark_attendance(employee_id, lat, long, action="check-in", **kwargs):
+def mark_attendance(employee_id=None, lat=None, long=None, action="check-in", **kwargs):
     try:
+        # Handle both JSON and form data
+        if not employee_id:
+            employee_id = frappe.form_dict.get('employee_id')
+        if not lat:
+            lat = frappe.form_dict.get('lat')
+        if not long:
+            long = frappe.form_dict.get('long')
+        if action == "check-in":  # Default value, check form_dict
+            action = frappe.form_dict.get('action', 'check-in')
+
         # Handle both radius and distance parameters for backward compatibility
-        radius = kwargs.get('radius')
-        distance = kwargs.get('distance')
-        
+        radius = kwargs.get('radius') or frappe.form_dict.get('radius')
+        distance = kwargs.get('distance') or frappe.form_dict.get('distance')
+
         if radius is None and distance is not None:
             radius = distance
         elif radius is None and distance is None:
             return {"status": "fail", "message": _("Employee ID, location, and radius/distance are required.")}
-            
+
         if not employee_id or not lat or not long:
             return {"status": "fail", "message": _("Employee ID and location are required.")}
 
@@ -983,8 +993,24 @@ def get_salary_slip_details(salary_slip_id):
         frappe.throw("An error occurred while retrieving the salary slip details.")
 
 @frappe.whitelist(allow_guest=False)
-def overtime_request(employee_id, date, start_time, end_time, reason=None):
+def overtime_request(employee_id=None, date=None, start_time=None, end_time=None, reason=None):
     try:
+        # Handle both JSON and form data
+        if not employee_id:
+            employee_id = frappe.form_dict.get('employee_id')
+        if not date:
+            date = frappe.form_dict.get('date')
+        if not start_time:
+            start_time = frappe.form_dict.get('start_time')
+        if not end_time:
+            end_time = frappe.form_dict.get('end_time')
+        if not reason:
+            reason = frappe.form_dict.get('reason')
+
+        # Validate required parameters
+        if not all([employee_id, date, start_time, end_time]):
+            return {"status": "fail", "message": _("Missing required parameters: employee_id, date, start_time, end_time")}
+
         # Validate that the employee exists
         employee = frappe.get_doc("Employee", employee_id)
         if not employee:
@@ -1106,9 +1132,25 @@ def check_approval_screen_access(employee_id):
 
 
 @frappe.whitelist(allow_guest=False)
-def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only=1, request_type=None):
+def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending_only=1, request_type=None):
     """Get pending requests for employees reporting to this manager/HR"""
     try:
+        # Handle both JSON and form data
+        if not employee_id:
+            employee_id = frappe.form_dict.get('employee_id')
+        if not from_date:
+            from_date = frappe.form_dict.get('from_date')
+        if not to_date:
+            to_date = frappe.form_dict.get('to_date')
+        if pending_only == 1:  # Default value, check form_dict
+            pending_only = frappe.form_dict.get('pending_only', 1)
+        if not request_type:
+            request_type = frappe.form_dict.get('request_type')
+
+        # Validate required parameters
+        if not employee_id:
+            return {"status": "fail", "message": _("Employee ID is required")}
+
         # Validate and convert parameters
         if isinstance(pending_only, str):
             pending_only = int(pending_only) if pending_only.isdigit() else 1
@@ -1285,9 +1327,24 @@ def get_next_approver(doctype, employee_id, current_approver=None):
         return None
 
 @frappe.whitelist(allow_guest=False)
-def update_request_status(employee_id, request_name, doctype, status, reason=None):
+def update_request_status(employee_id=None, request_name=None, doctype=None, status=None, reason=None):
     """Update the status of a request with multi-level approval workflow"""
     try:
+        # Handle both JSON and form data
+        if not employee_id:
+            employee_id = frappe.form_dict.get('employee_id')
+        if not request_name:
+            request_name = frappe.form_dict.get('request_name')
+        if not doctype:
+            doctype = frappe.form_dict.get('doctype')
+        if not status:
+            status = frappe.form_dict.get('status')
+        if not reason:
+            reason = frappe.form_dict.get('reason')
+
+        # Validate required parameters
+        if not all([employee_id, request_name, doctype, status]):
+            return {"status": "fail", "message": _("Missing required parameters: employee_id, request_name, doctype, status")}
         # Check if user has permission to approve/reject
         access_check = check_approval_screen_access(employee_id)
         if not access_check.get("has_access"):
@@ -1335,6 +1392,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
     try:
         if status.lower() == "rejected":
             doc.status = "Rejected"
+            doc.workflow_state = "Rejected"  # Set workflow state
             doc.docstatus = 1
             if reason:
                 doc.remark = reason
@@ -1349,6 +1407,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 if is_direct_manager and employee_doc.leave_approver and employee_doc.leave_approver != frappe.session.user:
                     # Manager approved, now send to designated leave approver
                     doc.status = "Manager Approved"
+                    doc.workflow_state = "Manager Approved"  # Set workflow state
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
@@ -1361,6 +1420,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
                     doc.status = "HR Approved"
+                    doc.workflow_state = "HR Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1374,6 +1434,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 # Second level approval
                 if is_designated_approver or is_hr:
                     doc.status = "HR Approved"
+                    doc.workflow_state = "HR Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1393,6 +1454,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
     try:
         if status.lower() == "rejected":
             doc.status = "Rejected"
+            doc.workflow_state = "Rejected"  # Set workflow state
             doc.docstatus = 1
             if reason:
                 from frappe.desk.form.utils import add_comment
@@ -1409,6 +1471,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 if is_direct_manager:
                     # Manager approved, now send to HR/designated approver
                     doc.status = "Manager Approved"
+                    doc.workflow_state = "Manager Approved"  # Set workflow state
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
@@ -1423,6 +1486,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 # Second level approval - ONLY HR/Designated Approver can approve
                 if is_designated_approver or is_hr:
                     doc.status = "HR Approved"
+                    doc.workflow_state = "HR Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1442,6 +1506,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
     try:
         if status.lower() == "rejected":
             doc.status = "Rejected"
+            doc.workflow_state = "Rejected"  # Set workflow state
             doc.docstatus = 1
             if reason:
                 doc.reason = reason
@@ -1456,6 +1521,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                 if is_direct_manager and employee_doc.reports_to and employee_doc.reports_to != frappe.session.user:
                     # Manager approved, now send to HR or designated approver
                     doc.status = "Manager Approved"
+                    doc.workflow_state = "Manager Approved"  # Set workflow state
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
@@ -1466,6 +1532,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
                     doc.status = "HR Approved"
+                    doc.workflow_state = "HR Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1479,6 +1546,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                 # Second level approval
                 if is_designated_approver or is_hr:
                     doc.status = "HR Approved"
+                    doc.workflow_state = "HR Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()

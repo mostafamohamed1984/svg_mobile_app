@@ -5,7 +5,10 @@ frappe.ui.form.on("Project Contractors", {
     refresh: function(frm) {
         console.log("Current company:", frappe.defaults.get_user_default('company'));
         setup_item_filter(frm);
-        
+
+        // Initialize previous company value to prevent unnecessary tax template clearing
+        frm._previous_company = frm.doc.company;
+
         // Add button to create Employee Advances from fees and deposits
         if (frm.doc.docstatus === 1 && frm.doc.fees_and_deposits && frm.doc.fees_and_deposits.length > 0) {
             // Check if there are any fees and deposits items that have Project Claims but don't have Employee Advances created
@@ -81,6 +84,10 @@ frappe.ui.form.on("Project Contractors", {
 
     company: function(frm) {
         if (frm.doc.company) {
+            // Store the previous company value to detect actual changes
+            const previous_company = frm._previous_company || null;
+            const current_company = frm.doc.company;
+
             frm.set_query('tax_template', function() {
                 return {
                     filters: {
@@ -88,10 +95,14 @@ frappe.ui.form.on("Project Contractors", {
                     }
                 };
             });
-            // Clear tax template if company changes
-            if (frm.doc.tax_template) {
+
+            // Only clear tax template if company actually changed to a different value
+            if (frm.doc.tax_template && previous_company && previous_company !== current_company) {
                 frm.set_value('tax_template', '');
             }
+
+            // Store current company as previous for next change
+            frm._previous_company = current_company;
         }
     }
 });

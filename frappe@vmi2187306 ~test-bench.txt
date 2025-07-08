@@ -1,0 +1,1246 @@
+Microsoft Windows [Version 10.0.26100.4061]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\Mustafa>ssh frappe@84.247.165.136
+frappe@84.247.165.136's password:
+Welcome to Ubuntu 22.04.5 LTS (GNU/Linux 5.15.0-25-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+New release '24.04.2 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+  _____
+ / ___/___  _  _ _____ _   ___  ___
+| |   / _ \| \| |_   _/ \ | _ )/ _ \
+| |__| (_) | .` | | |/ _ \| _ \ (_) |
+ \____\___/|_|\_| |_/_/ \_|___/\___/
+
+Welcome!
+
+This server is hosted by Contabo. If you have any questions or need help,
+please don't hesitate to contact us at support@contabo.com.
+
+Last login: Mon Jul  7 15:54:52 2025 from 197.46.109.164
+frappe@vmi2187306:~$ cd frappe-bench/
+frappe@vmi2187306:~/frappe-bench$ cd ~/test-bench/
+frappe@vmi2187306:~/test-bench$ bench get-app --branch version-15 it_management https://github.com/phamos-eu/it_management.git
+Getting it_management
+$ git clone https://github.com/phamos-eu/it_management.git --branch version-15 --depth 1 --origin upstream
+Cloning into 'it_management'...
+remote: Enumerating objects: 323, done.
+remote: Counting objects: 100% (323/323), done.
+remote: Compressing objects: 100% (194/194), done.
+remote: Total 323 (delta 186), reused 194 (delta 121), pack-reused 0 (from 0)
+Receiving objects: 100% (323/323), 153.88 KiB | 4.05 MiB/s, done.
+Resolving deltas: 100% (186/186), done.
+Ignoring dependencies of https://github.com/phamos-eu/it_management.git. To install dependencies use --resolve-deps
+Installing it_management
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/it_management
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+$ bench build --app it_management
+✔ Application Assets Linked
+
+
+yarn run v1.22.22
+$ node esbuild --production --apps it_management --run-build-command
+File                                                        Size
+
+ DONE  Total Build Time: 403.419ms
+
+Done in 2.96s.
+Compiling translations for it_management
+[sudo] password for frappe:
+$ sudo supervisorctl restart test-bench-web:
+test-bench-web:test-bench-node-socketio: stopped
+test-bench-web:test-bench-frappe-web: stopped
+test-bench-web:test-bench-frappe-web: started
+test-bench-web:test-bench-node-socketio: started
+$ sudo supervisorctl restart test-bench-workers:
+test-bench-workers:test-bench-frappe-schedule: stopped
+test-bench-workers:test-bench-frappe-long-worker-0: stopped
+test-bench-workers:test-bench-frappe-short-worker-0: stopped
+test-bench-workers:test-bench-frappe-schedule: started
+test-bench-workers:test-bench-frappe-short-worker-0: started
+test-bench-workers:test-bench-frappe-long-worker-0: started
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$ bench --site testing.local install-app it_management
+
+Installing it_management...
+Updating DocTypes for it_management : [========================================] 100%
+Updating customizations for Task
+Updating customizations for IT Service Report
+Updating customizations for Issue
+Updating customizations for Maintenance Schedule
+Updating customizations for Project
+Updating customizations for Delivery Note
+Updating Dashboard for it_management
+frappe@vmi2187306:~/test-bench$ bench --site testing.local clear-cache
+frappe@vmi2187306:~/test-bench$ bench --site testing.local migrate
+Migrating testing.local
+Updating DocTypes for frappe        : [========================================] 100%
+Updating DocTypes for erpnext       : [========================================] 100%
+Updating DocTypes for hrms          : [========================================] 100%
+Updating DocTypes for zk_integration: [========================================] 100%
+Updating DocTypes for svg_mobile_app: [========================================] 100%
+Updating DocTypes for insights      : [========================================] 100%
+Updating DocTypes for esign_app     : [========================================] 100%
+Updating DocTypes for it_management : [========================================] 100%
+Connected to Site DB (Site DB)
+Updating Dashboard for frappe
+Updating Dashboard for erpnext
+Updating Dashboard for hrms
+Updating Dashboard for zk_integration
+Updating Dashboard for svg_mobile_app
+Updating Dashboard for insights
+Updating Dashboard for esign_app
+Updating Dashboard for it_management
+Updating customizations for Address
+Updating customizations for Contact
+Updating customizations for Employee Checkin
+Updating customizations for Fees and Deposits
+Updating customizations for Projects Collection
+Updating customizations for Packed Item
+Updating customizations for Shift Request
+Updating customizations for Payment Entry Deduction
+Updating customizations for Shift Type
+Updating customizations for Leave Application
+Updating customizations for Item
+Updating customizations for Bank
+Updating customizations for Sales Taxes and Charges
+Updating customizations for Payment Entry
+Updating customizations for Item Barcode
+Updating customizations for Sales Invoice Item
+Updating customizations for Employee
+Updating customizations for Employee Advance
+Updating customizations for Item Group
+Updating customizations for Company
+Updating customizations for Communication
+Updating customizations for Project Contractors
+Updating customizations for Sales Invoice
+Updating customizations for Sketch
+Updating customizations for Task
+Updating customizations for IT Service Report
+Updating customizations for Issue
+Updating customizations for Maintenance Schedule
+Updating customizations for Project
+Updating customizations for Delivery Note
+Executing `after_migrate` hooks...
+Queued rebuilding of search index for testing.local
+
+frappe@vmi2187306:~/test-bench$ bench --site testing.local clear-cache
+frappe@vmi2187306:~/test-bench$ bench --site testing.local clear-website-cache
+frappe@vmi2187306:~/test-bench$ bench build --app it_management
+✔ Application Assets Linked
+
+
+yarn run v1.22.22
+$ node esbuild --production --apps it_management --run-build-command
+File                                                        Size
+
+ DONE  Total Build Time: 282.359ms
+
+Done in 1.71s.
+Compiling translations for it_management
+frappe@vmi2187306:~/test-bench$ bench --site testing.local list-apps
+
+frappe         15.65.1 version-15
+erpnext        15.58.2 version-15
+hrms           15.43.1 version-15
+zk_integration 0.0.1   main
+svg_mobile_app 0.0.1   develop
+insights       3.0.26  develop
+esign_app      0.0.1   main
+it_management  0.0.1   version-15
+
+frappe@vmi2187306:~/test-bench$ pip install -e ./apps/it_management
+Defaulting to user installation because normal site-packages is not writeable
+Obtaining file:///home/frappe/test-bench/apps/it_management
+  Preparing metadata (setup.py) ... done
+Collecting frappe (from it_management==0.0.1)
+  Downloading frappe-0.0.1-py3-none-any.whl.metadata (509 bytes)
+Downloading frappe-0.0.1-py3-none-any.whl (1.3 kB)
+Installing collected packages: frappe, it_management
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.0 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for it_management
+Successfully installed frappe-0.0.1 it_management
+
+[notice] A new release of pip is available: 24.3.1 -> 25.1.1
+[notice] To update, run: python3 -m pip install --upgrade pip
+frappe@vmi2187306:~/test-bench$ ls -la apps/it_management/
+total 100
+drwxrwxr-x  6 frappe frappe  4096 Jul  8 08:59 .
+drwxrwxr-x 12 frappe frappe  4096 Jul  8 08:59 ..
+drwxrwxr-x  8 frappe frappe  4096 Jul  8 08:59 .git
+-rw-rw-r--  1 frappe frappe    73 Jul  8 08:59 .gitignore
+drwxrwxr-x  2 frappe frappe  4096 Jul  8 08:59 img
+drwxrwxr-x  8 frappe frappe  4096 Jul  8 08:59 it_management
+drwxrwxr-x  2 frappe frappe  4096 Jul  8 09:03 it_management.egg-info
+-rw-rw-r--  1 frappe frappe 35149 Jul  8 08:59 LICENSE.txt
+-rw-rw-r--  1 frappe frappe   554 Jul  8 08:59 MANIFEST.in
+-rw-rw-r--  1 frappe frappe 16398 Jul  8 08:59 .pylintrc
+-rw-rw-r--  1 frappe frappe  1212 Jul  8 08:59 README.md
+-rw-rw-r--  1 frappe frappe     6 Jul  8 08:59 requirements.txt
+-rw-rw-r--  1 frappe frappe  1311 Jul  8 08:59 setup.py
+-rw-rw-r--  1 frappe frappe     0 Jul  8 08:59 test
+frappe@vmi2187306:~/test-bench$ cat sites/testing.local/apps.txt
+cat: sites/testing.local/apps.txt: No such file or directory
+frappe@vmi2187306:~/test-bench$ cat sites/testing.local/apps.txt
+cat: sites/testing.local/apps.txt: No such file or directory
+frappe@vmi2187306:~/test-bench$ ls
+apps  archived  bench.log  config  env  logs  patches.txt  Procfile  sites
+frappe@vmi2187306:~/test-bench$ cd sites/testing.local/
+frappe@vmi2187306:~/test-bench/sites/testing.local$ ls
+indexes  locks  logs  private  public  site_config.json  touched_tables.json
+frappe@vmi2187306:~/test-bench/sites/testing.local$ cat site_config.json
+{
+ "db_name": "testing_db",
+ "db_password": "k<r28S;Fm0`^",
+ "db_type": "mariadb",
+ "developer_mode": 1,
+ "encryption_key": "yp-nlfTDDPdjka7-JJdsVfgMnP8Kkb-Mus1C3FQKSNc=",
+ "hostname": "svgtest.smartvgroup.com",
+ "installed_apps": "['frappe', 'erpnext', 'hrms', 'zk_integration', 'svg_mobile_app', 'esign_app']",
+ "log_level": "DEBUG",
+ "socketio_port": "9010",
+ "user_type_doctype_limit": {
+  "employee_self_service": 40
+ }
+}frappe@vmi2187306:~/test-bench/sites/testing.local$ nano site_config.json
+frappe@vmi2187306:~/test-bench/sites/testing.local$ cat site_config.json
+{
+ "db_name": "testing_db",
+ "db_password": "k<r28S;Fm0`^",
+ "db_type": "mariadb",
+ "developer_mode": 1,
+ "encryption_key": "yp-nlfTDDPdjka7-JJdsVfgMnP8Kkb-Mus1C3FQKSNc=",
+ "hostname": "svgtest.smartvgroup.com",
+ "installed_apps": "['frappe', 'erpnext', 'hrms', 'zk_integration', 'svg_mobile_app', 'esign_app', 'it_management']",
+ "log_level": "DEBUG",
+ "socketio_port": "9010",
+ "user_type_doctype_limit": {
+  "employee_self_service": 40
+ }
+}
+frappe@vmi2187306:~/test-bench/sites/testing.local$ cd ..
+frappe@vmi2187306:~/test-bench/sites$ cd ..
+frappe@vmi2187306:~/test-bench$ bench restart
+$ sudo supervisorctl restart test-bench-web:
+test-bench-web:test-bench-node-socketio: stopped
+test-bench-web:test-bench-frappe-web: stopped
+test-bench-web:test-bench-frappe-web: started
+test-bench-web:test-bench-node-socketio: started
+$ sudo supervisorctl restart test-bench-workers:
+test-bench-workers:test-bench-frappe-schedule: stopped
+test-bench-workers:test-bench-frappe-short-worker-0: stopped
+test-bench-workers:test-bench-frappe-long-worker-0: stopped
+test-bench-workers:test-bench-frappe-schedule: started
+test-bench-workers:test-bench-frappe-short-worker-0: started
+test-bench-workers:test-bench-frappe-long-worker-0: started
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$ pip uninstall it_management
+Found existing installation: it_management 0.0.1
+Uninstalling it_management-0.0.1:
+  Would remove:
+    /home/frappe/.local/lib/python3.10/site-packages/it-management.egg-link
+Proceed (Y/n)? y
+  Successfully uninstalled it_management-0.0.1
+frappe@vmi2187306:~/test-bench$ bench pip install -e ./apps/it_management
+Obtaining file:///home/frappe/test-bench/apps/it_management
+  Preparing metadata (setup.py) ... done
+Requirement already satisfied: frappe in ./env/lib/python3.10/site-packages (from it_management==0.0.1) (15.65.1)
+Requirement already satisfied: Babel~=2.13.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.13.1)
+Requirement already satisfied: Click~=8.1.7 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.1.8)
+Requirement already satisfied: filelock~=3.13.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.13.4)
+Requirement already satisfied: filetype~=1.2.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.2.0)
+Requirement already satisfied: GitPython~=3.1.34 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.44)
+Requirement already satisfied: Jinja2~=3.1.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.6)
+Requirement already satisfied: Pillow~=11.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(11.0.0)
+Requirement already satisfied: PyJWT~=2.8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.0)
+Requirement already satisfied: PyMySQL==1.1.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(1.1.1)
+Requirement already satisfied: pypdf~=3.17.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.17.4)
+Requirement already satisfied: PyPika==0.48.9 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(0.48.9)
+Requirement already satisfied: PyQRCode~=1.2.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.2.1)
+Requirement already satisfied: PyYAML~=6.0.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (6.0.2)
+Requirement already satisfied: RestrictedPython~=8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.0)
+Requirement already satisfied: WeasyPrint==59.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (59.0)
+Requirement already satisfied: pydyf==0.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.10.0)
+Requirement already satisfied: Werkzeug~=3.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.0.6)
+Requirement already satisfied: Whoosh~=2.7.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.7.4)
+Requirement already satisfied: beautifulsoup4~=4.12.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.12.3)
+Requirement already satisfied: bleach-allowlist~=1.0.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.0.3)
+Requirement already satisfied: bleach~=6.0.0 in ./env/lib/python3.10/site-packages (from bleach[css]~=6.0.0->frappe->it_management==0.0.1) (6.0.0)
+Requirement already satisfied: cairocffi==1.5.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.5.1)
+Requirement already satisfied: chardet~=5.1.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(5.1.0)
+Requirement already satisfied: croniter~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.7)
+Requirement already satisfied: cryptography~=44.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (44.0.2)
+Requirement already satisfied: cssutils~=2.9.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.0)
+Requirement already satisfied: email-reply-parser~=0.5.12 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.12)
+Collecting gunicorn@ git+https://github.com/frappe/gunicorn@72c1e495d89259151e73947a057432d528b06bb0 (from frappe->it_management==0.0.1)
+  Using cached gunicorn-23.0.0-py3-none-any.whl
+Requirement already satisfied: html5lib~=1.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.1)
+Requirement already satisfied: ipython~=8.15.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.15.0)
+Requirement already satisfied: ldap3~=2.9 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.1)
+Requirement already satisfied: markdown2~=2.4.8 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.4.13)
+Requirement already satisfied: MarkupSafe<3,>=2.1.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.1.5)
+Requirement already satisfied: maxminddb-geolite2==2018.703 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2018.703)
+Requirement already satisfied: num2words~=0.5.12 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.14)
+Requirement already satisfied: oauthlib~=3.2.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.2.2)
+Requirement already satisfied: openpyxl~=3.1.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.5)
+Requirement already satisfied: passlib~=1.7.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(1.7.4)
+Requirement already satisfied: pdfkit~=1.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.0.0)
+Requirement already satisfied: phonenumbers==8.13.55 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.13.55)
+Requirement already satisfied: premailer~=3.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.10.0)
+Requirement already satisfied: psutil~=5.9.5 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (5.9.8)
+Requirement already satisfied: psycopg2-binary~=2.9.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.10)
+Requirement already satisfied: pyOpenSSL~=25.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (25.0.0)
+Requirement already satisfied: pydantic~=2.10.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.10.6)
+Requirement already satisfied: pyotp~=2.8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.0)
+Requirement already satisfied: python-dateutil~=2.8.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.2)
+Requirement already satisfied: pytz==2023.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2023.3)
+Requirement already satisfied: rauth~=0.7.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.7.3)
+Requirement already satisfied: redis~=4.5.5 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.5.5)
+Requirement already satisfied: hiredis~=2.2.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(2.2.3)
+Requirement already satisfied: requests-oauthlib~=1.3.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.3.1)
+Requirement already satisfied: requests~=2.32.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.32.3)
+Requirement already satisfied: rq==1.15.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.15.1)
+Requirement already satisfied: rsa>=4.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.9.1)
+Requirement already satisfied: semantic-version~=2.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.10.0)
+Requirement already satisfied: sentry-sdk~=1.37.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.37.1)
+Requirement already satisfied: sqlparse~=0.5.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.3)
+Requirement already satisfied: sql_metadata~=2.11.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.11.0)
+Requirement already satisfied: tenacity~=8.2.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.2.3)
+Requirement already satisfied: terminaltables~=3.1.10 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.10)
+Requirement already satisfied: traceback-with-variables~=2.0.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.4)
+Requirement already satisfied: typing_extensions<5,>=4.6.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.13.2)
+Requirement already satisfied: tomli~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.2)
+Requirement already satisfied: xlrd~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.1)
+Requirement already satisfied: zxcvbn~=4.4.28 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(4.4.28)
+Requirement already satisfied: markdownify~=0.11.6 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.11.6)
+Requirement already satisfied: boto3~=1.34.143 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.34.162)
+Requirement already satisfied: dropbox~=11.36.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (11.36.2)
+Requirement already satisfied: google-api-python-client~=2.2.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.2.0)
+Requirement already satisfied: google-auth-oauthlib~=0.4.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.4.6)
+Requirement already satisfied: google-auth~=1.29.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.29.0)
+Requirement already satisfied: posthog~=3.21.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.21.0)
+Requirement already satisfied: vobject~=0.9.7 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(0.9.9)
+Requirement already satisfied: packaging in ./env/lib/python3.10/site-packages (from gunicorn@ git+https://github.com/frappe/gunicorn@72c1e495d89259151e73947a057432d528b06bb0->frappe->it_management==0.0.1) (24.2)
+Requirement already satisfied: cffi>=1.1.0 in ./env/lib/python3.10/site-packages (from cairocffi==1.5.1->frappe->it_management==0.0.1) (1.17.1)
+Requirement already satisfied: maxminddb in ./env/lib/python3.10/site-packages (from maxminddb-geolite2==2018.703->frappe->it_management==0.0.1) (2.6.3)
+Requirement already satisfied: tinycss2>=1.0.0 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (1.1.1)
+Requirement already satisfied: cssselect2>=0.1 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (0.8.0)
+Requirement already satisfied: Pyphen>=0.9.1 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (0.17.2)
+Requirement already satisfied: fonttools>=4.0.0 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (4.57.0)
+Requirement already satisfied: soupsieve>1.2 in ./env/lib/python3.10/site-packages (from beautifulsoup4~=4.12.2->frappe->it_management==0.0.1) (2.6)
+Requirement already satisfied: six>=1.9.0 in ./env/lib/python3.10/site-packages (from bleach~=6.0.0->bleach[css]~=6.0.0->frappe->it_management==0.0.1) (1.17.0)
+Requirement already satisfied: webencodings in ./env/lib/python3.10/site-packages (from bleach~=6.0.0->bleach[css]~=6.0.0->frappe->it_management==0.0.1) (0.5.1)
+Requirement already satisfied: botocore<1.35.0,>=1.34.162 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (1.34.162)
+Requirement already satisfied: jmespath<2.0.0,>=0.7.1 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (1.0.1)
+Requirement already satisfied: s3transfer<0.11.0,>=0.10.0 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (0.10.4)
+Requirement already satisfied: urllib3!=2.2.0,<3,>=1.25.4 in ./env/lib/python3.10/site-packages (from botocore<1.35.0,>=1.34.162->boto3~=1.34.143->frappe->it_management==0.0.1) (2.4.0)
+Requirement already satisfied: stone>=2 in ./env/lib/python3.10/site-packages (from dropbox~=11.36.2->frappe->it_management==0.0.1) (3.3.9)
+Requirement already satisfied: gitdb<5,>=4.0.1 in ./env/lib/python3.10/site-packages (from GitPython~=3.1.34->frappe->it_management==0.0.1) (4.0.12)
+Requirement already satisfied: smmap<6,>=3.0.1 in ./env/lib/python3.10/site-packages (from gitdb<5,>=4.0.1->GitPython~=3.1.34->frappe->it_management==0.0.1) (5.0.2)
+Requirement already satisfied: httplib2<1dev,>=0.15.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (0.22.0)
+Requirement already satisfied: google-auth-httplib2>=0.1.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (0.2.0)
+Requirement already satisfied: google-api-core<2dev,>=1.21.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (1.34.1)
+Requirement already satisfied: uritemplate<4dev,>=3.0.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.0.1)
+Requirement already satisfied: googleapis-common-protos<2.0dev,>=1.56.2 in ./env/lib/python3.10/site-packages (from google-api-core<2dev,>=1.21.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (1.70.0)
+Requirement already satisfied: protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<4.0.0dev,>=3.19.5 in ./env/lib/python3.10/site-packages (from google-api-core<2dev,>=1.21.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.20.3)
+Requirement already satisfied: cachetools<5.0,>=2.0.0 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (4.2.4)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (0.4.2)
+Requirement already satisfied: setuptools>=40.3.0 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (75.9.1)
+Requirement already satisfied: pyparsing!=3.0.0,!=3.0.1,!=3.0.2,!=3.0.3,<4,>=2.4.2 in ./env/lib/python3.10/site-packages (from httplib2<1dev,>=0.15.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.2.3)
+Requirement already satisfied: backcall in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.0)
+Requirement already satisfied: decorator in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (5.2.1)
+Requirement already satisfied: jedi>=0.16 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.19.2)
+Requirement already satisfied: matplotlib-inline in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.1.7)
+Requirement already satisfied: pickleshare in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.7.5)
+Requirement already satisfied: prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (3.0.51)
+Requirement already satisfied: pygments>=2.4.0 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (2.19.1)
+Requirement already satisfied: stack-data in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.6.3)
+Requirement already satisfied: traitlets>=5 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (5.14.3)
+Requirement already satisfied: exceptiongroup in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (1.2.2)
+Requirement already satisfied: pexpect>4.3 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (4.9.0)
+Requirement already satisfied: pyasn1>=0.4.6 in ./env/lib/python3.10/site-packages (from ldap3~=2.9->frappe->it_management==0.0.1) (0.6.1)
+Requirement already satisfied: docopt>=0.6.2 in ./env/lib/python3.10/site-packages (from num2words~=0.5.12->frappe->it_management==0.0.1) (0.6.2)
+Requirement already satisfied: et-xmlfile in ./env/lib/python3.10/site-packages (from openpyxl~=3.1.2->frappe->it_management==0.0.1) (2.0.0)
+Requirement already satisfied: monotonic>=1.5 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (1.6)
+Requirement already satisfied: backoff>=1.10.0 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (2.2.1)
+Requirement already satisfied: distro>=1.5.0 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (1.9.0)
+Requirement already satisfied: lxml in ./env/lib/python3.10/site-packages (from premailer~=3.10.0->frappe->it_management==0.0.1) (5.3.2)
+Requirement already satisfied: cssselect in ./env/lib/python3.10/site-packages (from premailer~=3.10.0->frappe->it_management==0.0.1) (1.3.0)
+Requirement already satisfied: wcwidth in ./env/lib/python3.10/site-packages (from prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30->ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.13)
+Requirement already satisfied: annotated-types>=0.6.0 in ./env/lib/python3.10/site-packages (from pydantic~=2.10.2->frappe->it_management==0.0.1) (0.7.0)
+Requirement already satisfied: pydantic-core==2.27.2 in ./env/lib/python3.10/site-packages (from pydantic~=2.10.2->frappe->it_management==0.0.1) (2.27.2)
+Requirement already satisfied: async-timeout>=4.0.2 in ./env/lib/python3.10/site-packages (from redis~=4.5.5->frappe->it_management==0.0.1) (5.0.1)
+Requirement already satisfied: charset-normalizer<4,>=2 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (3.4.1)
+Requirement already satisfied: idna<4,>=2.5 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (3.10)
+Requirement already satisfied: certifi>=2017.4.17 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (2025.1.31)
+Requirement already satisfied: pycparser in ./env/lib/python3.10/site-packages (from cffi>=1.1.0->cairocffi==1.5.1->frappe->it_management==0.0.1) (2.22)
+Requirement already satisfied: brotli>=1.0.1 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (1.1.0)
+Requirement already satisfied: zopfli>=0.1.4 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (0.2.3.post1)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in ./env/lib/python3.10/site-packages (from jedi>=0.16->ipython~=8.15.0->frappe->it_management==0.0.1) (0.8.4)
+Requirement already satisfied: ptyprocess>=0.5 in ./env/lib/python3.10/site-packages (from pexpect>4.3->ipython~=8.15.0->frappe->it_management==0.0.1) (0.7.0)
+Requirement already satisfied: ply>=3.4 in ./env/lib/python3.10/site-packages (from stone>=2->dropbox~=11.36.2->frappe->it_management==0.0.1) (3.11)
+Requirement already satisfied: executing>=1.2.0 in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (2.2.0)
+Requirement already satisfied: asttokens>=2.1.0 in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (3.0.0)
+Requirement already satisfied: pure-eval in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.3)
+Installing collected packages: it_management
+  Attempting uninstall: it_management
+    Found existing installation: it_management 0.0.1
+    Uninstalling it_management-0.0.1:
+      Successfully uninstalled it_management-0.0.1
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for it_management
+Successfully installed it_management
+frappe@vmi2187306:~/test-bench$ ls -la apps/it_management/it_management/
+total 64
+drwxrwxr-x 8 frappe frappe  4096 Jul  8 08:59 .
+drwxrwxr-x 6 frappe frappe  4096 Jul  8 08:59 ..
+drwxrwxr-x 2 frappe frappe  4096 Jul  8 08:59 config
+-rwxrwxr-x 1 frappe frappe  3471 Jul  8 08:59 hooks.py
+-rw-rw-r-- 1 frappe frappe    88 Jul  8 08:59 __init__.py
+drwxrwxr-x 7 frappe frappe  4096 Jul  8 09:00 it_management
+-rw-rw-r-- 1 frappe frappe    13 Jul  8 08:59 modules.txt
+drwxrwxr-x 5 frappe frappe  4096 Jul  8 08:59 patches
+-rw-rw-r-- 1 frappe frappe   243 Jul  8 08:59 patches.txt
+drwxrwxr-x 3 frappe frappe  4096 Jul  8 08:59 public
+drwxrwxr-x 2 frappe frappe  4096 Jul  8 09:00 __pycache__
+drwxrwxr-x 3 frappe frappe  4096 Jul  8 08:59 templates
+-rwxrwxr-x 1 frappe frappe 13628 Jul  8 08:59 utils.py
+frappe@vmi2187306:~/test-bench$ bench --site testing.local console
+Apps in this namespace:
+frappe, erpnext, hrms, zk_integration, svg_mobile_app, insights, esign_app, it_management
+
+In [1]: import it_management
+
+In [2]: exit()
+
+frappe@vmi2187306:~/test-bench$ nano sites/testing.local/site_config.json
+frappe@vmi2187306:~/test-bench$ bench remove-app it_management
+Checking if app installed on active sites...
+ERROR: Cannot remove, app is installed on site: testing.local
+Traceback (most recent call last):
+  File "/usr/local/bin/bench", line 8, in <module>
+    sys.exit(cli())
+  File "/usr/local/lib/python3.10/dist-packages/bench/cli.py", line 132, in cli
+    bench_command()
+  File "/usr/local/lib/python3.10/dist-packages/click/core.py", line 1157, in __call__
+    return self.main(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/click/core.py", line 1078, in main
+    rv = self.invoke(ctx)
+  File "/usr/local/lib/python3.10/dist-packages/click/core.py", line 1688, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+  File "/usr/local/lib/python3.10/dist-packages/click/core.py", line 1434, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/usr/local/lib/python3.10/dist-packages/click/core.py", line 783, in invoke
+    return __callback(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/bench/commands/make.py", line 221, in remove_app
+    bench.uninstall(app_name, no_backup=no_backup, force=force)
+  File "/usr/local/lib/python3.10/dist-packages/bench/bench.py", line 130, in uninstall
+    self.validate_app_uninstall(app)
+  File "/usr/local/lib/python3.10/dist-packages/bench/bench.py", line 55, in validate_app_uninstall
+    validate_app_installed_on_sites(app, bench_path=self.name)
+  File "/usr/local/lib/python3.10/dist-packages/bench/utils/bench.py", line 591, in validate_app_installed_on_sites
+    ret = check_app_installed(app, bench_path=bench_path)
+  File "/usr/local/lib/python3.10/dist-packages/bench/utils/bench.py", line 616, in check_app_installed
+    raise ValidationError(f"Cannot remove, app is installed on site: {site}")
+bench.exceptions.ValidationError: Cannot remove, app is installed on site: testing.local
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$ bench --site testing.local uninstall-app it_management
+Uninstalling App it_management from Site testing.local...
+All doctypes (including custom), modules related to this app will be deleted. Are you sure you want to continue? [y/N]:y
+Backing up...
+Deleting Module 'IT Management'
+* removing DocType 'Location'...
+* removing DocType 'User Group'...
+* removing DocType 'IT Checklist'...
+* removing DocType 'Licence'...
+* removing DocType 'IT Backup'...
+* removing DocType 'User Account'...
+* removing DocType 'Solution'...
+* removing DocType 'Subnet'...
+* removing DocType 'IT Landscape'...
+* removing DocType 'Configuration Item'...
+* removing DocType 'User Account Type'...
+* removing DocType 'Location Room'...
+* removing DocType 'Socket'...
+* removing DocType 'IT Management Table'...
+* removing DocType 'Network Interface Controller'...
+* removing DocType 'Software Instance'...
+* removing DocType 'Solution Table'...
+* removing DocType 'Host Domain'...
+* removing DocType 'Task Multiselect'...
+* removing DocType 'IT Management Settings'...
+* removing DocType 'IT Hardware'...
+* removing DocType 'Trip'...
+* removing DocType 'Retention Type'...
+* removing DocType 'Contact Multiselect'...
+* removing DocType 'Solution Multiselect'...
+* removing DocType 'Configuration Item Multiselect'...
+* removing DocType 'IT Software'...
+* removing DocType 'Network Interface Controller Table'...
+* removing DocType 'Local Area Network'...
+* removing DocType 'Floor'...
+* removing DocType 'Subnet Table'...
+* removing DocType 'IT Checklist Type'...
+* removing DocType 'IT Service Report'...
+* removing DocType 'User Group Table'...
+* removing DocType 'IT Checklist Table'...
+* removing DocType 'Contact Table'...
+* removing DocType 'IP Address'...
+* removing DocType 'User Group Type'...
+* removing DocType 'Cycle Type'...
+* removing DocType 'Encryption Type'...
+* removing DocType 'Configuration Item Type'...
+* removing DocType 'Licence Table'...
+* removing DocType 'User Account Table'...
+* removing DocType 'Solution Type'...
+* removing DocType 'Software Instance Table'...
+* removing DocType 'Network Jack'...
+* removing DocType 'Configuration Item Table'...
+* removing DocType 'Task Checklist'...
+* removing DocType 'Task Configuration Item Table'...
+* removing DocType 'Location Room Table'...
+* removing DocType 'Project Configuration Item Table'...
+* removing DocType 'Storage'...
+* removing DocType 'Software Version'...
+* removing Workspace 'IT Management'...
+* removing Print Format 'IHK Ausbildungsbericht'...
+* removing Module Def 'IT Management'...
+* dropping Table for 'Configuration Item Multiselect'...
+* dropping Table for 'Retention Type'...
+* dropping Table for 'Encryption Type'...
+* dropping Table for 'Subnet'...
+* dropping Table for 'IT Management Table'...
+* dropping Table for 'User Group Table'...
+* dropping Table for 'IT Backup'...
+* dropping Table for 'Cycle Type'...
+* dropping Table for 'Local Area Network'...
+* dropping Table for 'Software Instance'...
+* dropping Table for 'Configuration Item Table'...
+* dropping Table for 'User Group Type'...
+* dropping Table for 'IP Address'...
+* dropping Table for 'IT Checklist Table'...
+* dropping Table for 'Contact Table'...
+* dropping Table for 'IT Checklist'...
+* dropping Table for 'Configuration Item Type'...
+* dropping Table for 'Storage'...
+* dropping Table for 'Solution'...
+* dropping Table for 'Socket'...
+* dropping Table for 'User Account Table'...
+* dropping Table for 'Software Version'...
+* dropping Table for 'Task Checklist'...
+* dropping Table for 'Location'...
+* dropping Table for 'Contact Multiselect'...
+* dropping Table for 'IT Hardware'...
+* dropping Table for 'Task Configuration Item Table'...
+* dropping Table for 'Host Domain'...
+* dropping Table for 'Network Interface Controller Table'...
+* dropping Table for 'IT Software'...
+* dropping Table for 'Project Configuration Item Table'...
+* dropping Table for 'User Account Type'...
+* dropping Table for 'Location Room Table'...
+* dropping Table for 'IT Service Report'...
+* dropping Table for 'Trip'...
+* dropping Table for 'Task Multiselect'...
+* dropping Table for 'Solution Type'...
+* dropping Table for 'Network Jack'...
+* dropping Table for 'Location Room'...
+* dropping Table for 'User Group'...
+* dropping Table for 'Floor'...
+* dropping Table for 'Configuration Item'...
+* dropping Table for 'User Account'...
+* dropping Table for 'Network Interface Controller'...
+* dropping Table for 'Subnet Table'...
+* dropping Table for 'IT Landscape'...
+* dropping Table for 'Solution Multiselect'...
+* dropping Table for 'Licence'...
+* dropping Table for 'Licence Table'...
+* dropping Table for 'Solution Table'...
+* dropping Table for 'Software Instance Table'...
+* dropping Table for 'IT Checklist Type'...
+Uninstalled App it_management from Site testing.local
+frappe@vmi2187306:~/test-bench$ bench remove-app it_management
+Checking if app installed on active sites...
+$ /home/frappe/test-bench/env/bin/python -m pip uninstall -y it_management
+Found existing installation: it_management 0.0.1
+Uninstalling it_management-0.0.1:
+  Successfully uninstalled it_management-0.0.1
+INFO: App moved from apps/it_management to archived/apps/it_management-2025-07-08
+$ sudo supervisorctl restart test-bench-web:
+test-bench-web:test-bench-node-socketio: stopped
+test-bench-web:test-bench-frappe-web: stopped
+test-bench-web:test-bench-frappe-web: started
+test-bench-web:test-bench-node-socketio: started
+$ sudo supervisorctl restart test-bench-workers:
+test-bench-workers:test-bench-frappe-schedule: stopped
+test-bench-workers:test-bench-frappe-long-worker-0: stopped
+test-bench-workers:test-bench-frappe-short-worker-0: stopped
+test-bench-workers:test-bench-frappe-schedule: started
+test-bench-workers:test-bench-frappe-short-worker-0: started
+test-bench-workers:test-bench-frappe-long-worker-0: started
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$ bench --site testing.local clear-cache
+frappe@vmi2187306:~/test-bench$ bench --site testing.local clear-website-cache
+frappe@vmi2187306:~/test-bench$ cat apps/it_management/it_management/modules.txt
+cat: apps/it_management/it_management/modules.txt: No such file or directory
+frappe@vmi2187306:~/test-bench$ bench get-app --branch version-15 it_management https://github.com/phamos-eu/it_management.git
+Getting it_management
+$ git clone https://github.com/phamos-eu/it_management.git --branch version-15 --depth 1 --origin upstream
+Cloning into 'it_management'...
+remote: Enumerating objects: 323, done.
+remote: Counting objects: 100% (323/323), done.
+remote: Compressing objects: 100% (194/194), done.
+remote: Total 323 (delta 186), reused 194 (delta 121), pack-reused 0 (from 0)
+Receiving objects: 100% (323/323), 153.88 KiB | 3.58 MiB/s, done.
+Resolving deltas: 100% (186/186), done.
+Ignoring dependencies of https://github.com/phamos-eu/it_management.git. To install dependencies use --resolve-deps
+Installing it_management
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/it_management
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+$ bench build --app it_management
+✔ Application Assets Linked
+
+
+yarn run v1.22.22
+$ node esbuild --production --apps it_management --run-build-command
+File                                                        Size
+
+ DONE  Total Build Time: 290.294ms
+
+Done in 1.91s.
+Compiling translations for it_management
+$ sudo supervisorctl restart test-bench-web:
+test-bench-web:test-bench-node-socketio: stopped
+test-bench-web:test-bench-frappe-web: stopped
+test-bench-web:test-bench-frappe-web: started
+test-bench-web:test-bench-node-socketio: started
+$ sudo supervisorctl restart test-bench-workers:
+test-bench-workers:test-bench-frappe-schedule: stopped
+test-bench-workers:test-bench-frappe-long-worker-0: stopped
+test-bench-workers:test-bench-frappe-short-worker-0: stopped
+test-bench-workers:test-bench-frappe-schedule: started
+test-bench-workers:test-bench-frappe-short-worker-0: started
+test-bench-workers:test-bench-frappe-long-worker-0: started
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$ bench --site testing.local install-app it_management
+
+Installing it_management...
+Updating DocTypes for it_management : [========================================] 100%
+Updating customizations for Task
+Updating customizations for IT Service Report
+Updating customizations for Issue
+Updating customizations for Maintenance Schedule
+Updating customizations for Project
+Updating customizations for Delivery Note
+Updating Dashboard for it_management
+frappe@vmi2187306:~/test-bench$ cat apps/it_management/it_management/modules.txt
+IT Managementfrappe@vmi2187306:~cat apps/it_management/it_management/__init__.pyt/__init__.py
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+__version__ = '0.0.1'
+
+frappe@vmi2187306:~/test-bench$ bench pip install -e ./apps/it_management
+Obtaining file:///home/frappe/test-bench/apps/it_management
+  Preparing metadata (setup.py) ... done
+Requirement already satisfied: frappe in ./env/lib/python3.10/site-packages (from it_management==0.0.1) (15.65.1)
+Requirement already satisfied: Babel~=2.13.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.13.1)
+Requirement already satisfied: Click~=8.1.7 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.1.8)
+Requirement already satisfied: filelock~=3.13.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.13.4)
+Requirement already satisfied: filetype~=1.2.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.2.0)
+Requirement already satisfied: GitPython~=3.1.34 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.44)
+Requirement already satisfied: Jinja2~=3.1.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.6)
+Requirement already satisfied: Pillow~=11.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(11.0.0)
+Requirement already satisfied: PyJWT~=2.8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.0)
+Requirement already satisfied: PyMySQL==1.1.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(1.1.1)
+Requirement already satisfied: pypdf~=3.17.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.17.4)
+Requirement already satisfied: PyPika==0.48.9 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(0.48.9)
+Requirement already satisfied: PyQRCode~=1.2.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.2.1)
+Requirement already satisfied: PyYAML~=6.0.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (6.0.2)
+Requirement already satisfied: RestrictedPython~=8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.0)
+Requirement already satisfied: WeasyPrint==59.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (59.0)
+Requirement already satisfied: pydyf==0.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.10.0)
+Requirement already satisfied: Werkzeug~=3.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.0.6)
+Requirement already satisfied: Whoosh~=2.7.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.7.4)
+Requirement already satisfied: beautifulsoup4~=4.12.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.12.3)
+Requirement already satisfied: bleach-allowlist~=1.0.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.0.3)
+Requirement already satisfied: bleach~=6.0.0 in ./env/lib/python3.10/site-packages (from bleach[css]~=6.0.0->frappe->it_management==0.0.1) (6.0.0)
+Requirement already satisfied: cairocffi==1.5.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.5.1)
+Requirement already satisfied: chardet~=5.1.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(5.1.0)
+Requirement already satisfied: croniter~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.7)
+Requirement already satisfied: cryptography~=44.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (44.0.2)
+Requirement already satisfied: cssutils~=2.9.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.0)
+Requirement already satisfied: email-reply-parser~=0.5.12 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.12)
+Collecting gunicorn@ git+https://github.com/frappe/gunicorn@72c1e495d89259151e73947a057432d528b06bb0 (from frappe->it_management==0.0.1)
+  Using cached gunicorn-23.0.0-py3-none-any.whl
+Requirement already satisfied: html5lib~=1.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.1)
+Requirement already satisfied: ipython~=8.15.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.15.0)
+Requirement already satisfied: ldap3~=2.9 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.1)
+Requirement already satisfied: markdown2~=2.4.8 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.4.13)
+Requirement already satisfied: MarkupSafe<3,>=2.1.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.1.5)
+Requirement already satisfied: maxminddb-geolite2==2018.703 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2018.703)
+Requirement already satisfied: num2words~=0.5.12 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.14)
+Requirement already satisfied: oauthlib~=3.2.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.2.2)
+Requirement already satisfied: openpyxl~=3.1.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.5)
+Requirement already satisfied: passlib~=1.7.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(1.7.4)
+Requirement already satisfied: pdfkit~=1.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.0.0)
+Requirement already satisfied: phonenumbers==8.13.55 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.13.55)
+Requirement already satisfied: premailer~=3.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.10.0)
+Requirement already satisfied: psutil~=5.9.5 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (5.9.8)
+Requirement already satisfied: psycopg2-binary~=2.9.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.10)
+Requirement already satisfied: pyOpenSSL~=25.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (25.0.0)
+Requirement already satisfied: pydantic~=2.10.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.10.6)
+Requirement already satisfied: pyotp~=2.8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.0)
+Requirement already satisfied: python-dateutil~=2.8.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.2)
+Requirement already satisfied: pytz==2023.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2023.3)
+Requirement already satisfied: rauth~=0.7.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.7.3)
+Requirement already satisfied: redis~=4.5.5 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.5.5)
+Requirement already satisfied: hiredis~=2.2.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(2.2.3)
+Requirement already satisfied: requests-oauthlib~=1.3.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.3.1)
+Requirement already satisfied: requests~=2.32.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.32.3)
+Requirement already satisfied: rq==1.15.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.15.1)
+Requirement already satisfied: rsa>=4.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.9.1)
+Requirement already satisfied: semantic-version~=2.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.10.0)
+Requirement already satisfied: sentry-sdk~=1.37.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.37.1)
+Requirement already satisfied: sqlparse~=0.5.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.3)
+Requirement already satisfied: sql_metadata~=2.11.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.11.0)
+Requirement already satisfied: tenacity~=8.2.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.2.3)
+Requirement already satisfied: terminaltables~=3.1.10 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.10)
+Requirement already satisfied: traceback-with-variables~=2.0.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.4)
+Requirement already satisfied: typing_extensions<5,>=4.6.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.13.2)
+Requirement already satisfied: tomli~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.2)
+Requirement already satisfied: xlrd~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.1)
+Requirement already satisfied: zxcvbn~=4.4.28 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(4.4.28)
+Requirement already satisfied: markdownify~=0.11.6 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.11.6)
+Requirement already satisfied: boto3~=1.34.143 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.34.162)
+Requirement already satisfied: dropbox~=11.36.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (11.36.2)
+Requirement already satisfied: google-api-python-client~=2.2.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.2.0)
+Requirement already satisfied: google-auth-oauthlib~=0.4.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.4.6)
+Requirement already satisfied: google-auth~=1.29.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.29.0)
+Requirement already satisfied: posthog~=3.21.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.21.0)
+Requirement already satisfied: vobject~=0.9.7 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(0.9.9)
+Requirement already satisfied: packaging in ./env/lib/python3.10/site-packages (from gunicorn@ git+https://github.com/frappe/gunicorn@72c1e495d89259151e73947a057432d528b06bb0->frappe->it_management==0.0.1) (24.2)
+Requirement already satisfied: cffi>=1.1.0 in ./env/lib/python3.10/site-packages (from cairocffi==1.5.1->frappe->it_management==0.0.1) (1.17.1)
+Requirement already satisfied: maxminddb in ./env/lib/python3.10/site-packages (from maxminddb-geolite2==2018.703->frappe->it_management==0.0.1) (2.6.3)
+Requirement already satisfied: tinycss2>=1.0.0 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (1.1.1)
+Requirement already satisfied: cssselect2>=0.1 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (0.8.0)
+Requirement already satisfied: Pyphen>=0.9.1 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (0.17.2)
+Requirement already satisfied: fonttools>=4.0.0 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (4.57.0)
+Requirement already satisfied: soupsieve>1.2 in ./env/lib/python3.10/site-packages (from beautifulsoup4~=4.12.2->frappe->it_management==0.0.1) (2.6)
+Requirement already satisfied: six>=1.9.0 in ./env/lib/python3.10/site-packages (from bleach~=6.0.0->bleach[css]~=6.0.0->frappe->it_management==0.0.1) (1.17.0)
+Requirement already satisfied: webencodings in ./env/lib/python3.10/site-packages (from bleach~=6.0.0->bleach[css]~=6.0.0->frappe->it_management==0.0.1) (0.5.1)
+Requirement already satisfied: botocore<1.35.0,>=1.34.162 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (1.34.162)
+Requirement already satisfied: jmespath<2.0.0,>=0.7.1 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (1.0.1)
+Requirement already satisfied: s3transfer<0.11.0,>=0.10.0 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (0.10.4)
+Requirement already satisfied: urllib3!=2.2.0,<3,>=1.25.4 in ./env/lib/python3.10/site-packages (from botocore<1.35.0,>=1.34.162->boto3~=1.34.143->frappe->it_management==0.0.1) (2.4.0)
+Requirement already satisfied: stone>=2 in ./env/lib/python3.10/site-packages (from dropbox~=11.36.2->frappe->it_management==0.0.1) (3.3.9)
+Requirement already satisfied: gitdb<5,>=4.0.1 in ./env/lib/python3.10/site-packages (from GitPython~=3.1.34->frappe->it_management==0.0.1) (4.0.12)
+Requirement already satisfied: smmap<6,>=3.0.1 in ./env/lib/python3.10/site-packages (from gitdb<5,>=4.0.1->GitPython~=3.1.34->frappe->it_management==0.0.1) (5.0.2)
+Requirement already satisfied: httplib2<1dev,>=0.15.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (0.22.0)
+Requirement already satisfied: google-auth-httplib2>=0.1.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (0.2.0)
+Requirement already satisfied: google-api-core<2dev,>=1.21.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (1.34.1)
+Requirement already satisfied: uritemplate<4dev,>=3.0.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.0.1)
+Requirement already satisfied: googleapis-common-protos<2.0dev,>=1.56.2 in ./env/lib/python3.10/site-packages (from google-api-core<2dev,>=1.21.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (1.70.0)
+Requirement already satisfied: protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<4.0.0dev,>=3.19.5 in ./env/lib/python3.10/site-packages (from google-api-core<2dev,>=1.21.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.20.3)
+Requirement already satisfied: cachetools<5.0,>=2.0.0 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (4.2.4)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (0.4.2)
+Requirement already satisfied: setuptools>=40.3.0 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (75.9.1)
+Requirement already satisfied: pyparsing!=3.0.0,!=3.0.1,!=3.0.2,!=3.0.3,<4,>=2.4.2 in ./env/lib/python3.10/site-packages (from httplib2<1dev,>=0.15.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.2.3)
+Requirement already satisfied: backcall in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.0)
+Requirement already satisfied: decorator in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (5.2.1)
+Requirement already satisfied: jedi>=0.16 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.19.2)
+Requirement already satisfied: matplotlib-inline in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.1.7)
+Requirement already satisfied: pickleshare in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.7.5)
+Requirement already satisfied: prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (3.0.51)
+Requirement already satisfied: pygments>=2.4.0 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (2.19.1)
+Requirement already satisfied: stack-data in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.6.3)
+Requirement already satisfied: traitlets>=5 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (5.14.3)
+Requirement already satisfied: exceptiongroup in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (1.2.2)
+Requirement already satisfied: pexpect>4.3 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (4.9.0)
+Requirement already satisfied: pyasn1>=0.4.6 in ./env/lib/python3.10/site-packages (from ldap3~=2.9->frappe->it_management==0.0.1) (0.6.1)
+Requirement already satisfied: docopt>=0.6.2 in ./env/lib/python3.10/site-packages (from num2words~=0.5.12->frappe->it_management==0.0.1) (0.6.2)
+Requirement already satisfied: et-xmlfile in ./env/lib/python3.10/site-packages (from openpyxl~=3.1.2->frappe->it_management==0.0.1) (2.0.0)
+Requirement already satisfied: monotonic>=1.5 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (1.6)
+Requirement already satisfied: backoff>=1.10.0 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (2.2.1)
+Requirement already satisfied: distro>=1.5.0 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (1.9.0)
+Requirement already satisfied: lxml in ./env/lib/python3.10/site-packages (from premailer~=3.10.0->frappe->it_management==0.0.1) (5.3.2)
+Requirement already satisfied: cssselect in ./env/lib/python3.10/site-packages (from premailer~=3.10.0->frappe->it_management==0.0.1) (1.3.0)
+Requirement already satisfied: wcwidth in ./env/lib/python3.10/site-packages (from prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30->ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.13)
+Requirement already satisfied: annotated-types>=0.6.0 in ./env/lib/python3.10/site-packages (from pydantic~=2.10.2->frappe->it_management==0.0.1) (0.7.0)
+Requirement already satisfied: pydantic-core==2.27.2 in ./env/lib/python3.10/site-packages (from pydantic~=2.10.2->frappe->it_management==0.0.1) (2.27.2)
+Requirement already satisfied: async-timeout>=4.0.2 in ./env/lib/python3.10/site-packages (from redis~=4.5.5->frappe->it_management==0.0.1) (5.0.1)
+Requirement already satisfied: charset-normalizer<4,>=2 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (3.4.1)
+Requirement already satisfied: idna<4,>=2.5 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (3.10)
+Requirement already satisfied: certifi>=2017.4.17 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (2025.1.31)
+Requirement already satisfied: pycparser in ./env/lib/python3.10/site-packages (from cffi>=1.1.0->cairocffi==1.5.1->frappe->it_management==0.0.1) (2.22)
+Requirement already satisfied: brotli>=1.0.1 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (1.1.0)
+Requirement already satisfied: zopfli>=0.1.4 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (0.2.3.post1)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in ./env/lib/python3.10/site-packages (from jedi>=0.16->ipython~=8.15.0->frappe->it_management==0.0.1) (0.8.4)
+Requirement already satisfied: ptyprocess>=0.5 in ./env/lib/python3.10/site-packages (from pexpect>4.3->ipython~=8.15.0->frappe->it_management==0.0.1) (0.7.0)
+Requirement already satisfied: ply>=3.4 in ./env/lib/python3.10/site-packages (from stone>=2->dropbox~=11.36.2->frappe->it_management==0.0.1) (3.11)
+Requirement already satisfied: executing>=1.2.0 in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (2.2.0)
+Requirement already satisfied: asttokens>=2.1.0 in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (3.0.0)
+Requirement already satisfied: pure-eval in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.3)
+Installing collected packages: it_management
+  Attempting uninstall: it_management
+    Found existing installation: it_management 0.0.1
+    Uninstalling it_management-0.0.1:
+      Successfully uninstalled it_management-0.0.1
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for it_management
+Successfully installed it_management
+frappe@vmi2187306:~/test-bench$ bench --site testing.local console
+Apps in this namespace:
+frappe, erpnext, hrms, zk_integration, svg_mobile_app, insights, esign_app, it_management
+
+In [1]: frappe.get_module_list('it_management')
+Out[1]: ['IT Management']
+
+
+[1]+  Stopped                 bench --site testing.local console
+frappe@vmi2187306:~/test-bench$ bench --site testing.local list-apps
+
+frappe         15.65.1 version-15
+erpnext        15.58.2 version-15
+hrms           15.43.1 version-15
+zk_integration 0.0.1   main
+svg_mobile_app 0.0.1   develop
+insights       3.0.26  develop
+esign_app      0.0.1   main
+
+frappe@vmi2187306:~/test-bench$ cat sites/testing.local/site_config.json | grep installed_apps
+ "installed_apps": "['frappe', 'erpnext', 'hrms', 'zk_integration', 'svg_mobile_app', 'esign_app']",
+frappe@vmi2187306:~/test-bench$ bench --site testing.local install-app it_management --verbose
+Usage: bench  install-app [OPTIONS] [APPS]...
+Try 'bench  install-app --help' for help.
+
+Error: No such option: --verbose
+frappe@vmi2187306:~/test-bench$ bench --site testing.local install-app it_management --force
+
+Installing it_management...
+Updating DocTypes for it_management : [========================================] 100%
+Updating customizations for Task
+Updating customizations for IT Service Report
+Updating customizations for Issue
+Updating customizations for Maintenance Schedule
+Updating customizations for Project
+Updating customizations for Delivery Note
+Updating Dashboard for it_management
+frappe@vmi2187306:~/test-bench$ nano sites/testing.local/site_config.json
+frappe@vmi2187306:~/test-bench$ bench --site testing.local migrate
+Migrating testing.local
+testing.local/site_config.json is invalid
+Expecting ',' delimiter: line 8 column 101 (char 312)
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/frappe/test-bench/apps/frappe/frappe/utils/bench_helper.py", line 114, in <module>
+    main()
+  File "/home/frappe/test-bench/apps/frappe/frappe/utils/bench_helper.py", line 20, in main
+    click.Group(commands=commands)(prog_name="bench")
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/core.py", line 1161, in __call__
+    return self.main(*args, **kwargs)
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/core.py", line 1082, in main
+    rv = self.invoke(ctx)
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/core.py", line 1697, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/core.py", line 1697, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/core.py", line 1443, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/core.py", line 788, in invoke
+    return __callback(*args, **kwargs)
+  File "/home/frappe/test-bench/env/lib/python3.10/site-packages/click/decorators.py", line 33, in new_func
+    return f(get_current_context(), *args, **kwargs)
+  File "/home/frappe/test-bench/apps/frappe/frappe/commands/__init__.py", line 29, in _func
+    ret = f(frappe._dict(ctx.obj), *args, **kwargs)
+  File "/home/frappe/test-bench/apps/frappe/frappe/commands/site.py", line 681, in migrate
+    SiteMigration(
+  File "/home/frappe/test-bench/apps/frappe/frappe/migrate.py", line 179, in run
+    frappe.connect()
+  File "/home/frappe/test-bench/apps/frappe/frappe/__init__.py", line 275, in connect
+    assert db_name or local.conf.db_name, "site must be fully initialized, db_name missing"
+AssertionError: site must be fully initialized, db_name missing
+frappe@vmi2187306:~/test-bench$ nano sites/testing.local/site_config.json
+frappe@vmi2187306:~/test-bench$ bench --site testing.local migrate
+Migrating testing.local
+Updating DocTypes for frappe        : [========================================] 100%
+Updating DocTypes for erpnext       : [========================================] 100%
+Updating DocTypes for hrms          : [========================================] 100%
+Updating DocTypes for zk_integration: [========================================] 100%
+Updating DocTypes for svg_mobile_app: [========================================] 100%
+Updating DocTypes for insights      : [========================================] 100%
+Updating DocTypes for esign_app     : [========================================] 100%
+Updating DocTypes for it_management : [========================================] 100%
+Connected to Site DB (Site DB)
+Updating Dashboard for frappe
+Updating Dashboard for erpnext
+Updating Dashboard for hrms
+Updating Dashboard for zk_integration
+Updating Dashboard for svg_mobile_app
+Updating Dashboard for insights
+Updating Dashboard for esign_app
+Updating Dashboard for it_management
+Updating customizations for Address
+Updating customizations for Contact
+Updating customizations for Employee Checkin
+Updating customizations for Fees and Deposits
+Updating customizations for Projects Collection
+Updating customizations for Packed Item
+Updating customizations for Shift Request
+Updating customizations for Payment Entry Deduction
+Updating customizations for Shift Type
+Updating customizations for Leave Application
+Updating customizations for Item
+Updating customizations for Bank
+Updating customizations for Sales Taxes and Charges
+Updating customizations for Payment Entry
+Updating customizations for Item Barcode
+Updating customizations for Sales Invoice Item
+Updating customizations for Employee
+Updating customizations for Employee Advance
+Updating customizations for Item Group
+Updating customizations for Company
+Updating customizations for Communication
+Updating customizations for Project Contractors
+Updating customizations for Sales Invoice
+Updating customizations for Sketch
+Updating customizations for Task
+Updating customizations for IT Service Report
+Updating customizations for Issue
+Updating customizations for Maintenance Schedule
+Updating customizations for Project
+Updating customizations for Delivery Note
+Executing `after_migrate` hooks...
+Queued rebuilding of search index for testing.local
+
+frappe@vmi2187306:~/test-bench$ ls -la apps/it_management/
+total 100
+drwxrwxr-x  6 frappe frappe  4096 Jul  8 09:09 .
+drwxrwxr-x 12 frappe frappe  4096 Jul  8 09:09 ..
+drwxrwxr-x  8 frappe frappe  4096 Jul  8 09:09 .git
+-rw-rw-r--  1 frappe frappe    73 Jul  8 09:09 .gitignore
+drwxrwxr-x  2 frappe frappe  4096 Jul  8 09:09 img
+drwxrwxr-x  8 frappe frappe  4096 Jul  8 09:09 it_management
+drwxrwxr-x  2 frappe frappe  4096 Jul  8 09:15 it_management.egg-info
+-rw-rw-r--  1 frappe frappe 35149 Jul  8 09:09 LICENSE.txt
+-rw-rw-r--  1 frappe frappe   554 Jul  8 09:09 MANIFEST.in
+-rw-rw-r--  1 frappe frappe 16398 Jul  8 09:09 .pylintrc
+-rw-rw-r--  1 frappe frappe  1212 Jul  8 09:09 README.md
+-rw-rw-r--  1 frappe frappe     6 Jul  8 09:09 requirements.txt
+-rw-rw-r--  1 frappe frappe  1311 Jul  8 09:09 setup.py
+-rw-rw-r--  1 frappe frappe     0 Jul  8 09:09 test
+frappe@vmi2187306:~/test-bench$ bench pip install -e ./apps/it_management
+Obtaining file:///home/frappe/test-bench/apps/it_management
+  Preparing metadata (setup.py) ... done
+Requirement already satisfied: frappe in ./env/lib/python3.10/site-packages (from it_management==0.0.1) (15.65.1)
+Requirement already satisfied: Babel~=2.13.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.13.1)
+Requirement already satisfied: Click~=8.1.7 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.1.8)
+Requirement already satisfied: filelock~=3.13.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.13.4)
+Requirement already satisfied: filetype~=1.2.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.2.0)
+Requirement already satisfied: GitPython~=3.1.34 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.44)
+Requirement already satisfied: Jinja2~=3.1.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.6)
+Requirement already satisfied: Pillow~=11.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(11.0.0)
+Requirement already satisfied: PyJWT~=2.8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.0)
+Requirement already satisfied: PyMySQL==1.1.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(1.1.1)
+Requirement already satisfied: pypdf~=3.17.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.17.4)
+Requirement already satisfied: PyPika==0.48.9 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(0.48.9)
+Requirement already satisfied: PyQRCode~=1.2.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.2.1)
+Requirement already satisfied: PyYAML~=6.0.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (6.0.2)
+Requirement already satisfied: RestrictedPython~=8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.0)
+Requirement already satisfied: WeasyPrint==59.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (59.0)
+Requirement already satisfied: pydyf==0.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.10.0)
+Requirement already satisfied: Werkzeug~=3.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.0.6)
+Requirement already satisfied: Whoosh~=2.7.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.7.4)
+Requirement already satisfied: beautifulsoup4~=4.12.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.12.3)
+Requirement already satisfied: bleach-allowlist~=1.0.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.0.3)
+Requirement already satisfied: bleach~=6.0.0 in ./env/lib/python3.10/site-packages (from bleach[css]~=6.0.0->frappe->it_management==0.0.1) (6.0.0)
+Requirement already satisfied: cairocffi==1.5.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.5.1)
+Requirement already satisfied: chardet~=5.1.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(5.1.0)
+Requirement already satisfied: croniter~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.7)
+Requirement already satisfied: cryptography~=44.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (44.0.2)
+Requirement already satisfied: cssutils~=2.9.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.0)
+Requirement already satisfied: email-reply-parser~=0.5.12 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.12)
+Collecting gunicorn@ git+https://github.com/frappe/gunicorn@72c1e495d89259151e73947a057432d528b06bb0 (from frappe->it_management==0.0.1)
+  Using cached gunicorn-23.0.0-py3-none-any.whl
+Requirement already satisfied: html5lib~=1.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.1)
+Requirement already satisfied: ipython~=8.15.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.15.0)
+Requirement already satisfied: ldap3~=2.9 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.1)
+Requirement already satisfied: markdown2~=2.4.8 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.4.13)
+Requirement already satisfied: MarkupSafe<3,>=2.1.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.1.5)
+Requirement already satisfied: maxminddb-geolite2==2018.703 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2018.703)
+Requirement already satisfied: num2words~=0.5.12 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.14)
+Requirement already satisfied: oauthlib~=3.2.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.2.2)
+Requirement already satisfied: openpyxl~=3.1.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.5)
+Requirement already satisfied: passlib~=1.7.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(1.7.4)
+Requirement already satisfied: pdfkit~=1.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.0.0)
+Requirement already satisfied: phonenumbers==8.13.55 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.13.55)
+Requirement already satisfied: premailer~=3.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.10.0)
+Requirement already satisfied: psutil~=5.9.5 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (5.9.8)
+Requirement already satisfied: psycopg2-binary~=2.9.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.9.10)
+Requirement already satisfied: pyOpenSSL~=25.0.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (25.0.0)
+Requirement already satisfied: pydantic~=2.10.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.10.6)
+Requirement already satisfied: pyotp~=2.8.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.0)
+Requirement already satisfied: python-dateutil~=2.8.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.8.2)
+Requirement already satisfied: pytz==2023.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2023.3)
+Requirement already satisfied: rauth~=0.7.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.7.3)
+Requirement already satisfied: redis~=4.5.5 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.5.5)
+Requirement already satisfied: hiredis~=2.2.3 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(2.2.3)
+Requirement already satisfied: requests-oauthlib~=1.3.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.3.1)
+Requirement already satisfied: requests~=2.32.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.32.3)
+Requirement already satisfied: rq==1.15.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.15.1)
+Requirement already satisfied: rsa>=4.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.9.1)
+Requirement already satisfied: semantic-version~=2.10.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.10.0)
+Requirement already satisfied: sentry-sdk~=1.37.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.37.1)
+Requirement already satisfied: sqlparse~=0.5.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.5.3)
+Requirement already satisfied: sql_metadata~=2.11.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.11.0)
+Requirement already satisfied: tenacity~=8.2.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (8.2.3)
+Requirement already satisfied: terminaltables~=3.1.10 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.1.10)
+Requirement already satisfied: traceback-with-variables~=2.0.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.4)
+Requirement already satisfied: typing_extensions<5,>=4.6.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (4.13.2)
+Requirement already satisfied: tomli~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.2)
+Requirement already satisfied: xlrd~=2.0.1 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.0.1)
+Requirement already satisfied: zxcvbn~=4.4.28 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(4.4.28)
+Requirement already satisfied: markdownify~=0.11.6 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.11.6)
+Requirement already satisfied: boto3~=1.34.143 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.34.162)
+Requirement already satisfied: dropbox~=11.36.2 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (11.36.2)
+Requirement already satisfied: google-api-python-client~=2.2.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (2.2.0)
+Requirement already satisfied: google-auth-oauthlib~=0.4.4 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (0.4.6)
+Requirement already satisfied: google-auth~=1.29.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (1.29.0)
+Requirement already satisfied: posthog~=3.21.0 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1) (3.21.0)
+Requirement already satisfied: vobject~=0.9.7 in ./env/lib/python3.10/site-packages (from frappe->it_management==0.0.1)(0.9.9)
+Requirement already satisfied: packaging in ./env/lib/python3.10/site-packages (from gunicorn@ git+https://github.com/frappe/gunicorn@72c1e495d89259151e73947a057432d528b06bb0->frappe->it_management==0.0.1) (24.2)
+Requirement already satisfied: cffi>=1.1.0 in ./env/lib/python3.10/site-packages (from cairocffi==1.5.1->frappe->it_management==0.0.1) (1.17.1)
+Requirement already satisfied: maxminddb in ./env/lib/python3.10/site-packages (from maxminddb-geolite2==2018.703->frappe->it_management==0.0.1) (2.6.3)
+Requirement already satisfied: tinycss2>=1.0.0 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (1.1.1)
+Requirement already satisfied: cssselect2>=0.1 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (0.8.0)
+Requirement already satisfied: Pyphen>=0.9.1 in ./env/lib/python3.10/site-packages (from WeasyPrint==59.0->frappe->it_management==0.0.1) (0.17.2)
+Requirement already satisfied: fonttools>=4.0.0 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (4.57.0)
+Requirement already satisfied: soupsieve>1.2 in ./env/lib/python3.10/site-packages (from beautifulsoup4~=4.12.2->frappe->it_management==0.0.1) (2.6)
+Requirement already satisfied: six>=1.9.0 in ./env/lib/python3.10/site-packages (from bleach~=6.0.0->bleach[css]~=6.0.0->frappe->it_management==0.0.1) (1.17.0)
+Requirement already satisfied: webencodings in ./env/lib/python3.10/site-packages (from bleach~=6.0.0->bleach[css]~=6.0.0->frappe->it_management==0.0.1) (0.5.1)
+Requirement already satisfied: botocore<1.35.0,>=1.34.162 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (1.34.162)
+Requirement already satisfied: jmespath<2.0.0,>=0.7.1 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (1.0.1)
+Requirement already satisfied: s3transfer<0.11.0,>=0.10.0 in ./env/lib/python3.10/site-packages (from boto3~=1.34.143->frappe->it_management==0.0.1) (0.10.4)
+Requirement already satisfied: urllib3!=2.2.0,<3,>=1.25.4 in ./env/lib/python3.10/site-packages (from botocore<1.35.0,>=1.34.162->boto3~=1.34.143->frappe->it_management==0.0.1) (2.4.0)
+Requirement already satisfied: stone>=2 in ./env/lib/python3.10/site-packages (from dropbox~=11.36.2->frappe->it_management==0.0.1) (3.3.9)
+Requirement already satisfied: gitdb<5,>=4.0.1 in ./env/lib/python3.10/site-packages (from GitPython~=3.1.34->frappe->it_management==0.0.1) (4.0.12)
+Requirement already satisfied: smmap<6,>=3.0.1 in ./env/lib/python3.10/site-packages (from gitdb<5,>=4.0.1->GitPython~=3.1.34->frappe->it_management==0.0.1) (5.0.2)
+Requirement already satisfied: httplib2<1dev,>=0.15.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (0.22.0)
+Requirement already satisfied: google-auth-httplib2>=0.1.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (0.2.0)
+Requirement already satisfied: google-api-core<2dev,>=1.21.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (1.34.1)
+Requirement already satisfied: uritemplate<4dev,>=3.0.0 in ./env/lib/python3.10/site-packages (from google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.0.1)
+Requirement already satisfied: googleapis-common-protos<2.0dev,>=1.56.2 in ./env/lib/python3.10/site-packages (from google-api-core<2dev,>=1.21.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (1.70.0)
+Requirement already satisfied: protobuf!=3.20.0,!=3.20.1,!=4.21.0,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<4.0.0dev,>=3.19.5 in ./env/lib/python3.10/site-packages (from google-api-core<2dev,>=1.21.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.20.3)
+Requirement already satisfied: cachetools<5.0,>=2.0.0 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (4.2.4)
+Requirement already satisfied: pyasn1-modules>=0.2.1 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (0.4.2)
+Requirement already satisfied: setuptools>=40.3.0 in ./env/lib/python3.10/site-packages (from google-auth~=1.29.0->frappe->it_management==0.0.1) (75.9.1)
+Requirement already satisfied: pyparsing!=3.0.0,!=3.0.1,!=3.0.2,!=3.0.3,<4,>=2.4.2 in ./env/lib/python3.10/site-packages (from httplib2<1dev,>=0.15.0->google-api-python-client~=2.2.0->frappe->it_management==0.0.1) (3.2.3)
+Requirement already satisfied: backcall in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.0)
+Requirement already satisfied: decorator in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (5.2.1)
+Requirement already satisfied: jedi>=0.16 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.19.2)
+Requirement already satisfied: matplotlib-inline in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.1.7)
+Requirement already satisfied: pickleshare in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.7.5)
+Requirement already satisfied: prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (3.0.51)
+Requirement already satisfied: pygments>=2.4.0 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (2.19.1)
+Requirement already satisfied: stack-data in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (0.6.3)
+Requirement already satisfied: traitlets>=5 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (5.14.3)
+Requirement already satisfied: exceptiongroup in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (1.2.2)
+Requirement already satisfied: pexpect>4.3 in ./env/lib/python3.10/site-packages (from ipython~=8.15.0->frappe->it_management==0.0.1) (4.9.0)
+Requirement already satisfied: pyasn1>=0.4.6 in ./env/lib/python3.10/site-packages (from ldap3~=2.9->frappe->it_management==0.0.1) (0.6.1)
+Requirement already satisfied: docopt>=0.6.2 in ./env/lib/python3.10/site-packages (from num2words~=0.5.12->frappe->it_management==0.0.1) (0.6.2)
+Requirement already satisfied: et-xmlfile in ./env/lib/python3.10/site-packages (from openpyxl~=3.1.2->frappe->it_management==0.0.1) (2.0.0)
+Requirement already satisfied: monotonic>=1.5 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (1.6)
+Requirement already satisfied: backoff>=1.10.0 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (2.2.1)
+Requirement already satisfied: distro>=1.5.0 in ./env/lib/python3.10/site-packages (from posthog~=3.21.0->frappe->it_management==0.0.1) (1.9.0)
+Requirement already satisfied: lxml in ./env/lib/python3.10/site-packages (from premailer~=3.10.0->frappe->it_management==0.0.1) (5.3.2)
+Requirement already satisfied: cssselect in ./env/lib/python3.10/site-packages (from premailer~=3.10.0->frappe->it_management==0.0.1) (1.3.0)
+Requirement already satisfied: wcwidth in ./env/lib/python3.10/site-packages (from prompt-toolkit!=3.0.37,<3.1.0,>=3.0.30->ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.13)
+Requirement already satisfied: annotated-types>=0.6.0 in ./env/lib/python3.10/site-packages (from pydantic~=2.10.2->frappe->it_management==0.0.1) (0.7.0)
+Requirement already satisfied: pydantic-core==2.27.2 in ./env/lib/python3.10/site-packages (from pydantic~=2.10.2->frappe->it_management==0.0.1) (2.27.2)
+Requirement already satisfied: async-timeout>=4.0.2 in ./env/lib/python3.10/site-packages (from redis~=4.5.5->frappe->it_management==0.0.1) (5.0.1)
+Requirement already satisfied: charset-normalizer<4,>=2 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (3.4.1)
+Requirement already satisfied: idna<4,>=2.5 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (3.10)
+Requirement already satisfied: certifi>=2017.4.17 in ./env/lib/python3.10/site-packages (from requests~=2.32.0->frappe->it_management==0.0.1) (2025.1.31)
+Requirement already satisfied: pycparser in ./env/lib/python3.10/site-packages (from cffi>=1.1.0->cairocffi==1.5.1->frappe->it_management==0.0.1) (2.22)
+Requirement already satisfied: brotli>=1.0.1 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (1.1.0)
+Requirement already satisfied: zopfli>=0.1.4 in ./env/lib/python3.10/site-packages (from fonttools[woff]>=4.0.0->WeasyPrint==59.0->frappe->it_management==0.0.1) (0.2.3.post1)
+Requirement already satisfied: parso<0.9.0,>=0.8.4 in ./env/lib/python3.10/site-packages (from jedi>=0.16->ipython~=8.15.0->frappe->it_management==0.0.1) (0.8.4)
+Requirement already satisfied: ptyprocess>=0.5 in ./env/lib/python3.10/site-packages (from pexpect>4.3->ipython~=8.15.0->frappe->it_management==0.0.1) (0.7.0)
+Requirement already satisfied: ply>=3.4 in ./env/lib/python3.10/site-packages (from stone>=2->dropbox~=11.36.2->frappe->it_management==0.0.1) (3.11)
+Requirement already satisfied: executing>=1.2.0 in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (2.2.0)
+Requirement already satisfied: asttokens>=2.1.0 in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (3.0.0)
+Requirement already satisfied: pure-eval in ./env/lib/python3.10/site-packages (from stack-data->ipython~=8.15.0->frappe->it_management==0.0.1) (0.2.3)
+Installing collected packages: it_management
+  Attempting uninstall: it_management
+    Found existing installation: it_management 0.0.1
+    Uninstalling it_management-0.0.1:
+      Successfully uninstalled it_management-0.0.1
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+  Running setup.py develop for it_management
+Successfully installed it_management
+frappe@vmi2187306:~/test-bench$ bench update --reset
+remote: Enumerating objects: 599, done.
+remote: Counting objects: 100% (599/599), done.
+remote: Compressing objects: 100% (256/256), done.
+remote: Total 302 (delta 282), reused 60 (delta 45), pack-reused 0 (from 0)
+Receiving objects: 100% (302/302), 206.04 KiB | 2.68 MiB/s, done.
+Resolving deltas: 100% (282/282), completed with 281 local objects.
+From https://github.com/frappe/frappe
+ * branch            version-15 -> FETCH_HEAD
+ + 6139ff6...6a84878 version-15 -> upstream/version-15  (forced update)
+Backing up sites...
+Backup Summary for testing.local at 2025-07-08 10:20:44.847395
+Config  : ./testing.local/private/backups/20250708_102033-testing_local-site_config_backup.json 444.0B
+Database: ./testing.local/private/backups/20250708_102033-testing_local-database.sql.gz         8.4MiB
+Backup for Site testing.local has been successfully completed
+Updating apps source...
+$ git fetch --depth=1 --no-tags upstream version-15
+remote: Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+From https://github.com/frappe/frappe
+ * branch            version-15 -> FETCH_HEAD
+$ git reset --hard upstream/version-15
+HEAD is now at 6a84878 chore(release): Bumped to Version 15.72.5
+$ git reflog expire --all
+$ git gc --prune=all
+Enumerating objects: 3653, done.
+Counting objects: 100% (3653/3653), done.
+Delta compression using up to 6 threads
+Compressing objects: 100% (2824/2824), done.
+Writing objects: 100% (3653/3653), done.
+Total 3653 (delta 719), reused 3649 (delta 715), pack-reused 0
+$ find . -name "*.pyc" -delete
+$ git fetch --depth=1 --no-tags upstream version-15
+remote: Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+From https://github.com/alyf-de/pdf_on_submit
+ * branch            version-15 -> FETCH_HEAD
+$ git reset --hard upstream/version-15
+HEAD is now at bea3e70 chore: bump version to 15.3.1
+$ git reflog expire --all
+$ git gc --prune=all
+Enumerating objects: 43, done.
+Counting objects: 100% (43/43), done.
+Delta compression using up to 6 threads
+Compressing objects: 100% (35/35), done.
+Writing objects: 100% (43/43), done.
+Total 43 (delta 1), reused 43 (delta 1), pack-reused 0
+$ find . -name "*.pyc" -delete
+$ git fetch --depth=1 --no-tags origin main
+remote: Total 0 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+From https://github.com/mostafamohamed1984/E-sign-App
+ * branch            main       -> FETCH_HEAD
+$ git reset --hard origin/main
+fatal: ambiguous argument 'origin/main': unknown revision or path not in the working tree.
+Use '--' to separate paths from revisions, like this:
+'git <command> [<revision>...] -- [<file>...]'
+ERROR: git reset --hard origin/main
+subprocess.CalledProcessError: Command 'git reset --hard origin/main' returned non-zero exit status 128.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/bin/bench", line 8, in <module>
+    sys.exit(cli())
+  File "/usr/local/lib/python3.10/dist-packages/bench/cli.py", line 132, in cli
+    bench_command()
+  File "/usr/local/lib/python3.10/dist-packages/bench/commands/update.py", line 59, in update
+    update(
+  File "/usr/local/lib/python3.10/dist-packages/bench/utils/bench.py", line 471, in update
+    pull_apps(apps=apps, bench_path=bench_path, reset=reset)
+  File "/usr/local/lib/python3.10/dist-packages/bench/app.py", line 998, in pull_apps
+    bench.run(reset_cmd, cwd=app_dir)
+  File "/usr/local/lib/python3.10/dist-packages/bench/bench.py", line 48, in run
+    return exec_cmd(cmd, cwd=cwd or self.cwd, _raise=_raise)
+  File "/usr/local/lib/python3.10/dist-packages/bench/utils/__init__.py", line 178, in exec_cmd
+    raise CommandFailedError(cmd) from subprocess.CalledProcessError(return_code, cmd)
+bench.exceptions.CommandFailedError: git reset --hard origin/main
+
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$ bench setup requirements
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade pip
+Installing 10 applications...
+Installing frappe
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/frappe
+$ yarn install --check-files
+yarn install v1.22.22
+[1/5] Validating package.json...
+[2/5] Resolving packages...
+[3/5] Fetching packages...
+[4/5] Linking dependencies...
+warning " > @frappe/esbuild-plugin-postcss2@0.1.3" has unmet peer dependency "less@^4.x".
+warning " > @frappe/esbuild-plugin-postcss2@0.1.3" has unmet peer dependency "stylus@^0.x".
+warning " > @vue/component-compiler@4.2.4" has unmet peer dependency "vue-template-compiler@*".
+[5/5] Building fresh packages...
+Done in 15.04s.
+Installing pdf_on_submit
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/pdf_on_submit
+Installing esign_app
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/esign_app
+$ yarn install --check-files
+yarn install v1.22.22
+warning package-lock.json found. Your project contains lock files generated by tools other than Yarn. It is advised notto mix package managers in order to avoid resolution inconsistencies caused by unsynchronized lock files. To clear thiswarning, remove package-lock.json.
+[1/4] Resolving packages...
+success Already up-to-date.
+$ cd esignDash && yarn install
+yarn install v1.22.22
+warning package-lock.json found. Your project contains lock files generated by tools other than Yarn. It is advised notto mix package managers in order to avoid resolution inconsistencies caused by unsynchronized lock files. To clear thiswarning, remove package-lock.json.
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 0.73s.
+Done in 7.08s.
+Installing payments
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/payments
+Installing svg_mobile_app
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/svg_mobile_app
+Installing zk_integration
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/zk_integration
+  DEPRECATION: Legacy editable install of zk_integration==0.0.1 from file:///home/frappe/test-bench/apps/zk_integration(setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, try using --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+Installing insights
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/insights
+$ yarn install --check-files
+yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+$ cd frontend && yarn install --check-files
+yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 13.92s.
+Done in 37.10s.
+Installing it_management
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/it_management
+  DEPRECATION: Legacy editable install of it_management==0.0.1 from file:///home/frappe/test-bench/apps/it_management (setup.py develop) is deprecated. pip 25.3 will enforce this behaviour change. A possible replacement is to add a pyproject.toml or enable --use-pep517, and use setuptools >= 64. If the resulting installation is not behaving as expected, tryusing --config-settings editable_mode=compat. Please consult the setuptools documentation for more information. Discussion can be found at https://github.com/pypa/pip/issues/11457
+Installing erpnext
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/erpnext
+$ yarn install --check-files
+yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 0.26s.
+Installing hrms
+$ /home/frappe/test-bench/env/bin/python -m pip install --quiet --upgrade -e /home/frappe/test-bench/apps/hrms
+$ yarn install --check-files
+yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+$ yarn install-pwa-deps && yarn install-roster-deps
+yarn run v1.22.22
+$ cd frontend && yarn install --check-files
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 22.88s.
+yarn run v1.22.22
+$ cd roster && yarn install --check-files
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 4.96s.
+Done in 28.68s.
+INFO: A newer version of bench is available: 5.22.9 → 5.25.9
+frappe@vmi2187306:~/test-bench$

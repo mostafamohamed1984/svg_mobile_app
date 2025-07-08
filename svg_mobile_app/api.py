@@ -990,12 +990,19 @@ def overtime_request(employee_id, date, start_time, end_time, reason=None):
         if not employee:
             return {"status": "fail", "message": _("Employee not found")}
 
+        # Calculate duration in hours
+        from frappe.utils import time_diff_in_hours
+        duration = 0
+        if start_time and end_time:
+            duration = time_diff_in_hours(end_time, start_time)
+
         overtime_request = frappe.get_doc({
             "doctype": "Overtime Request",
             "employee": employee_id,
             "day_of_overtime": date,
             "time_from": start_time,
             "time_to": end_time,
+            "duration": duration,
             "status": "Requested",
             "reason": reason or _("No reason provided")
         })
@@ -1004,7 +1011,8 @@ def overtime_request(employee_id, date, start_time, end_time, reason=None):
         return {
             "status": "success",
             "message": _("Overtime request created successfully"),
-            "docname": overtime_request.name
+            "docname": overtime_request.name,
+            "duration": duration
         }
 
     except frappe.DoesNotExistError:
@@ -1021,7 +1029,7 @@ def get_overtime_requests(employee_id, start_date, end_date):
             "employee": employee_id,
             "day_of_overtime": ["between", [start_date, end_date]]
         },
-        fields=["name", "employee_name", "day_of_overtime", "time_from", "time_to", "status", "reason"]
+        fields=["name", "employee_name", "day_of_overtime", "time_from", "time_to", "duration", "status", "reason"]
     )
     return {
         "status": "success",
@@ -1119,10 +1127,9 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
         # Get employees reporting to this manager
         filters = []
         is_hr = access_check.get("is_hr")
-        is_direct_manager = access_check.get("is_direct_manager")
         has_reports = access_check.get("has_reports")
 
-        # Apply employee filtering for both managers and HR users
+        # Apply employee filtering for managers and HR users only
         if has_reports:
             # For managers with direct reports, only show those employees
             reporting_employees = frappe.get_all("Employee",
@@ -1132,22 +1139,8 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             if not reporting_employees:
                 return {"status": "success", "data": []}
             filters.append(["employee", "in", reporting_employees])
-        elif is_direct_manager:
-            # For direct managers without specific reports, get department members
-            employee = frappe.get_doc("Employee", employee_id)
-            if employee.department:
-                dept_employees = frappe.get_all("Employee",
-                    filters={"department": employee.department},
-                    pluck="name"
-                )
-                if not dept_employees:
-                    return {"status": "success", "data": []}
-                filters.append(["employee", "in", dept_employees])
-            else:
-                return {"status": "success", "data": []}
         elif is_hr:
             # For HR users, get all employees they can manage
-            # Option 1: Get all employees in the same company
             employee = frappe.get_doc("Employee", employee_id)
             if employee.company:
                 company_employees = frappe.get_all("Employee",
@@ -1161,7 +1154,7 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             else:
                 return {"status": "success", "data": []}
         else:
-            # No access for users without manager or HR roles
+            # No access for users without actual reports or HR roles
             return {"status": "success", "data": []}
         
         # Add date filters if provided
@@ -1230,9 +1223,9 @@ def get_pending_requests(employee_id, from_date=None, to_date=None, pending_only
             overtime_requests = frappe.get_all(
                 "Overtime Request",
                 filters=overtime_filters,
-                fields=["name", "employee", "employee_name", "day_of_overtime as from_date", 
-                        "day_of_overtime as to_date", "'Overtime' as request_type", 
-                        "status", "reason", "creation"],
+                fields=["name", "employee", "employee_name", "day_of_overtime as from_date",
+                        "day_of_overtime as to_date", "'Overtime' as request_type",
+                        "duration", "status", "reason", "creation"],
                 order_by="creation desc"
             )
             

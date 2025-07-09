@@ -603,30 +603,63 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
             indicator: 'blue'
         });
 
-        // Test with simple function first
-        frappe.call({
-            method: 'svg_mobile_app.api.test_pdf_export',
-            callback: function(r) {
-                if (r.message && r.message.status === 'success') {
-                    frappe.show_alert({
-                        message: 'Test PDF export completed successfully!',
-                        indicator: 'green'
-                    });
-                } else {
-                    frappe.show_alert({
-                        message: 'Test PDF failed: ' + (r.message ? r.message.message : 'Unknown error'),
-                        indicator: 'red'
-                    });
-                }
-            },
-            error: function(r) {
-                frappe.show_alert({
-                    message: 'Error generating PDF export. Please try again.',
-                    indicator: 'red'
-                });
-                console.error('PDF Export Error:', r);
+        // Get current filters and visible columns for full export
+        let current_filters = build_search_filters(last_query);
+        let visible_columns = [];
+        Object.keys(columns).forEach(key => {
+            if (columns[key].visible) {
+                visible_columns.push(key);
             }
         });
+
+        // Build URL with parameters for full export
+        let params = new URLSearchParams({
+            filters: JSON.stringify(current_filters),
+            visible_columns: JSON.stringify(visible_columns)
+        });
+
+        let url = '/api/method/svg_mobile_app.api.export_projects_gallery_pdf?' + params.toString();
+
+        // Create a temporary link and click it to trigger download
+        let link = document.createElement('a');
+        link.href = url;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success message after a short delay
+        setTimeout(function() {
+            frappe.show_alert({
+                message: 'PDF export initiated! Check your downloads.',
+                indicator: 'green'
+            });
+        }, 1000);
+    }
+
+    function test_pdf_export() {
+        // Simple test function
+        frappe.show_alert({
+            message: 'Generating test PDF...',
+            indicator: 'blue'
+        });
+
+        let url = '/api/method/svg_mobile_app.api.test_pdf_export';
+
+        let link = document.createElement('a');
+        link.href = url;
+        link.download = 'test_export.pdf';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(function() {
+            frappe.show_alert({
+                message: 'Test PDF export initiated!',
+                indicator: 'green'
+            });
+        }, 1000);
     }
 
     // Advanced search functions

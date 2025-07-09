@@ -752,7 +752,20 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
             if (search_mode === 'AND') {
                 return advanced_criteria; // Each criteria as separate filter (AND)
             } else {
-                return [advanced_criteria]; // All criteria in one array (OR)
+                // For OR mode, we need to structure it differently
+                // Frappe expects OR filters as: [['field1', 'op', 'val'], 'or', ['field2', 'op', 'val']]
+                if (advanced_criteria.length === 1) {
+                    return advanced_criteria; // Single criteria, no OR needed
+                }
+
+                let or_filters = [];
+                for (let i = 0; i < advanced_criteria.length; i++) {
+                    or_filters.push(advanced_criteria[i]);
+                    if (i < advanced_criteria.length - 1) {
+                        or_filters.push('or');
+                    }
+                }
+                return [or_filters]; // Wrap in array for proper structure
             }
         }
 
@@ -774,9 +787,12 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         let filters = [];
         search_fields.forEach(field => {
             filters.push([field, 'like', `%${query}%`]);
+            if (filters.length > 1 && filters[filters.length - 2] !== 'or') {
+                filters.splice(-1, 0, 'or'); // Insert 'or' before the last element
+            }
         });
 
-        return [filters]; // OR condition for all fields
+        return filters.length > 0 ? [filters] : []; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {

@@ -641,7 +641,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <option value="<">Less Than</option>
                 </select>
                 <input type="text" class="value-input" placeholder="Enter search value...">
-                <button class="remove-criteria" onclick="remove_search_criteria('${criteria_id}')">×</button>
+                <button class="remove-criteria" data-criteria-id="${criteria_id}">×</button>
             </div>
         `;
 
@@ -952,6 +952,12 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         $('.mode-btn').removeClass('active');
         $(this).addClass('active');
         search_mode = $(this).data('mode');
+    });
+
+    // Event delegation for remove criteria buttons
+    $(document).on('click', '.remove-criteria', function() {
+        let criteria_id = $(this).data('criteria-id');
+        remove_search_criteria(criteria_id);
     });
 
     // Enter key in search with debouncing

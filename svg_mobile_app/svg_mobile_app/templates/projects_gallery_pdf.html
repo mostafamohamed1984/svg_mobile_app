@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Projects Gallery Export</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 15px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin: 0;
+            font-size: 24px;
+        }
+        .header .subtitle {
+            color: #7f8c8d;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .export-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .export-info div {
+            font-size: 11px;
+            color: #495057;
+        }
+        .projects-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .projects-table th {
+            background: #3498db;
+            color: white;
+            padding: 8px 6px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11px;
+            border: 1px solid #2980b9;
+        }
+        .projects-table td {
+            padding: 6px;
+            border: 1px solid #dee2e6;
+            font-size: 10px;
+            vertical-align: top;
+        }
+        .projects-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .projects-table tr:hover {
+            background: #e9ecef;
+        }
+        .project-image {
+            max-width: 60px;
+            max-height: 40px;
+            object-fit: cover;
+            border-radius: 3px;
+        }
+        .no-image {
+            color: #6c757d;
+            font-style: italic;
+            font-size: 9px;
+        }
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            background: #e9ecef;
+            color: #495057;
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 10px;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+            padding-top: 10px;
+        }
+        .summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .summary h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .summary-item {
+            text-align: center;
+        }
+        .summary-number {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .summary-label {
+            font-size: 11px;
+            color: #7f8c8d;
+        }
+        @media print {
+            body { margin: 10px; }
+            .projects-table { font-size: 9px; }
+            .projects-table th, .projects-table td { padding: 4px; }
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        .column-engineering {
+            background: #e8f5e8;
+        }
+        .column-main {
+            background: #e8f4fd;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>Projects Gallery Export</h1>
+        <div class="subtitle">Comprehensive Project Data Report</div>
+    </div>
+
+    <!-- Export Information -->
+    <div class="export-info">
+        <div>
+            <strong>Export Date:</strong> {{ export_date }}<br>
+            <strong>Export Time:</strong> {{ export_time }}
+        </div>
+        <div>
+            <strong>Exported by:</strong> {{ user }}<br>
+            <strong>Total Projects:</strong> {{ total_projects }}
+        </div>
+        <div>
+            <strong>Columns:</strong> {{ visible_columns|length }}<br>
+            <strong>Format:</strong> PDF Report
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary">
+        <h3>Export Summary</h3>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <div class="summary-number">{{ total_projects }}</div>
+                <div class="summary-label">Total Projects</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-number">{{ visible_columns|length }}</div>
+                <div class="summary-label">Visible Columns</div>
+            </div>
+            <div class="summary-item">
+                <div class="summary-number">{{ projects|selectattr('3d_image')|list|length }}</div>
+                <div class="summary-label">Projects with 3D Images</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Projects Table -->
+    {% if projects %}
+    <table class="projects-table">
+        <thead>
+            <tr>
+                {% for column in visible_columns %}
+                <th class="{% if column in ['villa_dimensions', 'plot_no', 'basement', 'ground_floor', 'first_floor', 'second_floor', 'roof', 'total_villa_area_sqm', 'total_villa_area_sqft', 'estimate_cost_230_aedsqft', 'bed_room', 'majlis', 'family_living', 'dinning', 'bathroom', 'kitchen', 'laundry', 'maid_room', 'gurad_room', 'store', 'shops', 'no_of_office', 'car_parking', 'no_of_labour', 'no_of_studio'] %}column-engineering{% else %}column-main{% endif %}">
+                    {{ column_labels.get(column, column) }}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+            <tr>
+                {% for column in visible_columns %}
+                <td>
+                    {% set value = project.get(column, '') %}
+                    {% if column == '3d_image' or column == 'site_image' %}
+                        {% if value %}
+                            <img src="{{ value }}" class="project-image" alt="{{ column }}">
+                        {% else %}
+                            <span class="no-image">No Image</span>
+                        {% endif %}
+                    {% elif column.endswith('_status') %}
+                        {% if value %}
+                            <span class="status-badge">{{ value }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    {% else %}
+                        {{ value or '-' }}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #6c757d;">
+        <h3>No Projects Found</h3>
+        <p>No projects match the current filter criteria.</p>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>Generated by SVG Mobile App - Projects Image Gallery</p>
+        <p>This report contains {{ total_projects }} project(s) exported on {{ export_date }} at {{ export_time }}</p>
+    </div>
+</body>
+</html>

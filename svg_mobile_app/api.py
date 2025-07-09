@@ -968,7 +968,7 @@ def get_salary_slips(employee_id, year):
 def get_salary_slip_details(salary_slip_id):
     try:
         salary_slip = frappe.get_doc("Salary Slip", salary_slip_id)
-        
+
         # Extract details
         deductions = salary_slip.get("deductions")
         earnings = salary_slip.get("earnings")
@@ -986,11 +986,121 @@ def get_salary_slip_details(salary_slip_id):
             "status": "success",
             "details": details
         }
-    except frappe.DoesNotExistError:
-        frappe.throw(f"Salary Slip {salary_slip_id} does not exist.")
     except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Salary Slip Details Error")
-        frappe.throw("An error occurred while retrieving the salary slip details.")
+        frappe.log_error(f"Error fetching salary slip details: {str(e)}", "Salary Slip Error")
+        return {
+            "status": "fail",
+            "message": str(e)
+        }
+
+
+@frappe.whitelist()
+def export_projects_gallery_pdf(filters=None, visible_columns=None):
+    """Export Projects Gallery data to PDF with current filters and visible columns"""
+    try:
+        import json
+        from frappe.utils.pdf import get_pdf
+        from frappe.utils import now_datetime, format_date
+
+        # Parse filters if provided
+        if filters:
+            filters = json.loads(filters) if isinstance(filters, str) else filters
+        else:
+            filters = []
+
+        # Parse visible columns if provided
+        if visible_columns:
+            visible_columns = json.loads(visible_columns) if isinstance(visible_columns, str) else visible_columns
+        else:
+            # Default visible columns
+            visible_columns = ['project_name', 'district', 'region', 'description',
+                             'project_status', 'design_status', 'planning_status', 'tender_status']
+
+        # Get all fields for the query
+        all_fields = ['name', 'project_name', 'district', 'region', 'description',
+                     'project_status', 'design_status', 'planning_status', 'tender_status',
+                     '3d_image', 'site_image', 'villa_dimensions', 'plot_no', 'basement',
+                     'ground_floor', 'first_floor', 'second_floor', 'roof',
+                     'total_villa_area_sqm', 'total_villa_area_sqft', 'estimate_cost_230_aedsqft',
+                     'bed_room', 'majlis', 'family_living', 'dinning', 'bathroom', 'kitchen',
+                     'laundry', 'maid_room', 'gurad_room', 'store', 'shops', 'no_of_office',
+                     'car_parking', 'no_of_labour', 'no_of_studio']
+
+        # Fetch projects data
+        projects = frappe.get_list(
+            'Projects Collection',
+            fields=all_fields,
+            filters=filters,
+            order_by='numeric_sort_field desc',
+            limit_page_length=None  # Get all matching records
+        )
+
+        # Column labels mapping
+        column_labels = {
+            'project_name': 'Project ID',
+            'district': 'District',
+            'region': 'Region',
+            'description': 'Description',
+            'project_status': 'Status',
+            'design_status': 'Design',
+            'planning_status': 'Planning',
+            'tender_status': 'Tender',
+            '3d_image': '3D Image',
+            'site_image': 'Site Image',
+            'villa_dimensions': 'Villa Dimensions',
+            'plot_no': 'Plot No',
+            'basement': 'Basement',
+            'ground_floor': 'Ground Floor',
+            'first_floor': 'First Floor',
+            'second_floor': 'Second Floor',
+            'roof': 'Roof',
+            'total_villa_area_sqm': 'Total Area (SQM)',
+            'total_villa_area_sqft': 'Total Area (SQFT)',
+            'estimate_cost_230_aedsqft': 'Estimate Cost (AED/SQFT)',
+            'bed_room': 'Bedrooms',
+            'majlis': 'Majlis',
+            'family_living': 'Family Living',
+            'dinning': 'Dining',
+            'bathroom': 'Bathrooms',
+            'kitchen': 'Kitchen',
+            'laundry': 'Laundry',
+            'maid_room': 'Maid Room',
+            'gurad_room': 'Guard Room',
+            'store': 'Store',
+            'shops': 'Shops',
+            'no_of_office': 'No. of Offices',
+            'car_parking': 'Car Parking',
+            'no_of_labour': 'No. of Labour',
+            'no_of_studio': 'No. of Studios'
+        }
+
+        # Prepare template context
+        context = {
+            'projects': projects,
+            'visible_columns': visible_columns,
+            'column_labels': column_labels,
+            'total_projects': len(projects),
+            'export_date': format_date(now_datetime()),
+            'export_time': now_datetime().strftime('%H:%M:%S'),
+            'user': frappe.session.user
+        }
+
+        # Render HTML template
+        html = frappe.render_template('svg_mobile_app/templates/projects_gallery_pdf.html', context)
+
+        # Generate PDF
+        pdf_data = get_pdf(html)
+
+        # Set response for file download
+        filename = f"projects_gallery_export_{now_datetime().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        frappe.local.response.filename = filename
+        frappe.local.response.filecontent = pdf_data
+        frappe.local.response.type = "download"
+
+    except Exception as e:
+        frappe.log_error(f"Error generating projects gallery PDF: {str(e)}", "PDF Export Error")
+        frappe.throw(f"Error generating PDF: {str(e)}")
 
 @frappe.whitelist(allow_guest=False)
 def overtime_request(employee_id=None, date=None, start_time=None, end_time=None, reason=None):

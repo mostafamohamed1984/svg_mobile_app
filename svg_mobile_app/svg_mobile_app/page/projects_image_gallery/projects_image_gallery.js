@@ -402,6 +402,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <button id="clear-search" class="btn-modern btn-secondary-modern">Clear</button>
                     <button id="advanced-search-toggle" class="btn-modern btn-secondary-modern">+ Advanced</button>
                     <button id="toggle-columns" class="btn-modern btn-secondary-modern">Columns</button>
+                    <button id="export-pdf" class="btn-modern btn-primary-modern">📄 Export PDF</button>
                 </div>
             </div>
 
@@ -593,6 +594,47 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
     function close_image_modal() {
         $('#image-modal').fadeOut(300);
+    }
+
+    function export_to_pdf() {
+        // Get current filters
+        let current_filters = build_search_filters(last_query);
+
+        // Get visible columns
+        let visible_columns = [];
+        Object.keys(columns).forEach(key => {
+            if (columns[key].visible) {
+                visible_columns.push(key);
+            }
+        });
+
+        // Show loading message
+        frappe.show_alert({
+            message: 'Generating PDF export...',
+            indicator: 'blue'
+        });
+
+        // Call the export API
+        frappe.call({
+            method: 'svg_mobile_app.api.export_projects_gallery_pdf',
+            args: {
+                filters: JSON.stringify(current_filters),
+                visible_columns: JSON.stringify(visible_columns)
+            },
+            callback: function(r) {
+                frappe.show_alert({
+                    message: 'PDF export completed successfully!',
+                    indicator: 'green'
+                });
+            },
+            error: function(r) {
+                frappe.show_alert({
+                    message: 'Error generating PDF export. Please try again.',
+                    indicator: 'red'
+                });
+                console.error('PDF Export Error:', r);
+            }
+        });
     }
 
     // Advanced search functions
@@ -1008,6 +1050,10 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
     $('#toggle-columns').click(function() {
         $('#column-controls').toggle();
+    });
+
+    $('#export-pdf').click(function() {
+        export_to_pdf();
     });
 
     $('#advanced-search-toggle').click(function() {

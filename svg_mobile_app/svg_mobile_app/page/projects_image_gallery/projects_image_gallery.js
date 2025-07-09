@@ -597,35 +597,27 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     }
 
     function export_to_pdf() {
-        // Get current filters
-        let current_filters = build_search_filters(last_query);
-
-        // Get visible columns
-        let visible_columns = [];
-        Object.keys(columns).forEach(key => {
-            if (columns[key].visible) {
-                visible_columns.push(key);
-            }
-        });
-
         // Show loading message
         frappe.show_alert({
             message: 'Generating PDF export...',
             indicator: 'blue'
         });
 
-        // Call the export API
+        // Test with simple function first
         frappe.call({
-            method: 'svg_mobile_app.api.export_projects_gallery_pdf',
-            args: {
-                filters: JSON.stringify(current_filters),
-                visible_columns: JSON.stringify(visible_columns)
-            },
+            method: 'svg_mobile_app.api.test_pdf_export',
             callback: function(r) {
-                frappe.show_alert({
-                    message: 'PDF export completed successfully!',
-                    indicator: 'green'
-                });
+                if (r.message && r.message.status === 'success') {
+                    frappe.show_alert({
+                        message: 'Test PDF export completed successfully!',
+                        indicator: 'green'
+                    });
+                } else {
+                    frappe.show_alert({
+                        message: 'Test PDF failed: ' + (r.message ? r.message.message : 'Unknown error'),
+                        indicator: 'red'
+                    });
+                }
             },
             error: function(r) {
                 frappe.show_alert({

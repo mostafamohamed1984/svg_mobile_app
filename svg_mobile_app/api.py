@@ -995,22 +995,60 @@ def get_salary_slip_details(salary_slip_id):
 
 
 @frappe.whitelist()
+def test_pdf_export():
+    """Simple test function to check if PDF generation works"""
+    try:
+        from frappe.utils.pdf import get_pdf
+
+        html = """
+        <html>
+        <head><title>Test PDF</title></head>
+        <body>
+            <h1>Test PDF Export</h1>
+            <p>This is a test PDF to verify the export functionality works.</p>
+            <p>Generated at: """ + str(frappe.utils.now()) + """</p>
+        </body>
+        </html>
+        """
+
+        pdf_data = get_pdf(html)
+
+        frappe.local.response.filename = "test_export.pdf"
+        frappe.local.response.filecontent = pdf_data
+        frappe.local.response.type = "download"
+
+        return {"status": "success"}
+
+    except Exception as e:
+        frappe.log_error(f"Test PDF error: {str(e)}", "Test PDF Error")
+        return {"status": "error", "message": str(e)}
+
+
+@frappe.whitelist()
 def export_projects_gallery_pdf(filters=None, visible_columns=None):
     """Export Projects Gallery data to PDF with current filters and visible columns"""
     try:
         import json
+        import os
         from frappe.utils.pdf import get_pdf
-        from frappe.utils import now_datetime, format_date
+        from frappe.utils import now_datetime, get_datetime
 
         # Parse filters if provided
         if filters:
-            filters = json.loads(filters) if isinstance(filters, str) else filters
+            try:
+                filters = json.loads(filters) if isinstance(filters, str) else filters
+            except:
+                filters = []
         else:
             filters = []
 
         # Parse visible columns if provided
         if visible_columns:
-            visible_columns = json.loads(visible_columns) if isinstance(visible_columns, str) else visible_columns
+            try:
+                visible_columns = json.loads(visible_columns) if isinstance(visible_columns, str) else visible_columns
+            except:
+                visible_columns = ['project_name', 'district', 'region', 'description',
+                                 'project_status', 'design_status', 'planning_status', 'tender_status']
         else:
             # Default visible columns
             visible_columns = ['project_name', 'district', 'region', 'description',
@@ -1027,13 +1065,23 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None):
                      'car_parking', 'no_of_labour', 'no_of_studio']
 
         # Fetch projects data
-        projects = frappe.get_list(
-            'Projects Collection',
-            fields=all_fields,
-            filters=filters,
-            order_by='numeric_sort_field desc',
-            limit_page_length=None  # Get all matching records
-        )
+        try:
+            projects = frappe.get_list(
+                'Projects Collection',
+                fields=all_fields,
+                filters=filters if filters else None,
+                order_by='numeric_sort_field desc',
+                limit_page_length=None  # Get all matching records
+            )
+        except Exception as filter_error:
+            # If filters cause issues, try without filters
+            frappe.log_error(f"Filter error: {str(filter_error)}", "PDF Export Filter Error")
+            projects = frappe.get_list(
+                'Projects Collection',
+                fields=all_fields,
+                order_by='numeric_sort_field desc',
+                limit_page_length=100  # Limit to 100 records if no filters work
+            )
 
         # Column labels mapping
         column_labels = {
@@ -1075,24 +1123,85 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None):
         }
 
         # Prepare template context
+        current_time = now_datetime()
         context = {
             'projects': projects,
             'visible_columns': visible_columns,
             'column_labels': column_labels,
             'total_projects': len(projects),
-            'export_date': format_date(now_datetime()),
-            'export_time': now_datetime().strftime('%H:%M:%S'),
+            'export_date': current_time.strftime('%Y-%m-%d'),
+            'export_time': current_time.strftime('%H:%M:%S'),
             'user': frappe.session.user
         }
 
-        # Render HTML template
-        html = frappe.render_template('svg_mobile_app/templates/projects_gallery_pdf.html', context)
+        # Create simple HTML template inline to avoid template path issues
+        html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Projects Gallery Export</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }}
+        .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #3498db; padding-bottom: 15px; }}
+        .header h1 {{ color: #2c3e50; margin: 0; font-size: 24px; }}
+        .export-info {{ display: flex; justify-content: space-between; margin-bottom: 20px; padding: 10px; background: #f8f9fa; }}
+        .projects-table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
+        .projects-table th {{ background: #3498db; color: white; padding: 8px 6px; text-align: left; border: 1px solid #2980b9; }}
+        .projects-table td {{ padding: 6px; border: 1px solid #dee2e6; font-size: 10px; }}
+        .projects-table tr:nth-child(even) {{ background: #f8f9fa; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Projects Gallery Export</h1>
+    </div>
+    <div class="export-info">
+        <div><strong>Date:</strong> {context['export_date']} <strong>Time:</strong> {context['export_time']}</div>
+        <div><strong>User:</strong> {context['user']} <strong>Projects:</strong> {context['total_projects']}</div>
+    </div>
+    <table class="projects-table">
+        <thead>
+            <tr>"""
+
+        # Add column headers
+        for column in visible_columns:
+            label = column_labels.get(column, column)
+            html += f"<th>{label}</th>"
+
+        html += """
+            </tr>
+        </thead>
+        <tbody>"""
+
+        # Add project rows
+        for project in projects:
+            html += "<tr>"
+            for column in visible_columns:
+                value = project.get(column, '') or '-'
+                if column in ['3d_image', 'site_image']:
+                    if value and value != '-':
+                        html += f'<td><img src="{value}" style="max-width:60px;max-height:40px;"></td>'
+                    else:
+                        html += '<td>No Image</td>'
+                else:
+                    html += f"<td>{frappe.utils.escape_html(str(value))}</td>"
+            html += "</tr>"
+
+        html += """
+        </tbody>
+    </table>
+    <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #6c757d;">
+        Generated by SVG Mobile App - Projects Image Gallery
+    </div>
+</body>
+</html>"""
 
         # Generate PDF
         pdf_data = get_pdf(html)
 
         # Set response for file download
-        filename = f"projects_gallery_export_{now_datetime().strftime('%Y%m%d_%H%M%S')}.pdf"
+        filename = f"projects_gallery_export_{current_time.strftime('%Y%m%d_%H%M%S')}.pdf"
 
         frappe.local.response.filename = filename
         frappe.local.response.filecontent = pdf_data

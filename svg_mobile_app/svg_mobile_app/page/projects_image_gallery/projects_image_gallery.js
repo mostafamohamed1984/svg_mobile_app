@@ -88,6 +88,17 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 color: #2c3e50;
                 font-weight: 600;
             }
+            .column-section {
+                margin-bottom: 20px;
+            }
+            .column-section h6 {
+                margin-bottom: 12px;
+                color: #34495e;
+                font-weight: 500;
+                font-size: 14px;
+                border-bottom: 1px solid #ecf0f1;
+                padding-bottom: 4px;
+            }
             .column-toggles {
                 display: flex;
                 flex-wrap: wrap;
@@ -271,6 +282,94 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 from { opacity: 0; }
                 to { opacity: 1; }
             }
+            .advanced-search {
+                background: white;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                display: none;
+            }
+            .search-criteria {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+                padding: 12px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                position: relative;
+            }
+            .search-criteria select {
+                padding: 8px 12px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                background: white;
+                min-width: 150px;
+            }
+            .search-criteria input {
+                flex: 1;
+                padding: 8px 12px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                min-width: 200px;
+            }
+            .remove-criteria {
+                background: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .remove-criteria:hover {
+                background: #c0392b;
+            }
+            .add-criteria {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                cursor: pointer;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .add-criteria:hover {
+                background: #229954;
+            }
+            .search-mode-toggle {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+            .mode-btn {
+                padding: 6px 12px;
+                border: 1px solid #dee2e6;
+                background: white;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.3s ease;
+            }
+            .mode-btn.active {
+                background: #3498db;
+                color: white;
+                border-color: #3498db;
+            }
+            .search-actions {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-top: 16px;
+            }
         </style>
     `;
 
@@ -286,7 +385,24 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <input id="project-search" type="text" class="search-input" placeholder="Search projects by ID, name, region, status...">
                     <button id="search-btn" class="btn-modern btn-primary-modern">Search</button>
                     <button id="clear-search" class="btn-modern btn-secondary-modern">Clear</button>
+                    <button id="advanced-search-toggle" class="btn-modern btn-secondary-modern">+ Advanced</button>
                     <button id="toggle-columns" class="btn-modern btn-secondary-modern">Columns</button>
+                </div>
+            </div>
+
+            <div id="advanced-search" class="advanced-search">
+                <h5>Advanced Search</h5>
+                <div class="search-mode-toggle">
+                    <button class="mode-btn active" data-mode="AND">Match ALL criteria (AND)</button>
+                    <button class="mode-btn" data-mode="OR">Match ANY criteria (OR)</button>
+                </div>
+                <div id="search-criteria-container"></div>
+                <div class="search-actions">
+                    <button id="add-search-criteria" class="add-criteria">
+                        <span>+</span> Add Search Criteria
+                    </button>
+                    <button id="apply-advanced-search" class="btn-modern btn-primary-modern">Apply Search</button>
+                    <button id="clear-advanced-search" class="btn-modern btn-secondary-modern">Clear All</button>
                 </div>
             </div>
 
@@ -319,9 +435,12 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     let last_query = '';
     let sort_field = 'numeric_sort_field';  // Default to numeric sorting for Project ID
     let sort_order = 'desc';
+    let advanced_search_criteria = [];
+    let search_mode = 'AND'; // AND or OR
 
     // Column configuration
     let columns = {
+        // Main visible columns
         'project_name': { label: 'Project ID', visible: true, sortable: true, sort_field: 'numeric_sort_field' },
         'district': { label: 'District', visible: true, sortable: true, sort_field: 'district' },
         'region': { label: 'Region', visible: true, sortable: true, sort_field: 'region' },
@@ -331,22 +450,94 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         'planning_status': { label: 'Planning', visible: true, sortable: true, sort_field: 'planning_status' },
         'tender_status': { label: 'Tender', visible: true, sortable: true, sort_field: 'tender_status' },
         '3d_image': { label: '3D Image', visible: true, sortable: false, sort_field: null },
-        'site_image': { label: 'Site Image', visible: true, sortable: false, sort_field: null }
+        'site_image': { label: 'Site Image', visible: true, sortable: false, sort_field: null },
+
+        // Engineering Data - Hidden by default
+        'villa_dimensions': { label: 'Villa Dimensions', visible: false, sortable: true, sort_field: 'villa_dimensions' },
+        'plot_no': { label: 'Plot No', visible: false, sortable: true, sort_field: 'plot_no' },
+        'basement': { label: 'Basement', visible: false, sortable: true, sort_field: 'basement' },
+        'ground_floor': { label: 'Ground Floor', visible: false, sortable: true, sort_field: 'ground_floor' },
+        'first_floor': { label: 'First Floor', visible: false, sortable: true, sort_field: 'first_floor' },
+        'second_floor': { label: 'Second Floor', visible: false, sortable: true, sort_field: 'second_floor' },
+        'roof': { label: 'Roof', visible: false, sortable: true, sort_field: 'roof' },
+        'total_villa_area_sqm': { label: 'Total Area (SQM)', visible: false, sortable: true, sort_field: 'total_villa_area_sqm' },
+        'total_villa_area_sqft': { label: 'Total Area (SQFT)', visible: false, sortable: true, sort_field: 'total_villa_area_sqft' },
+        'estimate_cost_230_aedsqft': { label: 'Estimate Cost (AED/SQFT)', visible: false, sortable: true, sort_field: 'estimate_cost_230_aedsqft' },
+        'bed_room': { label: 'Bedrooms', visible: false, sortable: true, sort_field: 'bed_room' },
+        'majlis': { label: 'Majlis', visible: false, sortable: true, sort_field: 'majlis' },
+        'family_living': { label: 'Family Living', visible: false, sortable: true, sort_field: 'family_living' },
+        'dinning': { label: 'Dining', visible: false, sortable: true, sort_field: 'dinning' },
+        'bathroom': { label: 'Bathrooms', visible: false, sortable: true, sort_field: 'bathroom' },
+        'kitchen': { label: 'Kitchen', visible: false, sortable: true, sort_field: 'kitchen' },
+        'laundry': { label: 'Laundry', visible: false, sortable: true, sort_field: 'laundry' },
+        'maid_room': { label: 'Maid Room', visible: false, sortable: true, sort_field: 'maid_room' },
+        'gurad_room': { label: 'Guard Room', visible: false, sortable: true, sort_field: 'gurad_room' },
+        'store': { label: 'Store', visible: false, sortable: true, sort_field: 'store' },
+        'shops': { label: 'Shops', visible: false, sortable: true, sort_field: 'shops' },
+        'no_of_office': { label: 'No. of Offices', visible: false, sortable: true, sort_field: 'no_of_office' },
+        'car_parking': { label: 'Car Parking', visible: false, sortable: true, sort_field: 'car_parking' },
+        'no_of_labour': { label: 'No. of Labour', visible: false, sortable: true, sort_field: 'no_of_labour' },
+        'no_of_studio': { label: 'No. of Studios', visible: false, sortable: true, sort_field: 'no_of_studio' }
     };
 
-    // Initialize column toggles
+    // Initialize column toggles with organized sections
     function init_column_toggles() {
-        let toggles_html = '';
-        Object.keys(columns).forEach(key => {
-            let column = columns[key];
-            toggles_html += `
-                <label class="column-toggle">
-                    <input type="checkbox" data-column="${key}" ${column.visible ? 'checked' : ''}>
-                    <span>${column.label}</span>
-                </label>
-            `;
+        let main_columns = ['project_name', 'district', 'region', 'description', 'project_status',
+                           'design_status', 'planning_status', 'tender_status', '3d_image', 'site_image'];
+
+        let engineering_columns = ['villa_dimensions', 'plot_no', 'basement', 'ground_floor', 'first_floor',
+                                 'second_floor', 'roof', 'total_villa_area_sqm', 'total_villa_area_sqft',
+                                 'estimate_cost_230_aedsqft', 'bed_room', 'majlis', 'family_living',
+                                 'dinning', 'bathroom', 'kitchen', 'laundry', 'maid_room', 'gurad_room',
+                                 'store', 'shops', 'no_of_office', 'car_parking', 'no_of_labour', 'no_of_studio'];
+
+        let toggles_html = `
+            <div class="column-section">
+                <h6>Main Columns</h6>
+                <div class="column-toggles">
+        `;
+
+        main_columns.forEach(key => {
+            if (columns[key]) {
+                let column = columns[key];
+                toggles_html += `
+                    <label class="column-toggle">
+                        <input type="checkbox" data-column="${key}" ${column.visible ? 'checked' : ''}>
+                        <span>${column.label}</span>
+                    </label>
+                `;
+            }
         });
-        $('#column-toggles').html(toggles_html);
+
+        toggles_html += `
+                </div>
+            </div>
+            <div class="column-section">
+                <h6>Engineering Data</h6>
+                <div class="column-toggles">
+        `;
+
+        engineering_columns.forEach(key => {
+            if (columns[key]) {
+                let column = columns[key];
+                toggles_html += `
+                    <label class="column-toggle">
+                        <input type="checkbox" data-column="${key}" ${column.visible ? 'checked' : ''}>
+                        <span>${column.label}</span>
+                    </label>
+                `;
+            }
+        });
+
+        toggles_html += `
+                </div>
+            </div>
+        `;
+
+        $('#column-controls .column-toggles').parent().html(`
+            <h5>Show/Hide Columns</h5>
+            ${toggles_html}
+        `);
 
         // Add event listeners
         $('.column-toggle input').change(function() {
@@ -389,12 +580,125 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         $('#image-modal').fadeOut(300);
     }
 
+    // Advanced search functions
+    function get_searchable_fields() {
+        return {
+            'project_name': 'Project ID',
+            'district': 'District',
+            'region': 'Region',
+            'description': 'Description',
+            'project_status': 'Status',
+            'design_status': 'Design Status',
+            'planning_status': 'Planning Status',
+            'tender_status': 'Tender Status',
+            'villa_dimensions': 'Villa Dimensions',
+            'plot_no': 'Plot No',
+            'basement': 'Basement',
+            'ground_floor': 'Ground Floor',
+            'first_floor': 'First Floor',
+            'second_floor': 'Second Floor',
+            'roof': 'Roof',
+            'total_villa_area_sqm': 'Total Area (SQM)',
+            'total_villa_area_sqft': 'Total Area (SQFT)',
+            'estimate_cost_230_aedsqft': 'Estimate Cost',
+            'bed_room': 'Bedrooms',
+            'majlis': 'Majlis',
+            'family_living': 'Family Living',
+            'dinning': 'Dining',
+            'bathroom': 'Bathrooms',
+            'kitchen': 'Kitchen',
+            'laundry': 'Laundry',
+            'maid_room': 'Maid Room',
+            'gurad_room': 'Guard Room',
+            'store': 'Store',
+            'shops': 'Shops',
+            'no_of_office': 'No. of Offices',
+            'car_parking': 'Car Parking',
+            'no_of_labour': 'No. of Labour',
+            'no_of_studio': 'No. of Studios'
+        };
+    }
+
+    function add_search_criteria() {
+        let criteria_id = 'criteria_' + Date.now();
+        let searchable_fields = get_searchable_fields();
+
+        let options_html = '';
+        Object.keys(searchable_fields).forEach(key => {
+            options_html += `<option value="${key}">${searchable_fields[key]}</option>`;
+        });
+
+        let criteria_html = `
+            <div class="search-criteria" data-id="${criteria_id}">
+                <select class="field-select">
+                    ${options_html}
+                </select>
+                <select class="operator-select">
+                    <option value="like">Contains</option>
+                    <option value="=">Equals</option>
+                    <option value="!=">Not Equals</option>
+                    <option value=">">Greater Than</option>
+                    <option value="<">Less Than</option>
+                </select>
+                <input type="text" class="value-input" placeholder="Enter search value...">
+                <button class="remove-criteria" onclick="remove_search_criteria('${criteria_id}')">×</button>
+            </div>
+        `;
+
+        $('#search-criteria-container').append(criteria_html);
+    }
+
+    function remove_search_criteria(criteria_id) {
+        $(`[data-id="${criteria_id}"]`).remove();
+    }
+
+    function build_advanced_search_filters() {
+        let criteria = [];
+
+        $('.search-criteria').each(function() {
+            let field = $(this).find('.field-select').val();
+            let operator = $(this).find('.operator-select').val();
+            let value = $(this).find('.value-input').val().trim();
+
+            if (field && value) {
+                if (operator === 'like') {
+                    criteria.push([field, 'like', `%${value}%`]);
+                } else {
+                    criteria.push([field, operator, value]);
+                }
+            }
+        });
+
+        return criteria;
+    }
+
     function build_search_filters(query) {
+        // Check if we have advanced search criteria
+        let advanced_criteria = build_advanced_search_filters();
+
+        if (advanced_criteria.length > 0) {
+            // Use advanced search criteria
+            if (search_mode === 'AND') {
+                return advanced_criteria; // Each criteria as separate filter (AND)
+            } else {
+                return [advanced_criteria]; // All criteria in one array (OR)
+            }
+        }
+
+        // Fallback to simple search if no advanced criteria or if query is provided
         if (!query) return [];
 
-        // Search across multiple fields
-        let search_fields = ['project_name', 'district', 'region', 'description',
-                           'project_status', 'design_status', 'planning_status', 'tender_status'];
+        // Search across multiple fields including engineering data
+        let search_fields = [
+            'project_name', 'district', 'region', 'description',
+            'project_status', 'design_status', 'planning_status', 'tender_status',
+            // Engineering data fields
+            'villa_dimensions', 'plot_no', 'basement', 'ground_floor', 'first_floor',
+            'second_floor', 'roof', 'total_villa_area_sqm', 'total_villa_area_sqft',
+            'estimate_cost_230_aedsqft', 'bed_room', 'majlis', 'family_living',
+            'dinning', 'bathroom', 'kitchen', 'laundry', 'maid_room', 'gurad_room',
+            'store', 'shops', 'no_of_office', 'car_parking', 'no_of_labour', 'no_of_studio'
+        ];
 
         let filters = [];
         search_fields.forEach(field => {
@@ -414,7 +718,13 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 doctype: 'Projects Collection',
                 fields: ['name', 'project_name', 'district', 'region', 'description',
                         'project_status', 'design_status', 'planning_status', 'tender_status',
-                        '3d_image', 'site_image'],
+                        '3d_image', 'site_image',
+                        // Engineering data fields
+                        'villa_dimensions', 'plot_no', 'basement', 'ground_floor', 'first_floor',
+                        'second_floor', 'roof', 'total_villa_area_sqm', 'total_villa_area_sqft',
+                        'estimate_cost_230_aedsqft', 'bed_room', 'majlis', 'family_living',
+                        'dinning', 'bathroom', 'kitchen', 'laundry', 'maid_room', 'gurad_room',
+                        'store', 'shops', 'no_of_office', 'car_parking', 'no_of_labour', 'no_of_studio'],
                 limit_start: (page_num - 1) * page_length,
                 limit_page_length: page_length,
                 order_by: `${sort_field_param} ${order}`,
@@ -611,6 +921,37 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
     $('#toggle-columns').click(function() {
         $('#column-controls').toggle();
+    });
+
+    $('#advanced-search-toggle').click(function() {
+        $('#advanced-search').toggle();
+        if ($('#advanced-search').is(':visible') && $('#search-criteria-container').children().length === 0) {
+            add_search_criteria(); // Add first criteria when opening
+        }
+    });
+
+    $('#add-search-criteria').click(function() {
+        add_search_criteria();
+    });
+
+    $('#apply-advanced-search').click(function() {
+        current_page = 1;
+        last_query = ''; // Clear simple search when using advanced
+        $('#project-search').val('');
+        fetch_and_render('', current_page, sort_field, sort_order);
+    });
+
+    $('#clear-advanced-search').click(function() {
+        $('#search-criteria-container').empty();
+        current_page = 1;
+        fetch_and_render('', current_page, sort_field, sort_order);
+    });
+
+    // Search mode toggle
+    $('.mode-btn').click(function() {
+        $('.mode-btn').removeClass('active');
+        $(this).addClass('active');
+        search_mode = $(this).data('mode');
     });
 
     // Enter key in search with debouncing

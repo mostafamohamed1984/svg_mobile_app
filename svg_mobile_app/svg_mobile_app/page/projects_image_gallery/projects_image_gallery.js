@@ -201,6 +201,76 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
             .hidden-column {
                 display: none !important;
             }
+            .project-link {
+                color: #3498db;
+                text-decoration: none;
+                font-weight: 500;
+                cursor: pointer;
+                transition: color 0.3s ease;
+            }
+            .project-link:hover {
+                color: #2980b9;
+                text-decoration: underline;
+            }
+            .image-clickable {
+                cursor: pointer;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            .image-clickable:hover {
+                transform: scale(1.05);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            }
+            .image-modal {
+                display: none;
+                position: fixed;
+                z-index: 9999;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.9);
+                animation: fadeIn 0.3s ease;
+            }
+            .image-modal-content {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                max-width: 90%;
+                max-height: 90%;
+                border-radius: 8px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            }
+            .image-modal-close {
+                position: absolute;
+                top: 20px;
+                right: 30px;
+                color: white;
+                font-size: 40px;
+                font-weight: bold;
+                cursor: pointer;
+                z-index: 10000;
+                transition: color 0.3s ease;
+            }
+            .image-modal-close:hover {
+                color: #ccc;
+            }
+            .image-modal-info {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 12px 20px;
+                border-radius: 6px;
+                font-size: 14px;
+                text-align: center;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
         </style>
     `;
 
@@ -234,27 +304,34 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
             <div id="pagination-controls" class="pagination-modern"></div>
         </div>
+
+        <!-- Image Modal -->
+        <div id="image-modal" class="image-modal">
+            <span class="image-modal-close">&times;</span>
+            <img id="modal-image" class="image-modal-content" alt="Full size image">
+            <div id="modal-info" class="image-modal-info"></div>
+        </div>
     `;
     $(wrapper).find('.layout-main-section').html(gallery_html);
 
     let current_page = 1;
     let page_length = 20;
     let last_query = '';
-    let sort_field = 'numeric_sort_field';
+    let sort_field = 'numeric_sort_field';  // Default to numeric sorting for Project ID
     let sort_order = 'desc';
 
     // Column configuration
     let columns = {
-        'project_name': { label: 'Project ID', visible: true, sortable: true },
-        'district': { label: 'District', visible: true, sortable: true },
-        'region': { label: 'Region', visible: true, sortable: true },
-        'description': { label: 'Description', visible: true, sortable: true },
-        'project_status': { label: 'Status', visible: true, sortable: true },
-        'design_status': { label: 'Design', visible: true, sortable: true },
-        'planning_status': { label: 'Planning', visible: true, sortable: true },
-        'tender_status': { label: 'Tender', visible: true, sortable: true },
-        '3d_image': { label: '3D Image', visible: true, sortable: false },
-        'site_image': { label: 'Site Image', visible: true, sortable: false }
+        'project_name': { label: 'Project ID', visible: true, sortable: true, sort_field: 'numeric_sort_field' },
+        'district': { label: 'District', visible: true, sortable: true, sort_field: 'district' },
+        'region': { label: 'Region', visible: true, sortable: true, sort_field: 'region' },
+        'description': { label: 'Description', visible: true, sortable: true, sort_field: 'description' },
+        'project_status': { label: 'Status', visible: true, sortable: true, sort_field: 'project_status' },
+        'design_status': { label: 'Design', visible: true, sortable: true, sort_field: 'design_status' },
+        'planning_status': { label: 'Planning', visible: true, sortable: true, sort_field: 'planning_status' },
+        'tender_status': { label: 'Tender', visible: true, sortable: true, sort_field: 'tender_status' },
+        '3d_image': { label: '3D Image', visible: true, sortable: false, sort_field: null },
+        'site_image': { label: 'Site Image', visible: true, sortable: false, sort_field: null }
     };
 
     // Initialize column toggles
@@ -296,6 +373,20 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         if (img.startsWith('/files/') || img.startsWith('/private/files/')) return img;
         if (img.startsWith('/')) return img;
         return '/files/' + img;
+    }
+
+    function open_project_document(project_name) {
+        frappe.set_route('Form', 'Projects Collection', project_name);
+    }
+
+    function show_image_modal(img_src, project_name, image_type) {
+        $('#modal-image').attr('src', img_src);
+        $('#modal-info').text(`${project_name} - ${image_type}`);
+        $('#image-modal').fadeIn(300);
+    }
+
+    function close_image_modal() {
+        $('#image-modal').fadeOut(300);
     }
 
     function build_search_filters(query) {
@@ -348,11 +439,13 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         Object.keys(columns).forEach(key => {
             let column = columns[key];
             let sort_icon = '';
-            if (column.sortable && sort_field_param === key) {
+            // Check if this column is currently being sorted by comparing with the actual sort field
+            let current_sort_field = column.sort_field || key;
+            if (column.sortable && sort_field_param === current_sort_field) {
                 sort_icon = order === 'desc' ? ' ▼' : ' ▲';
             }
             let cursor = column.sortable ? 'cursor: pointer;' : '';
-            header_html += `<th class="col-${key}" data-field="${key}" style="${cursor}">${column.label}${sort_icon}</th>`;
+            header_html += `<th class="col-${key}" data-field="${key}" data-sort-field="${current_sort_field}" style="${cursor}">${column.label}${sort_icon}</th>`;
         });
         header_html += '</tr>';
 
@@ -368,11 +461,20 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     let value = row[key] || '';
                     let cell_content = '';
 
-                    if (key === '3d_image' || key === 'site_image') {
+                    if (key === 'project_name') {
+                        // Make project name clickable to open document
+                        cell_content = `<a href="#" class="project-link" data-project="${frappe.utils.escape_html(value)}">${frappe.utils.escape_html(value)}</a>`;
+                    } else if (key === '3d_image' || key === 'site_image') {
                         let img_src = get_image_src(value);
-                        cell_content = img_src ?
-                            `<img src="${img_src}" class="project-image" alt="${key}"/>` :
-                            '<span class="no-image">No Image</span>';
+                        if (img_src) {
+                            let image_type = key === '3d_image' ? '3D Image' : 'Site Image';
+                            cell_content = `<img src="${img_src}" class="project-image image-clickable"
+                                          alt="${key}" data-full-src="${img_src}"
+                                          data-project="${frappe.utils.escape_html(row.project_name || row.name)}"
+                                          data-type="${image_type}"/>`;
+                        } else {
+                            cell_content = '<span class="no-image">No Image</span>';
+                        }
                     } else if (key.includes('status')) {
                         cell_content = value ? `<span class="status-badge">${frappe.utils.escape_html(value)}</span>` : '-';
                     } else {
@@ -393,16 +495,32 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         // Add click events for sortable columns
         $('.modern-table th[data-field]').off('click').on('click', function() {
             let field = $(this).data('field');
+            let actual_sort_field = $(this).data('sort-field');
             if (columns[field].sortable) {
-                if (sort_field === field) {
+                if (sort_field === actual_sort_field) {
                     sort_order = (sort_order === 'desc') ? 'asc' : 'desc';
                 } else {
-                    sort_field = field;
+                    sort_field = actual_sort_field;
                     sort_order = 'desc';
                 }
                 current_page = 1;
                 fetch_and_render(last_query, current_page, sort_field, sort_order);
             }
+        });
+
+        // Add click events for project links
+        $('.project-link').off('click').on('click', function(e) {
+            e.preventDefault();
+            let project_name = $(this).data('project');
+            open_project_document(project_name);
+        });
+
+        // Add click events for images
+        $('.image-clickable').off('click').on('click', function() {
+            let img_src = $(this).data('full-src');
+            let project_name = $(this).data('project');
+            let image_type = $(this).data('type');
+            show_image_modal(img_src, project_name, image_type);
         });
     }
 
@@ -513,6 +631,24 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         if (e.which === 13) {
             clearTimeout(search_timeout);
             $('#search-btn').click();
+        }
+    });
+
+    // Image modal event handlers
+    $('.image-modal-close').click(function() {
+        close_image_modal();
+    });
+
+    $('#image-modal').click(function(e) {
+        if (e.target === this) {
+            close_image_modal();
+        }
+    });
+
+    // Keyboard events
+    $(document).keydown(function(e) {
+        if (e.key === 'Escape') {
+            close_image_modal();
         }
     });
 

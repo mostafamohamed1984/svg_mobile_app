@@ -1078,7 +1078,8 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     });
 
     $('#export-pdf').click(function() {
-        export_to_pdf();
+        // Test simple export first
+        test_pdf_export();
     });
 
     $('#advanced-search-toggle').click(function() {

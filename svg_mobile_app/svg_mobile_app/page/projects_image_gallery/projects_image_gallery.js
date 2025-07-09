@@ -314,6 +314,21 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 border-radius: 6px;
                 min-width: 200px;
             }
+            .range-inputs {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex: 1;
+            }
+            .range-inputs input {
+                flex: 1;
+                min-width: 80px;
+            }
+            .range-separator {
+                color: #7f8c8d;
+                font-weight: 500;
+                white-space: nowrap;
+            }
             .remove-criteria {
                 background: #e74c3c;
                 color: white;
@@ -639,13 +654,49 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <option value="!=">Not Equals</option>
                     <option value=">">Greater Than</option>
                     <option value="<">Less Than</option>
+                    <option value="between">Between</option>
                 </select>
-                <input type="text" class="value-input" placeholder="Enter search value...">
+                <div class="value-container">
+                    <input type="text" class="value-input" placeholder="Enter search value...">
+                </div>
                 <button class="remove-criteria" data-criteria-id="${criteria_id}">×</button>
             </div>
         `;
 
         $('#search-criteria-container').append(criteria_html);
+
+        // Add event listener for operator change
+        $(`[data-id="${criteria_id}"] .operator-select`).change(function() {
+            update_value_inputs(criteria_id, $(this).val());
+        });
+    }
+
+    function update_value_inputs(criteria_id, operator) {
+        let container = $(`[data-id="${criteria_id}"] .value-container`);
+
+        if (operator === 'between') {
+            container.html(`
+                <div class="range-inputs">
+                    <input type="number" class="value-input-min" placeholder="Min value">
+                    <span class="range-separator">to</span>
+                    <input type="number" class="value-input-max" placeholder="Max value">
+                </div>
+            `);
+        } else {
+            let inputType = 'text';
+            let placeholder = 'Enter search value...';
+
+            // Use number input for numerical operators
+            if (operator === '>' || operator === '<' || operator === '=' || operator === '!=') {
+                let field = $(`[data-id="${criteria_id}"] .field-select`).val();
+                if (field && (field.includes('area') || field.includes('cost') || field.includes('no_of'))) {
+                    inputType = 'number';
+                    placeholder = 'Enter number...';
+                }
+            }
+
+            container.html(`<input type="${inputType}" class="value-input" placeholder="${placeholder}">`);
+        }
     }
 
     function remove_search_criteria(criteria_id) {
@@ -658,13 +709,33 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         $('.search-criteria').each(function() {
             let field = $(this).find('.field-select').val();
             let operator = $(this).find('.operator-select').val();
-            let value = $(this).find('.value-input').val().trim();
 
-            if (field && value) {
-                if (operator === 'like') {
-                    criteria.push([field, 'like', `%${value}%`]);
+            if (field) {
+                if (operator === 'between') {
+                    let minValue = $(this).find('.value-input-min').val().trim();
+                    let maxValue = $(this).find('.value-input-max').val().trim();
+
+                    if (minValue && maxValue) {
+                        // Add both min and max conditions for between
+                        criteria.push([field, '>=', minValue]);
+                        criteria.push([field, '<=', maxValue]);
+                    } else if (minValue) {
+                        // Only min value provided
+                        criteria.push([field, '>=', minValue]);
+                    } else if (maxValue) {
+                        // Only max value provided
+                        criteria.push([field, '<=', maxValue]);
+                    }
                 } else {
-                    criteria.push([field, operator, value]);
+                    let value = $(this).find('.value-input').val().trim();
+
+                    if (value) {
+                        if (operator === 'like') {
+                            criteria.push([field, 'like', `%${value}%`]);
+                        } else {
+                            criteria.push([field, operator, value]);
+                        }
+                    }
                 }
             }
         });

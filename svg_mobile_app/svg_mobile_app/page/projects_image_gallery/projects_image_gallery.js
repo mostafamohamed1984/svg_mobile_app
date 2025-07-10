@@ -329,6 +329,20 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 font-weight: 500;
                 white-space: nowrap;
             }
+            .multiple-values-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            .multiple-values-container .value-input {
+                margin-bottom: 4px;
+            }
+            .help-text {
+                font-size: 11px;
+                color: #666;
+                margin-top: 4px;
+                font-style: italic;
+            }
             .remove-criteria {
                 background: #e74c3c;
                 color: white;
@@ -402,7 +416,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <button id="clear-search" class="btn-modern btn-secondary-modern">Clear</button>
                     <button id="advanced-search-toggle" class="btn-modern btn-secondary-modern">+ Advanced</button>
                     <button id="toggle-columns" class="btn-modern btn-secondary-modern">Columns</button>
-                    <button id="export-pdf" class="btn-modern btn-primary-modern">📄 Export PDF</button>
+                    <button id="export-pdf" class="btn-modern btn-primary-modern">📄 Export PDF (Limited)</button>
                 </div>
             </div>
 
@@ -501,11 +515,13 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         let main_columns = ['project_name', 'district', 'region', 'description', 'project_status',
                            'design_status', 'planning_status', 'tender_status', '3d_image', 'site_image'];
 
-        let engineering_columns = ['villa_dimensions', 'plot_no', 'basement', 'ground_floor', 'first_floor',
-                                 'second_floor', 'roof', 'total_villa_area_sqm', 'total_villa_area_sqft',
-                                 'estimate_cost_230_aedsqft', 'bed_room', 'majlis', 'family_living',
-                                 'dinning', 'bathroom', 'kitchen', 'laundry', 'maid_room', 'gurad_room',
-                                 'store', 'shops', 'no_of_office', 'car_parking', 'no_of_labour', 'no_of_studio'];
+        let secondary_columns = ['villa_dimensions', 'plot_no', 'basement', 'ground_floor', 'first_floor',
+                               'second_floor', 'roof', 'total_villa_area_sqm', 'total_villa_area_sqft',
+                               'estimate_cost_230_aedsqft'];
+
+        let engineering_columns = ['bed_room', 'majlis', 'family_living', 'dinning', 'bathroom', 'kitchen', 
+                                 'laundry', 'maid_room', 'gurad_room', 'store', 'shops', 'no_of_office', 
+                                 'car_parking', 'no_of_labour', 'no_of_studio'];
 
         let toggles_html = `
             <div class="column-section">
@@ -514,6 +530,26 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
         `;
 
         main_columns.forEach(key => {
+            if (columns[key]) {
+                let column = columns[key];
+                toggles_html += `
+                    <label class="column-toggle">
+                        <input type="checkbox" data-column="${key}" ${column.visible ? 'checked' : ''}>
+                        <span>${column.label}</span>
+                    </label>
+                `;
+            }
+        });
+
+        toggles_html += `
+                </div>
+            </div>
+            <div class="column-section">
+                <h6>Secondary Columns</h6>
+                <div class="column-toggles">
+        `;
+
+        secondary_columns.forEach(key => {
             if (columns[key]) {
                 let column = columns[key];
                 toggles_html += `
@@ -597,70 +633,83 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     }
 
     function export_to_pdf() {
-        // Show loading message
-        frappe.show_alert({
-            message: 'Generating PDF export...',
-            indicator: 'blue'
-        });
+        // Show export options dialog
+        let export_dialog = new frappe.ui.Dialog({
+            title: 'Export Projects to PDF',
+            fields: [
+                {
+                    fieldname: 'export_limit',
+                    label: 'Number of Projects to Export',
+                    fieldtype: 'Select',
+                    options: [
+                        { label: 'Current Page Only (20 projects)', value: '20' },
+                        { label: 'Small Export (100 projects)', value: '100' },
+                        { label: 'Medium Export (200 projects)', value: '200' },
+                        { label: 'Large Export (500 projects)', value: '500' },
+                        { label: 'Maximum Export (1000 projects)', value: '1000' }
+                    ],
+                    default: '200',
+                    reqd: 1
+                },
+                {
+                    fieldname: 'warning_html',
+                    fieldtype: 'HTML',
+                    options: `<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                        <strong>⚠️ Important:</strong> Large exports may take longer to generate. 
+                        The system will export the most recent projects matching your current search filters.
+                    </div>`
+                }
+            ],
+            primary_action_label: 'Export PDF',
+            primary_action(values) {
+                export_dialog.hide();
+                
+                // Show loading message
+                frappe.show_alert({
+                    message: `Generating PDF export (${values.export_limit} projects)...`,
+                    indicator: 'blue'
+                });
 
-        // Get current filters and visible columns for full export
-        let current_filters = build_search_filters(last_query);
-        let visible_columns = [];
-        Object.keys(columns).forEach(key => {
-            if (columns[key].visible) {
-                visible_columns.push(key);
+                // Get current filters and visible columns
+                let current_filters = build_search_filters(last_query);
+                let visible_columns = [];
+                Object.keys(columns).forEach(key => {
+                    if (columns[key].visible) {
+                        visible_columns.push(key);
+                    }
+                });
+
+                // Build URL with parameters including export limit
+                let params = new URLSearchParams({
+                    filters: JSON.stringify(current_filters),
+                    visible_columns: JSON.stringify(visible_columns),
+                    export_limit: values.export_limit
+                });
+
+                let url = '/api/method/svg_mobile_app.api.export_projects_gallery_pdf?' + params.toString();
+
+                // Create a temporary link and click it to trigger download
+                let link = document.createElement('a');
+                link.href = url;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                // Show success message after a short delay
+                setTimeout(function() {
+                    frappe.show_alert({
+                        message: 'PDF export initiated! Check your downloads.',
+                        indicator: 'green'
+                    });
+                }, 1000);
             }
         });
-
-        // Build URL with parameters for full export
-        let params = new URLSearchParams({
-            filters: JSON.stringify(current_filters),
-            visible_columns: JSON.stringify(visible_columns)
-        });
-
-        let url = '/api/method/svg_mobile_app.api.export_projects_gallery_pdf?' + params.toString();
-
-        // Create a temporary link and click it to trigger download
-        let link = document.createElement('a');
-        link.href = url;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Show success message after a short delay
-        setTimeout(function() {
-            frappe.show_alert({
-                message: 'PDF export initiated! Check your downloads.',
-                indicator: 'green'
-            });
-        }, 1000);
+        
+        export_dialog.show();
     }
 
-    function test_pdf_export() {
-        // Simple test function
-        frappe.show_alert({
-            message: 'Generating test PDF...',
-            indicator: 'blue'
-        });
 
-        let url = '/api/method/svg_mobile_app.api.test_pdf_export';
-
-        let link = document.createElement('a');
-        link.href = url;
-        link.download = 'test_export.pdf';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setTimeout(function() {
-            frappe.show_alert({
-                message: 'Test PDF export initiated!',
-                indicator: 'green'
-            });
-        }, 1000);
-    }
 
     // Advanced search functions
     function get_searchable_fields() {
@@ -722,6 +771,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <option value=">">Greater Than</option>
                     <option value="<">Less Than</option>
                     <option value="between">Between</option>
+                    <option value="in">Multiple Values (OR)</option>
                 </select>
                 <div class="value-container">
                     <input type="text" class="value-input" placeholder="Enter search value...">
@@ -747,6 +797,15 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     <input type="number" class="value-input-min" placeholder="Min value">
                     <span class="range-separator">to</span>
                     <input type="number" class="value-input-max" placeholder="Max value">
+                </div>
+            `);
+        } else if (operator === 'in') {
+            container.html(`
+                <div class="multiple-values-container">
+                    <input type="text" class="value-input" placeholder="Enter values separated by commas (e.g., Active, Pending, Completed)">
+                    <div class="help-text" style="font-size: 11px; color: #666; margin-top: 4px;">
+                        💡 Tip: Enter multiple values separated by commas to search for ANY of these values
+                    </div>
                 </div>
             `);
         } else {
@@ -792,6 +851,18 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                     } else if (maxValue) {
                         // Only max value provided
                         criteria.push([field, '<=', maxValue]);
+                    }
+                } else if (operator === 'in') {
+                    let value = $(this).find('.value-input').val().trim();
+                    
+                    if (value) {
+                        // Split by comma and clean up values
+                        let values = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
+                        
+                        if (values.length > 0) {
+                            // Use 'in' operator for multiple values
+                            criteria.push([field, 'in', values]);
+                        }
                     }
                 } else {
                     let value = $(this).find('.value-input').val().trim();
@@ -1078,8 +1149,7 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
     });
 
     $('#export-pdf').click(function() {
-        // Test simple export first
-        test_pdf_export();
+        export_to_pdf();
     });
 
     $('#advanced-search-toggle').click(function() {

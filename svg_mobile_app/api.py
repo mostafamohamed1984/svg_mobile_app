@@ -1038,13 +1038,24 @@ def test_pdf_export():
 
 
 @frappe.whitelist()
-def export_projects_gallery_pdf(filters=None, visible_columns=None):
+def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit=None):
     """Export Projects Gallery data to PDF with current filters and visible columns"""
     try:
         import json
         import os
         from frappe.utils.pdf import get_pdf
         from frappe.utils import now_datetime, get_datetime
+
+        # Parse export limit (default to 200 to prevent memory issues)
+        if export_limit:
+            try:
+                export_limit = int(export_limit)
+                # Cap at 1000 to prevent server overload
+                export_limit = min(export_limit, 1000)
+            except:
+                export_limit = 200
+        else:
+            export_limit = 200
 
         # Parse filters if provided
         if filters:
@@ -1077,23 +1088,23 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None):
                      'laundry', 'maid_room', 'gurad_room', 'store', 'shops', 'no_of_office',
                      'car_parking', 'no_of_labour', 'no_of_studio']
 
-        # Fetch projects data
+        # Fetch projects data with proper limit
         try:
             projects = frappe.get_list(
                 'Projects Collection',
                 fields=all_fields,
                 filters=filters if filters else None,
                 order_by='numeric_sort_field desc',
-                limit_page_length=None  # Get all matching records
+                limit_page_length=export_limit  # Use safe limit instead of None
             )
         except Exception as filter_error:
-            # If filters cause issues, try without filters
+            # If filters cause issues, try without filters with smaller limit
             frappe.log_error(f"Filter error: {str(filter_error)}", "PDF Export Filter Error")
             projects = frappe.get_list(
                 'Projects Collection',
                 fields=all_fields,
                 order_by='numeric_sort_field desc',
-                limit_page_length=100  # Limit to 100 records if no filters work
+                limit_page_length=100  # Smaller fallback limit
             )
 
         # Column labels mapping
@@ -1142,6 +1153,7 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None):
             'visible_columns': visible_columns,
             'column_labels': column_labels,
             'total_projects': len(projects),
+            'export_limit': export_limit,
             'export_date': current_time.strftime('%Y-%m-%d'),
             'export_time': current_time.strftime('%H:%M:%S'),
             'user': frappe.session.user
@@ -1171,7 +1183,7 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None):
     </div>
     <div class="export-info">
         <div><strong>Date:</strong> {context['export_date']} <strong>Time:</strong> {context['export_time']}</div>
-        <div><strong>User:</strong> {context['user']} <strong>Projects:</strong> {context['total_projects']}</div>
+        <div><strong>User:</strong> {context['user']} <strong>Projects:</strong> {context['total_projects']} (Limited to {context['export_limit']})</div>
     </div>
     <table class="projects-table">
         <thead>

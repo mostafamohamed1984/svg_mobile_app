@@ -72,6 +72,12 @@ def get_columns():
             "fieldtype": "Link",
             "options": "Leave Type",
             "width": 120
+        },
+        {
+            "label": _("Attendance Status"),
+            "fieldname": "attendance_status",
+            "fieldtype": "Data",
+            "width": 130
         }
     ]
 
@@ -114,7 +120,7 @@ def get_data(filters):
     # Build the WHERE clause based on filters
     conditions = get_conditions(filters)
     
-    # Execute the main SQL query (based on your provided query)
+    # Execute the main SQL query (enhanced to show all employees including those who didn't check in)
     query = """
         SELECT 
             e.name AS employee, 
@@ -123,7 +129,12 @@ def get_data(filters):
             e.company, 
             IFNULL(TIME(MIN(CASE WHEN c.log_type = 'IN' THEN c.time END)), '') AS first_checkin, 
             CASE WHEN l.name IS NOT NULL THEN 'Yes' ELSE 'No' END AS on_leave, 
-            IFNULL(l.leave_type, '') AS leave_type 
+            IFNULL(l.leave_type, '') AS leave_type,
+            CASE 
+                WHEN l.name IS NOT NULL THEN 'On Leave'
+                WHEN c.employee IS NOT NULL THEN 'Present'
+                ELSE 'Absent'
+            END AS attendance_status
         FROM `tabEmployee` e 
         LEFT JOIN `tabEmployee Checkin` c ON e.name = c.employee AND DATE(c.time) = %(date)s
         LEFT JOIN `tabLeave Application` l ON e.name = l.employee 
@@ -131,7 +142,13 @@ def get_data(filters):
             AND %(date)s BETWEEN l.from_date AND l.to_date 
         WHERE e.status = 'Active' {conditions}
         GROUP BY e.name, e.employee_name, e.department, e.company, l.name, l.leave_type 
-        ORDER BY e.name
+        ORDER BY 
+            CASE 
+                WHEN l.name IS NOT NULL THEN 1  -- On Leave first
+                WHEN c.employee IS NOT NULL THEN 2  -- Present second  
+                ELSE 3  -- Absent last
+            END,
+            e.name
     """.format(conditions=conditions)
     
     # Execute the query with parameters
@@ -176,7 +193,7 @@ def get_report_summary(filters):
     summary_query = """
         SELECT 
             COUNT(DISTINCT e.name) as total_employees,
-            COUNT(DISTINCT CASE WHEN c.employee IS NOT NULL THEN e.name END) as employees_present,
+            COUNT(DISTINCT CASE WHEN c.employee IS NOT NULL AND l.employee IS NULL THEN e.name END) as employees_present,
             COUNT(DISTINCT CASE WHEN l.employee IS NOT NULL THEN e.name END) as employees_on_leave,
             COUNT(DISTINCT CASE WHEN c.employee IS NULL AND l.employee IS NULL THEN e.name END) as employees_absent
         FROM `tabEmployee` e 

@@ -37,6 +37,17 @@ frappe.query_reports["Daily Employee Attendance Report"] = {
             }
         }
         
+        // Color coding for attendance status column
+        if (column.fieldname == "attendance_status") {
+            if (value == "Present") {
+                value = `<span style="color: green; font-weight: bold;">✓ ${value}</span>`;
+            } else if (value == "On Leave") {
+                value = `<span style="color: orange; font-weight: bold;">🏖️ ${value}</span>`;
+            } else if (value == "Absent") {
+                value = `<span style="color: red; font-weight: bold;">✗ ${value}</span>`;
+            }
+        }
+        
         // Color coding for first check-in time
         if (column.fieldname == "first_checkin" && value) {
             const time = value.split(":");

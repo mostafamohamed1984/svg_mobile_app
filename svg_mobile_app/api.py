@@ -1038,7 +1038,7 @@ def test_pdf_export():
 
 
 @frappe.whitelist()
-def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit=None):
+def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit=None, current_page=None, page_length=None, sort_field=None, sort_order=None):
     """Export Projects Gallery data to PDF with current filters and visible columns"""
     try:
         import json
@@ -1056,6 +1056,29 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit
                 export_limit = 200
         else:
             export_limit = 200
+
+        # Parse pagination parameters
+        if current_page:
+            try:
+                current_page = int(current_page)
+            except:
+                current_page = 1
+        else:
+            current_page = 1
+
+        if page_length:
+            try:
+                page_length = int(page_length)
+            except:
+                page_length = 20
+        else:
+            page_length = 20
+
+        # Parse sorting parameters
+        if not sort_field:
+            sort_field = 'numeric_sort_field'
+        if not sort_order:
+            sort_order = 'desc'
 
         # Parse filters if provided
         if filters:
@@ -1088,22 +1111,35 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit
                      'laundry', 'maid_room', 'gurad_room', 'store', 'shops', 'no_of_office',
                      'car_parking', 'no_of_labour', 'no_of_studio']
 
-        # Fetch projects data with proper limit
+        # Fetch projects data with proper pagination
         try:
-            projects = frappe.get_list(
-                'Projects Collection',
-                fields=all_fields,
-                filters=filters if filters else None,
-                order_by='numeric_sort_field desc',
-                limit_page_length=export_limit  # Use safe limit instead of None
-            )
+            # For current page export (20 items), use pagination
+            if export_limit == 20:
+                limit_start = (current_page - 1) * page_length
+                projects = frappe.get_list(
+                    'Projects Collection',
+                    fields=all_fields,
+                    filters=filters if filters else None,
+                    order_by=f'{sort_field} {sort_order}',
+                    limit_start=limit_start,
+                    limit_page_length=page_length
+                )
+            else:
+                # For larger exports, get from the beginning with export limit
+                projects = frappe.get_list(
+                    'Projects Collection',
+                    fields=all_fields,
+                    filters=filters if filters else None,
+                    order_by=f'{sort_field} {sort_order}',
+                    limit_page_length=export_limit
+                )
         except Exception as filter_error:
             # If filters cause issues, try without filters with smaller limit
             frappe.log_error(f"Filter error: {str(filter_error)}", "PDF Export Filter Error")
             projects = frappe.get_list(
                 'Projects Collection',
                 fields=all_fields,
-                order_by='numeric_sort_field desc',
+                order_by=f'{sort_field} {sort_order}',
                 limit_page_length=100  # Smaller fallback limit
             )
 
@@ -1154,6 +1190,9 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit
             'column_labels': column_labels,
             'total_projects': len(projects),
             'export_limit': export_limit,
+            'current_page': current_page,
+            'page_length': page_length,
+            'is_current_page_export': export_limit == 20,
             'export_date': current_time.strftime('%Y-%m-%d'),
             'export_time': current_time.strftime('%H:%M:%S'),
             'user': frappe.session.user
@@ -1183,7 +1222,7 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit
     </div>
     <div class="export-info">
         <div><strong>Date:</strong> {context['export_date']} <strong>Time:</strong> {context['export_time']}</div>
-        <div><strong>User:</strong> {context['user']} <strong>Projects:</strong> {context['total_projects']} (Limited to {context['export_limit']})</div>
+        <div><strong>User:</strong> {context['user']} <strong>Projects:</strong> {context['total_projects']} {'(Page ' + str(context['current_page']) + ')' if context['is_current_page_export'] else '(Limited to ' + str(context['export_limit']) + ')'}</div>
     </div>
     <table class="projects-table">
         <thead>

@@ -683,7 +683,11 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                 let params = new URLSearchParams({
                     filters: JSON.stringify(current_filters),
                     visible_columns: JSON.stringify(visible_columns),
-                    export_limit: values.export_limit
+                    export_limit: values.export_limit,
+                    current_page: values.export_limit === '20' ? current_page : 1,
+                    page_length: values.export_limit === '20' ? page_length : values.export_limit,
+                    sort_field: sort_field,
+                    sort_order: sort_order
                 });
 
                 let url = '/api/method/svg_mobile_app.api.export_projects_gallery_pdf?' + params.toString();

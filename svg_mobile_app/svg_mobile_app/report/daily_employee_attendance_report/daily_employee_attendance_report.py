@@ -184,6 +184,14 @@ def get_report_summary(filters):
     if not filters:
         return []
     
+    # Parse filters if it's a JSON string
+    if isinstance(filters, str):
+        try:
+            import json
+            filters = json.loads(filters)
+        except:
+            filters = {}
+    
     date = filters.get("date") or today()
     company_filter = ""
     if filters.get("company"):

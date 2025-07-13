@@ -11,14 +11,19 @@ def get_leave_gantt_data(filters=None):
     else:
         filters = {}
 
-    # Get date range - default to current year
+    # Get date range from filters
     from_date = filters.get('from_date')
     to_date = filters.get('to_date')
+    year = filters.get('year')
 
+    # If year is provided, use it to set date range
+    if year and not (from_date and to_date):
+        from_date = f"{year}-01-01"
+        to_date = f"{year}-12-31"
+
+    # If no dates provided at all, don't set defaults - let user choose
     if not from_date or not to_date:
-        current_year = getdate().year
-        from_date = f"{current_year}-01-01"
-        to_date = f"{current_year}-12-31"
+        frappe.throw(_("Please select a year or date range to view leave applications"))
 
     # Validate date range
     if getdate(from_date) > getdate(to_date):
@@ -111,17 +116,7 @@ def get_leave_gantt_data(filters=None):
     """.format(employee_where)
 
     employees = frappe.db.sql(employees_query, tuple(employee_params), as_dict=True)
-
-    # Debug employees
-    print(f"DEBUG: Found {len(employees)} employees")
-    if employees:
-        print(f"DEBUG: First employee ID: {employees[0].get('name')}")
-        print(f"DEBUG: First employee name: {employees[0].get('employee_name')}")
     
-    # Debug: Check total leave applications in system
-    total_leaves = frappe.db.count('Leave Application', {'docstatus': ['!=', 2]})
-    frappe.log_error(f"Total leave applications in system: {total_leaves}", "Leave Gantt Debug")
-
     # Get leave applications for the date range
     leave_query = """
         SELECT
@@ -151,13 +146,6 @@ def get_leave_gantt_data(filters=None):
     leave_query_params = [from_date, to_date, from_date, to_date, from_date, to_date] + leave_params
 
     leaves = frappe.db.sql(leave_query, tuple(leave_query_params), as_dict=True)
-
-    # Simple debug logging
-    print(f"DEBUG: Found {len(leaves)} leave applications")
-    print(f"DEBUG: Date range: {from_date} to {to_date}")
-    if leaves:
-        print(f"DEBUG: First leave employee: {leaves[0].get('employee')}")
-        print(f"DEBUG: First leave employee_name: {leaves[0].get('employee_name')}")
     
     # Group employees by company
     companies_data = []

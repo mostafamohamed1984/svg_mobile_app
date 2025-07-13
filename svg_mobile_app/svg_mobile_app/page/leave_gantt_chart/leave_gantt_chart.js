@@ -148,7 +148,7 @@ class LeaveGanttChart {
             fieldtype: 'Select',
             fieldname: 'year',
             options: this.get_year_options(),
-            default: current_year.toString(),
+            default: '2024',  // Default to 2024 to show existing leave data
             change: function() { self.on_year_change(); }
         });
 

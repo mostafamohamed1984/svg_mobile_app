@@ -1,49 +1,110 @@
 frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
-    var page = frappe.ui.make_app_page({
-        parent: wrapper,
-        title: 'Leave Gantt Chart',
-        single_column: true
-    });
+    try {
+        var page = frappe.ui.make_app_page({
+            parent: wrapper,
+            title: 'Leave Gantt Chart',
+            single_column: true
+        });
 
-    // Add CSS class for styling
-    $(wrapper).addClass('leave-gantt-chart-wrapper');
+        // Add CSS class for styling
+        $(wrapper).addClass('leave-gantt-chart-wrapper');
 
-    // Initialize the Gantt chart
-    frappe.leave_gantt_chart = new LeaveGanttChart(page);
+        // Show loading message initially
+        page.main.html('<div style="text-align: center; padding: 50px;"><h4>Loading Leave Gantt Chart...</h4><p>Please wait while we initialize the chart.</p></div>');
+
+        // Initialize the Gantt chart with error handling
+        setTimeout(() => {
+            try {
+                frappe.leave_gantt_chart = new LeaveGanttChart(page);
+            } catch (e) {
+                console.error('Error initializing Leave Gantt Chart:', e);
+                page.main.html(`
+                    <div style="text-align: center; padding: 50px; color: #dc3545;">
+                        <h4>Error Loading Gantt Chart</h4>
+                        <p>There was an error initializing the chart: ${e.message}</p>
+                        <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
+                    </div>
+                `);
+            }
+        }, 100);
+
+    } catch (e) {
+        console.error('Error in page load:', e);
+        $(wrapper).html(`
+            <div style="text-align: center; padding: 50px; color: #dc3545;">
+                <h4>Page Load Error</h4>
+                <p>Failed to load the page: ${e.message}</p>
+                <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
+            </div>
+        `);
+    }
 };
 
 frappe.pages['leave-gantt-chart'].on_page_show = function() {
-    // Refresh chart when page is shown
-    if(frappe.leave_gantt_chart) {
-        frappe.leave_gantt_chart.refresh();
+    try {
+        // Refresh chart when page is shown
+        if(frappe.leave_gantt_chart && frappe.leave_gantt_chart.refresh) {
+            frappe.leave_gantt_chart.refresh();
+        }
+    } catch (e) {
+        console.error('Error on page show:', e);
     }
 };
 
 class LeaveGanttChart {
     constructor(page) {
-        this.page = page;
-        this.gantt = null;
-        this.current_filters = {};
-        this.make();
-        this.setup_filters();
-        this.load_dhtmlx_gantt();
+        try {
+            this.page = page;
+            this.gantt = null;
+            this.current_filters = {};
+            this.loading = false;
+
+            console.log('Initializing Leave Gantt Chart...');
+
+            // Initialize step by step with error handling
+            this.make();
+            this.setup_filters();
+
+            // Load Gantt library after a short delay
+            setTimeout(() => {
+                this.load_dhtmlx_gantt();
+            }, 500);
+
+        } catch (e) {
+            console.error('Error in LeaveGanttChart constructor:', e);
+            this.show_error('Failed to initialize Gantt chart: ' + e.message);
+        }
     }
 
     make() {
-        // Create main container
-        this.body = $('<div class="leave-gantt-container"></div>').appendTo(this.page.main);
-        
-        // Create filter section
-        this.filter_section = $('<div class="gantt-filters-section"></div>').appendTo(this.body);
-        
-        // Create legend section
-        this.legend_section = $('<div class="gantt-legend-section"></div>').appendTo(this.body);
-        
-        // Create Gantt chart container
-        this.gantt_container = $('<div id="gantt_here" class="gantt-chart-container"></div>').appendTo(this.body);
-        
-        // Set initial height
-        this.gantt_container.css('height', '600px');
+        try {
+            console.log('Creating Gantt chart containers...');
+
+            // Clear any existing content
+            this.page.main.empty();
+
+            // Create main container
+            this.body = $('<div class="leave-gantt-container"></div>').appendTo(this.page.main);
+
+            // Create filter section
+            this.filter_section = $('<div class="gantt-filters-section"></div>').appendTo(this.body);
+
+            // Create legend section
+            this.legend_section = $('<div class="gantt-legend-section"></div>').appendTo(this.body);
+
+            // Create Gantt chart container
+            this.gantt_container = $('<div id="gantt_here" class="gantt-chart-container"></div>').appendTo(this.body);
+
+            // Set initial height and show loading
+            this.gantt_container.css('height', '600px');
+            this.gantt_container.html('<div style="text-align: center; padding: 100px;"><h4>Initializing Gantt Chart...</h4></div>');
+
+            console.log('Containers created successfully');
+
+        } catch (e) {
+            console.error('Error in make():', e);
+            throw e;
+        }
     }
 
     setup_filters() {
@@ -235,30 +296,71 @@ class LeaveGanttChart {
     }
 
     load_dhtmlx_gantt() {
-        // Load DHTMLX Gantt CSS and JS
-        if (!window.gantt) {
-            // Load CSS
-            const css_link = document.createElement('link');
-            css_link.rel = 'stylesheet';
-            css_link.href = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css';
-            document.head.appendChild(css_link);
+        try {
+            console.log('Loading DHTMLX Gantt library...');
 
-            // Load JS
-            const script = document.createElement('script');
-            script.src = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js';
-            script.onload = () => {
+            // Check if already loading
+            if (this.loading) {
+                console.log('Already loading, skipping...');
+                return;
+            }
+            this.loading = true;
+
+            // Load DHTMLX Gantt CSS and JS
+            if (!window.gantt) {
+                console.log('Gantt library not found, loading from CDN...');
+
+                // Load CSS first
+                const css_link = document.createElement('link');
+                css_link.rel = 'stylesheet';
+                css_link.href = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css';
+                document.head.appendChild(css_link);
+
+                // Load JS with timeout
+                const script = document.createElement('script');
+                script.src = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js';
+
+                // Set timeout for loading
+                const timeout = setTimeout(() => {
+                    this.loading = false;
+                    this.show_error('Timeout loading DHTMLX Gantt library. Please check your internet connection and try again.');
+                }, 10000); // 10 second timeout
+
+                script.onload = () => {
+                    clearTimeout(timeout);
+                    this.loading = false;
+                    console.log('Gantt library loaded successfully');
+
+                    setTimeout(() => {
+                        try {
+                            this.setup_error_handling();
+                            this.init_gantt();
+                            this.load_data();
+                        } catch (e) {
+                            console.error('Error after library load:', e);
+                            this.show_error('Error initializing Gantt chart: ' + e.message);
+                        }
+                    }, 100);
+                };
+
+                script.onerror = () => {
+                    clearTimeout(timeout);
+                    this.loading = false;
+                    this.show_error('Failed to load DHTMLX Gantt library. Please check your internet connection.');
+                };
+
+                document.head.appendChild(script);
+            } else {
+                console.log('Gantt library already available');
+                this.loading = false;
                 this.setup_error_handling();
                 this.init_gantt();
                 this.load_data();
-            };
-            script.onerror = () => {
-                this.show_error('Failed to load DHTMLX Gantt library. Please check your internet connection.');
-            };
-            document.head.appendChild(script);
-        } else {
-            this.setup_error_handling();
-            this.init_gantt();
-            this.load_data();
+            }
+        } catch (e) {
+            this.loading = false;
+            console.error('Error in load_dhtmlx_gantt:', e);
+            this.show_error('Error loading Gantt library: ' + e.message);
         }
     }
 
@@ -287,13 +389,20 @@ class LeaveGanttChart {
     }
 
     init_gantt() {
-        // Configure Gantt
-        gantt.config.date_format = "%Y-%m-%d";
-        gantt.config.scale_unit = "month";
-        gantt.config.date_scale = "%M %Y";
-        gantt.config.subscales = [
-            {unit: "day", step: 1, date: "%d"}
-        ];
+        try {
+            console.log('Initializing Gantt configuration...');
+
+            if (!window.gantt) {
+                throw new Error('DHTMLX Gantt library not available');
+            }
+
+            // Basic Gantt configuration
+            gantt.config.date_format = "%Y-%m-%d";
+            gantt.config.scale_unit = "month";
+            gantt.config.date_scale = "%M %Y";
+            gantt.config.subscales = [
+                {unit: "day", step: 1, date: "%d"}
+            ];
 
         // Responsive column configuration
         const screen_width = window.innerWidth;
@@ -389,11 +498,20 @@ class LeaveGanttChart {
             return true;
         });
 
-        // Initialize Gantt
-        gantt.init("gantt_here");
+            // Initialize Gantt
+            console.log('Initializing Gantt instance...');
+            gantt.init("gantt_here");
 
-        // Set up templates
-        this.setup_gantt_templates();
+            // Set up templates
+            this.setup_gantt_templates();
+
+            console.log('Gantt initialization completed successfully');
+
+        } catch (e) {
+            console.error('Error in init_gantt:', e);
+            this.show_error('Error initializing Gantt chart: ' + e.message);
+            throw e;
+        }
     }
 
     setup_gantt_templates() {
@@ -468,8 +586,18 @@ class LeaveGanttChart {
     }
 
     refresh() {
-        this.current_filters = this.get_current_filters();
-        this.load_data();
+        try {
+            console.log('Refreshing Gantt chart...');
+            this.current_filters = this.get_current_filters();
+
+            // Clear any existing summary
+            $('.gantt-summary').remove();
+
+            this.load_data();
+        } catch (e) {
+            console.error('Error in refresh:', e);
+            this.show_error('Error refreshing chart: ' + e.message);
+        }
     }
 
     get_current_filters() {
@@ -485,29 +613,43 @@ class LeaveGanttChart {
     }
 
     load_data() {
-        // Show loading indicator
-        this.show_loading();
+        try {
+            console.log('Loading Gantt data...');
 
-        frappe.call({
-            method: 'svg_mobile_app.svg_mobile_app.page.leave_gantt_chart.leave_gantt_chart.get_leave_gantt_data',
-            args: {
-                filters: this.current_filters
-            },
-            callback: (r) => {
-                this.hide_loading();
-                if (r.message) {
-                    this.render_gantt(r.message);
-                    this.render_legend(r.message.status_legend);
-                    this.show_summary(r.message.summary);
-                } else {
-                    this.show_error('No data received from server');
+            // Show loading indicator
+            this.show_loading();
+
+            frappe.call({
+                method: 'svg_mobile_app.svg_mobile_app.page.leave_gantt_chart.leave_gantt_chart.get_leave_gantt_data',
+                args: {
+                    filters: this.current_filters
+                },
+                callback: (r) => {
+                    try {
+                        this.hide_loading();
+                        if (r.message) {
+                            console.log('Data received, rendering Gantt...');
+                            this.render_gantt(r.message);
+                            this.render_legend(r.message.status_legend);
+                            this.show_summary(r.message.summary);
+                        } else {
+                            this.show_error('No data received from server');
+                        }
+                    } catch (e) {
+                        console.error('Error in callback:', e);
+                        this.show_error('Error processing data: ' + e.message);
+                    }
+                },
+                error: (r) => {
+                    this.hide_loading();
+                    console.error('API Error:', r);
+                    this.show_error('Error loading data: ' + (r.message || 'Unknown server error'));
                 }
-            },
-            error: (r) => {
-                this.hide_loading();
-                this.show_error('Error loading data: ' + (r.message || 'Unknown error'));
-            }
-        });
+            });
+        } catch (e) {
+            console.error('Error in load_data:', e);
+            this.show_error('Error initiating data load: ' + e.message);
+        }
     }
 
     show_loading() {
@@ -524,11 +666,106 @@ class LeaveGanttChart {
                 <i class="fa fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
                 <h4>Error Loading Gantt Chart</h4>
                 <p>${message}</p>
-                <button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()">
-                    <i class="fa fa-refresh"></i> Retry
-                </button>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()" style="margin-right: 10px;">
+                        <i class="fa fa-refresh"></i> Retry
+                    </button>
+                    <button class="btn btn-secondary" onclick="frappe.leave_gantt_chart.show_simple_view()">
+                        <i class="fa fa-table"></i> Show Simple View
+                    </button>
+                </div>
             </div>
         `);
+    }
+
+    show_simple_view() {
+        // Fallback simple table view if Gantt fails
+        console.log('Showing simple table view as fallback...');
+
+        frappe.call({
+            method: 'svg_mobile_app.svg_mobile_app.page.leave_gantt_chart.leave_gantt_chart.get_leave_gantt_data',
+            args: {
+                filters: this.current_filters
+            },
+            callback: (r) => {
+                if (r.message) {
+                    this.render_simple_table(r.message);
+                } else {
+                    this.gantt_container.html('<div style="text-align: center; padding: 50px;">No data available</div>');
+                }
+            },
+            error: (r) => {
+                this.gantt_container.html('<div style="text-align: center; padding: 50px; color: #dc3545;">Error loading data</div>');
+            }
+        });
+    }
+
+    render_simple_table(data) {
+        let html = `
+            <div style="padding: 20px;">
+                <h4>Leave Applications - Simple View</h4>
+                <p>Gantt chart failed to load. Showing data in table format.</p>
+                <div style="overflow-x: auto;">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Employee</th>
+                                <th>Leave Type</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+
+        data.companies.forEach(company => {
+            company.employees.forEach(employee => {
+                const employee_leaves = data.leave_periods.filter(
+                    leave => leave.employee_id === employee.employee_id
+                );
+
+                if (employee_leaves.length === 0) {
+                    html += `
+                        <tr>
+                            <td>${company.name}</td>
+                            <td>${employee.employee_name}</td>
+                            <td colspan="5" style="text-align: center; color: #6c757d;">No leave applications</td>
+                        </tr>
+                    `;
+                } else {
+                    employee_leaves.forEach(leave => {
+                        html += `
+                            <tr>
+                                <td>${company.name}</td>
+                                <td>${employee.employee_name}</td>
+                                <td>${leave.leave_type}</td>
+                                <td>${leave.start_date}</td>
+                                <td>${leave.end_date}</td>
+                                <td>${leave.total_days}</td>
+                                <td><span style="color: ${leave.color}; font-weight: bold;">${leave.status}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+        });
+
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()">
+                        <i class="fa fa-refresh"></i> Try Gantt Chart Again
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.gantt_container.html(html);
     }
 
     show_summary(summary) {

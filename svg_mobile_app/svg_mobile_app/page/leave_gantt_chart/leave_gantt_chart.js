@@ -53,9 +53,6 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
 
 frappe.pages['leave-gantt-chart'].on_page_show = function() {
     try {
-        // TEMPORARILY DISABLED: Refresh on page show to prevent infinite loop
-        console.log('Page show event triggered, but refresh disabled to prevent loop');
-        /*
         // Only refresh if chart is already initialized and not currently loading
         if(frappe.leave_gantt_chart &&
            frappe.leave_gantt_chart.refresh &&
@@ -63,7 +60,6 @@ frappe.pages['leave-gantt-chart'].on_page_show = function() {
            !frappe.leave_gantt_chart.initializing) {
             frappe.leave_gantt_chart.refresh();
         }
-        */
     } catch (e) {
         console.error('Error on page show:', e);
     }
@@ -368,7 +364,17 @@ class LeaveGanttChart {
                         try {
                             self.setup_error_handling();
                             self.init_gantt();
-                            self.load_data();
+
+                            // Check if there's pending data to render
+                            if (self.pending_data) {
+                                console.log('Rendering pending data...');
+                                self.render_gantt(self.pending_data);
+                                self.render_legend(self.pending_data.status_legend);
+                                self.show_summary(self.pending_data.summary);
+                                self.pending_data = null;
+                            } else {
+                                self.load_data();
+                            }
                         } catch (e) {
                             console.error('Error after library load:', e);
                             self.show_error('Error initializing Gantt chart: ' + (e.message || 'Unknown error'));
@@ -388,7 +394,17 @@ class LeaveGanttChart {
                 this.loading = false;
                 this.setup_error_handling();
                 this.init_gantt();
-                this.load_data();
+
+                // Check if there's pending data to render
+                if (this.pending_data) {
+                    console.log('Rendering pending data...');
+                    this.render_gantt(this.pending_data);
+                    this.render_legend(this.pending_data.status_legend);
+                    this.show_summary(this.pending_data.summary);
+                    this.pending_data = null;
+                } else {
+                    this.load_data();
+                }
             }
         } catch (e) {
             this.loading = false;
@@ -837,6 +853,13 @@ class LeaveGanttChart {
     }
 
     render_gantt(data) {
+        // Check if Gantt library is loaded
+        if (!window.gantt) {
+            console.log('Gantt library not yet loaded, storing data for later rendering...');
+            this.pending_data = data;
+            return;
+        }
+
         // Store data for resize handling
         this.store_data(data);
 

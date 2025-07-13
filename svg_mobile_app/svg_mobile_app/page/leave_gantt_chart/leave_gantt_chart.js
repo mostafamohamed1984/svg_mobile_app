@@ -219,6 +219,11 @@ class LeaveGanttChart {
 
         // Add search functionality
         this.setup_search();
+
+        // Trigger year change to set proper date range on load
+        setTimeout(() => {
+            this.on_year_change();
+        }, 100);
     }
 
     get_year_options() {

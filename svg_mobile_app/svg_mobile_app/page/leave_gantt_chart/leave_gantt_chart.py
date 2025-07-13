@@ -6,30 +6,29 @@ import json
 @frappe.whitelist()
 def get_leave_gantt_data(filters=None):
     """Get leave application data formatted for Gantt chart display"""
-    try:
-        if filters:
-            filters = frappe.parse_json(filters)
-        else:
-            filters = {}
+    if filters:
+        filters = frappe.parse_json(filters)
+    else:
+        filters = {}
 
-        # Get date range - default to current year
-        from_date = filters.get('from_date')
-        to_date = filters.get('to_date')
+    # Get date range - default to current year
+    from_date = filters.get('from_date')
+    to_date = filters.get('to_date')
 
-        if not from_date or not to_date:
-            current_year = getdate().year
-            from_date = f"{current_year}-01-01"
-            to_date = f"{current_year}-12-31"
+    if not from_date or not to_date:
+        current_year = getdate().year
+        from_date = f"{current_year}-01-01"
+        to_date = f"{current_year}-12-31"
 
-        # Validate date range
-        if getdate(from_date) > getdate(to_date):
-            frappe.throw(_("From Date cannot be greater than To Date"))
+    # Validate date range
+    if getdate(from_date) > getdate(to_date):
+        frappe.throw(_("From Date cannot be greater than To Date"))
 
-        # Check for reasonable date range (max 2 years)
-        date_diff = (getdate(to_date) - getdate(from_date)).days
-        if date_diff > 730:  # 2 years
-            frappe.throw(_("Date range cannot exceed 2 years for performance reasons"))
-    
+    # Check for reasonable date range (max 2 years)
+    date_diff = (getdate(to_date) - getdate(from_date)).days
+    if date_diff > 730:  # 2 years
+        frappe.throw(_("Date range cannot exceed 2 years for performance reasons"))
+
     # Get filters
     company = filters.get('company')
     department = filters.get('department')
@@ -85,7 +84,7 @@ def get_leave_gantt_data(filters=None):
     leave_where = " AND ".join(leave_conditions) if leave_conditions else ""
     if leave_where:
         leave_where = " AND " + leave_where
-    
+
     # Get companies and their employees
     companies_query = """
         SELECT DISTINCT e.company
@@ -227,10 +226,6 @@ def get_leave_gantt_data(filters=None):
                 'date_range': f"{from_date} to {to_date}"
             }
         }
-
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Leave Gantt Chart Error")
-        frappe.throw(_("Error loading Gantt chart data: {0}").format(str(e)))
 
 @frappe.whitelist()
 def get_companies():

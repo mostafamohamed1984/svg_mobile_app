@@ -354,7 +354,7 @@ class LeaveGanttChart {
                             self.load_data();
                         } catch (e) {
                             console.error('Error after library load:', e);
-                            self.show_error('Error initializing Gantt chart: ' + e.message);
+                            self.show_error('Error initializing Gantt chart: ' + (e.message || 'Unknown error'));
                         }
                     }, 100);
                 };
@@ -376,7 +376,7 @@ class LeaveGanttChart {
         } catch (e) {
             this.loading = false;
             console.error('Error in load_dhtmlx_gantt:', e);
-            this.show_error('Error loading Gantt library: ' + e.message);
+            this.show_error('Error loading Gantt library: ' + (e.message || 'Unknown error'));
         }
     }
 
@@ -526,7 +526,7 @@ class LeaveGanttChart {
 
         } catch (e) {
             console.error('Error in init_gantt:', e);
-            this.show_error('Error initializing Gantt chart: ' + e.message);
+            this.show_error('Error initializing Gantt chart: ' + (e.message || 'Unknown error'));
             throw e;
         }
     }
@@ -613,7 +613,7 @@ class LeaveGanttChart {
             this.load_data();
         } catch (e) {
             console.error('Error in refresh:', e);
-            this.show_error('Error refreshing chart: ' + e.message);
+            this.show_error('Error refreshing chart: ' + (e.message || 'Unknown error'));
         }
     }
 
@@ -655,7 +655,7 @@ class LeaveGanttChart {
                         }
                     } catch (e) {
                         console.error('Error in callback:', e);
-                        self.show_error('Error processing data: ' + e.message);
+                        self.show_error('Error processing data: ' + (e.message || 'Unknown error'));
                     }
                 },
                 error: function(r) {
@@ -666,7 +666,7 @@ class LeaveGanttChart {
             });
         } catch (e) {
             console.error('Error in load_data:', e);
-            this.show_error('Error initiating data load: ' + e.message);
+            this.show_error('Error initiating data load: ' + (e.message || 'Unknown error'));
         }
     }
 

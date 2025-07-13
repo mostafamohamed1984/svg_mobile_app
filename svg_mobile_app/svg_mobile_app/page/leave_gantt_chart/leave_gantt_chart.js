@@ -534,11 +534,11 @@ class LeaveGanttChart {
         gantt.templates.tooltip_text = function(start, end, task) {
             try {
                 if (task.type === 'leave') {
-                    return `<b>${task.employee_name || 'Unknown Employee'}</b><br/>
-                            Leave Type: ${task.leave_type || 'Unknown'}<br/>
-                            Status: ${task.status || 'Unknown'}<br/>
-                            Duration: ${task.duration || 0} days<br/>
-                            ${task.description ? 'Reason: ' + task.description : ''}`;
+                    return '<b>' + (task.employee_name || 'Unknown Employee') + '</b><br/>' +
+                           'Leave Type: ' + (task.leave_type || 'Unknown') + '<br/>' +
+                           'Status: ' + (task.status || 'Unknown') + '<br/>' +
+                           'Duration: ' + (task.duration || 0) + ' days<br/>' +
+                           (task.description ? 'Reason: ' + task.description : '');
                 }
                 return task.text || 'No information';
             } catch (e) {

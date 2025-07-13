@@ -13,7 +13,7 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
         page.main.html('<div style="text-align: center; padding: 50px;"><h4>Loading Leave Gantt Chart...</h4><p>Please wait while we initialize the chart.</p></div>');
 
         // Initialize the Gantt chart with error handling
-        setTimeout(() => {
+        setTimeout(function() {
             try {
                 frappe.leave_gantt_chart = new LeaveGanttChart(page);
             } catch (e) {
@@ -64,8 +64,9 @@ class LeaveGanttChart {
             this.setup_filters();
 
             // Load Gantt library after a short delay
-            setTimeout(() => {
-                this.load_dhtmlx_gantt();
+            var self = this;
+            setTimeout(function() {
+                self.load_dhtmlx_gantt();
             }, 500);
 
         } catch (e) {
@@ -201,9 +202,9 @@ class LeaveGanttChart {
     }
 
     get_year_options() {
-        const current_year = new Date().getFullYear();
-        const years = [];
-        for (let i = current_year - 2; i <= current_year + 2; i++) {
+        var current_year = new Date().getFullYear();
+        var years = [];
+        for (var i = current_year - 2; i <= current_year + 2; i++) {
             years.push(i.toString());
         }
         return years.join('\n');
@@ -262,7 +263,7 @@ class LeaveGanttChart {
             if (task.type === 'employee' &&
                 task.text.toLowerCase().includes(search_term.toLowerCase())) {
                 // Highlight the row
-                const row = $(`.gantt_row[task_id="${task.id}"]`);
+                var row = $('.gantt_row[task_id="' + task.id + '"]');
                 row.addClass('search-highlight');
 
                 // Expand parent company
@@ -310,42 +311,43 @@ class LeaveGanttChart {
                 console.log('Gantt library not found, loading from CDN...');
 
                 // Load CSS first
-                const css_link = document.createElement('link');
+                var css_link = document.createElement('link');
                 css_link.rel = 'stylesheet';
                 css_link.href = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css';
                 document.head.appendChild(css_link);
 
                 // Load JS with timeout
-                const script = document.createElement('script');
+                var script = document.createElement('script');
                 script.src = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js';
 
                 // Set timeout for loading
-                const timeout = setTimeout(() => {
-                    this.loading = false;
-                    this.show_error('Timeout loading DHTMLX Gantt library. Please check your internet connection and try again.');
+                var self = this;
+                var timeout = setTimeout(function() {
+                    self.loading = false;
+                    self.show_error('Timeout loading DHTMLX Gantt library. Please check your internet connection and try again.');
                 }, 10000); // 10 second timeout
 
-                script.onload = () => {
+                script.onload = function() {
                     clearTimeout(timeout);
-                    this.loading = false;
+                    self.loading = false;
                     console.log('Gantt library loaded successfully');
 
-                    setTimeout(() => {
+                    setTimeout(function() {
                         try {
-                            this.setup_error_handling();
-                            this.init_gantt();
-                            this.load_data();
+                            self.setup_error_handling();
+                            self.init_gantt();
+                            self.load_data();
                         } catch (e) {
                             console.error('Error after library load:', e);
-                            this.show_error('Error initializing Gantt chart: ' + e.message);
+                            self.show_error('Error initializing Gantt chart: ' + e.message);
                         }
                     }, 100);
                 };
 
-                script.onerror = () => {
+                script.onerror = function() {
                     clearTimeout(timeout);
-                    this.loading = false;
-                    this.show_error('Failed to load DHTMLX Gantt library. Please check your internet connection.');
+                    self.loading = false;
+                    self.show_error('Failed to load DHTMLX Gantt library. Please check your internet connection.');
                 };
 
                 document.head.appendChild(script);
@@ -365,12 +367,13 @@ class LeaveGanttChart {
 
     setup_error_handling() {
         // Capture and handle Gantt errors
-        const original_console_error = console.error;
-        console.error = function(...args) {
+        var original_console_error = console.error;
+        console.error = function() {
             // Check if it's a Gantt-related SVG error
-            const error_message = args.join(' ');
+            var args = Array.prototype.slice.call(arguments);
+            var error_message = args.join(' ');
             if (error_message.includes('path') && error_message.includes('Expected number')) {
-                console.warn('Gantt SVG path error caught and handled:', ...args);
+                console.warn('Gantt SVG path error caught and handled:', args);
                 // Don't propagate SVG path errors to avoid console spam
                 return;
             }
@@ -379,7 +382,7 @@ class LeaveGanttChart {
         };
 
         // Add global error event listener
-        window.addEventListener('error', (event) => {
+        window.addEventListener('error', function(event) {
             if (event.message && event.message.includes('gantt')) {
                 console.warn('Gantt error caught:', event.message);
                 event.preventDefault(); // Prevent error from propagating
@@ -404,8 +407,8 @@ class LeaveGanttChart {
             ];
 
         // Responsive column configuration
-        const screen_width = window.innerWidth;
-        let columns;
+        var screen_width = window.innerWidth;
+        var columns;
 
         if (screen_width < 768) {
             // Mobile layout
@@ -566,11 +569,11 @@ class LeaveGanttChart {
 
         // Hide task bars for company and employee rows
         gantt.templates.task_class = function(start, end, task) {
-            let classes = [];
+            var classes = [];
 
             if (task.type === 'leave') {
                 classes.push('leave-task');
-                classes.push(`status-${task.status.toLowerCase().replace(/\s+/g, '-')}`);
+                classes.push('status-' + task.status.toLowerCase().replace(/\s+/g, '-'));
             } else if (task.type === 'company' || task.type === 'employee') {
                 classes.push('gantt-hidden-task');
             }
@@ -618,31 +621,32 @@ class LeaveGanttChart {
             // Show loading indicator
             this.show_loading();
 
+            var self = this;
             frappe.call({
                 method: 'svg_mobile_app.svg_mobile_app.page.leave_gantt_chart.leave_gantt_chart.get_leave_gantt_data',
                 args: {
                     filters: this.current_filters
                 },
-                callback: (r) => {
+                callback: function(r) {
                     try {
-                        this.hide_loading();
+                        self.hide_loading();
                         if (r.message) {
                             console.log('Data received, rendering Gantt...');
-                            this.render_gantt(r.message);
-                            this.render_legend(r.message.status_legend);
-                            this.show_summary(r.message.summary);
+                            self.render_gantt(r.message);
+                            self.render_legend(r.message.status_legend);
+                            self.show_summary(r.message.summary);
                         } else {
-                            this.show_error('No data received from server');
+                            self.show_error('No data received from server');
                         }
                     } catch (e) {
                         console.error('Error in callback:', e);
-                        this.show_error('Error processing data: ' + e.message);
+                        self.show_error('Error processing data: ' + e.message);
                     }
                 },
-                error: (r) => {
-                    this.hide_loading();
+                error: function(r) {
+                    self.hide_loading();
                     console.error('API Error:', r);
-                    this.show_error('Error loading data: ' + (r.message || 'Unknown server error'));
+                    self.show_error('Error loading data: ' + (r.message || 'Unknown server error'));
                 }
             });
         } catch (e) {
@@ -680,20 +684,21 @@ class LeaveGanttChart {
         // Fallback simple table view if Gantt fails
         console.log('Showing simple table view as fallback...');
 
+        var self = this;
         frappe.call({
             method: 'svg_mobile_app.svg_mobile_app.page.leave_gantt_chart.leave_gantt_chart.get_leave_gantt_data',
             args: {
                 filters: this.current_filters
             },
-            callback: (r) => {
+            callback: function(r) {
                 if (r.message) {
-                    this.render_simple_table(r.message);
+                    self.render_simple_table(r.message);
                 } else {
-                    this.gantt_container.html('<div style="text-align: center; padding: 50px;">No data available</div>');
+                    self.gantt_container.html('<div style="text-align: center; padding: 50px;">No data available</div>');
                 }
             },
-            error: (r) => {
-                this.gantt_container.html('<div style="text-align: center; padding: 50px; color: #dc3545;">Error loading data</div>');
+            error: function(r) {
+                self.gantt_container.html('<div style="text-align: center; padding: 50px; color: #dc3545;">Error loading data</div>');
             }
         });
     }
@@ -783,17 +788,17 @@ class LeaveGanttChart {
         this.gantt_container.html('<div class="gantt-loading">Loading Gantt chart...</div>');
 
         // Prepare data for Gantt
-        const gantt_data = {
+        var gantt_data = {
             data: [],
             links: []
         };
 
-        let task_counter = 1;
+        var task_counter = 1;
 
         // Add companies and employees as tree structure
-        data.companies.forEach((company, company_index) => {
+        data.companies.forEach(function(company, company_index) {
             // Add company as parent task
-            const company_id = task_counter++;
+            var company_id = task_counter++;
             gantt_data.data.push({
                 id: company_id,
                 text: company.name,
@@ -806,8 +811,8 @@ class LeaveGanttChart {
             });
 
             // Add employees under company
-            company.employees.forEach((employee, emp_index) => {
-                const employee_id = task_counter++;
+            company.employees.forEach(function(employee, emp_index) {
+                var employee_id = task_counter++;
                 gantt_data.data.push({
                     id: employee_id,
                     text: employee.employee_name,
@@ -822,16 +827,16 @@ class LeaveGanttChart {
                 });
 
                 // Add leave periods for this employee
-                const employee_leaves = data.leave_periods.filter(
-                    leave => leave.employee_id === employee.employee_id
-                );
+                var employee_leaves = data.leave_periods.filter(function(leave) {
+                    return leave.employee_id === employee.employee_id;
+                });
 
-                employee_leaves.forEach((leave, leave_index) => {
-                    const leave_id = task_counter++;
+                employee_leaves.forEach(function(leave, leave_index) {
+                    var leave_id = task_counter++;
 
                     // Validate and parse dates
-                    let start_date = leave.start_date;
-                    let end_date = leave.end_date;
+                    var start_date = leave.start_date;
+                    var end_date = leave.end_date;
 
                     // Ensure dates are valid
                     if (!start_date || !end_date) {
@@ -840,8 +845,8 @@ class LeaveGanttChart {
                     }
 
                     // Parse dates and validate
-                    const start = new Date(start_date);
-                    const end = new Date(end_date);
+                    var start = new Date(start_date);
+                    var end = new Date(end_date);
 
                     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
                         console.warn(`Invalid date format for leave ${leave.leave_id}:`, leave);
@@ -850,19 +855,19 @@ class LeaveGanttChart {
 
                     // Ensure end date is not before start date
                     if (end < start) {
-                        console.warn(`End date before start date for leave ${leave.leave_id}:`, leave);
+                        console.warn('End date before start date for leave ' + leave.leave_id + ':', leave);
                         // Swap dates if needed
-                        const temp = start_date;
+                        var temp = start_date;
                         start_date = end_date;
                         end_date = temp;
                     }
 
                     // Calculate duration in days (minimum 1 day)
-                    const duration = Math.max(1, Math.ceil((new Date(end_date) - new Date(start_date)) / (1000 * 60 * 60 * 24)) + 1);
+                    var duration = Math.max(1, Math.ceil((new Date(end_date) - new Date(start_date)) / (1000 * 60 * 60 * 24)) + 1);
 
                     // Ensure dates are within the timeline range
-                    const timeline_start = new Date(data.timeline.start_date);
-                    const timeline_end = new Date(data.timeline.end_date);
+                    var timeline_start = new Date(data.timeline.start_date);
+                    var timeline_end = new Date(data.timeline.end_date);
 
                     // Adjust dates if they're outside the timeline
                     if (new Date(start_date) < timeline_start) {
@@ -900,7 +905,7 @@ class LeaveGanttChart {
         }
 
         // Validate data before loading
-        const validated_data = this.validate_gantt_data(gantt_data);
+        var validated_data = this.validate_gantt_data(gantt_data);
 
         // Load data into Gantt
         gantt.parse(validated_data);
@@ -915,12 +920,12 @@ class LeaveGanttChart {
 
     validate_gantt_data(gantt_data) {
         // Validate and clean Gantt data to prevent SVG errors
-        const validated_data = {
+        var validated_data = {
             data: [],
             links: gantt_data.links || []
         };
 
-        gantt_data.data.forEach(task => {
+        gantt_data.data.forEach(function(task) {
             try {
                 // Basic validation
                 if (!task.id || !task.text) {
@@ -942,7 +947,7 @@ class LeaveGanttChart {
 
                     // Ensure dates are properly formatted
                     if (typeof task.start_date === 'string') {
-                        const parsed_start = new Date(task.start_date);
+                        var parsed_start = new Date(task.start_date);
                         if (isNaN(parsed_start.getTime())) {
                             console.warn('Invalid start date for task:', task);
                             return;
@@ -950,7 +955,7 @@ class LeaveGanttChart {
                     }
 
                     if (typeof task.end_date === 'string') {
-                        const parsed_end = new Date(task.end_date);
+                        var parsed_end = new Date(task.end_date);
                         if (isNaN(parsed_end.getTime())) {
                             console.warn('Invalid end date for task:', task);
                             return;
@@ -988,9 +993,10 @@ class LeaveGanttChart {
         this.prepare_for_print();
 
         // Print the page
-        setTimeout(() => {
+        var self = this;
+        setTimeout(function() {
             window.print();
-            this.restore_after_print();
+            self.restore_after_print();
         }, 500);
     }
 
@@ -1010,14 +1016,12 @@ class LeaveGanttChart {
         }
 
         // Add print title
-        const print_title = `
-            <div class="print-header" style="text-align: center; margin-bottom: 20px; page-break-inside: avoid;">
-                <h2>Leave Applications Gantt Chart</h2>
-                <p>Period: ${this.current_filters.from_date} to ${this.current_filters.to_date}</p>
-                ${this.current_filters.company ? `<p>Company: ${this.current_filters.company}</p>` : ''}
-                <p>Generated on: ${new Date().toLocaleDateString()}</p>
-            </div>
-        `;
+        var print_title = '<div class="print-header" style="text-align: center; margin-bottom: 20px; page-break-inside: avoid;">' +
+            '<h2>Leave Applications Gantt Chart</h2>' +
+            '<p>Period: ' + this.current_filters.from_date + ' to ' + this.current_filters.to_date + '</p>' +
+            (this.current_filters.company ? '<p>Company: ' + this.current_filters.company + '</p>' : '') +
+            '<p>Generated on: ' + new Date().toLocaleDateString() + '</p>' +
+            '</div>';
 
         this.body.prepend(print_title);
     }
@@ -1035,51 +1039,53 @@ class LeaveGanttChart {
     export_pdf() {
         // Check if DHTMLX Gantt Pro is available
         if (gantt.exportToPDF) {
-            const filters_text = this.get_filters_text();
+            var filters_text = this.get_filters_text();
 
             gantt.exportToPDF({
                 name: "leave_gantt_chart.pdf",
-                header: `<h2>Leave Applications Gantt Chart</h2><p>${filters_text}</p>`,
-                footer: `<p>Generated on: ${new Date().toLocaleDateString()}</p>`,
+                header: '<h2>Leave Applications Gantt Chart</h2><p>' + filters_text + '</p>',
+                footer: '<p>Generated on: ' + new Date().toLocaleDateString() + '</p>',
                 locale: "en",
                 start: this.current_filters.from_date,
                 end: this.current_filters.to_date
             });
         } else {
             // Fallback: Use browser print to PDF
+            var self = this;
             frappe.msgprint({
                 title: __('PDF Export'),
                 message: __('DHTMLX Gantt Pro is not available. Please use browser Print > Save as PDF for export.'),
                 primary_action: {
                     label: __('Print'),
-                    action: () => this.print_chart()
+                    action: function() { self.print_chart(); }
                 }
             });
         }
     }
 
     get_filters_text() {
-        const filters = [];
-        if (this.current_filters.company) filters.push(`Company: ${this.current_filters.company}`);
-        if (this.current_filters.department) filters.push(`Department: ${this.current_filters.department}`);
-        if (this.current_filters.leave_type) filters.push(`Leave Type: ${this.current_filters.leave_type}`);
-        if (this.current_filters.status) filters.push(`Status: ${this.current_filters.status}`);
-        if (this.current_filters.employee) filters.push(`Employee: ${this.current_filters.employee}`);
+        var filters = [];
+        if (this.current_filters.company) filters.push('Company: ' + this.current_filters.company);
+        if (this.current_filters.department) filters.push('Department: ' + this.current_filters.department);
+        if (this.current_filters.leave_type) filters.push('Leave Type: ' + this.current_filters.leave_type);
+        if (this.current_filters.status) filters.push('Status: ' + this.current_filters.status);
+        if (this.current_filters.employee) filters.push('Employee: ' + this.current_filters.employee);
 
-        const period = `Period: ${this.current_filters.from_date} to ${this.current_filters.to_date}`;
-        return filters.length > 0 ? `${period} | ${filters.join(' | ')}` : period;
+        var period = 'Period: ' + this.current_filters.from_date + ' to ' + this.current_filters.to_date;
+        return filters.length > 0 ? period + ' | ' + filters.join(' | ') : period;
     }
 
     // Export to Excel functionality
     export_excel() {
+        var self = this;
         frappe.call({
             method: 'svg_mobile_app.svg_mobile_app.page.leave_gantt_chart.leave_gantt_chart.export_gantt_data',
             args: {
                 filters: this.current_filters
             },
-            callback: (r) => {
+            callback: function(r) {
                 if (r.message) {
-                    this.download_excel(r.message);
+                    self.download_excel(r.message);
                 }
             }
         });
@@ -1092,16 +1098,22 @@ class LeaveGanttChart {
             return;
         }
 
-        const headers = Object.keys(data[0]);
-        const csv_content = [
-            headers.join(','),
-            ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-        ].join('\n');
+        var headers = Object.keys(data[0]);
+        var csv_rows = [headers.join(',')];
+
+        data.forEach(function(row) {
+            var csv_row = headers.map(function(header) {
+                return '"' + (row[header] || '') + '"';
+            }).join(',');
+            csv_rows.push(csv_row);
+        });
+
+        var csv_content = csv_rows.join('\n');
 
         // Create and download file
-        const blob = new Blob([csv_content], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        var blob = new Blob([csv_content], { type: 'text/csv' });
+        var url = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
         a.href = url;
         a.download = `leave_gantt_chart_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
@@ -1126,11 +1138,12 @@ class LeaveGanttChart {
     handle_resize() {
         // Debounce resize events
         clearTimeout(this.resize_timeout);
-        this.resize_timeout = setTimeout(() => {
+        var self = this;
+        this.resize_timeout = setTimeout(function() {
             if (gantt && gantt.render) {
                 // Reconfigure columns for new screen size
-                const screen_width = window.innerWidth;
-                let new_grid_width;
+                var screen_width = window.innerWidth;
+                var new_grid_width;
 
                 if (screen_width < 768) {
                     new_grid_width = 200;
@@ -1142,9 +1155,9 @@ class LeaveGanttChart {
 
                 if (gantt.config.grid_width !== new_grid_width) {
                     // Re-initialize with new configuration
-                    this.init_gantt();
-                    if (this.last_data) {
-                        this.render_gantt(this.last_data);
+                    self.init_gantt();
+                    if (self.last_data) {
+                        self.render_gantt(self.last_data);
                     }
                 } else {
                     // Just resize

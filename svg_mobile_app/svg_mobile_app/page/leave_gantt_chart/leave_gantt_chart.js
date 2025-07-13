@@ -23,7 +23,7 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
                 console.error('Error initializing Leave Gantt Chart:', e);
                 var errorHtml = '<div style="text-align: center; padding: 50px; color: #dc3545;">' +
                     '<h4>Error Loading Gantt Chart</h4>' +
-                    '<p>There was an error initializing the chart: ' + e.message + '</p>' +
+                    '<p>There was an error initializing the chart: ' + (e.message || 'Unknown error').replace(/'/g, '&#39;').replace(/"/g, '&quot;') + '</p>' +
                     '<button class="btn btn-primary page-reload-btn">Reload Page</button>' +
                     '</div>';
                 page.main.html(errorHtml);
@@ -39,7 +39,7 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
         console.error('Error in page load:', e);
         var pageErrorHtml = '<div style="text-align: center; padding: 50px; color: #dc3545;">' +
             '<h4>Page Load Error</h4>' +
-            '<p>Failed to load the page: ' + e.message + '</p>' +
+            '<p>Failed to load the page: ' + (e.message || 'Unknown error').replace(/'/g, '&#39;').replace(/"/g, '&quot;') + '</p>' +
             '<button class="btn btn-primary page-error-reload-btn">Reload Page</button>' +
             '</div>';
         $(wrapper).html(pageErrorHtml);
@@ -84,7 +84,7 @@ class LeaveGanttChart {
 
         } catch (e) {
             console.error('Error in LeaveGanttChart constructor:', e);
-            this.show_error('Failed to initialize Gantt chart: ' + e.message);
+            this.show_error('Failed to initialize Gantt chart: ' + (e.message || 'Unknown error'));
         }
     }
 

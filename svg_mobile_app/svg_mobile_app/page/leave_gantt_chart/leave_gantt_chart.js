@@ -686,6 +686,9 @@ class LeaveGanttChart {
                         self.hide_loading();
                         if (r.message) {
                             console.log('Data received, rendering Gantt...');
+                            console.log('API Response:', r.message);
+                            console.log('Companies:', r.message.companies);
+                            console.log('Leave periods:', r.message.leave_periods);
                             self.render_gantt(r.message);
                             self.render_legend(r.message.status_legend);
                             self.show_summary(r.message.summary);
@@ -878,7 +881,9 @@ class LeaveGanttChart {
         var task_counter = 1;
 
         // Add companies and employees as tree structure
+        console.log('Processing companies:', data.companies.length);
         data.companies.forEach(function(company, company_index) {
+            console.log('Processing company:', company.name, 'with', company.employees.length, 'employees');
             // Add company as parent task
             var company_id = task_counter++;
             gantt_data.data.push({
@@ -913,7 +918,10 @@ class LeaveGanttChart {
                     return leave.employee_id === employee.employee_id;
                 });
 
+                console.log('Employee', employee.employee_name, 'has', employee_leaves.length, 'leave periods');
+
                 employee_leaves.forEach(function(leave, leave_index) {
+                    console.log('Processing leave:', leave);
                     var leave_id = task_counter++;
 
                     // Validate and parse dates

@@ -69,6 +69,7 @@ class LeaveGanttChart {
             this.gantt = null;
             this.current_filters = {};
             this.loading = false;
+            this.updating_filters = false;
 
             console.log('Initializing Leave Gantt Chart...');
 
@@ -226,6 +227,11 @@ class LeaveGanttChart {
     }
 
     on_filter_change() {
+        // Prevent infinite loop from recursive filter changes
+        if (this.updating_filters) {
+            return;
+        }
+
         // Update date range when year changes
         var year_field = this.page.fields_dict.year;
         var from_date_field = this.page.fields_dict.from_date;
@@ -233,8 +239,15 @@ class LeaveGanttChart {
 
         if (year_field && year_field.get_value()) {
             var year = year_field.get_value();
+
+            // Set flag to prevent recursive calls
+            this.updating_filters = true;
+
             from_date_field.set_value(year + '-01-01');
             to_date_field.set_value(year + '-12-31');
+
+            // Reset flag
+            this.updating_filters = false;
         }
 
         // Refresh chart with new filters

@@ -555,7 +555,7 @@ class LeaveGanttChart {
                            'Duration: ' + (task.duration || 0) + ' days<br/>' +
                            (task.description ? 'Reason: ' + task.description : '');
                 }
-                return task.text || 'No information';
+                return task.text || 'No information available';
             } catch (e) {
                 console.warn('Error in tooltip template:', e, task);
                 return 'Error displaying tooltip';

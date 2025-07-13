@@ -53,8 +53,11 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
 
 frappe.pages['leave-gantt-chart'].on_page_show = function() {
     try {
-        // Refresh chart when page is shown
-        if(frappe.leave_gantt_chart && frappe.leave_gantt_chart.refresh) {
+        // Only refresh if chart is already initialized and not currently loading
+        if(frappe.leave_gantt_chart &&
+           frappe.leave_gantt_chart.refresh &&
+           !frappe.leave_gantt_chart.loading &&
+           !frappe.leave_gantt_chart.initializing) {
             frappe.leave_gantt_chart.refresh();
         }
     } catch (e) {
@@ -70,6 +73,7 @@ class LeaveGanttChart {
             this.current_filters = {};
             this.loading = false;
             this.updating_filters = false;
+            this.initializing = true;
 
             console.log('Initializing Leave Gantt Chart...');
 
@@ -617,6 +621,12 @@ class LeaveGanttChart {
 
     refresh() {
         try {
+            // Prevent multiple simultaneous refreshes
+            if (this.loading) {
+                console.log('Already loading, skipping refresh...');
+                return;
+            }
+
             console.log('Refreshing Gantt chart...');
             this.current_filters = this.get_current_filters();
 
@@ -663,18 +673,24 @@ class LeaveGanttChart {
                             self.render_gantt(r.message);
                             self.render_legend(r.message.status_legend);
                             self.show_summary(r.message.summary);
+
+                            // Mark initialization as complete
+                            self.initializing = false;
                         } else {
                             self.show_error('No data received from server');
+                            self.initializing = false;
                         }
                     } catch (e) {
                         console.error('Error in callback:', e);
                         self.show_error('Error processing data: ' + (e.message || 'Unknown error'));
+                        self.initializing = false;
                     }
                 },
                 error: function(r) {
                     self.hide_loading();
                     console.error('API Error:', r);
                     self.show_error('Error loading data: ' + (r.message || 'Unknown server error'));
+                    self.initializing = false;
                 }
             });
         } catch (e) {

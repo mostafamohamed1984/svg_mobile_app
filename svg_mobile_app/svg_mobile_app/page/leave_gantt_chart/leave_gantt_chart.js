@@ -235,8 +235,13 @@ class LeaveGanttChart {
     }
 
     on_filter_change() {
+        // Debug logging
+        console.log('on_filter_change called, updating_filters:', this.updating_filters);
+        console.trace('on_filter_change stack trace:');
+
         // Prevent infinite loop from recursive filter changes
         if (this.updating_filters) {
+            console.log('Skipping filter change due to updating_filters flag');
             return;
         }
 
@@ -248,12 +253,14 @@ class LeaveGanttChart {
         if (year_field && year_field.get_value()) {
             var year = year_field.get_value();
 
+            console.log('Setting updating_filters to true');
             // Set flag to prevent recursive calls
             this.updating_filters = true;
 
             from_date_field.set_value(year + '-01-01');
             to_date_field.set_value(year + '-12-31');
 
+            console.log('Setting updating_filters to false');
             // Reset flag
             this.updating_filters = false;
         }

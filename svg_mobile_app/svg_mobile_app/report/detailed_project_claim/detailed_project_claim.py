@@ -12,11 +12,32 @@ def execute(filters=None):
     """
     if not filters:
         filters = {}
-    
-    columns = get_columns()
-    data = get_data(filters)
-    
-    return columns, data
+
+    try:
+        columns = get_columns()
+        data = get_data(filters)
+
+        # Debug logging
+        frappe.logger().debug(f"Detailed Project Claim Report - Filters: {filters}")
+        frappe.logger().debug(f"Detailed Project Claim Report - Data rows: {len(data) if data else 0}")
+
+        return columns, data
+    except Exception as e:
+        frappe.logger().error(f"Error in Detailed Project Claim Report: {str(e)}")
+        # Return error message in report format
+        columns = get_columns()
+        error_data = [{
+            'project_info': 'Error loading report',
+            'customer_info': '',
+            'item_description': f'Error: {str(e)}',
+            'amount': 0,
+            'tax_rate': 0,
+            'tax_amount': 0,
+            'total_amount': 0,
+            'date': '',
+            'status': ''
+        }]
+        return columns, error_data
 
 def get_columns():
     """Define report columns for detailed project claim"""
@@ -80,10 +101,10 @@ def get_columns():
 def get_data(filters):
     """Get detailed project claim data"""
     conditions = get_conditions(filters)
-    
-    # Main query for detailed project claim data
+
+    # Simplified query focusing on essential data
     query = """
-        SELECT 
+        SELECT
             pc.name as claim_name,
             pc.date,
             pc.status,
@@ -96,49 +117,62 @@ def get_data(filters):
             pc.tax_amount,
             pc.being,
             pc.reference_invoice,
-            pc.invoice_references,
-            
+
             ci.item,
             ci.amount as item_amount,
             ci.ratio as item_ratio,
             ci.tax_rate as item_tax_rate,
             ci.tax_amount as item_tax_amount,
             ci.invoice_reference,
-            ci.project_contractor_reference,
-            
+
             i.item_name,
-            i.item_group,
-            
-            si.grand_total as invoice_total,
-            si.net_total as invoice_net_total,
-            si.total_taxes_and_charges as invoice_tax_total,
-            
-            proj.customer_name as project_customer,
-            proj.project_amount as project_total_amount
-            
-        FROM 
+            i.item_group
+
+        FROM
             `tabProject Claim` pc
-        LEFT JOIN 
+        LEFT JOIN
             `tabClaim Items` ci ON pc.name = ci.parent
-        LEFT JOIN 
+        LEFT JOIN
             `tabItem` i ON ci.item = i.name
-        LEFT JOIN 
-            `tabSales Invoice` si ON ci.invoice_reference = si.name
-        LEFT JOIN 
-            `tabProject Contractors` proj ON pc.for_project = proj.name
-        WHERE 
+        WHERE
             pc.docstatus = 1
             {conditions}
-        ORDER BY 
+        ORDER BY
             pc.date DESC, pc.name, ci.idx
     """.format(conditions=conditions)
-    
+
     raw_data = frappe.db.sql(query, filters, as_dict=True)
-    
+
+    # Return empty list with message if no data
+    if not raw_data:
+        # Check if we have any Project Claims at all for debugging
+        total_claims = frappe.db.count("Project Claim", {"docstatus": 1})
+
+        return [{
+            'project_info': f'No data found for the selected criteria',
+            'customer_info': f'Total claims in system: {total_claims}',
+            'item_description': 'Please adjust your filters and try again. Check if you have submitted Project Claims with Claim Items.',
+            'amount': 0,
+            'tax_rate': 0,
+            'tax_amount': 0,
+            'total_amount': 0,
+            'date': '',
+            'status': ''
+        }]
+
     # Process data for detailed view
-    processed_data = process_detailed_claim_data(raw_data)
-    
-    return processed_data
+    try:
+        processed_data = process_detailed_claim_data(raw_data)
+
+        # If processing returns empty data, create simple fallback
+        if not processed_data:
+            processed_data = create_simple_fallback_data(raw_data)
+
+        return processed_data
+    except Exception as e:
+        frappe.logger().error(f"Error processing detailed claim data: {str(e)}")
+        # Return simple fallback data
+        return create_simple_fallback_data(raw_data)
 
 def get_conditions(filters):
     """Build WHERE conditions based on filters"""
@@ -165,11 +199,14 @@ def get_conditions(filters):
     return " ".join(conditions)
 
 def process_detailed_claim_data(raw_data):
-    """Process raw data for detailed project claim view"""
+    """Process raw data for detailed project claim view - simplified version"""
     processed_data = []
-    claim_groups = {}
-    
+
+    if not raw_data:
+        return processed_data
+
     # Group data by claim
+    claim_groups = {}
     for row in raw_data:
         claim_name = row.get('claim_name')
         if claim_name not in claim_groups:
@@ -177,187 +214,97 @@ def process_detailed_claim_data(raw_data):
                 'claim_data': row,
                 'items': []
             }
-        
+
         if row.get('item'):
             claim_groups[claim_name]['items'].append(row)
-    
-    # Process each claim group
+
+    # Process each claim group with simplified structure
     for claim_name, claim_group in claim_groups.items():
         claim_data = claim_group['claim_data']
         items = claim_group['items']
-        
-        # Add header row for claim
-        processed_data.append(create_claim_header_row(claim_data))
-        
-        # Add customer information row
-        processed_data.append(create_customer_info_row(claim_data))
-        
-        # Group items by category/type
-        item_categories = group_items_by_category(items)
-        
-        # Add category sections
-        for category, category_items in item_categories.items():
-            # Add category header
-            processed_data.append(create_category_header_row(category))
-            
-            # Add items in this category
-            for item in category_items:
-                processed_data.append(create_item_row(item, claim_data))
-            
-            # Add category subtotal
-            processed_data.append(create_category_subtotal_row(category, category_items))
-        
-        # Add claim total row
-        processed_data.append(create_claim_total_row(claim_data, items))
-        
+
+        # Add simple header row
+        processed_data.append({
+            'project_info': f"Project: {claim_data.get('project_name', 'N/A')}",
+            'customer_info': f"Customer: {claim_data.get('customer_name', claim_data.get('customer', 'N/A'))}",
+            'item_description': f"Claim: {claim_name} | Date: {claim_data.get('date', '')}",
+            'amount': '',
+            'tax_rate': '',
+            'tax_amount': '',
+            'total_amount': flt(claim_data.get('claim_amount', 0)),
+            'date': claim_data.get('date'),
+            'status': claim_data.get('status', ''),
+            '_is_header': True
+        })
+
+        # Add items
+        for item in items:
+            item_amount = flt(item.get('item_amount', 0))
+            tax_rate = flt(item.get('item_tax_rate', 0))
+            tax_amount = flt(item.get('item_tax_amount', 0))
+            total_amount = item_amount + tax_amount
+
+            processed_data.append({
+                'project_info': '',
+                'customer_info': item.get('item_group', 'Other'),
+                'item_description': f"{item.get('item_name', item.get('item', 'N/A'))} ({item.get('invoice_reference', '')})",
+                'amount': item_amount,
+                'tax_rate': tax_rate,
+                'tax_amount': tax_amount,
+                'total_amount': total_amount,
+                'date': '',
+                'status': '',
+                '_is_item': True
+            })
+
+        # Add total row
+        total_amount = flt(claim_data.get('claim_amount', 0))
+        total_tax = flt(claim_data.get('tax_amount', 0))
+
+        processed_data.append({
+            'project_info': '',
+            'customer_info': '',
+            'item_description': f"TOTAL - {claim_name}",
+            'amount': total_amount,
+            'tax_rate': flt(claim_data.get('tax_ratio', 0)),
+            'tax_amount': total_tax,
+            'total_amount': total_amount + total_tax,
+            'date': '',
+            'status': '',
+            '_is_total': True
+        })
+
         # Add separator
-        processed_data.append(create_separator_row())
-    
+        processed_data.append({
+            'project_info': '─' * 30,
+            'customer_info': '',
+            'item_description': '',
+            'amount': '',
+            'tax_rate': '',
+            'tax_amount': '',
+            'total_amount': '',
+            'date': '',
+            'status': '',
+            '_is_separator': True
+        })
+
     return processed_data
 
-def create_claim_header_row(claim_data):
-    """Create header row for claim"""
-    project_info = f"Project: {claim_data.get('project_name', 'N/A')} | Claim: {claim_data.get('claim_name')}"
-    
-    return {
-        'project_info': project_info,
-        'customer_info': '',
-        'item_description': f"Claim Date: {claim_data.get('date', '')}",
-        'amount': '',
-        'tax_rate': '',
-        'tax_amount': '',
-        'total_amount': '',
-        'date': claim_data.get('date'),
-        'status': claim_data.get('status', ''),
-        '_is_header': True
-    }
+def create_simple_fallback_data(raw_data):
+    """Create simple fallback data if complex processing fails"""
+    simple_data = []
 
-def create_customer_info_row(claim_data):
-    """Create customer information row"""
-    customer_info = f"{claim_data.get('customer_name', claim_data.get('customer', 'N/A'))}"
-    
-    return {
-        'project_info': '',
-        'customer_info': customer_info,
-        'item_description': claim_data.get('being', '')[:100] + '...' if len(claim_data.get('being', '')) > 100 else claim_data.get('being', ''),
-        'amount': '',
-        'tax_rate': '',
-        'tax_amount': '',
-        'total_amount': '',
-        'date': '',
-        'status': '',
-        '_is_customer_info': True
-    }
+    for row in raw_data:
+        simple_data.append({
+            'project_info': row.get('project_name', 'N/A'),
+            'customer_info': row.get('customer_name', row.get('customer', 'N/A')),
+            'item_description': f"{row.get('item_name', row.get('item', 'N/A'))} - {row.get('claim_name', '')}",
+            'amount': flt(row.get('item_amount', 0)),
+            'tax_rate': flt(row.get('item_tax_rate', 0)),
+            'tax_amount': flt(row.get('item_tax_amount', 0)),
+            'total_amount': flt(row.get('item_amount', 0)) + flt(row.get('item_tax_amount', 0)),
+            'date': row.get('date', ''),
+            'status': row.get('status', '')
+        })
 
-def group_items_by_category(items):
-    """Group items by category/type"""
-    categories = {}
-    
-    for item in items:
-        # Determine category based on item group
-        item_group = item.get('item_group', 'Other')
-        
-        # Map to display categories
-        category_mapping = {
-            'Orbit Engineering Items': 'Engineering Work / أعمال هندسية',
-            'Project Fees item': 'Project Fees / رسوم المشروع',
-            'Supervision Items': 'Supervision / الإشراف',
-            'Modification Items': 'Design Modifications / تعديلات التصميم'
-        }
-        
-        category = category_mapping.get(item_group, item_group)
-        
-        if category not in categories:
-            categories[category] = []
-        
-        categories[category].append(item)
-    
-    return categories
-
-def create_category_header_row(category):
-    """Create category header row"""
-    return {
-        'project_info': '',
-        'customer_info': '',
-        'item_description': f"=== {category} ===",
-        'amount': '',
-        'tax_rate': '',
-        'tax_amount': '',
-        'total_amount': '',
-        'date': '',
-        'status': '',
-        '_is_category_header': True
-    }
-
-def create_item_row(item, claim_data):
-    """Create individual item row"""
-    item_amount = flt(item.get('item_amount', 0))
-    tax_rate = flt(item.get('item_tax_rate', 0))
-    tax_amount = flt(item.get('item_tax_amount', 0))
-    total_amount = item_amount + tax_amount
-    
-    return {
-        'project_info': '',
-        'customer_info': '',
-        'item_description': f"{item.get('item_name', item.get('item', 'N/A'))} ({item.get('invoice_reference', '')})",
-        'amount': item_amount,
-        'tax_rate': tax_rate,
-        'tax_amount': tax_amount,
-        'total_amount': total_amount,
-        'date': '',
-        'status': '',
-        '_is_item': True
-    }
-
-def create_category_subtotal_row(category, items):
-    """Create subtotal row for category"""
-    total_amount = sum(flt(item.get('item_amount', 0)) for item in items)
-    total_tax = sum(flt(item.get('item_tax_amount', 0)) for item in items)
-    grand_total = total_amount + total_tax
-    
-    return {
-        'project_info': '',
-        'customer_info': '',
-        'item_description': f"Subtotal - {category}",
-        'amount': total_amount,
-        'tax_rate': '',
-        'tax_amount': total_tax,
-        'total_amount': grand_total,
-        'date': '',
-        'status': '',
-        '_is_subtotal': True
-    }
-
-def create_claim_total_row(claim_data, items):
-    """Create total row for entire claim"""
-    claim_amount = flt(claim_data.get('claim_amount', 0))
-    tax_amount = flt(claim_data.get('tax_amount', 0))
-    total_with_tax = claim_amount + tax_amount
-    
-    return {
-        'project_info': '',
-        'customer_info': '',
-        'item_description': f"TOTAL CLAIM / إجمالي المطالبة",
-        'amount': claim_amount,
-        'tax_rate': flt(claim_data.get('tax_ratio', 0)),
-        'tax_amount': tax_amount,
-        'total_amount': total_with_tax,
-        'date': '',
-        'status': '',
-        '_is_total': True
-    }
-
-def create_separator_row():
-    """Create separator row between claims"""
-    return {
-        'project_info': '─' * 50,
-        'customer_info': '',
-        'item_description': '',
-        'amount': '',
-        'tax_rate': '',
-        'tax_amount': '',
-        'total_amount': '',
-        'date': '',
-        'status': '',
-        '_is_separator': True
-    }
+    return simple_data

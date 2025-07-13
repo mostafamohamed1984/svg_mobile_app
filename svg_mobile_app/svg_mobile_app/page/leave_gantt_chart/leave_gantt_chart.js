@@ -10,7 +10,10 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
         $(wrapper).addClass('leave-gantt-chart-wrapper');
 
         // Show loading message initially
-        page.main.html('<div style="text-align: center; padding: 50px;"><h4>Loading Leave Gantt Chart...</h4><p>Please wait while we initialize the chart.</p></div>');
+        page.main.html('<div style="text-align: center; padding: 50px;">' +
+            '<h4>Loading Leave Gantt Chart...</h4>' +
+            '<p>Please wait while we initialize the chart.</p>' +
+            '</div>');
 
         // Initialize the Gantt chart with error handling
         setTimeout(function() {
@@ -96,7 +99,9 @@ class LeaveGanttChart {
 
             // Set initial height and show loading
             this.gantt_container.css('height', '600px');
-            this.gantt_container.html('<div style="text-align: center; padding: 100px;"><h4>Initializing Gantt Chart...</h4></div>');
+            this.gantt_container.html('<div style="text-align: center; padding: 100px;">' +
+                '<h4>Initializing Gantt Chart...</h4>' +
+                '</div>');
 
             console.log('Containers created successfully');
 

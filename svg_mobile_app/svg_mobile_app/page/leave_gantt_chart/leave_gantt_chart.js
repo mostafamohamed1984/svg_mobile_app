@@ -24,9 +24,14 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
                 var errorHtml = '<div style="text-align: center; padding: 50px; color: #dc3545;">' +
                     '<h4>Error Loading Gantt Chart</h4>' +
                     '<p>There was an error initializing the chart: ' + e.message + '</p>' +
-                    '<button class="btn btn-primary" onclick="location.reload()">Reload Page</button>' +
+                    '<button class="btn btn-primary page-reload-btn">Reload Page</button>' +
                     '</div>';
                 page.main.html(errorHtml);
+
+                // Add event handler for reload button
+                page.main.find('.page-reload-btn').on('click', function() {
+                    location.reload();
+                });
             }
         }, 100);
 
@@ -35,9 +40,14 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
         var pageErrorHtml = '<div style="text-align: center; padding: 50px; color: #dc3545;">' +
             '<h4>Page Load Error</h4>' +
             '<p>Failed to load the page: ' + e.message + '</p>' +
-            '<button class="btn btn-primary" onclick="location.reload()">Reload Page</button>' +
+            '<button class="btn btn-primary page-error-reload-btn">Reload Page</button>' +
             '</div>';
         $(wrapper).html(pageErrorHtml);
+
+        // Add event handler for reload button
+        $(wrapper).find('.page-error-reload-btn').on('click', function() {
+            location.reload();
+        });
     }
 };
 

@@ -53,6 +53,9 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
 
 frappe.pages['leave-gantt-chart'].on_page_show = function() {
     try {
+        // TEMPORARILY DISABLED: Refresh on page show to prevent infinite loop
+        console.log('Page show event triggered, but refresh disabled to prevent loop');
+        /*
         // Only refresh if chart is already initialized and not currently loading
         if(frappe.leave_gantt_chart &&
            frappe.leave_gantt_chart.refresh &&
@@ -60,6 +63,7 @@ frappe.pages['leave-gantt-chart'].on_page_show = function() {
            !frappe.leave_gantt_chart.initializing) {
             frappe.leave_gantt_chart.refresh();
         }
+        */
     } catch (e) {
         console.error('Error on page show:', e);
     }
@@ -255,7 +259,8 @@ class LeaveGanttChart {
         }
 
         // Refresh chart with new filters
-        this.refresh();
+        // TEMPORARILY DISABLED: this.refresh();
+        console.log('Filter change detected, but refresh disabled to prevent loop');
     }
 
     setup_search() {
@@ -627,7 +632,10 @@ class LeaveGanttChart {
                 return;
             }
 
+            // Debug: Log stack trace to see what's calling refresh
             console.log('Refreshing Gantt chart...');
+            console.trace('refresh() called from:');
+
             this.current_filters = this.get_current_filters();
 
             // Clear any existing summary

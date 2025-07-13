@@ -18,25 +18,23 @@ frappe.pages['leave-gantt-chart'].on_page_load = function(wrapper) {
                 frappe.leave_gantt_chart = new LeaveGanttChart(page);
             } catch (e) {
                 console.error('Error initializing Leave Gantt Chart:', e);
-                page.main.html(`
-                    <div style="text-align: center; padding: 50px; color: #dc3545;">
-                        <h4>Error Loading Gantt Chart</h4>
-                        <p>There was an error initializing the chart: ${e.message}</p>
-                        <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
-                    </div>
-                `);
+                var errorHtml = '<div style="text-align: center; padding: 50px; color: #dc3545;">' +
+                    '<h4>Error Loading Gantt Chart</h4>' +
+                    '<p>There was an error initializing the chart: ' + e.message + '</p>' +
+                    '<button class="btn btn-primary" onclick="location.reload()">Reload Page</button>' +
+                    '</div>';
+                page.main.html(errorHtml);
             }
         }, 100);
 
     } catch (e) {
         console.error('Error in page load:', e);
-        $(wrapper).html(`
-            <div style="text-align: center; padding: 50px; color: #dc3545;">
-                <h4>Page Load Error</h4>
-                <p>Failed to load the page: ${e.message}</p>
-                <button class="btn btn-primary" onclick="location.reload()">Reload Page</button>
-            </div>
-        `);
+        var pageErrorHtml = '<div style="text-align: center; padding: 50px; color: #dc3545;">' +
+            '<h4>Page Load Error</h4>' +
+            '<p>Failed to load the page: ' + e.message + '</p>' +
+            '<button class="btn btn-primary" onclick="location.reload()">Reload Page</button>' +
+            '</div>';
+        $(wrapper).html(pageErrorHtml);
     }
 };
 
@@ -108,19 +106,21 @@ class LeaveGanttChart {
     }
 
     setup_filters() {
+        var self = this;
+
         // Add refresh button
-        this.page.set_primary_action('Refresh', () => this.refresh(), 'refresh');
-        
+        this.page.set_primary_action('Refresh', function() { self.refresh(); }, 'refresh');
+
         // Add print button
-        this.page.add_action_item('Print', () => this.print_chart(), 'print');
-        
+        this.page.add_action_item('Print', function() { self.print_chart(); }, 'print');
+
         // Add export buttons
-        this.page.add_action_item('Export PDF', () => this.export_pdf(), 'download');
-        this.page.add_action_item('Export Excel', () => this.export_excel(), 'download');
+        this.page.add_action_item('Export PDF', function() { self.export_pdf(); }, 'download');
+        this.page.add_action_item('Export Excel', function() { self.export_excel(); }, 'download');
 
         // Create filter fields
-        const current_year = new Date().getFullYear();
-        
+        var current_year = new Date().getFullYear();
+
         // Year filter
         this.page.add_field({
             label: 'Year',
@@ -128,7 +128,7 @@ class LeaveGanttChart {
             fieldname: 'year',
             options: this.get_year_options(),
             default: current_year.toString(),
-            change: () => this.on_filter_change()
+            change: function() { self.on_filter_change(); }
         });
 
         // Company filter
@@ -137,7 +137,7 @@ class LeaveGanttChart {
             fieldtype: 'Link',
             fieldname: 'company',
             options: 'Company',
-            change: () => this.on_filter_change()
+            change: function() { self.on_filter_change(); }
         });
 
         // Date range fields
@@ -145,16 +145,16 @@ class LeaveGanttChart {
             label: 'From Date',
             fieldtype: 'Date',
             fieldname: 'from_date',
-            default: `${current_year}-01-01`,
-            change: () => this.on_filter_change()
+            default: current_year + '-01-01',
+            change: function() { self.on_filter_change(); }
         });
 
         this.page.add_field({
             label: 'To Date',
             fieldtype: 'Date',
             fieldname: 'to_date',
-            default: `${current_year}-12-31`,
-            change: () => this.on_filter_change()
+            default: current_year + '-12-31',
+            change: function() { self.on_filter_change(); }
         });
 
         // Department filter
@@ -163,7 +163,7 @@ class LeaveGanttChart {
             fieldtype: 'Link',
             fieldname: 'department',
             options: 'Department',
-            change: () => this.on_filter_change()
+            change: function() { self.on_filter_change(); }
         });
 
         // Leave Type filter
@@ -172,7 +172,7 @@ class LeaveGanttChart {
             fieldtype: 'Link',
             fieldname: 'leave_type',
             options: 'Leave Type',
-            change: () => this.on_filter_change()
+            change: function() { self.on_filter_change(); }
         });
 
         // Status filter
@@ -181,7 +181,7 @@ class LeaveGanttChart {
             fieldtype: 'Select',
             fieldname: 'status',
             options: '\nRequested\nManager Approved\nHR Approved\nApproved\nRejected\nCancelled',
-            change: () => this.on_filter_change()
+            change: function() { self.on_filter_change(); }
         });
 
         // Employee filter
@@ -190,11 +190,11 @@ class LeaveGanttChart {
             fieldtype: 'Link',
             fieldname: 'employee',
             options: 'Employee',
-            change: () => this.on_filter_change()
+            change: function() { self.on_filter_change(); }
         });
 
         // Add clear filters button
-        this.page.add_action_item('Clear Filters', () => this.clear_filters(), 'refresh');
+        this.page.add_action_item('Clear Filters', function() { self.clear_filters(); }, 'refresh');
 
         // Add search functionality
         this.setup_search();
@@ -211,14 +211,14 @@ class LeaveGanttChart {
 
     on_filter_change() {
         // Update date range when year changes
-        const year_field = this.page.fields_dict.year;
-        const from_date_field = this.page.fields_dict.from_date;
-        const to_date_field = this.page.fields_dict.to_date;
+        var year_field = this.page.fields_dict.year;
+        var from_date_field = this.page.fields_dict.from_date;
+        var to_date_field = this.page.fields_dict.to_date;
 
         if (year_field && year_field.get_value()) {
-            const year = year_field.get_value();
-            from_date_field.set_value(`${year}-01-01`);
-            to_date_field.set_value(`${year}-12-31`);
+            var year = year_field.get_value();
+            from_date_field.set_value(year + '-01-01');
+            to_date_field.set_value(year + '-12-31');
         }
 
         // Refresh chart with new filters
@@ -227,26 +227,25 @@ class LeaveGanttChart {
 
     setup_search() {
         // Add search input to filter section
-        const search_html = `
-            <div class="search-container" style="margin-top: 10px;">
-                <input type="text" class="form-control" placeholder="Search employees..."
-                       id="employee-search" style="width: 250px; display: inline-block;">
-                <button class="btn btn-default" id="search-btn" style="margin-left: 5px;">
-                    <i class="fa fa-search"></i>
-                </button>
-            </div>
-        `;
+        var search_html = '<div class="search-container" style="margin-top: 10px;">' +
+            '<input type="text" class="form-control" placeholder="Search employees..." ' +
+            'id="employee-search" style="width: 250px; display: inline-block;">' +
+            '<button class="btn btn-default" id="search-btn" style="margin-left: 5px;">' +
+            '<i class="fa fa-search"></i>' +
+            '</button>' +
+            '</div>';
 
         this.filter_section.append(search_html);
 
         // Add search functionality
-        $('#employee-search').on('input', (e) => {
-            this.search_employees(e.target.value);
+        var self = this;
+        $('#employee-search').on('input', function(e) {
+            self.search_employees(e.target.value);
         });
 
-        $('#search-btn').on('click', () => {
-            const search_term = $('#employee-search').val();
-            this.search_employees(search_term);
+        $('#search-btn').on('click', function() {
+            var search_term = $('#employee-search').val();
+            self.search_employees(search_term);
         });
     }
 
@@ -276,16 +275,16 @@ class LeaveGanttChart {
 
     clear_filters() {
         // Reset all filter fields
-        const current_year = new Date().getFullYear();
+        var current_year = new Date().getFullYear();
 
-        this.page.fields_dict.year?.set_value(current_year.toString());
-        this.page.fields_dict.company?.set_value('');
-        this.page.fields_dict.department?.set_value('');
-        this.page.fields_dict.leave_type?.set_value('');
-        this.page.fields_dict.status?.set_value('');
-        this.page.fields_dict.employee?.set_value('');
-        this.page.fields_dict.from_date?.set_value(`${current_year}-01-01`);
-        this.page.fields_dict.to_date?.set_value(`${current_year}-12-31`);
+        if (this.page.fields_dict.year) this.page.fields_dict.year.set_value(current_year.toString());
+        if (this.page.fields_dict.company) this.page.fields_dict.company.set_value('');
+        if (this.page.fields_dict.department) this.page.fields_dict.department.set_value('');
+        if (this.page.fields_dict.leave_type) this.page.fields_dict.leave_type.set_value('');
+        if (this.page.fields_dict.status) this.page.fields_dict.status.set_value('');
+        if (this.page.fields_dict.employee) this.page.fields_dict.employee.set_value('');
+        if (this.page.fields_dict.from_date) this.page.fields_dict.from_date.set_value(current_year + '-01-01');
+        if (this.page.fields_dict.to_date) this.page.fields_dict.to_date.set_value(current_year + '-12-31');
 
         // Clear search
         $('#employee-search').val('');
@@ -661,21 +660,20 @@ class LeaveGanttChart {
     }
 
     show_error(message) {
-        this.gantt_container.html(`
-            <div class="gantt-error" style="text-align: center; padding: 50px; color: #dc3545;">
-                <i class="fa fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>
-                <h4>Error Loading Gantt Chart</h4>
-                <p>${message}</p>
-                <div style="margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()" style="margin-right: 10px;">
-                        <i class="fa fa-refresh"></i> Retry
-                    </button>
-                    <button class="btn btn-secondary" onclick="frappe.leave_gantt_chart.show_simple_view()">
-                        <i class="fa fa-table"></i> Show Simple View
-                    </button>
-                </div>
-            </div>
-        `);
+        var errorHtml = '<div class="gantt-error" style="text-align: center; padding: 50px; color: #dc3545;">' +
+            '<i class="fa fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 20px;"></i>' +
+            '<h4>Error Loading Gantt Chart</h4>' +
+            '<p>' + message + '</p>' +
+            '<div style="margin-top: 20px;">' +
+            '<button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()" style="margin-right: 10px;">' +
+            '<i class="fa fa-refresh"></i> Retry' +
+            '</button>' +
+            '<button class="btn btn-secondary" onclick="frappe.leave_gantt_chart.show_simple_view()">' +
+            '<i class="fa fa-table"></i> Show Simple View' +
+            '</button>' +
+            '</div>' +
+            '</div>';
+        this.gantt_container.html(errorHtml);
     }
 
     show_simple_view() {
@@ -701,69 +699,61 @@ class LeaveGanttChart {
     }
 
     render_simple_table(data) {
-        let html = `
-            <div style="padding: 20px;">
-                <h4>Leave Applications - Simple View</h4>
-                <p>Gantt chart failed to load. Showing data in table format.</p>
-                <div style="overflow-x: auto;">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Company</th>
-                                <th>Employee</th>
-                                <th>Leave Type</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Days</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-        `;
+        var html = '<div style="padding: 20px;">' +
+            '<h4>Leave Applications - Simple View</h4>' +
+            '<p>Gantt chart failed to load. Showing data in table format.</p>' +
+            '<div style="overflow-x: auto;">' +
+            '<table class="table table-bordered">' +
+            '<thead>' +
+            '<tr>' +
+            '<th>Company</th>' +
+            '<th>Employee</th>' +
+            '<th>Leave Type</th>' +
+            '<th>Start Date</th>' +
+            '<th>End Date</th>' +
+            '<th>Days</th>' +
+            '<th>Status</th>' +
+            '</tr>' +
+            '</thead>' +
+            '<tbody>';
 
-        data.companies.forEach(company => {
-            company.employees.forEach(employee => {
-                const employee_leaves = data.leave_periods.filter(
-                    leave => leave.employee_id === employee.employee_id
-                );
+        data.companies.forEach(function(company) {
+            company.employees.forEach(function(employee) {
+                var employee_leaves = data.leave_periods.filter(function(leave) {
+                    return leave.employee_id === employee.employee_id;
+                });
 
                 if (employee_leaves.length === 0) {
-                    html += `
-                        <tr>
-                            <td>${company.name}</td>
-                            <td>${employee.employee_name}</td>
-                            <td colspan="5" style="text-align: center; color: #6c757d;">No leave applications</td>
-                        </tr>
-                    `;
+                    html += '<tr>' +
+                        '<td>' + company.name + '</td>' +
+                        '<td>' + employee.employee_name + '</td>' +
+                        '<td colspan="5" style="text-align: center; color: #6c757d;">No leave applications</td>' +
+                        '</tr>';
                 } else {
-                    employee_leaves.forEach(leave => {
-                        html += `
-                            <tr>
-                                <td>${company.name}</td>
-                                <td>${employee.employee_name}</td>
-                                <td>${leave.leave_type}</td>
-                                <td>${leave.start_date}</td>
-                                <td>${leave.end_date}</td>
-                                <td>${leave.total_days}</td>
-                                <td><span style="color: ${leave.color}; font-weight: bold;">${leave.status}</span></td>
-                            </tr>
-                        `;
+                    employee_leaves.forEach(function(leave) {
+                        html += '<tr>' +
+                            '<td>' + company.name + '</td>' +
+                            '<td>' + employee.employee_name + '</td>' +
+                            '<td>' + leave.leave_type + '</td>' +
+                            '<td>' + leave.start_date + '</td>' +
+                            '<td>' + leave.end_date + '</td>' +
+                            '<td>' + leave.total_days + '</td>' +
+                            '<td><span style="color: ' + leave.color + '; font-weight: bold;">' + leave.status + '</span></td>' +
+                            '</tr>';
                     });
                 }
             });
         });
 
-        html += `
-                        </tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 20px;">
-                    <button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()">
-                        <i class="fa fa-refresh"></i> Try Gantt Chart Again
-                    </button>
-                </div>
-            </div>
-        `;
+        html += '</tbody>' +
+            '</table>' +
+            '</div>' +
+            '<div style="margin-top: 20px;">' +
+            '<button class="btn btn-primary" onclick="frappe.leave_gantt_chart.refresh()">' +
+            '<i class="fa fa-refresh"></i> Try Gantt Chart Again' +
+            '</button>' +
+            '</div>' +
+            '</div>';
 
         this.gantt_container.html(html);
     }
@@ -771,15 +761,13 @@ class LeaveGanttChart {
     show_summary(summary) {
         if (!summary) return;
 
-        const summary_html = `
-            <div class="gantt-summary" style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 4px;">
-                <strong>Summary:</strong>
-                ${summary.total_companies} Companies,
-                ${summary.total_employees} Employees,
-                ${summary.total_leaves} Leave Applications
-                <span style="float: right;">${summary.date_range}</span>
-            </div>
-        `;
+        var summary_html = '<div class="gantt-summary" style="margin-bottom: 15px; padding: 10px; background: #e3f2fd; border-radius: 4px;">' +
+            '<strong>Summary:</strong> ' +
+            summary.total_companies + ' Companies, ' +
+            summary.total_employees + ' Employees, ' +
+            summary.total_leaves + ' Leave Applications' +
+            '<span style="float: right;">' + summary.date_range + '</span>' +
+            '</div>';
 
         this.legend_section.before(summary_html);
     }
@@ -982,15 +970,13 @@ class LeaveGanttChart {
     }
 
     render_legend(legend_data) {
-        let legend_html = '<div class="gantt-legend"><h5>Status Legend:</h5><div class="legend-items">';
+        var legend_html = '<div class="gantt-legend"><h5>Status Legend:</h5><div class="legend-items">';
 
-        legend_data.forEach(item => {
-            legend_html += `
-                <div class="legend-item">
-                    <span class="legend-color" style="background-color: ${item.color}"></span>
-                    <span class="legend-label">${item.label}</span>
-                </div>
-            `;
+        legend_data.forEach(function(item) {
+            legend_html += '<div class="legend-item">' +
+                '<span class="legend-color" style="background-color: ' + item.color + '"></span>' +
+                '<span class="legend-label">' + item.label + '</span>' +
+                '</div>';
         });
 
         legend_html += '</div></div>';

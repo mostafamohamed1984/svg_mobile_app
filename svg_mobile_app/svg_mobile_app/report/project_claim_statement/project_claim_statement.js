@@ -73,28 +73,7 @@ frappe.query_reports["Project Claim Statement"] = {
     },
     
     "onload": function(report) {
-        // Add custom CSS for RTL support
-        if (!$('#project-claim-statement-rtl-css').length) {
-            $('<style id="project-claim-statement-rtl-css">')
-                .text(`
-                    .report-wrapper .datatable .dt-cell--col-0 {
-                        direction: rtl;
-                        text-align: right;
-                    }
-                    .report-wrapper .datatable .dt-cell--header-0 {
-                        direction: rtl;
-                        text-align: right;
-                    }
-                    .report-wrapper .datatable .dt-cell--col-1,
-                    .report-wrapper .datatable .dt-cell--col-2,
-                    .report-wrapper .datatable .dt-cell--col-3,
-                    .report-wrapper .datatable .dt-cell--col-4,
-                    .report-wrapper .datatable .dt-cell--col-5 {
-                        text-align: right;
-                    }
-                `)
-                .appendTo('head');
-        }
+        // Removed problematic CSS that was causing DataTable errors
     },
     
     "get_datatable_options": function(options) {

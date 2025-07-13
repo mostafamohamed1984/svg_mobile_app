@@ -8,7 +8,7 @@ frappe.query_reports["Account Statement"] = {
             "label": __("Account"),
             "fieldtype": "Link",
             "options": "Account",
-            "reqd": 1,
+            "reqd": 0,
             "get_query": function() {
                 return {
                     "filters": {
@@ -22,14 +22,14 @@ frappe.query_reports["Account Statement"] = {
             "fieldname": "from_date",
             "label": __("From Date"),
             "fieldtype": "Date",
-            "reqd": 1,
+            "reqd": 0,
             "default": frappe.datetime.add_months(frappe.datetime.get_today(), -1)
         },
         {
             "fieldname": "to_date",
             "label": __("To Date"),
             "fieldtype": "Date",
-            "reqd": 1,
+            "reqd": 0,
             "default": frappe.datetime.get_today()
         },
         {
@@ -118,32 +118,7 @@ frappe.query_reports["Account Statement"] = {
     },
     
     "onload": function(report) {
-        // Add custom CSS for better formatting
-        if (!$('#account-statement-css').length) {
-            $('<style id="account-statement-css">')
-                .text(`
-                    .report-wrapper .datatable .dt-row {
-                        border-bottom: 1px solid #ecf0f1;
-                    }
-                    .report-wrapper .datatable .dt-cell {
-                        padding: 8px 12px;
-                        vertical-align: middle;
-                    }
-                    .report-wrapper .datatable .dt-cell--header {
-                        background-color: #34495e;
-                        color: white;
-                        font-weight: bold;
-                        text-align: center;
-                    }
-                    .report-wrapper .datatable .dt-scrollable {
-                        border: 1px solid #bdc3c7;
-                    }
-                    .report-wrapper .datatable .dt-row:hover {
-                        background-color: #f8f9fa;
-                    }
-                `)
-                .appendTo('head');
-        }
+        // Removed problematic CSS that was causing DataTable errors
         
         // Add export buttons
         report.page.add_inner_button(__("Export to PDF"), function() {

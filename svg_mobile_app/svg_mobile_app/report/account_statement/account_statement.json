@@ -12,19 +12,19 @@
    "fieldtype": "Link",
    "label": "Account",
    "options": "Account",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "from_date",
    "fieldtype": "Date",
    "label": "From Date",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "to_date",
    "fieldtype": "Date",
    "label": "To Date",
-   "reqd": 1
+   "reqd": 0
   },
   {
    "fieldname": "voucher_type",

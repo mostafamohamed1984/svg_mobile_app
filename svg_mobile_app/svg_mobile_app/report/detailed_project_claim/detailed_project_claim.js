@@ -146,29 +146,7 @@ frappe.query_reports["Detailed Project Claim"] = {
     },
     
     "onload": function(report) {
-        // Add custom CSS for better formatting
-        if (!$('#detailed-project-claim-css').length) {
-            $('<style id="detailed-project-claim-css">')
-                .text(`
-                    .report-wrapper .datatable .dt-row {
-                        border-bottom: 1px solid #ecf0f1;
-                    }
-                    .report-wrapper .datatable .dt-cell {
-                        padding: 8px 12px;
-                        vertical-align: top;
-                    }
-                    .report-wrapper .datatable .dt-cell--header {
-                        background-color: #34495e;
-                        color: white;
-                        font-weight: bold;
-                        text-align: center;
-                    }
-                    .report-wrapper .datatable .dt-scrollable {
-                        border: 1px solid #bdc3c7;
-                    }
-                `)
-                .appendTo('head');
-        }
+        // Removed problematic CSS that was causing DataTable errors
         
         // Add export buttons
         report.page.add_inner_button(__("Export to PDF"), function() {

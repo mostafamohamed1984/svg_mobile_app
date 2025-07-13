@@ -68,7 +68,15 @@ def get_columns():
 def get_data(filters):
     """Get account statement data"""
     if not filters.get("account"):
-        frappe.throw(_("Please select an account"))
+        return [{
+            'posting_date': '',
+            'value_date': '',
+            'description': 'Please select an account to view statement',
+            'ref_cheque_no': '',
+            'debit_amount': 0,
+            'credit_amount': 0,
+            'balance': 0
+        }]
     
     conditions = get_conditions(filters)
     

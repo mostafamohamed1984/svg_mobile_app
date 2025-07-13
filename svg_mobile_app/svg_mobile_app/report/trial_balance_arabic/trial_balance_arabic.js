@@ -8,7 +8,7 @@ frappe.query_reports["Trial Balance Arabic"] = {
             "label": __("Company"),
             "fieldtype": "Link",
             "options": "Company",
-            "reqd": 1,
+            "reqd": 0,
             "default": frappe.defaults.get_user_default("Company")
         },
         {
@@ -108,48 +108,7 @@ frappe.query_reports["Trial Balance Arabic"] = {
     },
     
     "onload": function(report) {
-        // Add custom CSS for RTL and Arabic support
-        if (!$('#trial-balance-arabic-css').length) {
-            $('<style id="trial-balance-arabic-css">')
-                .text(`
-                    .report-wrapper .datatable .dt-cell--col-1 {
-                        direction: rtl;
-                        text-align: right;
-                    }
-                    .report-wrapper .datatable .dt-cell--header-1 {
-                        direction: rtl;
-                        text-align: right;
-                    }
-                    .report-wrapper .datatable .dt-cell--col-0 {
-                        text-align: center;
-                    }
-                    .report-wrapper .datatable .dt-cell--col-2,
-                    .report-wrapper .datatable .dt-cell--col-3,
-                    .report-wrapper .datatable .dt-cell--col-4 {
-                        text-align: right;
-                    }
-                    .report-wrapper .datatable .dt-row {
-                        border-bottom: 1px solid #ecf0f1;
-                    }
-                    .report-wrapper .datatable .dt-cell {
-                        padding: 8px 12px;
-                        vertical-align: middle;
-                    }
-                    .report-wrapper .datatable .dt-cell--header {
-                        background-color: #2c3e50;
-                        color: white;
-                        font-weight: bold;
-                        text-align: center;
-                    }
-                    .report-wrapper .datatable .dt-scrollable {
-                        border: 1px solid #bdc3c7;
-                    }
-                    .report-wrapper .datatable .dt-row:hover {
-                        background-color: #f8f9fa;
-                    }
-                `)
-                .appendTo('head');
-        }
+        // Removed problematic CSS that was causing DataTable errors
         
         // Add export buttons
         report.page.add_inner_button(__("Export to PDF"), function() {

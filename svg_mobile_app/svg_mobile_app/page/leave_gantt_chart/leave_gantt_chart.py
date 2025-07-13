@@ -112,6 +112,10 @@ def get_leave_gantt_data(filters=None):
 
     employees = frappe.db.sql(employees_query, tuple(employee_params), as_dict=True)
     
+    # Debug: Check total leave applications in system
+    total_leaves = frappe.db.count('Leave Application', {'docstatus': ['!=', 2]})
+    frappe.log_error(f"Total leave applications in system: {total_leaves}", "Leave Gantt Debug")
+
     # Get leave applications for the date range
     leave_query = """
         SELECT
@@ -139,7 +143,19 @@ def get_leave_gantt_data(filters=None):
     """.format(leave_where)
 
     leave_query_params = [from_date, to_date, from_date, to_date, from_date, to_date] + leave_params
+
+    # Debug: Print query and parameters
+    frappe.log_error(f"Leave Query: {leave_query}", "Leave Gantt Debug")
+    frappe.log_error(f"Leave Query Params: {leave_query_params}", "Leave Gantt Debug")
+    frappe.log_error(f"Date Range: {from_date} to {to_date}", "Leave Gantt Debug")
+    frappe.log_error(f"Filters: company={company}, department={department}, leave_type={leave_type}, status={status}, employee={employee}", "Leave Gantt Debug")
+
     leaves = frappe.db.sql(leave_query, tuple(leave_query_params), as_dict=True)
+
+    # Debug: Print results
+    frappe.log_error(f"Found {len(leaves)} leave applications", "Leave Gantt Debug")
+    if leaves:
+        frappe.log_error(f"First leave: {leaves[0]}", "Leave Gantt Debug")
     
     # Group employees by company
     companies_data = []

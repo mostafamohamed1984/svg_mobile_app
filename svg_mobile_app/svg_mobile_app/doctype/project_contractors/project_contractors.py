@@ -62,16 +62,21 @@ class ProjectContractors(Document):
 				filters={"custom_for_project": self.name},
 				fields=["name", "docstatus"]
 			)
-			
+
 			for invoice in sales_invoices:
-				# Only clear links for draft or cancelled invoices
-				if invoice.docstatus in [0, 2]:  # Draft or Cancelled
-					frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
-				else:
-					# For submitted invoices, cancel them first
-					invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
-					if invoice_doc.docstatus == 1:  # Submitted
+				# Clear links for all invoices regardless of status
+				frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
+
+				# If invoice is submitted, we need to cancel it first, then clear the link
+				if invoice.docstatus == 1:  # Submitted
+					try:
+						invoice_doc = frappe.get_doc("Sales Invoice", invoice.name)
+						# Clear the link in the document object before cancelling
+						invoice_doc.custom_for_project = None
 						invoice_doc.cancel()
+					except Exception as e:
+						frappe.log_error(f"Error cancelling Sales Invoice {invoice.name}: {str(e)}")
+						# Force clear the link even if cancellation fails
 						frappe.db.set_value("Sales Invoice", invoice.name, "custom_for_project", None)
 			
 			# Clear Project Claim links

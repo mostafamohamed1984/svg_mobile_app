@@ -5,6 +5,9 @@ def before_cancel(doc, method):
 	# Clear project contractor link before cancellation to prevent circular reference
 	if doc.custom_for_project:
 		frappe.db.set_value("Sales Invoice", doc.name, "custom_for_project", None)
+		frappe.db.commit()
+		# Also clear the field in the current document object
+		doc.custom_for_project = None
 
 def on_cancel(doc, method):
 	"""Handle Sales Invoice cancellation"""

@@ -153,7 +153,7 @@ class LeaveGanttChart {
             fieldname: 'year',
             options: this.get_year_options(),
             default: current_year.toString(),
-            change: function() { self.on_filter_change(); }
+            change: function() { self.on_year_change(); }
         });
 
         // Company filter
@@ -235,17 +235,13 @@ class LeaveGanttChart {
     }
 
     on_filter_change() {
-        // Debug logging
-        console.log('on_filter_change called, updating_filters:', this.updating_filters);
-        console.trace('on_filter_change stack trace:');
+        // Simple approach: just refresh without automatic date updates
+        // The automatic date range update was causing the infinite loop
+        this.refresh();
+    }
 
-        // Prevent infinite loop from recursive filter changes
-        if (this.updating_filters) {
-            console.log('Skipping filter change due to updating_filters flag');
-            return;
-        }
-
-        // Update date range when year changes
+    on_year_change() {
+        // Handle year changes separately to update date range
         var year_field = this.page.fields_dict.year;
         var from_date_field = this.page.fields_dict.from_date;
         var to_date_field = this.page.fields_dict.to_date;
@@ -253,21 +249,13 @@ class LeaveGanttChart {
         if (year_field && year_field.get_value()) {
             var year = year_field.get_value();
 
-            console.log('Setting updating_filters to true');
-            // Set flag to prevent recursive calls
-            this.updating_filters = true;
-
+            // Update date fields without triggering their change events
             from_date_field.set_value(year + '-01-01');
             to_date_field.set_value(year + '-12-31');
-
-            console.log('Setting updating_filters to false');
-            // Reset flag
-            this.updating_filters = false;
         }
 
-        // Refresh chart with new filters
-        // TEMPORARILY DISABLED: this.refresh();
-        console.log('Filter change detected, but refresh disabled to prevent loop');
+        // Refresh after year change
+        this.refresh();
     }
 
     setup_search() {
@@ -639,10 +627,7 @@ class LeaveGanttChart {
                 return;
             }
 
-            // Debug: Log stack trace to see what's calling refresh
             console.log('Refreshing Gantt chart...');
-            console.trace('refresh() called from:');
-
             this.current_filters = this.get_current_filters();
 
             // Clear any existing summary

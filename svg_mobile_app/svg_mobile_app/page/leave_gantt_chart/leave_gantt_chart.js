@@ -242,19 +242,48 @@ class LeaveGanttChart {
             css_link.rel = 'stylesheet';
             css_link.href = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css';
             document.head.appendChild(css_link);
-            
+
             // Load JS
             const script = document.createElement('script');
             script.src = 'https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js';
             script.onload = () => {
+                this.setup_error_handling();
                 this.init_gantt();
                 this.load_data();
             };
+            script.onerror = () => {
+                this.show_error('Failed to load DHTMLX Gantt library. Please check your internet connection.');
+            };
             document.head.appendChild(script);
         } else {
+            this.setup_error_handling();
             this.init_gantt();
             this.load_data();
         }
+    }
+
+    setup_error_handling() {
+        // Capture and handle Gantt errors
+        const original_console_error = console.error;
+        console.error = function(...args) {
+            // Check if it's a Gantt-related SVG error
+            const error_message = args.join(' ');
+            if (error_message.includes('path') && error_message.includes('Expected number')) {
+                console.warn('Gantt SVG path error caught and handled:', ...args);
+                // Don't propagate SVG path errors to avoid console spam
+                return;
+            }
+            // Call original console.error for other errors
+            original_console_error.apply(console, args);
+        };
+
+        // Add global error event listener
+        window.addEventListener('error', (event) => {
+            if (event.message && event.message.includes('gantt')) {
+                console.warn('Gantt error caught:', event.message);
+                event.preventDefault(); // Prevent error from propagating
+            }
+        });
     }
 
     init_gantt() {
@@ -315,6 +344,16 @@ class LeaveGanttChart {
         gantt.config.smart_rendering = true;
         gantt.config.static_background = true;
 
+        // Prevent SVG path errors
+        gantt.config.min_column_width = 50;
+        gantt.config.min_grid_column_width = 70;
+        gantt.config.task_height = 20;
+        gantt.config.bar_height = 16;
+
+        // Date validation
+        gantt.config.correct_work_time = true;
+        gantt.config.work_time = true;
+
         // Configure task types
         gantt.config.types = {
             task: "task",
@@ -325,6 +364,31 @@ class LeaveGanttChart {
             leave: "leave"
         };
 
+        // Add data validation
+        gantt.attachEvent("onBeforeTaskDisplay", function(id, task) {
+            // Validate task data before rendering
+            if (task.type === 'leave') {
+                // Ensure valid dates
+                if (!task.start_date || !task.end_date) {
+                    return false; // Don't display invalid tasks
+                }
+
+                // Ensure positive duration
+                if (task.duration <= 0) {
+                    task.duration = 1;
+                }
+
+                // Ensure dates are Date objects or valid strings
+                if (typeof task.start_date === 'string') {
+                    task.start_date = gantt.date.parseDate(task.start_date, "xml_date");
+                }
+                if (typeof task.end_date === 'string') {
+                    task.end_date = gantt.date.parseDate(task.end_date, "xml_date");
+                }
+            }
+            return true;
+        });
+
         // Initialize Gantt
         gantt.init("gantt_here");
 
@@ -333,24 +397,34 @@ class LeaveGanttChart {
     }
 
     setup_gantt_templates() {
-        // Custom task template for leave periods
+        // Custom task template for leave periods with error handling
         gantt.templates.task_class = function(start, end, task) {
-            if (task.type === 'leave') {
-                return `leave-task status-${task.status.toLowerCase().replace(/\s+/g, '-')}`;
+            try {
+                if (task.type === 'leave' && task.status) {
+                    return `leave-task status-${task.status.toLowerCase().replace(/\s+/g, '-')}`;
+                }
+                return '';
+            } catch (e) {
+                console.warn('Error in task_class template:', e, task);
+                return 'leave-task';
             }
-            return '';
         };
 
-        // Custom tooltip
+        // Custom tooltip with error handling
         gantt.templates.tooltip_text = function(start, end, task) {
-            if (task.type === 'leave') {
-                return `<b>${task.employee_name}</b><br/>
-                        Leave Type: ${task.leave_type}<br/>
-                        Status: ${task.status}<br/>
-                        Duration: ${task.duration} days<br/>
-                        ${task.description ? 'Reason: ' + task.description : ''}`;
+            try {
+                if (task.type === 'leave') {
+                    return `<b>${task.employee_name || 'Unknown Employee'}</b><br/>
+                            Leave Type: ${task.leave_type || 'Unknown'}<br/>
+                            Status: ${task.status || 'Unknown'}<br/>
+                            Duration: ${task.duration || 0} days<br/>
+                            ${task.description ? 'Reason: ' + task.description : ''}`;
+                }
+                return task.text || 'No information';
+            } catch (e) {
+                console.warn('Error in tooltip template:', e, task);
+                return 'Error displaying tooltip';
             }
-            return task.text;
         };
 
         // Custom grid row template
@@ -530,18 +604,56 @@ class LeaveGanttChart {
                 employee_leaves.forEach((leave, leave_index) => {
                     const leave_id = task_counter++;
 
-                    // Calculate duration in days
-                    const start = new Date(leave.start_date);
-                    const end = new Date(leave.end_date);
-                    const duration = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+                    // Validate and parse dates
+                    let start_date = leave.start_date;
+                    let end_date = leave.end_date;
+
+                    // Ensure dates are valid
+                    if (!start_date || !end_date) {
+                        console.warn(`Invalid dates for leave ${leave.leave_id}:`, leave);
+                        return; // Skip this leave record
+                    }
+
+                    // Parse dates and validate
+                    const start = new Date(start_date);
+                    const end = new Date(end_date);
+
+                    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                        console.warn(`Invalid date format for leave ${leave.leave_id}:`, leave);
+                        return; // Skip this leave record
+                    }
+
+                    // Ensure end date is not before start date
+                    if (end < start) {
+                        console.warn(`End date before start date for leave ${leave.leave_id}:`, leave);
+                        // Swap dates if needed
+                        const temp = start_date;
+                        start_date = end_date;
+                        end_date = temp;
+                    }
+
+                    // Calculate duration in days (minimum 1 day)
+                    const duration = Math.max(1, Math.ceil((new Date(end_date) - new Date(start_date)) / (1000 * 60 * 60 * 24)) + 1);
+
+                    // Ensure dates are within the timeline range
+                    const timeline_start = new Date(data.timeline.start_date);
+                    const timeline_end = new Date(data.timeline.end_date);
+
+                    // Adjust dates if they're outside the timeline
+                    if (new Date(start_date) < timeline_start) {
+                        start_date = data.timeline.start_date;
+                    }
+                    if (new Date(end_date) > timeline_end) {
+                        end_date = data.timeline.end_date;
+                    }
 
                     gantt_data.data.push({
                         id: leave_id,
                         text: `${leave.leave_type}`,
                         type: 'leave',
                         parent: employee_id,
-                        start_date: leave.start_date,
-                        end_date: leave.end_date,
+                        start_date: start_date,
+                        end_date: end_date,
                         duration: duration,
                         leave_type: leave.leave_type,
                         status: leave.status,
@@ -562,8 +674,11 @@ class LeaveGanttChart {
             gantt.init("gantt_here");
         }
 
+        // Validate data before loading
+        const validated_data = this.validate_gantt_data(gantt_data);
+
         // Load data into Gantt
-        gantt.parse(gantt_data);
+        gantt.parse(validated_data);
 
         // Expand all companies by default
         gantt.eachTask(function(task) {
@@ -573,9 +688,65 @@ class LeaveGanttChart {
         });
     }
 
+    validate_gantt_data(gantt_data) {
+        // Validate and clean Gantt data to prevent SVG errors
+        const validated_data = {
+            data: [],
+            links: gantt_data.links || []
+        };
+
+        gantt_data.data.forEach(task => {
+            try {
+                // Basic validation
+                if (!task.id || !task.text) {
+                    console.warn('Skipping task with missing id or text:', task);
+                    return;
+                }
+
+                // Validate dates for leave tasks
+                if (task.type === 'leave') {
+                    if (!task.start_date || !task.end_date) {
+                        console.warn('Skipping leave task with missing dates:', task);
+                        return;
+                    }
+
+                    // Ensure duration is positive
+                    if (!task.duration || task.duration <= 0) {
+                        task.duration = 1;
+                    }
+
+                    // Ensure dates are properly formatted
+                    if (typeof task.start_date === 'string') {
+                        const parsed_start = new Date(task.start_date);
+                        if (isNaN(parsed_start.getTime())) {
+                            console.warn('Invalid start date for task:', task);
+                            return;
+                        }
+                    }
+
+                    if (typeof task.end_date === 'string') {
+                        const parsed_end = new Date(task.end_date);
+                        if (isNaN(parsed_end.getTime())) {
+                            console.warn('Invalid end date for task:', task);
+                            return;
+                        }
+                    }
+                }
+
+                // Add validated task
+                validated_data.data.push(task);
+
+            } catch (e) {
+                console.warn('Error validating task:', e, task);
+            }
+        });
+
+        return validated_data;
+    }
+
     render_legend(legend_data) {
         let legend_html = '<div class="gantt-legend"><h5>Status Legend:</h5><div class="legend-items">';
-        
+
         legend_data.forEach(item => {
             legend_html += `
                 <div class="legend-item">
@@ -584,7 +755,7 @@ class LeaveGanttChart {
                 </div>
             `;
         });
-        
+
         legend_html += '</div></div>';
         this.legend_section.html(legend_html);
     }

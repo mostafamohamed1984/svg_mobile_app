@@ -167,18 +167,42 @@ def get_leave_gantt_data(filters=None):
     }
     
     for leave in leaves:
-        leave_periods.append({
-            'id': leave.leave_id,
-            'employee_id': leave.employee,
-            'start_date': leave.from_date.strftime('%Y-%m-%d'),
-            'end_date': leave.to_date.strftime('%Y-%m-%d'),
-            'leave_type': leave.leave_type,
-            'status': leave.status,
-            'description': leave.description or '',
-            'total_days': leave.total_leave_days,
-            'color': status_colors.get(leave.status, '#6c757d'),
-            'employee_name': leave.employee_name
-        })
+        try:
+            # Validate dates
+            if not leave.from_date or not leave.to_date:
+                continue
+
+            # Ensure from_date is not after to_date
+            start_date = leave.from_date
+            end_date = leave.to_date
+
+            if start_date > end_date:
+                # Swap dates if they're reversed
+                start_date, end_date = end_date, start_date
+
+            # Calculate total days if not provided
+            total_days = leave.total_leave_days
+            if not total_days or total_days <= 0:
+                total_days = (end_date - start_date).days + 1
+
+            # Ensure minimum 1 day
+            total_days = max(1, total_days)
+
+            leave_periods.append({
+                'id': leave.leave_id,
+                'employee_id': leave.employee,
+                'start_date': start_date.strftime('%Y-%m-%d'),
+                'end_date': end_date.strftime('%Y-%m-%d'),
+                'leave_type': leave.leave_type or 'Unknown',
+                'status': leave.status or 'Unknown',
+                'description': leave.description or '',
+                'total_days': total_days,
+                'color': status_colors.get(leave.status, '#6c757d'),
+                'employee_name': leave.employee_name or 'Unknown Employee'
+            })
+        except Exception as e:
+            frappe.log_error(f"Error processing leave record {leave.leave_id}: {str(e)}", "Leave Gantt Data Processing")
+            continue
     
         return {
             'companies': companies_data,

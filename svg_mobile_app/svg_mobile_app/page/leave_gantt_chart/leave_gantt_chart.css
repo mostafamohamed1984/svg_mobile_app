@@ -75,6 +75,51 @@
     border-radius: 6px;
     overflow: hidden;
     min-height: 600px;
+    position: relative;
+}
+
+/* Fix for SVG rendering issues */
+.gantt_task_line {
+    min-width: 1px !important;
+}
+
+.gantt_task_content {
+    min-width: 1px !important;
+}
+
+/* Prevent negative widths */
+.gantt_task_drag {
+    min-width: 1px !important;
+}
+
+/* Error handling styles */
+.gantt-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: 40px;
+    text-align: center;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.gantt-error i {
+    font-size: 48px;
+    color: #dc3545;
+    margin-bottom: 20px;
+}
+
+.gantt-error h4 {
+    color: #dc3545;
+    margin-bottom: 15px;
+}
+
+.gantt-error p {
+    color: #6c757d;
+    margin-bottom: 20px;
+    max-width: 500px;
 }
 
 /* Custom Gantt Task Styles */

@@ -1,0 +1,393 @@
+/* Leave Gantt Chart Styles */
+.leave-gantt-chart-wrapper {
+    background: #f8f9fa;
+}
+
+.leave-gantt-container {
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 15px;
+}
+
+/* Filter Section */
+.gantt-filters-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.gantt-filters-section .form-group {
+    display: inline-block;
+    margin-right: 15px;
+    margin-bottom: 10px;
+}
+
+/* Legend Section */
+.gantt-legend-section {
+    margin-bottom: 20px;
+}
+
+.gantt-legend {
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.gantt-legend h5 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.legend-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
+}
+
+.legend-label {
+    font-size: 12px;
+    color: #495057;
+}
+
+/* Gantt Chart Container */
+.gantt-chart-container {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: 600px;
+}
+
+/* Custom Gantt Task Styles */
+.gantt_task_line.leave-task {
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+/* Status-based colors for leave tasks */
+.gantt_task_line.status-requested {
+    background-color: #ffc107 !important;
+    border-color: #e0a800 !important;
+}
+
+.gantt_task_line.status-manager-approved {
+    background-color: #17a2b8 !important;
+    border-color: #138496 !important;
+}
+
+.gantt_task_line.status-hr-approved {
+    background-color: #28a745 !important;
+    border-color: #1e7e34 !important;
+}
+
+.gantt_task_line.status-approved {
+    background-color: #28a745 !important;
+    border-color: #1e7e34 !important;
+}
+
+.gantt_task_line.status-rejected {
+    background-color: #dc3545 !important;
+    border-color: #c82333 !important;
+}
+
+.gantt_task_line.status-cancelled {
+    background-color: #6c757d !important;
+    border-color: #5a6268 !important;
+}
+
+/* Gantt Grid Customization */
+.gantt_grid_scale .gantt_grid_head_cell {
+    background: #495057;
+    color: white;
+    font-weight: 600;
+    border-right: 1px solid #6c757d;
+}
+
+.gantt_grid_data .gantt_row {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.gantt_grid_data .gantt_row:hover {
+    background-color: #f8f9fa;
+}
+
+/* Timeline Customization */
+.gantt_scale_line {
+    background: #495057;
+    color: white;
+    font-weight: 600;
+    border-bottom: 1px solid #6c757d;
+}
+
+.gantt_scale_cell {
+    border-right: 1px solid #6c757d;
+}
+
+/* Company and Employee Row Styling */
+.gantt-company-row {
+    background-color: #e9ecef !important;
+    font-weight: 600;
+}
+
+.gantt-employee-row {
+    background-color: #f8f9fa !important;
+}
+
+.gantt-leave-row {
+    background-color: white !important;
+}
+
+/* Hide task bars for company and employee rows */
+.gantt_task_line.gantt-hidden-task {
+    display: none !important;
+}
+
+.gantt_task_content.gantt-hidden-task {
+    display: none !important;
+}
+
+/* Company row text styling */
+.gantt_tree_content[data-type="company"] {
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Employee row text styling */
+.gantt_tree_content[data-type="employee"] {
+    font-weight: 500;
+    color: #6c757d;
+    padding-left: 20px;
+}
+
+/* Search functionality */
+.search-container {
+    padding: 10px 0;
+    border-top: 1px solid #dee2e6;
+}
+
+.search-highlight {
+    background-color: #fff3cd !important;
+    border-left: 3px solid #ffc107 !important;
+}
+
+.search-highlight .gantt_tree_content {
+    font-weight: 600 !important;
+    color: #856404 !important;
+}
+
+/* Print Styles */
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .leave-gantt-chart-wrapper {
+        background: white;
+        margin: 0;
+        padding: 0;
+    }
+
+    .leave-gantt-container {
+        box-shadow: none;
+        margin: 0;
+        padding: 5mm;
+        width: 100%;
+        height: 100vh;
+    }
+
+    .gantt-filters-section,
+    .page-actions,
+    .page-head,
+    .search-container {
+        display: none !important;
+    }
+
+    .gantt-legend-section {
+        margin-bottom: 10px;
+        page-break-inside: avoid;
+    }
+
+    .gantt-chart-container {
+        border: 1px solid #000;
+        page-break-inside: avoid;
+        height: calc(100vh - 80mm) !important;
+        min-height: 200mm;
+    }
+
+    /* Print header styling */
+    .print-header {
+        page-break-inside: avoid;
+        margin-bottom: 10mm;
+        text-align: center;
+    }
+
+    .print-header h2 {
+        margin: 0 0 5mm 0;
+        font-size: 18pt;
+        font-weight: bold;
+    }
+
+    .print-header p {
+        margin: 2mm 0;
+        font-size: 12pt;
+    }
+
+    /* A3 Landscape Print Layout */
+    @page {
+        size: A3 landscape;
+        margin: 10mm;
+    }
+
+    /* Gantt specific print styles */
+    .gantt_grid_scale .gantt_grid_head_cell,
+    .gantt_scale_line {
+        background: #000 !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        font-size: 10pt !important;
+    }
+
+    .gantt_grid_data .gantt_cell {
+        font-size: 9pt !important;
+        padding: 2px 4px !important;
+    }
+
+    .gantt_task_line.leave-task {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border: 1px solid #000 !important;
+    }
+
+    /* Ensure colors print correctly */
+    .gantt_task_line.status-requested {
+        background-color: #ffc107 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .gantt_task_line.status-manager-approved {
+        background-color: #17a2b8 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .gantt_task_line.status-hr-approved,
+    .gantt_task_line.status-approved {
+        background-color: #28a745 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .gantt_task_line.status-rejected {
+        background-color: #dc3545 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .gantt_task_line.status-cancelled {
+        background-color: #6c757d !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Company and employee row print styling */
+    .gantt-company-row {
+        background-color: #e9ecef !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        font-weight: bold !important;
+    }
+
+    .gantt-employee-row {
+        background-color: #f8f9fa !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Legend print styling */
+    .gantt-legend {
+        background: white !important;
+        border: 1px solid #000 !important;
+        page-break-inside: avoid;
+    }
+
+    .legend-color {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        border: 1px solid #000 !important;
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .legend-items {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .gantt-chart-container {
+        min-height: 400px;
+    }
+    
+    .gantt_grid_scale .gantt_grid_head_cell {
+        font-size: 11px;
+    }
+}
+
+/* Tooltip Styling */
+.gantt_tooltip {
+    background: rgba(0,0,0,0.9);
+    color: white;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-width: 250px;
+}
+
+/* Loading State */
+.gantt-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 400px;
+    color: #6c757d;
+    font-size: 16px;
+}
+
+.gantt-loading::before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    border: 2px solid #dee2e6;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

@@ -1401,10 +1401,21 @@ def check_approval_screen_access(employee_id):
         if not user:
             return {"status": "fail", "message": _("User not linked to employee")}
         
+        # Get current session user
+        current_user = frappe.session.user
+        current_user_roles = frappe.get_roles(current_user)
+        
+        # Check if current user has HR roles (they can access any employee's data)
+        is_current_user_hr = "HR Manager" in current_user_roles or "HR User" in current_user_roles
+        
+        # Validate access: either same user or HR user accessing
+        if user != current_user and not is_current_user_hr:
+            return {"status": "fail", "message": _("Access denied: Invalid employee ID")}
+        
         # Check if user has HR or Manager role
         roles = frappe.get_roles(user)
         is_direct_manager = "Direct Manager" in roles
-        has_reports = employee.reports_to and len(frappe.get_all("Employee", {"reports_to": employee_id})) > 0
+        has_reports = len(frappe.get_all("Employee", {"reports_to": employee_id})) > 0  # Fixed logic
         is_manager = is_direct_manager or has_reports
         has_access = "HR Manager" in roles or "HR User" in roles or is_manager
         
@@ -1437,9 +1448,12 @@ def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending
         if not request_type:
             request_type = frappe.form_dict.get('request_type')
 
-        # Validate required parameters
+        # Get current user's employee record if not provided
+        current_user = frappe.session.user
         if not employee_id:
-            return {"status": "fail", "message": _("Employee ID is required")}
+            employee_id = frappe.db.get_value("Employee", {"user_id": current_user}, "name")
+            if not employee_id:
+                return {"status": "fail", "message": _("No employee record found for current user")}
 
         # Validate and convert parameters
         if isinstance(pending_only, str):
@@ -1447,9 +1461,7 @@ def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending
         
         # Normalize request_type parameter
         if request_type:
-            original_request_type = request_type
             request_type = request_type.strip().lower()
-            frappe.log_error(f"Request type filter: '{original_request_type}' normalized to '{request_type}'", "Get Pending Requests Debug")
         
         # Check if user is HR or manager
         access_check = check_approval_screen_access(employee_id)
@@ -1580,6 +1592,39 @@ def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending
         return {"status": "fail", "message": str(e)}
 
 
+def validate_approval_permission(doc, employee_doc, current_user, action):
+    """Validate if current user has permission to approve/reject a specific request"""
+    try:
+        # Get current user's employee record
+        current_user_employee_id = frappe.db.get_value("Employee", {"user_id": current_user}, "name")
+        if not current_user_employee_id:
+            return {"valid": False, "message": _("Current user is not linked to any employee")}
+        
+        # Get current user's roles
+        current_user_roles = frappe.get_roles(current_user)
+        is_hr = "HR Manager" in current_user_roles or "HR User" in current_user_roles
+        is_direct_manager = (employee_doc.reports_to == current_user_employee_id)
+        
+        # Get designated approver for this request type
+        if doc.doctype == "Leave Application":
+            designated_approver = employee_doc.leave_approver
+        elif doc.doctype == "Shift Request":
+            designated_approver = employee_doc.shift_request_approver
+        else:  # Overtime Request
+            designated_approver = employee_doc.reports_to
+        
+        is_designated_approver = (current_user == designated_approver)
+        
+        # Check if user has any approval authority
+        if not (is_hr or is_direct_manager or is_designated_approver):
+            return {"valid": False, "message": _("You don't have permission to {0} this request").format(action)}
+        
+        return {"valid": True, "is_hr": is_hr, "is_direct_manager": is_direct_manager, "is_designated_approver": is_designated_approver}
+        
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Validate Approval Permission Error")
+        return {"valid": False, "message": str(e)}
+
 def get_next_approver(doctype, employee_id, current_approver=None):
     """Determine the next approver in the approval chain"""
     try:
@@ -1635,35 +1680,39 @@ def update_request_status(employee_id=None, request_name=None, doctype=None, sta
         # Validate required parameters
         if not all([employee_id, request_name, doctype, status]):
             return {"status": "fail", "message": _("Missing required parameters: employee_id, request_name, doctype, status")}
+        
+        # Get current user's employee record if not provided
+        current_user = frappe.session.user
+        if not employee_id:
+            employee_id = frappe.db.get_value("Employee", {"user_id": current_user}, "name")
+            if not employee_id:
+                return {"status": "fail", "message": _("No employee record found for current user")}
+        
         # Check if user has permission to approve/reject
         access_check = check_approval_screen_access(employee_id)
         if not access_check.get("has_access"):
             return {"status": "fail", "message": _("You don't have permission to update this request")}
+        
+        # Validate that the request exists
+        if not frappe.db.exists(doctype, request_name):
+            return {"status": "fail", "message": _("Request not found")}
         
         # Get the request document
         doc = frappe.get_doc(doctype, request_name, ignore_permissions=True)
         employee_doc = frappe.get_doc("Employee", doc.employee, ignore_permissions=True)
         current_user = frappe.session.user
         
-        # Determine if current user is authorized to act on this request
-        is_hr = access_check.get("is_hr")
-        is_direct_manager = (employee_doc.reports_to == employee_id)
+        # Validate approval permission for this specific request
+        action = "approve" if status.lower() == "approved" else "reject"
+        permission_check = validate_approval_permission(doc, employee_doc, current_user, action)
         
-        # Get designated approver for this request type
-        if doctype == "Leave Application":
-            designated_approver = employee_doc.leave_approver
-        elif doctype == "Shift Request":
-            designated_approver = employee_doc.shift_request_approver
-        else:  # Overtime Request
-            designated_approver = employee_doc.reports_to
+        if not permission_check.get("valid"):
+            return {"status": "fail", "message": permission_check.get("message")}
         
-        is_designated_approver = (current_user == designated_approver)
-        
-        # Determine current approval level and validate permissions
-        if status.lower() == "rejected":
-            # Any authorized approver can reject at any level
-            if not (is_hr or is_direct_manager or is_designated_approver):
-                return {"status": "fail", "message": _("You don't have permission to reject this request")}
+        # Extract permission flags
+        is_hr = permission_check.get("is_hr")
+        is_direct_manager = permission_check.get("is_direct_manager")
+        is_designated_approver = permission_check.get("is_designated_approver")
         
         # Handle approval workflow based on doctype and current status
         if doctype == "Leave Application":
@@ -1672,6 +1721,8 @@ def update_request_status(employee_id=None, request_name=None, doctype=None, sta
             return _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_manager, is_designated_approver)
         elif doctype == "Overtime Request":
             return _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direct_manager, is_designated_approver)
+        else:
+            return {"status": "fail", "message": _("Invalid document type: {0}").format(doctype)}
         
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Update Request Status Error")

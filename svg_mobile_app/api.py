@@ -1827,13 +1827,30 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
             elif doc.status == "Manager Approved":
                 # Second level approval - ONLY HR/Designated Approver can approve
                 if is_designated_approver or is_hr:
-                    doc.status = "HR Approved"
-                    doc.workflow_state = "HR Approved"  # Set workflow state
-                    doc.docstatus = 1
-                    doc.save(ignore_permissions=True)
-                    frappe.db.commit()
-                    return {"status": "success", "message": _("Shift request approved"),
-                           "data": {"name": doc.name, "status": doc.status}}
+                    # Use workflow transition to properly handle HR approval
+                    try:
+                        # Apply workflow action to transition from Manager Approved to HR Approved
+                        from frappe.model.workflow import apply_workflow
+                        apply_workflow(doc, "Approve")
+
+                        # Ensure the document is properly saved and committed
+                        frappe.db.commit()
+
+                        return {"status": "success", "message": _("Shift request approved"),
+                               "data": {"name": doc.name, "status": doc.status}}
+                    except Exception as workflow_error:
+                        # If workflow fails, try direct method as fallback
+                        frappe.log_error(f"Workflow transition failed: {str(workflow_error)}", "Shift Request HR Approval")
+
+                        # Fallback: Direct status update (as we tested successfully)
+                        doc.status = "HR Approved"
+                        doc.workflow_state = "HR Approved"
+                        doc.docstatus = 1
+                        doc.save(ignore_permissions=True)
+                        frappe.db.commit()
+
+                        return {"status": "success", "message": _("Shift request approved"),
+                               "data": {"name": doc.name, "status": doc.status}}
                 else:
                     return {"status": "fail", "message": _("Only HR or designated approver can approve this request at second level")}
         

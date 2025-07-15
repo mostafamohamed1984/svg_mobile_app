@@ -1771,8 +1771,8 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
 
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
-                    doc.status = "HR Approved"
-                    doc.workflow_state = "HR Approved"  # Set workflow state
+                    doc.status = "Approved"
+                    doc.workflow_state = "Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1785,8 +1785,8 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
             elif doc.status == "Manager Approved":
                 # Second level approval
                 if is_designated_approver or is_hr:
-                    doc.status = "HR Approved"
-                    doc.workflow_state = "HR Approved"  # Set workflow state
+                    doc.status = "Approved"
+                    doc.workflow_state = "Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1838,8 +1838,8 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 # Second level approval - ONLY HR/Designated Approver can approve
                 if is_designated_approver or is_hr:
                     # Direct method for HR approval (workflow transition has status validation issues)
-                    doc.status = "HR Approved"
-                    doc.workflow_state = "HR Approved"
+                    doc.status = "Approved"
+                    doc.workflow_state = "Approved"
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1885,8 +1885,8 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
 
                 elif is_designated_approver or is_hr:
                     # Direct approval by designated approver or HR
-                    doc.status = "HR Approved"
-                    doc.workflow_state = "HR Approved"  # Set workflow state
+                    doc.status = "Approved"
+                    doc.workflow_state = "Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
@@ -1899,8 +1899,8 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
             elif doc.status == "Manager Approved":
                 # Second level approval
                 if is_designated_approver or is_hr:
-                    doc.status = "HR Approved"
-                    doc.workflow_state = "HR Approved"  # Set workflow state
+                    doc.status = "Approved"
+                    doc.workflow_state = "Approved"  # Set workflow state
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()

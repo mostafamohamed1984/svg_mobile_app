@@ -1461,17 +1461,9 @@ def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending
         is_hr = access_check.get("is_hr")
         has_reports = access_check.get("has_reports")
 
-        # Apply employee filtering for managers and HR users only
-        if has_reports:
-            # For managers with direct reports, only show those employees
-            reporting_employees = frappe.get_all("Employee",
-                filters={"reports_to": employee_id},
-                pluck="name"
-            )
-            if not reporting_employees:
-                return {"status": "success", "data": []}
-            filters.append(["employee", "in", reporting_employees])
-        elif is_hr:
+        # Apply employee filtering for HR users and managers
+        # HR role takes priority over manager role (higher in organizational hierarchy)
+        if is_hr:
             # For HR users, get all employees they can manage
             employee = frappe.get_doc("Employee", employee_id)
             if employee.company:
@@ -1485,6 +1477,15 @@ def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending
                     return {"status": "success", "data": []}
             else:
                 return {"status": "success", "data": []}
+        elif has_reports:
+            # For managers with direct reports, only show those employees
+            reporting_employees = frappe.get_all("Employee",
+                filters={"reports_to": employee_id},
+                pluck="name"
+            )
+            if not reporting_employees:
+                return {"status": "success", "data": []}
+            filters.append(["employee", "in", reporting_employees])
         else:
             # No access for users without actual reports or HR roles
             return {"status": "success", "data": []}

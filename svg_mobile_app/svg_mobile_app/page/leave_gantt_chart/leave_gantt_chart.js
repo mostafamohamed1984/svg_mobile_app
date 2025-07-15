@@ -79,7 +79,12 @@ class LeaveGanttChart {
 
             // Initialize step by step with error handling
             this.make();
-            this.setup_filters();
+
+            // Setup filters after a short delay to ensure page is ready
+            var self = this;
+            setTimeout(function() {
+                self.setup_filters();
+            }, 100);
 
             // Load Gantt library after a short delay
             var self = this;
@@ -127,6 +132,7 @@ class LeaveGanttChart {
     }
 
     setup_filters() {
+        console.log('Setting up filters...');
         var self = this;
 
         // Add refresh button
@@ -143,6 +149,7 @@ class LeaveGanttChart {
         var current_year = new Date().getFullYear();
 
         // Year filter
+        console.log('Adding year filter...');
         this.page.add_field({
             label: 'Year',
             fieldtype: 'Select',
@@ -151,6 +158,7 @@ class LeaveGanttChart {
             default: '2024',  // Default to 2024 to show existing leave data
             change: function() { self.on_year_change(); }
         });
+        console.log('Year filter added');
 
         // Company filter
         this.page.add_field({

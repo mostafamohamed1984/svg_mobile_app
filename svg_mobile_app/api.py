@@ -2,6 +2,87 @@ import frappe
 from frappe import _
 from frappe.utils import now
 from datetime import datetime
+import requests
+import json
+
+# FCM Notification Functions
+def send_fcm_notification(employee_id, title, body, data=None):
+    """Send FCM push notification to employee"""
+    try:
+        # Get employee FCM token
+        fcm_token = frappe.db.get_value("Employee", employee_id, "fcm_token")
+
+        if not fcm_token:
+            frappe.log_error(f"No FCM token found for employee {employee_id}", "FCM Notification")
+            return False
+
+        # Get Firebase server key from site config or system settings
+        firebase_server_key = frappe.conf.get("firebase_server_key") or frappe.db.get_single_value("System Settings", "firebase_server_key")
+
+        if not firebase_server_key:
+            frappe.log_error("Firebase server key not configured", "FCM Notification")
+            return False
+
+        # Prepare FCM payload
+        payload = {
+            "to": fcm_token,
+            "notification": {
+                "title": title,
+                "body": body,
+                "sound": "default",
+                "badge": "1"
+            },
+            "data": data or {}
+        }
+
+        # FCM endpoint
+        fcm_url = "https://fcm.googleapis.com/fcm/send"
+
+        # Headers
+        headers = {
+            "Authorization": f"key={firebase_server_key}",
+            "Content-Type": "application/json"
+        }
+
+        # Send FCM notification
+        response = requests.post(fcm_url, headers=headers, data=json.dumps(payload), timeout=10)
+
+        if response.status_code == 200:
+            response_data = response.json()
+            if response_data.get("success", 0) > 0:
+                # Log successful notification
+                create_mobile_notification_log(employee_id, title, body, "Success")
+                frappe.log_error(f"FCM notification sent successfully to {employee_id}: {title}", "FCM Success")
+                return True
+            else:
+                frappe.log_error(f"FCM notification failed for {employee_id}: {response_data}", "FCM Notification")
+                return False
+        else:
+            frappe.log_error(f"FCM request failed with status {response.status_code}: {response.text}", "FCM Notification")
+            return False
+
+    except Exception as e:
+        frappe.log_error(f"FCM notification error for {employee_id}: {str(e)}", "FCM Notification")
+        return False
+
+def create_mobile_notification_log(employee_id, title, content, status="Sent"):
+    """Create a log entry for mobile notifications"""
+    try:
+        # Create Mobile Notification Log entry
+        notification_log = frappe.get_doc({
+            "doctype": "Mobile Notification log",
+            "employee": employee_id,
+            "title": title,
+            "content": content,
+            "sending_date": now(),
+            "status": status
+        })
+        notification_log.insert(ignore_permissions=True)
+        frappe.db.commit()
+        return notification_log.name
+    except Exception as e:
+        frappe.log_error(f"Failed to create notification log: {str(e)}", "Mobile Notification Log")
+        return None
 
 # login api
 @frappe.whitelist(allow_guest=True)
@@ -39,6 +120,36 @@ def save_fcm_token(user_id, fcm_token):
 
     frappe.db.set_value("Employee", employee, "fcm_token", fcm_token)
     return {"status": "success", "message": "Token saved successfully"}
+
+@frappe.whitelist()
+def configure_firebase_server_key(server_key):
+    """Configure Firebase server key for FCM notifications (System Manager only)"""
+    if not frappe.has_permission("System Settings", "write"):
+        frappe.throw(_("Insufficient permissions to configure Firebase settings"))
+
+    # Save to System Settings
+    frappe.db.set_single_value("System Settings", "firebase_server_key", server_key)
+    frappe.db.commit()
+
+    return {"status": "success", "message": "Firebase server key configured successfully"}
+
+@frappe.whitelist()
+def test_fcm_notification(employee_id, title="Test Notification", body="This is a test FCM notification"):
+    """Test FCM notification sending (System Manager only)"""
+    if not frappe.has_permission("System Settings", "write"):
+        frappe.throw(_("Insufficient permissions to test FCM notifications"))
+
+    result = send_fcm_notification(
+        employee_id=employee_id,
+        title=title,
+        body=body,
+        data={"test": "true", "timestamp": str(now())}
+    )
+
+    if result:
+        return {"status": "success", "message": "Test notification sent successfully"}
+    else:
+        return {"status": "fail", "message": "Failed to send test notification"}
 
 # profile api
 @frappe.whitelist(allow_guest=False)
@@ -1750,6 +1861,20 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 doc.remark = reason
             doc.save(ignore_permissions=True)
             frappe.db.commit()
+
+            # Send FCM notification for rejection
+            send_fcm_notification(
+                employee_id=doc.employee,
+                title="Leave Request Rejected",
+                body=f"Your leave request from {doc.from_date} to {doc.to_date} has been rejected.",
+                data={
+                    "request_id": doc.name,
+                    "request_type": "Leave Application",
+                    "status": "rejected",
+                    "reason": reason or "No reason provided"
+                }
+            )
+
             return {"status": "success", "message": _("Leave request rejected"), "data": {"name": doc.name, "status": doc.status}}
         
         elif status.lower() == "approved":
@@ -1776,6 +1901,21 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
+
+                    # Send FCM notification for final approval
+                    send_fcm_notification(
+                        employee_id=doc.employee,
+                        title="Leave Request Approved",
+                        body=f"Your leave request from {doc.from_date} to {doc.to_date} has been approved.",
+                        data={
+                            "request_id": doc.name,
+                            "request_type": "Leave Application",
+                            "status": "approved",
+                            "from_date": str(doc.from_date),
+                            "to_date": str(doc.to_date)
+                        }
+                    )
+
                     return {"status": "success", "message": _("Leave request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
 
@@ -1790,6 +1930,21 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
+
+                    # Send FCM notification for final approval
+                    send_fcm_notification(
+                        employee_id=doc.employee,
+                        title="Leave Request Approved",
+                        body=f"Your leave request from {doc.from_date} to {doc.to_date} has been approved.",
+                        data={
+                            "request_id": doc.name,
+                            "request_type": "Leave Application",
+                            "status": "approved",
+                            "from_date": str(doc.from_date),
+                            "to_date": str(doc.to_date)
+                        }
+                    )
+
                     return {"status": "success", "message": _("Leave request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
                 else:
@@ -1814,6 +1969,20 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                            comment_email=frappe.session.user, comment_by=frappe.session.user)
             doc.save(ignore_permissions=True)
             frappe.db.commit()
+
+            # Send FCM notification for rejection
+            send_fcm_notification(
+                employee_id=doc.employee,
+                title="Shift Request Rejected",
+                body=f"Your shift request for {doc.shift_type} from {doc.from_date} to {doc.to_date} has been rejected.",
+                data={
+                    "request_id": doc.name,
+                    "request_type": "Shift Request",
+                    "status": "rejected",
+                    "reason": reason or "No reason provided"
+                }
+            )
+
             return {"status": "success", "message": _("Shift request rejected"), "data": {"name": doc.name, "status": doc.status}}
         
         elif status.lower() == "approved":
@@ -1844,6 +2013,21 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
 
+                    # Send FCM notification for final approval
+                    send_fcm_notification(
+                        employee_id=doc.employee,
+                        title="Shift Request Approved",
+                        body=f"Your shift request for {doc.shift_type} from {doc.from_date} to {doc.to_date} has been approved.",
+                        data={
+                            "request_id": doc.name,
+                            "request_type": "Shift Request",
+                            "status": "approved",
+                            "shift_type": doc.shift_type,
+                            "from_date": str(doc.from_date),
+                            "to_date": str(doc.to_date)
+                        }
+                    )
+
                     return {"status": "success", "message": _("Shift request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
                 else:
@@ -1866,6 +2050,20 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                 doc.reason = reason
             doc.save(ignore_permissions=True)
             frappe.db.commit()
+
+            # Send FCM notification for rejection
+            send_fcm_notification(
+                employee_id=doc.employee,
+                title="Overtime Request Rejected",
+                body=f"Your overtime request for {doc.day_of_overtime} has been rejected.",
+                data={
+                    "request_id": doc.name,
+                    "request_type": "Overtime Request",
+                    "status": "rejected",
+                    "reason": reason or "No reason provided"
+                }
+            )
+
             return {"status": "success", "message": _("Overtime request rejected"), "data": {"name": doc.name, "status": doc.status}}
         
         elif status.lower() == "approved":
@@ -1890,6 +2088,20 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
+
+                    # Send FCM notification for final approval
+                    send_fcm_notification(
+                        employee_id=doc.employee,
+                        title="Overtime Request Approved",
+                        body=f"Your overtime request for {doc.day_of_overtime} has been approved.",
+                        data={
+                            "request_id": doc.name,
+                            "request_type": "Overtime Request",
+                            "status": "approved",
+                            "day_of_overtime": str(doc.day_of_overtime)
+                        }
+                    )
+
                     return {"status": "success", "message": _("Overtime request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
 
@@ -1904,6 +2116,20 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                     doc.docstatus = 1
                     doc.save(ignore_permissions=True)
                     frappe.db.commit()
+
+                    # Send FCM notification for final approval
+                    send_fcm_notification(
+                        employee_id=doc.employee,
+                        title="Overtime Request Approved",
+                        body=f"Your overtime request for {doc.day_of_overtime} has been approved.",
+                        data={
+                            "request_id": doc.name,
+                            "request_type": "Overtime Request",
+                            "status": "approved",
+                            "day_of_overtime": str(doc.day_of_overtime)
+                        }
+                    )
+
                     return {"status": "success", "message": _("Overtime request approved"),
                            "data": {"name": doc.name, "status": doc.status}}
                 else:

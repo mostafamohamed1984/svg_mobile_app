@@ -359,7 +359,17 @@ def mark_attendance(employee_id=None, lat=None, long=None, action="check-in", **
         # --- Step 5: Validate radius from company location ---
         companyRadius = frappe.db.get_value("Company", employee.company, "radius")
 
-        if radius > float(companyRadius):
+        # Convert both radius and companyRadius to float for comparison
+        try:
+            radius_float = float(radius)
+            company_radius_float = float(companyRadius) if companyRadius else 0
+        except (ValueError, TypeError):
+            return {
+                "status": "fail",
+                "message": _("Invalid radius values provided."),
+            }
+
+        if radius_float > company_radius_float:
             return {
                 "status": "fail",
                 "message": _("You are too far from the company location. Please get closer."),

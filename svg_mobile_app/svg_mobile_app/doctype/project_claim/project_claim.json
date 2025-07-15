@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2025-03-26 00:44:13.346065",
@@ -140,22 +141,19 @@
    "depends_on": "eval:doc.mode_of_payment=='Cheque'",
    "fieldname": "due_date",
    "fieldtype": "Date",
-   "label": "Due Date",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Cheque'"
+   "label": "Due Date"
   },
   {
    "depends_on": "eval:doc.mode_of_payment=='Cheque'",
    "fieldname": "cheque_number",
    "fieldtype": "Data",
-   "label": "Cheque Number",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Cheque'"
+   "label": "Cheque Number"
   },
   {
    "depends_on": "eval:doc.mode_of_payment=='Cheque'",
    "fieldname": "bank_name",
    "fieldtype": "Data",
-   "label": "Bank Name",
-   "mandatory_depends_on": "eval:doc.mode_of_payment=='Cheque'"
+   "label": "Bank Name"
   },
   {
    "depends_on": "eval:doc.mode_of_payment=='Visa'",
@@ -173,6 +171,7 @@
    "reqd": 1
   },
   {
+   "default": "VAT 5% - OR",
    "fieldname": "tax_account",
    "fieldtype": "Link",
    "label": "Tax Account",
@@ -345,7 +344,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-06 17:54:59.230716",
+ "modified": "2025-07-13 16:18:45.236487",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Claim",
@@ -357,6 +356,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

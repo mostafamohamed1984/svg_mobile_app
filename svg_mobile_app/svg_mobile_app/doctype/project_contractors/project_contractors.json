@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2025-03-17 21:29:00.231939",
@@ -163,6 +164,7 @@
   {
    "fieldname": "total_amount",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Total Amount"
   },
   {
@@ -180,11 +182,13 @@
   {
    "fieldname": "total_fees",
    "fieldtype": "Currency",
+   "in_standard_filter": 1,
    "label": "Total Fees"
   },
   {
    "fieldname": "total_project_amount",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Total Project Amount"
   },
   {
@@ -196,8 +200,11 @@
    "fieldtype": "Column Break"
   },
   {
+   "default": "Today",
    "fieldname": "date",
    "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Date"
   }
  ],
@@ -209,7 +216,7 @@
    "link_fieldname": "for_project"
   }
  ],
- "modified": "2025-07-07 12:05:25.297603",
+ "modified": "2025-07-14 11:38:36.212093",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",
@@ -223,6 +230,7 @@
    "delete": 1,
    "email": 1,
    "export": 1,
+   "import": 1,
    "print": 1,
    "read": 1,
    "report": 1,

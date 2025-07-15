@@ -154,7 +154,7 @@
    "property": "options",
    "property_type": "Text",
    "row_name": null,
-   "value": "Draft\nSubmitted\nHR Approved\nRejected\nCancelled\nManager Approved\nRequested"
+   "value": "Draft\nSubmitted\nApproved\nRejected\nCancelled\nManager Approved\nRequested"
   }
  ],
  "sync_on_migrate": 1

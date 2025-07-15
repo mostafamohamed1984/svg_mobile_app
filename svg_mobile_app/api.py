@@ -74,8 +74,8 @@ def create_mobile_notification_log(employee_id, title, content, status="Sent"):
             "employee": employee_id,
             "title": title,
             "content": content,
-            "sending_date": now(),
-            "status": status
+            "sending_date": now()
+            # Note: removed status field as it may not exist in the doctype
         })
         notification_log.insert(ignore_permissions=True)
         frappe.db.commit()

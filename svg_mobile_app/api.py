@@ -1416,7 +1416,7 @@ def check_approval_screen_access(employee_id):
         current_user_roles = frappe.get_roles(current_user)
         
         # Check if current user has HR roles (they can access any employee's data)
-        is_current_user_hr = "HR Manager" in current_user_roles or "HR User" in current_user_roles
+        is_current_user_hr = "HR Manager" in current_user_roles
         
         # Validate access: either same user or HR user accessing
         if user != current_user and not is_current_user_hr:
@@ -1427,12 +1427,12 @@ def check_approval_screen_access(employee_id):
         is_direct_manager = "Direct Manager" in roles
         has_reports = len(frappe.get_all("Employee", {"reports_to": employee_id})) > 0  # Fixed logic
         is_manager = is_direct_manager or has_reports
-        has_access = "HR Manager" in roles or "HR User" in roles or is_manager
+        has_access = "HR Manager" in roles or is_manager
         
         return {
             "status": "success",
             "has_access": has_access,
-            "is_hr": "HR Manager" in roles or "HR User" in roles,
+            "is_hr": "HR Manager" in roles,
             "is_manager": is_manager,
             "is_direct_manager": is_direct_manager,
             "has_reports": has_reports
@@ -1613,7 +1613,7 @@ def validate_approval_permission(doc, employee_doc, current_user, action):
         
         # Get current user's roles
         current_user_roles = frappe.get_roles(current_user)
-        is_hr = "HR Manager" in current_user_roles or "HR User" in current_user_roles
+        is_hr = "HR Manager" in current_user_roles
         is_direct_manager = (employee_doc.reports_to == current_user_employee_id)
         
         # Get designated approver for this request type

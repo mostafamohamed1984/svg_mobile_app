@@ -234,9 +234,9 @@ class CustomerStatement {
                         <tbody>
                             ${group.transactions.map(transaction => `
                                 <tr>
-                                    <td class="text-right">${format_currency(transaction.balance)}</td>
-                                    <td class="text-right">${format_currency(transaction.paid)}</td>
-                                    <td class="text-right">${format_currency(transaction.value)}</td>
+                                    <td class="text-right">${this.format_currency(transaction.balance)}</td>
+                                    <td class="text-right">${this.format_currency(transaction.paid)}</td>
+                                    <td class="text-right">${this.format_currency(transaction.value)}</td>
                                     <td>${transaction.document_number}</td>
                                     <td>${frappe.datetime.str_to_user(transaction.date)}</td>
                                     <td>${transaction.description}</td>
@@ -245,9 +245,9 @@ class CustomerStatement {
                         </tbody>
                         <tfoot>
                             <tr class="total-row">
-                                <td class="text-right"><strong>${format_currency(group.total_balance)}</strong></td>
-                                <td class="text-right"><strong>${format_currency(group.total_paid)}</strong></td>
-                                <td class="text-right"><strong>${format_currency(group.total_value)}</strong></td>
+                                <td class="text-right"><strong>${this.format_currency(group.total_balance)}</strong></td>
+                                <td class="text-right"><strong>${this.format_currency(group.total_paid)}</strong></td>
+                                <td class="text-right"><strong>${this.format_currency(group.total_value)}</strong></td>
                                 <td colspan="3"><strong>${__('Total')} - ${__('المجموع')}</strong></td>
                             </tr>
                         </tfoot>
@@ -282,15 +282,15 @@ class CustomerStatement {
                         <table class="table table-bordered summary-table">
                             <tr>
                                 <td><strong>${__('Grand Total Value')} - ${__('إجمالي القيمة')}</strong></td>
-                                <td class="text-right">${format_currency(summary.grand_total_value)}</td>
+                                <td class="text-right">${this.format_currency(summary.grand_total_value)}</td>
                             </tr>
                             <tr>
                                 <td><strong>${__('Grand Total Paid')} - ${__('إجمالي المدفوع')}</strong></td>
-                                <td class="text-right">${format_currency(summary.grand_total_paid)}</td>
+                                <td class="text-right">${this.format_currency(summary.grand_total_paid)}</td>
                             </tr>
                             <tr class="highlight-row">
                                 <td><strong>${__('Grand Total Balance')} - ${__('إجمالي الرصيد')}</strong></td>
-                                <td class="text-right"><strong>${format_currency(summary.grand_total_balance)}</strong></td>
+                                <td class="text-right"><strong>${this.format_currency(summary.grand_total_balance)}</strong></td>
                             </tr>
                         </table>
                     </div>
@@ -670,12 +670,18 @@ class CustomerStatement {
         }
     }
 
+    format_currency(amount) {
+        if (amount === null || amount === undefined) {
+            return '0.00';
+        }
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'EGP',
+            minimumFractionDigits: 2
+        }).format(amount);
+    }
+
     refresh() {
         // Refresh the page if needed
     }
-}
-
-// Helper function for currency formatting
-function format_currency(amount) {
-    return frappe.format(amount, {fieldtype: 'Currency'});
 }

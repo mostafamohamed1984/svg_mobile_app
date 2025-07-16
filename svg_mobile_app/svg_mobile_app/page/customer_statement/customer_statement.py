@@ -206,11 +206,16 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
     # Group data by individual items (not categories) and collect tax separately
     service_groups = {}
     tax_transactions = []  # Collect tax amounts for separate VAT section
+    statement_currency = None  # Track the currency used in this statement
 
     # Process project claims and their items
     for claim in project_claims:
         claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
         claim_total_amount = flt(claim['claim_amount'])  # This includes tax
+
+        # Set statement currency from the first claim (assuming all claims use same currency)
+        if not statement_currency and claim.get('currency'):
+            statement_currency = claim['currency']
 
         # Calculate total base amount and total tax amount for this claim
         claim_base_total = 0
@@ -325,6 +330,7 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             'from_date_formatted': formatdate(from_date),
             'to_date_formatted': formatdate(to_date)
         },
+        'currency': statement_currency or "AED",  # Fallback to AED if no currency found
         'service_groups': list(service_groups.values()),
         'summary': {
             'total_projects': len(project_contractors),

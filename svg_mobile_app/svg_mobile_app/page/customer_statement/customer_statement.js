@@ -214,16 +214,18 @@ class CustomerStatement {
     }
 
     build_service_group_html(group) {
-        // Format tax ratio display
-        let tax_display = '';
-        if (group.tax_ratio && group.tax_ratio > 0) {
-            tax_display = ` - vat ${group.tax_ratio}%`;
+        // Format service title - special handling for VAT section
+        let service_title = '';
+        if (group.is_tax_section) {
+            service_title = `${group.service_name} - vat ${group.tax_rate}%`;
+        } else {
+            service_title = group.service_name;
         }
 
         return `
             <div class="service-group">
                 <div class="service-header">
-                    <h4 class="service-title">${group.service_name}${tax_display}</h4>
+                    <h4 class="service-title">${service_title}</h4>
                 </div>
                 <div class="service-table-container">
                     <table class="table table-bordered service-table">
@@ -527,15 +529,17 @@ class CustomerStatement {
                 </div>
 
                 ${data.service_groups.map(group => {
-                    // Format tax ratio display for print
-                    let tax_display = '';
-                    if (group.tax_ratio && group.tax_ratio > 0) {
-                        tax_display = ` - vat ${group.tax_ratio}%`;
+                    // Format service title for print - special handling for VAT section
+                    let service_title = '';
+                    if (group.is_tax_section) {
+                        service_title = `${group.service_name} - vat ${group.tax_rate}%`;
+                    } else {
+                        service_title = group.service_name;
                     }
 
                     return `
                     <div class="service-group">
-                        <h3 class="service-title">${group.service_name}${tax_display}</h3>
+                        <h3 class="service-title">${service_title}</h3>
                         <table class="service-table">
                             <thead>
                                 <tr>

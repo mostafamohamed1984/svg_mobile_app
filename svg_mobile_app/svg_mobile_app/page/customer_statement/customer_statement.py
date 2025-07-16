@@ -203,46 +203,55 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                          project_claims, journal_entries, from_date, to_date):
     """Process and organize data for customer statement display"""
 
-    # Group data by individual items (not categories)
+    # Group data by individual items (not categories) and collect tax separately
     service_groups = {}
+    tax_transactions = []  # Collect tax amounts for separate VAT section
 
     # Process project claims and their items
     for claim in project_claims:
         claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
-        claim_total_amount = flt(claim['claim_amount'])
+        claim_total_amount = flt(claim['claim_amount'])  # This includes tax
 
+        # Calculate total base amount and total tax amount for this claim
+        claim_base_total = 0
+        claim_tax_total = 0
+
+        for item in claim.get('items', []):
+            claim_base_total += flt(item['amount'])  # Base amount
+            claim_tax_total += flt(item.get('tax_amount', 0))  # Tax amount
+
+        # Process each item for base amounts (excluding tax)
         for item in claim.get('items', []):
             # Use item name as the service key (each item gets its own section)
             item_name = item.get('item_name') or item.get('item', 'Unknown Item')
             service_key = f"{item_name}_{item.get('item', '')}"  # Ensure uniqueness
 
             if service_key not in service_groups:
-                # Get tax ratio - prefer item level, fallback to claim level
-                tax_ratio = flt(item.get('tax_rate', 0)) or flt(claim.get('tax_ratio', 0))
-
                 service_groups[service_key] = {
                     'service_name': item_name,
                     'service_name_ar': item_name,  # Will be the same for now
-                    'tax_ratio': tax_ratio,
                     'transactions': [],
                     'total_value': 0,
                     'total_paid': 0,
                     'total_balance': 0
                 }
 
-            # Calculate proportional paid amount for this item
-            item_amount = flt(item['amount'])
-            if claim_total_amount > 0 and claim_actual_paid > 0:
-                item_paid = claim_actual_paid * (item_amount / claim_total_amount)
+            # Calculate proportional paid amount for this item (base amount only)
+            item_base_amount = flt(item['amount'])  # Base amount excluding tax
+            total_claim_base_and_tax = claim_base_total + claim_tax_total
+
+            if total_claim_base_and_tax > 0 and claim_actual_paid > 0:
+                # Distribute paid amount proportionally based on base amount
+                item_paid = claim_actual_paid * (item_base_amount / total_claim_base_and_tax)
             else:
                 item_paid = 0
 
-            # Add transaction to service group
+            # Add transaction to service group (base amount only)
             transaction = {
                 'date': claim['date'],
                 'document_number': claim['name'],
                 'description': claim.get('being', '') or item_name,  # Use 'being' field as description
-                'value': item_amount,
+                'value': item_base_amount,  # Base amount only
                 'paid': item_paid,
                 'balance': 0,  # Will be calculated later
                 'invoice_reference': item['invoice_reference'],
@@ -250,6 +259,44 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             }
 
             service_groups[service_key]['transactions'].append(transaction)
+
+            # Collect tax amount for separate VAT section
+            item_tax_amount = flt(item.get('tax_amount', 0))
+            if item_tax_amount > 0:
+                # Calculate proportional tax paid amount
+                if total_claim_base_and_tax > 0 and claim_actual_paid > 0:
+                    tax_paid = claim_actual_paid * (item_tax_amount / total_claim_base_and_tax)
+                else:
+                    tax_paid = 0
+
+                tax_transactions.append({
+                    'date': claim['date'],
+                    'document_number': claim['name'],
+                    'description': claim.get('being', '') or item_name,
+                    'value': item_tax_amount,
+                    'paid': tax_paid,
+                    'balance': 0,  # Will be calculated later
+                    'invoice_reference': item['invoice_reference'],
+                    'claim_status': claim['status'],
+                    'tax_rate': flt(item.get('tax_rate', 0)) or flt(claim.get('tax_ratio', 0))
+                })
+
+    # Create VAT section if there are tax transactions
+    if tax_transactions:
+        # Get the tax rate from the first transaction (assuming all have same rate)
+        tax_rate = tax_transactions[0].get('tax_rate', 5) if tax_transactions else 5
+
+        vat_service_key = f"vat_{tax_rate}"
+        service_groups[vat_service_key] = {
+            'service_name': f'ضريبة القيمة المضافة',
+            'service_name_ar': f'ضريبة القيمة المضافة',
+            'tax_rate': tax_rate,
+            'is_tax_section': True,
+            'transactions': tax_transactions,
+            'total_value': 0,
+            'total_paid': 0,
+            'total_balance': 0
+        }
 
     # Calculate running balances for each service group
     for service_key, group in service_groups.items():

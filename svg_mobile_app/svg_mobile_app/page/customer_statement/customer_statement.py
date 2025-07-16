@@ -86,6 +86,14 @@ def get_customer_project_claims(customer, from_date, to_date):
             # Get actual paid amounts from journal entries for submitted claims
             claim['actual_paid_amount'] = get_actual_paid_amount_from_journal_entries(claim['name'])
 
+        # Get the current outstanding amount from the referenced sales invoice
+        if claim.get('reference_invoice'):
+            invoice_outstanding = frappe.db.get_value('Sales Invoice', claim['reference_invoice'], 'outstanding_amount')
+            claim['invoice_outstanding_amount'] = invoice_outstanding or 0
+        else:
+            # For draft claims without reference invoice, balance is the claim amount
+            claim['invoice_outstanding_amount'] = claim['claim_amount']
+
     return claims
 
 def get_project_contractors_from_claims(project_claims):
@@ -259,6 +267,15 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             else:
                 item_paid = 0
 
+            # Calculate balance as proportional share of invoice outstanding amount
+            invoice_outstanding = claim.get('invoice_outstanding_amount', 0)
+            if total_claim_base_and_tax > 0 and invoice_outstanding > 0:
+                # Distribute outstanding amount proportionally based on base amount
+                item_balance = invoice_outstanding * (item_base_amount / total_claim_base_and_tax)
+            else:
+                # Fallback to simple calculation if no invoice outstanding data
+                item_balance = item_base_amount - item_paid
+
             # Add transaction to service group (base amount only)
             transaction = {
                 'date': claim['date'],
@@ -266,9 +283,10 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                 'description': claim.get('being', '') or item_name,  # Use 'being' field as description
                 'value': item_base_amount,  # Base amount only
                 'paid': item_paid,
-                'balance': 0,  # Will be calculated later
+                'balance': item_balance,  # Use invoice outstanding amount
                 'invoice_reference': item['invoice_reference'],
-                'claim_status': claim['status']
+                'claim_status': claim['status'],
+                'invoice_outstanding': invoice_outstanding
             }
 
             service_groups[service_key]['transactions'].append(transaction)
@@ -282,13 +300,19 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                 else:
                     tax_paid = 0
 
+                # Calculate tax balance as proportional share of invoice outstanding amount
+                if total_claim_base_and_tax > 0 and invoice_outstanding > 0:
+                    tax_balance = invoice_outstanding * (item_tax_amount / total_claim_base_and_tax)
+                else:
+                    tax_balance = item_tax_amount - tax_paid
+
                 tax_transactions.append({
                     'date': claim['date'],
                     'document_number': claim['name'],
                     'description': claim.get('being', '') or item_name,
                     'value': item_tax_amount,
                     'paid': tax_paid,
-                    'balance': 0,  # Will be calculated later
+                    'balance': tax_balance,  # Use proportional invoice outstanding amount
                     'invoice_reference': item['invoice_reference'],
                     'claim_status': claim['status'],
                     'tax_rate': flt(item.get('tax_rate', 0)) or flt(claim.get('tax_ratio', 0))
@@ -311,17 +335,15 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             'total_balance': 0
         }
 
-    # Calculate running balances for each service group
+    # Calculate totals for each service group (balance is already calculated from invoice outstanding)
     for service_key, group in service_groups.items():
-        running_balance = 0
-        for transaction in sorted(group['transactions'], key=lambda x: x['date']):
-            transaction['balance'] = running_balance + transaction['value'] - transaction['paid']
-            running_balance = transaction['balance']
+        # Sort transactions by date for display
+        group['transactions'] = sorted(group['transactions'], key=lambda x: x['date'])
 
         # Calculate totals
         group['total_value'] = sum(t['value'] for t in group['transactions'])
         group['total_paid'] = sum(t['paid'] for t in group['transactions'])
-        group['total_balance'] = running_balance
+        group['total_balance'] = sum(t['balance'] for t in group['transactions'])
 
     # Prepare final statement data
     statement_data = {

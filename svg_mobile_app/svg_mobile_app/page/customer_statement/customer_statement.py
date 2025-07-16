@@ -10,89 +10,42 @@ import json
 def get_customer_statement_data(customer, from_date=None, to_date=None):
     """
     Get comprehensive customer statement data showing the complete business flow:
-    Project Contractors → Sales Invoice → Project Claim → Journal Entry
+    Start from Project Claims (which always have dates) and work backwards/forwards
     """
     if not customer:
         frappe.throw(_("Customer is required"))
-    
+
     # Get customer details
     customer_doc = frappe.get_doc("Customer", customer)
-    
+
     # Set default date range if not provided
     if not from_date:
         from_date = frappe.utils.add_months(frappe.utils.today(), -12)
     if not to_date:
         to_date = frappe.utils.today()
-    
-    # Get all project contractors for this customer
-    project_contractors = get_customer_project_contractors(customer, from_date, to_date)
-    
-    # Get sales invoices for these projects
-    sales_invoices = get_project_sales_invoices(project_contractors, from_date, to_date)
-    
-    # Get project claims against these invoices
-    project_claims = get_project_claims(sales_invoices, from_date, to_date)
-    
+
+    # Start from project claims (which always have dates) instead of project contractors
+    project_claims = get_customer_project_claims(customer, from_date, to_date)
+
+    # Get project contractors referenced by these claims
+    project_contractors = get_project_contractors_from_claims(project_claims)
+
+    # Get sales invoices referenced by these claims
+    sales_invoices = get_sales_invoices_from_claims(project_claims, from_date, to_date)
+
     # Get journal entries from these claims
     journal_entries = get_claim_journal_entries(project_claims, from_date, to_date)
-    
+
     # Process and group data by service types
     statement_data = process_statement_data(
-        customer_doc, project_contractors, sales_invoices, 
+        customer_doc, project_contractors, sales_invoices,
         project_claims, journal_entries, from_date, to_date
     )
-    
+
     return statement_data
 
-def get_customer_project_contractors(customer, from_date, to_date):
-    """Get all project contractors for the customer within date range"""
-    return frappe.db.sql("""
-        SELECT 
-            name, project_name, date, customer_name, 
-            total_project_amount, company
-        FROM `tabProject Contractors`
-        WHERE customer = %(customer)s
-        AND date BETWEEN %(from_date)s AND %(to_date)s
-        AND docstatus = 1
-        ORDER BY date DESC
-    """, {
-        'customer': customer,
-        'from_date': from_date,
-        'to_date': to_date
-    }, as_dict=True)
-
-def get_project_sales_invoices(project_contractors, from_date, to_date):
-    """Get sales invoices for project contractors"""
-    if not project_contractors:
-        return []
-    
-    project_names = [pc['name'] for pc in project_contractors]
-    
-    return frappe.db.sql("""
-        SELECT
-            si.name, si.posting_date, si.customer, si.grand_total,
-            si.outstanding_amount, si.status, si.custom_for_project,
-            pc.project_name, si.due_date
-        FROM `tabSales Invoice` si
-        LEFT JOIN `tabProject Contractors` pc ON si.custom_for_project = pc.name
-        WHERE si.custom_for_project IN %(projects)s
-        AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
-        AND si.docstatus = 1
-        ORDER BY si.posting_date DESC
-    """, {
-        'projects': project_names,
-        'from_date': from_date,
-        'to_date': to_date
-    }, as_dict=True)
-
-def get_project_claims(sales_invoices, from_date, to_date):
-    """Get project claims against sales invoices"""
-    if not sales_invoices:
-        return []
-
-    invoice_names = [si['name'] for si in sales_invoices]
-
-    # Get project claims with tax information
+def get_customer_project_claims(customer, from_date, to_date):
+    """Get all project claims for the customer within date range - starting point"""
     claims = frappe.db.sql("""
         SELECT
             pc.name, pc.date, pc.customer, pc.claim_amount,
@@ -101,12 +54,12 @@ def get_project_claims(sales_invoices, from_date, to_date):
             pc.being, pc.mode_of_payment, pc.reference_number,
             pc.tax_ratio, pc.tax_amount
         FROM `tabProject Claim` pc
-        WHERE pc.reference_invoice IN %(invoices)s
+        WHERE pc.customer = %(customer)s
         AND pc.date BETWEEN %(from_date)s AND %(to_date)s
         AND pc.docstatus = 1
         ORDER BY pc.date DESC
     """, {
-        'invoices': invoice_names,
+        'customer': customer,
         'from_date': from_date,
         'to_date': to_date
     }, as_dict=True)
@@ -128,6 +81,55 @@ def get_project_claims(sales_invoices, from_date, to_date):
         claim['actual_paid_amount'] = get_actual_paid_amount_from_journal_entries(claim['name'])
 
     return claims
+
+def get_project_contractors_from_claims(project_claims):
+    """Get project contractors referenced by the claims"""
+    if not project_claims:
+        return []
+
+    project_names = list(set([claim['for_project'] for claim in project_claims if claim.get('for_project')]))
+
+    if not project_names:
+        return []
+
+    return frappe.db.sql("""
+        SELECT
+            name, project_name, date, customer_name,
+            total_project_amount, company
+        FROM `tabProject Contractors`
+        WHERE name IN %(projects)s
+        AND docstatus = 1
+        ORDER BY COALESCE(date, '1900-01-01') DESC
+    """, {
+        'projects': project_names
+    }, as_dict=True)
+
+def get_sales_invoices_from_claims(project_claims, from_date, to_date):
+    """Get sales invoices referenced by the claims"""
+    if not project_claims:
+        return []
+
+    # Get unique invoice names from claims
+    invoice_names = list(set([claim['reference_invoice'] for claim in project_claims if claim.get('reference_invoice')]))
+
+    if not invoice_names:
+        return []
+
+    return frappe.db.sql("""
+        SELECT
+            si.name, si.posting_date, si.customer, si.grand_total,
+            si.outstanding_amount, si.status, si.custom_for_project,
+            pc.project_name, si.due_date
+        FROM `tabSales Invoice` si
+        LEFT JOIN `tabProject Contractors` pc ON si.custom_for_project = pc.name
+        WHERE si.name IN %(invoices)s
+        AND si.docstatus = 1
+        ORDER BY si.posting_date DESC
+    """, {
+        'invoices': invoice_names
+    }, as_dict=True)
+
+
 
 def get_actual_paid_amount_from_journal_entries(claim_name):
     """Get actual paid amount from journal entries for a specific project claim"""

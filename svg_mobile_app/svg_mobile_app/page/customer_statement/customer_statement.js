@@ -214,10 +214,16 @@ class CustomerStatement {
     }
 
     build_service_group_html(group) {
+        // Format tax ratio display
+        let tax_display = '';
+        if (group.tax_ratio && group.tax_ratio > 0) {
+            tax_display = ` - vat ${group.tax_ratio}%`;
+        }
+
         return `
             <div class="service-group">
                 <div class="service-header">
-                    <h4 class="service-title">${group.service_name_ar} - ${group.service_name}</h4>
+                    <h4 class="service-title">${group.service_name}${tax_display}</h4>
                 </div>
                 <div class="service-table-container">
                     <table class="table table-bordered service-table">
@@ -520,9 +526,16 @@ class CustomerStatement {
                     </table>
                 </div>
 
-                ${data.service_groups.map(group => `
+                ${data.service_groups.map(group => {
+                    // Format tax ratio display for print
+                    let tax_display = '';
+                    if (group.tax_ratio && group.tax_ratio > 0) {
+                        tax_display = ` - vat ${group.tax_ratio}%`;
+                    }
+
+                    return `
                     <div class="service-group">
-                        <h3 class="service-title">${group.service_name_ar} - ${group.service_name}</h3>
+                        <h3 class="service-title">${group.service_name}${tax_display}</h3>
                         <table class="service-table">
                             <thead>
                                 <tr>
@@ -556,7 +569,8 @@ class CustomerStatement {
                             </tfoot>
                         </table>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
 
                 <div class="statement-summary">
                     <h3>الملخص - Summary</h3>

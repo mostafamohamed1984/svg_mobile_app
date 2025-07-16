@@ -86,13 +86,15 @@ def get_customer_project_claims(customer, from_date, to_date):
             # Get actual paid amounts from journal entries for submitted claims
             claim['actual_paid_amount'] = get_actual_paid_amount_from_journal_entries(claim['name'])
 
-        # Get the current outstanding amount from the referenced sales invoice
+        # Get available balances for items using the same logic as Project Claim dialog
         if claim.get('reference_invoice'):
-            invoice_outstanding = frappe.db.get_value('Sales Invoice', claim['reference_invoice'], 'outstanding_amount')
-            claim['invoice_outstanding_amount'] = invoice_outstanding or 0
+            # Get available balances for this invoice using the same function as Project Claim
+            from svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim import get_available_invoice_balances
+            balance_data = get_available_invoice_balances([claim['reference_invoice']])
+            claim['item_balances'] = balance_data.get(claim['reference_invoice'], {})
         else:
-            # For draft claims without reference invoice, balance is the claim amount
-            claim['invoice_outstanding_amount'] = claim['claim_amount']
+            # For draft claims without reference invoice, use claim amounts
+            claim['item_balances'] = {}
 
     return claims
 
@@ -267,13 +269,13 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             else:
                 item_paid = 0
 
-            # Calculate balance as proportional share of invoice outstanding amount
-            invoice_outstanding = claim.get('invoice_outstanding_amount', 0)
-            if total_claim_base_and_tax > 0 and invoice_outstanding > 0:
-                # Distribute outstanding amount proportionally based on base amount
-                item_balance = invoice_outstanding * (item_base_amount / total_claim_base_and_tax)
+            # Use available balance from the same logic as Project Claim dialog
+            item_balances = claim.get('item_balances', {})
+            if item['item'] in item_balances:
+                # Use the actual available balance calculated by the Project Claim logic
+                item_balance = flt(item_balances[item['item']].get('available_balance', 0))
             else:
-                # Fallback to simple calculation if no invoice outstanding data
+                # Fallback to simple calculation if no balance data available
                 item_balance = item_base_amount - item_paid
 
             # Add transaction to service group (base amount only)
@@ -283,10 +285,10 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                 'description': claim.get('being', '') or item_name,  # Use 'being' field as description
                 'value': item_base_amount,  # Base amount only
                 'paid': item_paid,
-                'balance': item_balance,  # Use invoice outstanding amount
+                'balance': item_balance,  # Use available balance from Project Claim logic
                 'invoice_reference': item['invoice_reference'],
                 'claim_status': claim['status'],
-                'invoice_outstanding': invoice_outstanding
+                'available_balance': item_balance
             }
 
             service_groups[service_key]['transactions'].append(transaction)
@@ -300,9 +302,10 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                 else:
                     tax_paid = 0
 
-                # Calculate tax balance as proportional share of invoice outstanding amount
-                if total_claim_base_and_tax > 0 and invoice_outstanding > 0:
-                    tax_balance = invoice_outstanding * (item_tax_amount / total_claim_base_and_tax)
+                # For tax items, calculate balance based on the proportion of the main item's available balance
+                if item_balance > 0 and item_base_amount > 0:
+                    # Tax balance is proportional to the main item's available balance
+                    tax_balance = item_balance * (item_tax_amount / item_base_amount)
                 else:
                     tax_balance = item_tax_amount - tax_paid
 

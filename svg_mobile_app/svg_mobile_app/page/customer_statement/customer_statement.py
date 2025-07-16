@@ -69,11 +69,12 @@ def get_project_sales_invoices(project_contractors, from_date, to_date):
     project_names = [pc['name'] for pc in project_contractors]
     
     return frappe.db.sql("""
-        SELECT 
+        SELECT
             si.name, si.posting_date, si.customer, si.grand_total,
             si.outstanding_amount, si.status, si.custom_for_project,
-            si.project_name, si.due_date
+            pc.project_name, si.due_date
         FROM `tabSales Invoice` si
+        LEFT JOIN `tabProject Contractors` pc ON si.custom_for_project = pc.name
         WHERE si.custom_for_project IN %(projects)s
         AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
         AND si.docstatus = 1

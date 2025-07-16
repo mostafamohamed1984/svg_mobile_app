@@ -89,16 +89,17 @@ def get_project_claims(sales_invoices, from_date, to_date):
     """Get project claims against sales invoices"""
     if not sales_invoices:
         return []
-    
+
     invoice_names = [si['name'] for si in sales_invoices]
-    
-    # Get project claims
+
+    # Get project claims with tax information
     claims = frappe.db.sql("""
-        SELECT 
+        SELECT
             pc.name, pc.date, pc.customer, pc.claim_amount,
             pc.paid_amount, pc.outstanding_amount, pc.status,
             pc.reference_invoice, pc.for_project, pc.project_name,
-            pc.being, pc.mode_of_payment, pc.reference_number
+            pc.being, pc.mode_of_payment, pc.reference_number,
+            pc.tax_ratio, pc.tax_amount
         FROM `tabProject Claim` pc
         WHERE pc.reference_invoice IN %(invoices)s
         AND pc.date BETWEEN %(from_date)s AND %(to_date)s
@@ -109,20 +110,57 @@ def get_project_claims(sales_invoices, from_date, to_date):
         'from_date': from_date,
         'to_date': to_date
     }, as_dict=True)
-    
-    # Get claim items for each claim
+
+    # Get claim items for each claim with tax information
     for claim in claims:
         claim['items'] = frappe.db.sql("""
-            SELECT 
+            SELECT
                 ci.item, ci.amount, ci.invoice_reference,
+                ci.tax_rate, ci.tax_amount,
                 i.item_name, i.item_group
             FROM `tabClaim Items` ci
             LEFT JOIN `tabItem` i ON ci.item = i.name
             WHERE ci.parent = %(claim)s
             ORDER BY ci.idx
         """, {'claim': claim['name']}, as_dict=True)
-    
+
+        # Get actual paid amounts from journal entries for this claim
+        claim['actual_paid_amount'] = get_actual_paid_amount_from_journal_entries(claim['name'])
+
     return claims
+
+def get_actual_paid_amount_from_journal_entries(claim_name):
+    """Get actual paid amount from journal entries for a specific project claim"""
+    if not claim_name:
+        return 0
+
+    # Query journal entries that reference this project claim
+    journal_entries = frappe.db.sql("""
+        SELECT DISTINCT
+            je.name, je.total_credit
+        FROM `tabJournal Entry` je
+        WHERE je.user_remark LIKE %(claim_pattern)s
+        AND je.docstatus = 1
+    """, {
+        'claim_pattern': f'%Project Claim {claim_name}%'
+    }, as_dict=True)
+
+    total_paid = 0
+
+    # For each journal entry, get the credit amount to customer accounts
+    for je in journal_entries:
+        customer_credits = frappe.db.sql("""
+            SELECT SUM(jea.credit_in_account_currency) as total_credit
+            FROM `tabJournal Entry Account` jea
+            WHERE jea.parent = %(je_name)s
+            AND jea.party_type = 'Customer'
+            AND jea.credit_in_account_currency > 0
+        """, {'je_name': je['name']}, as_dict=True)
+
+        if customer_credits and customer_credits[0]['total_credit']:
+            total_paid += flt(customer_credits[0]['total_credit'])
+
+    return total_paid
 
 def get_claim_journal_entries(project_claims, from_date, to_date):
     """Get journal entries created from project claims"""
@@ -161,54 +199,70 @@ def get_claim_journal_entries(project_claims, from_date, to_date):
     
     return journal_entries
 
-def process_statement_data(customer_doc, project_contractors, sales_invoices, 
+def process_statement_data(customer_doc, project_contractors, sales_invoices,
                          project_claims, journal_entries, from_date, to_date):
     """Process and organize data for customer statement display"""
-    
-    # Group data by service types based on claim items
+
+    # Group data by individual items (not categories)
     service_groups = {}
-    
+
     # Process project claims and their items
     for claim in project_claims:
+        claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
+        claim_total_amount = flt(claim['claim_amount'])
+
         for item in claim.get('items', []):
-            service_type = get_service_type_from_item(item)
-            
-            if service_type not in service_groups:
-                service_groups[service_type] = {
-                    'service_name': service_type,
-                    'service_name_ar': get_arabic_service_name(service_type),
+            # Use item name as the service key (each item gets its own section)
+            item_name = item.get('item_name') or item.get('item', 'Unknown Item')
+            service_key = f"{item_name}_{item.get('item', '')}"  # Ensure uniqueness
+
+            if service_key not in service_groups:
+                # Get tax ratio - prefer item level, fallback to claim level
+                tax_ratio = flt(item.get('tax_rate', 0)) or flt(claim.get('tax_ratio', 0))
+
+                service_groups[service_key] = {
+                    'service_name': item_name,
+                    'service_name_ar': item_name,  # Will be the same for now
+                    'tax_ratio': tax_ratio,
                     'transactions': [],
                     'total_value': 0,
                     'total_paid': 0,
                     'total_balance': 0
                 }
-            
+
+            # Calculate proportional paid amount for this item
+            item_amount = flt(item['amount'])
+            if claim_total_amount > 0 and claim_actual_paid > 0:
+                item_paid = claim_actual_paid * (item_amount / claim_total_amount)
+            else:
+                item_paid = 0
+
             # Add transaction to service group
             transaction = {
                 'date': claim['date'],
                 'document_number': claim['name'],
-                'description': item['item_name'] or claim['being'],
-                'value': flt(item['amount']),
-                'paid': flt(claim['paid_amount']) * (flt(item['amount']) / flt(claim['claim_amount'])) if flt(claim['claim_amount']) > 0 else 0,
+                'description': claim.get('being', '') or item_name,  # Use 'being' field as description
+                'value': item_amount,
+                'paid': item_paid,
                 'balance': 0,  # Will be calculated later
                 'invoice_reference': item['invoice_reference'],
                 'claim_status': claim['status']
             }
-            
-            service_groups[service_type]['transactions'].append(transaction)
-    
+
+            service_groups[service_key]['transactions'].append(transaction)
+
     # Calculate running balances for each service group
-    for service_type, group in service_groups.items():
+    for service_key, group in service_groups.items():
         running_balance = 0
         for transaction in sorted(group['transactions'], key=lambda x: x['date']):
             transaction['balance'] = running_balance + transaction['value'] - transaction['paid']
             running_balance = transaction['balance']
-        
+
         # Calculate totals
         group['total_value'] = sum(t['value'] for t in group['transactions'])
         group['total_paid'] = sum(t['paid'] for t in group['transactions'])
         group['total_balance'] = running_balance
-    
+
     # Prepare final statement data
     statement_data = {
         'customer': {
@@ -235,35 +289,10 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             'grand_total_balance': sum(group['total_balance'] for group in service_groups.values())
         }
     }
-    
+
     return statement_data
 
-def get_service_type_from_item(item):
-    """Determine service type from item details"""
-    item_name = (item.get('item_name') or '').lower()
-    item_group = (item.get('item_group') or '').lower()
-    
-    if 'design' in item_name or 'تصميم' in item_name:
-        if 'modify' in item_name or 'تعديل' in item_name:
-            return 'Modify Design'
-        return 'Design'
-    elif 'supervision' in item_name or 'اشراف' in item_name:
-        if 'additional' in item_name or 'اضافي' in item_name:
-            return 'Additional Supervision'
-        return 'Supervision'
-    else:
-        return 'Other Services'
-
-def get_arabic_service_name(service_type):
-    """Get Arabic name for service type"""
-    arabic_names = {
-        'Design': 'التصميم',
-        'Supervision': 'الاشراف', 
-        'Modify Design': 'تعديل التصميم',
-        'Additional Supervision': 'الاشراف الاضافي',
-        'Other Services': 'خدمات أخرى'
-    }
-    return arabic_names.get(service_type, service_type)
+# Removed old service type functions - now grouping by individual items
 
 @frappe.whitelist()
 def get_customers_list():

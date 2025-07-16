@@ -614,9 +614,11 @@ class CustomerStatement {
     }
 
     format_currency_for_print(amount) {
+        // Use the currency from the statement data, fallback to EGP
+        const currency = this.current_statement_data?.currency || 'EGP';
         return new Intl.NumberFormat('ar-EG', {
             style: 'currency',
-            currency: 'EGP',
+            currency: currency,
             minimumFractionDigits: 2
         }).format(amount || 0);
     }
@@ -692,9 +694,11 @@ class CustomerStatement {
         if (amount === null || amount === undefined) {
             return '0.00';
         }
+        // Use the currency from the statement data, fallback to EGP
+        const currency = this.current_statement_data?.currency || 'EGP';
         return new Intl.NumberFormat('en-US', {
             style: 'currency',
-            currency: 'EGP',
+            currency: currency,
             minimumFractionDigits: 2
         }).format(amount);
     }

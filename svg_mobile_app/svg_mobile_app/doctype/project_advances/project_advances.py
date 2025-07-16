@@ -423,16 +423,23 @@ class ProjectAdvances(Document):
 				# Process fees and deposits items for this contractor
 				for fee_item in project_contractor_doc.fees_and_deposits:
 					frappe.logger().info(f"Processing item: {fee_item.item}")
-					
-					# Get total claimed amount from ALL submitted claims
-					claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
-					
-					frappe.logger().info(f"Claimed amount for {fee_item.item}: {claimed_amount}")
-					
+
+					# Get claimed amount for this specific fee item's sales invoice
+					if hasattr(fee_item, 'sales_invoice') and fee_item.sales_invoice:
+						# Get claimed amount for this specific sales invoice
+						claimed_amount = self.get_claimed_amount_for_item_and_invoice(
+							fee_item.item, project_contractor_name, fee_item.sales_invoice
+						)
+					else:
+						# Fallback to total claimed amount if no specific sales invoice
+						claimed_amount = self.get_claimed_amount_for_item(fee_item.item, project_contractor_name)
+
+					frappe.logger().info(f"Claimed amount for {fee_item.item} (invoice: {getattr(fee_item, 'sales_invoice', 'N/A')}): {claimed_amount}")
+
 					# Get already advanced amount from existing Employee Advances
 					advanced_amount = self.get_advanced_amount_for_item(fee_item.item, project_contractor_name)
 					frappe.logger().info(f"Advanced amount for {fee_item.item}: {advanced_amount}")
-					
+
 					# Calculate available balance
 					# Only use claimed amounts (no fallback to original rate)
 					available_balance = claimed_amount - advanced_amount
@@ -465,6 +472,44 @@ class ProjectAdvances(Document):
 		frappe.logger().info(f"Total available items found: {len(available_items)}")
 		return available_items
 		
+	def get_claimed_amount_for_item_and_invoice(self, item_code, project_contractor, sales_invoice):
+		"""Get claimed amount for a specific item and sales invoice from Project Claims"""
+		if not sales_invoice:
+			return self.get_claimed_amount_for_item(item_code, project_contractor)
+
+		# Get all submitted project claims
+		submitted_claims = frappe.get_all(
+			"Project Claim",
+			filters={"docstatus": 1},
+			pluck="name"
+		)
+
+		if not submitted_claims:
+			frappe.logger().warning(f"No submitted Project Claims found in the system")
+			return 0
+
+		total_claimed = 0
+
+		# Get claim items for this specific item, contractor, and invoice
+		claim_items = frappe.get_all(
+			"Claim Items",
+			filters={
+				"item": item_code,
+				"project_contractor_reference": project_contractor,
+				"invoice_reference": sales_invoice,
+				"parenttype": "Project Claim",
+				"parent": ["in", submitted_claims]
+			},
+			fields=["amount", "parent"]
+		)
+
+		for claim_item in claim_items:
+			total_claimed += flt(claim_item.amount)
+			frappe.logger().info(f"Found claim item for {item_code} in {claim_item.parent} (invoice {sales_invoice}): {claim_item.amount}")
+
+		frappe.logger().info(f"Total claimed for {item_code} in {project_contractor} for invoice {sales_invoice}: {total_claimed}")
+		return total_claimed
+
 	def get_claimed_amount_for_item(self, item_code, project_contractor):
 		"""Get total claimed amount for an item from Project Claims"""
 		# Get all submitted project claims

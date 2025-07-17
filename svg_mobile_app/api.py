@@ -4,8 +4,34 @@ from frappe.utils import now
 from datetime import datetime
 import requests
 import json
-
+import os
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
 # FCM Notification Functions
+def get_firebase_access_token():
+    """Get Firebase access token using service account or server key"""
+    try:
+        # Method 1: Try service account JSON file
+        service_account_path = frappe.conf.get("firebase_service_account_path")
+        if service_account_path and os.path.exists(service_account_path):
+            credentials = service_account.Credentials.from_service_account_file(
+                service_account_path,
+                scopes=['https://www.googleapis.com/auth/firebase.messaging']
+            )
+            credentials.refresh(Request())
+            return credentials.token, "Bearer"
+
+        # Method 2: Try legacy server key
+        firebase_server_key = frappe.conf.get("firebase_server_key") or frappe.db.get_single_value("System Settings", "firebase_server_key")
+        if firebase_server_key:
+            return firebase_server_key, "key"
+
+        return None, None
+
+    except Exception as e:
+        frappe.log_error(f"Error getting Firebase access token: {str(e)}", "FCM Authentication")
+        return None, None
+
 def send_fcm_notification(employee_id, title, body, data=None):
     """Send FCM push notification to employee"""
     try:
@@ -16,11 +42,11 @@ def send_fcm_notification(employee_id, title, body, data=None):
             frappe.log_error(f"No FCM token found for employee {employee_id}", "FCM Notification")
             return False
 
-        # Get Firebase server key from site config or system settings
-        firebase_server_key = frappe.conf.get("firebase_server_key") or frappe.db.get_single_value("System Settings", "firebase_server_key")
+        # Get Firebase authentication
+        auth_token, auth_type = get_firebase_access_token()
 
-        if not firebase_server_key:
-            frappe.log_error("Firebase server key not configured", "FCM Notification")
+        if not auth_token:
+            frappe.log_error("Firebase authentication not configured", "FCM Notification")
             return False
 
         # Prepare FCM payload
@@ -35,21 +61,51 @@ def send_fcm_notification(employee_id, title, body, data=None):
             "data": data or {}
         }
 
-        # FCM endpoint
-        fcm_url = "https://fcm.googleapis.com/fcm/send"
-
-        # Headers
-        headers = {
-            "Authorization": f"key={firebase_server_key}",
-            "Content-Type": "application/json"
-        }
+        # FCM endpoint (use legacy for server key, v1 for service account)
+        if auth_type == "Bearer":
+            # Modern FCM v1 API
+            project_id = frappe.conf.get("firebase_project_id")
+            if not project_id:
+                frappe.log_error("Firebase project ID not configured for service account", "FCM Notification")
+                return False
+            fcm_url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
+            payload = {
+                "message": {
+                    "token": fcm_token,
+                    "notification": {
+                        "title": title,
+                        "body": body
+                    },
+                    "data": data or {}
+                }
+            }
+            headers = {
+                "Authorization": f"Bearer {auth_token}",
+                "Content-Type": "application/json"
+            }
+        else:
+            # Legacy FCM API
+            fcm_url = "https://fcm.googleapis.com/fcm/send"
+            headers = {
+                "Authorization": f"key={auth_token}",
+                "Content-Type": "application/json"
+            }
 
         # Send FCM notification
         response = requests.post(fcm_url, headers=headers, data=json.dumps(payload), timeout=10)
 
         if response.status_code == 200:
             response_data = response.json()
-            if response_data.get("success", 0) > 0:
+            success = False
+
+            if auth_type == "Bearer":
+                # Modern API success check
+                success = "name" in response_data
+            else:
+                # Legacy API success check
+                success = response_data.get("success", 0) > 0
+
+            if success:
                 # Log successful notification
                 create_mobile_notification_log(employee_id, title, body, "Success")
                 frappe.log_error(f"FCM notification sent successfully to {employee_id}: {title}", "FCM Success")
@@ -132,6 +188,23 @@ def configure_firebase_server_key(server_key):
     frappe.db.commit()
 
     return {"status": "success", "message": "Firebase server key configured successfully"}
+
+@frappe.whitelist()
+def configure_firebase_service_account(service_account_path, project_id):
+    """Configure Firebase service account for FCM notifications (System Manager only)"""
+    if not frappe.has_permission("System Settings", "write"):
+        frappe.throw(_("Insufficient permissions to configure Firebase settings"))
+
+    # Validate file exists
+    if not os.path.exists(service_account_path):
+        frappe.throw(_("Service account file not found at specified path"))
+
+    # Save to System Settings
+    frappe.db.set_single_value("System Settings", "firebase_service_account_path", service_account_path)
+    frappe.db.set_single_value("System Settings", "firebase_project_id", project_id)
+    frappe.db.commit()
+
+    return {"status": "success", "message": "Firebase service account configured successfully"}
 
 @frappe.whitelist()
 def test_fcm_notification(employee_id, title="Test Notification", body="This is a test FCM notification"):

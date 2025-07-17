@@ -265,51 +265,77 @@ class ProjectContractors(Document):
 			# Check both reference_no field and custom project reference fields
 			payment_entries = frappe.get_all(
 				"Payment Entry",
-				filters=[
-					["docstatus", "=", 1],
-					["OR", [
-						["reference_no", "=", employee_advance_name],
-						["custom_project_contractors_reference", "=", employee_advance.project_contractors_reference]
-					]]
-				],
+				filters={
+					"docstatus": 1,
+					"reference_no": employee_advance_name
+				},
 				fields=["name", "posting_date", "paid_amount", "mode_of_payment", "reference_date", "custom_project_contractors_reference", "custom_project_advance_reference"]
 			)
 
+			# Also get Payment Entries that reference the project contractors
+			if employee_advance.project_contractors_reference:
+				project_payment_entries = frappe.get_all(
+					"Payment Entry",
+					filters={
+						"docstatus": 1,
+						"custom_project_contractors_reference": employee_advance.project_contractors_reference
+					},
+					fields=["name", "posting_date", "paid_amount", "mode_of_payment", "reference_date", "custom_project_contractors_reference", "custom_project_advance_reference"]
+				)
+				payment_entries.extend(project_payment_entries)
+
+			# Remove duplicates and add to tracking details
+			seen_payment_entries = set()
 			for pe in payment_entries:
-				tracking_details["payment_entries"].append({
-					"name": pe.name,
-					"posting_date": pe.posting_date,
-					"paid_amount": pe.paid_amount,
-					"mode_of_payment": pe.mode_of_payment,
-					"reference_date": pe.reference_date,
-					"project_contractors_reference": pe.custom_project_contractors_reference,
-					"project_advance_reference": pe.custom_project_advance_reference
-				})
+				if pe.name not in seen_payment_entries:
+					seen_payment_entries.add(pe.name)
+					tracking_details["payment_entries"].append({
+						"name": pe.name,
+						"posting_date": pe.posting_date,
+						"paid_amount": pe.paid_amount,
+						"mode_of_payment": pe.mode_of_payment,
+						"reference_date": pe.reference_date,
+						"project_contractors_reference": pe.custom_project_contractors_reference,
+						"project_advance_reference": pe.custom_project_advance_reference
+					})
 
 			# Get Expense Claims that reference this Employee Advance
 			# Check both advance_paid field and custom project reference fields
 			expense_claims = frappe.get_all(
 				"Expense Claim",
-				filters=[
-					["docstatus", "=", 1],
-					["OR", [
-						["advance_paid", "=", employee_advance_name],
-						["custom_project_contractors_reference", "=", employee_advance.project_contractors_reference]
-					]]
-				],
+				filters={
+					"docstatus": 1,
+					"advance_paid": employee_advance_name
+				},
 				fields=["name", "posting_date", "total_claimed_amount", "total_sanctioned_amount", "status", "custom_project_contractors_reference", "custom_project_advance_reference"]
 			)
 
+			# Also get Expense Claims that reference the project contractors
+			if employee_advance.project_contractors_reference:
+				project_expense_claims = frappe.get_all(
+					"Expense Claim",
+					filters={
+						"docstatus": 1,
+						"custom_project_contractors_reference": employee_advance.project_contractors_reference
+					},
+					fields=["name", "posting_date", "total_claimed_amount", "total_sanctioned_amount", "status", "custom_project_contractors_reference", "custom_project_advance_reference"]
+				)
+				expense_claims.extend(project_expense_claims)
+
+			# Remove duplicates and add to tracking details
+			seen_expense_claims = set()
 			for ec in expense_claims:
-				tracking_details["expense_claims"].append({
-					"name": ec.name,
-					"posting_date": ec.posting_date,
-					"total_claimed_amount": ec.total_claimed_amount,
-					"total_sanctioned_amount": ec.total_sanctioned_amount,
-					"status": ec.status,
-					"project_contractors_reference": ec.custom_project_contractors_reference,
-					"project_advance_reference": ec.custom_project_advance_reference
-				})
+				if ec.name not in seen_expense_claims:
+					seen_expense_claims.add(ec.name)
+					tracking_details["expense_claims"].append({
+						"name": ec.name,
+						"posting_date": ec.posting_date,
+						"total_claimed_amount": ec.total_claimed_amount,
+						"total_sanctioned_amount": ec.total_sanctioned_amount,
+						"status": ec.status,
+						"project_contractors_reference": ec.custom_project_contractors_reference,
+						"project_advance_reference": ec.custom_project_advance_reference
+					})
 
 		except Exception as e:
 			frappe.logger().error(f"Error getting tracking details for Employee Advance {employee_advance_name}: {str(e)}")

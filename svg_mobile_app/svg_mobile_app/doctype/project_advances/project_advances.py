@@ -983,10 +983,11 @@ class ProjectAdvances(Document):
 					if frappe.get_meta("Employee Advance").has_field("item_reference"):
 						employee_advance.item_reference = item['item_code']
 						
-					# Get default advance account
+					# Get default advance account - REQUIRED field
 					advance_account = self.get_default_advance_account()
-					if advance_account:
-						employee_advance.advance_account = advance_account
+					if not advance_account:
+						frappe.throw(f"No default Employee Advance account found for company {self.company}. Please set up an Employee Advance account.")
+					employee_advance.advance_account = advance_account
 						
 					# Save and submit
 					employee_advance.insert()
@@ -1076,10 +1077,10 @@ class ProjectAdvances(Document):
 		"""Get default advance account for the company"""
 		if not self.company:
 			return None
-			
+
 		# Try to get from company defaults
 		default_account = frappe.get_cached_value('Company', self.company, 'default_employee_advance_account')
-		
+
 		if not default_account:
 			# Try to find an account with "Employee Advance" in the name
 			accounts = frappe.get_all(
@@ -1093,10 +1094,26 @@ class ProjectAdvances(Document):
 				limit=1,
 				pluck="name"
 			)
-			
+
 			if accounts:
 				default_account = accounts[0]
-				
+			else:
+				# Try to find any Payable account for Employee Advance
+				accounts = frappe.get_all(
+					"Account",
+					filters={
+						"company": self.company,
+						"account_type": "Payable",
+						"is_group": 0
+					},
+					limit=1,
+					pluck="name"
+				)
+
+				if accounts:
+					default_account = accounts[0]
+					frappe.msgprint(f"Using account {default_account} as Employee Advance account. Consider setting up a dedicated Employee Advance account.")
+
 		return default_account
 		
 	@frappe.whitelist()

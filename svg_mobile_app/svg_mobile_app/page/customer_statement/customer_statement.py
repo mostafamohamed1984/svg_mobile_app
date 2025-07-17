@@ -262,6 +262,15 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             ORDER BY idx
         """, {'invoice': invoice['name']}, as_dict=True)
 
+        # Get Project Contractors details for this invoice (for description)
+        project_contractor_details = ""
+        if invoice.get('custom_for_project'):
+            project_contractor_details = frappe.db.get_value(
+                'Project Contractors',
+                invoice['custom_for_project'],
+                'details'
+            ) or ""
+
         # Get claims for this invoice (if any)
         related_claims = invoice_to_claims.get(invoice['name'], [])
 
@@ -283,70 +292,70 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
 
             # Calculate total paid amount for this item across all related claims
             total_paid_for_item = 0
+            claim_transactions = []  # Store individual claim transactions
 
-            # If there are related claims, calculate paid amounts from them
+            # If there are related claims, create separate transactions for each claim
             for claim in related_claims:
                 claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
 
                 # Find this item in the claim
                 for claim_item in claim.get('items', []):
                     if claim_item.get('item') == invoice_item['item_code']:
-                        # Calculate proportional paid amount for this item
+                        # Calculate proportional paid amount for this item in this specific claim
                         claim_base_total = sum(flt(ci['amount']) for ci in claim.get('items', []))
                         claim_tax_total = sum(flt(ci.get('tax_amount', 0)) for ci in claim.get('items', []))
                         total_claim_amount = claim_base_total + claim_tax_total
 
                         if total_claim_amount > 0 and claim_actual_paid > 0:
                             item_base_amount = flt(claim_item['amount'])
-                            item_paid = claim_actual_paid * (item_base_amount / total_claim_amount)
-                            total_paid_for_item += item_paid
+                            item_paid_in_claim = claim_actual_paid * (item_base_amount / total_claim_amount)
+                            total_paid_for_item += item_paid_in_claim
+
+                            # Create Project Claim transaction (shows paid amount)
+                            claim_transaction = {
+                                'date': claim['date'],
+                                'document_number': claim['name'],
+                                'description': claim.get('being', '') or item_name,
+                                'value': 0,  # Project claim shows 0 value (it's a payment)
+                                'paid': item_paid_in_claim,  # Amount paid in this claim
+                                'balance': 0,  # Will be calculated after all transactions
+                                'invoice_reference': invoice['name'],
+                                'claim_status': claim['status'],
+                                'transaction_type': 'project_claim'
+                            }
+                            claim_transactions.append(claim_transaction)
 
             # Calculate balance: Original Invoice Amount - Total Paid
             original_amount = flt(invoice_item['amount'])  # Original amount from sales invoice
             item_balance = original_amount - total_paid_for_item
 
-            # Create transaction entry
-            if related_claims:
-                # If there are claims, create entries for each claim
-                for claim in related_claims:
-                    # Check if this item exists in this claim
-                    claim_item_found = False
-                    for claim_item in claim.get('items', []):
-                        if claim_item.get('item') == invoice_item['item_code']:
-                            claim_item_found = True
-                            break
+            # Create Sales Invoice transaction (shows original value)
+            sales_invoice_transaction = {
+                'date': invoice['posting_date'],
+                'document_number': invoice['name'],
+                'description': project_contractor_details,  # Use Project Contractors details field
+                'value': original_amount,  # Original invoice amount
+                'paid': 0,  # Sales invoice doesn't show paid amount
+                'balance': item_balance,  # Remaining balance
+                'invoice_reference': invoice['name'],
+                'claim_status': 'Sales Invoice',
+                'transaction_type': 'sales_invoice'
+            }
 
-                    if claim_item_found:
-                        transaction = {
-                            'date': claim['date'],
-                            'document_number': claim['name'],
-                            'description': claim.get('being', '') or item_name,
-                            'value': original_amount,
-                            'paid': total_paid_for_item,  # Total paid across all claims
-                            'balance': item_balance,  # Original - Total Paid
-                            'invoice_reference': invoice['name'],
-                            'claim_status': claim['status']
-                        }
-                        service_groups[service_key]['transactions'].append(transaction)
-            else:
-                # No claims for this item - show as unclaimed
-                transaction = {
-                    'date': '',  # No date since no claim
-                    'document_number': '',  # No document number since no claim
-                    'description': '',  # No description since no claim
-                    'value': original_amount,
-                    'paid': 0,  # Nothing paid since no claim
-                    'balance': original_amount,  # Full amount outstanding
-                    'invoice_reference': invoice['name'],
-                    'claim_status': 'Unclaimed'
-                }
-                service_groups[service_key]['transactions'].append(transaction)
+            # Add Sales Invoice transaction first
+            service_groups[service_key]['transactions'].append(sales_invoice_transaction)
+
+            # Add Project Claim transactions (if any)
+            service_groups[service_key]['transactions'].extend(claim_transactions)
+
+            # If no claims exist, the Sales Invoice transaction will show the full balance
 
             # Collect tax amount for separate VAT section
             item_tax_amount = flt(invoice_item.get('tax_amount', 0))
             if item_tax_amount > 0:
                 # Calculate total tax paid for this item across all related claims
                 total_tax_paid_for_item = 0
+                tax_claim_transactions = []
 
                 for claim in related_claims:
                     claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
@@ -354,53 +363,48 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                     # Find this item in the claim
                     for claim_item in claim.get('items', []):
                         if claim_item.get('item') == invoice_item['item_code']:
-                            # Calculate proportional tax paid amount for this item
+                            # Calculate proportional tax paid amount for this item in this specific claim
                             claim_base_total = sum(flt(ci['amount']) for ci in claim.get('items', []))
                             claim_tax_total = sum(flt(ci.get('tax_amount', 0)) for ci in claim.get('items', []))
                             total_claim_amount = claim_base_total + claim_tax_total
 
                             if total_claim_amount > 0 and claim_actual_paid > 0:
-                                item_tax_paid = claim_actual_paid * (item_tax_amount / total_claim_amount)
-                                total_tax_paid_for_item += item_tax_paid
+                                item_tax_paid_in_claim = claim_actual_paid * (item_tax_amount / total_claim_amount)
+                                total_tax_paid_for_item += item_tax_paid_in_claim
+
+                                # Create tax Project Claim transaction
+                                tax_claim_transactions.append({
+                                    'date': claim['date'],
+                                    'document_number': claim['name'],
+                                    'description': claim.get('being', '') or item_name,
+                                    'value': 0,  # Project claim shows 0 value (it's a payment)
+                                    'paid': item_tax_paid_in_claim,
+                                    'balance': 0,  # Will be calculated after
+                                    'invoice_reference': invoice['name'],
+                                    'claim_status': claim['status'],
+                                    'tax_rate': 5,  # Default tax rate
+                                    'transaction_type': 'project_claim'
+                                })
 
                 # Calculate tax balance: Original Tax Amount - Total Tax Paid
                 tax_balance = item_tax_amount - total_tax_paid_for_item
 
-                # Add tax transaction (only if there are related claims or if showing unclaimed)
-                if related_claims:
-                    for claim in related_claims:
-                        # Check if this item exists in this claim
-                        claim_item_found = False
-                        for claim_item in claim.get('items', []):
-                            if claim_item.get('item') == invoice_item['item_code']:
-                                claim_item_found = True
-                                break
+                # Create Sales Invoice tax transaction
+                tax_transactions.append({
+                    'date': invoice['posting_date'],
+                    'document_number': invoice['name'],
+                    'description': project_contractor_details,  # Use Project Contractors details field
+                    'value': item_tax_amount,  # Original tax amount
+                    'paid': 0,  # Sales invoice doesn't show paid amount
+                    'balance': tax_balance,  # Remaining tax balance
+                    'invoice_reference': invoice['name'],
+                    'claim_status': 'Sales Invoice',
+                    'tax_rate': 5,  # Default tax rate
+                    'transaction_type': 'sales_invoice'
+                })
 
-                        if claim_item_found:
-                            tax_transactions.append({
-                                'date': claim['date'],
-                                'document_number': claim['name'],
-                                'description': claim.get('being', '') or item_name,
-                                'value': item_tax_amount,
-                                'paid': total_tax_paid_for_item,
-                                'balance': tax_balance,
-                                'invoice_reference': invoice['name'],
-                                'claim_status': claim['status'],
-                                'tax_rate': 5  # Default tax rate
-                            })
-                else:
-                    # Unclaimed tax
-                    tax_transactions.append({
-                        'date': '',
-                        'document_number': '',
-                        'description': '',
-                        'value': item_tax_amount,
-                        'paid': 0,
-                        'balance': item_tax_amount,
-                        'invoice_reference': invoice['name'],
-                        'claim_status': 'Unclaimed',
-                        'tax_rate': 5  # Default tax rate
-                    })
+                # Add Project Claim tax transactions
+                tax_transactions.extend(tax_claim_transactions)
 
     # Create VAT section if there are tax transactions
     if tax_transactions:
@@ -421,8 +425,16 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
 
     # Calculate totals for each service group (balance is already calculated from invoice outstanding)
     for service_key, group in service_groups.items():
-        # Sort transactions by date for display
-        group['transactions'] = sorted(group['transactions'], key=lambda x: x['date'])
+        # Sort transactions: Sales Invoice first, then Project Claims by date
+        # This ensures Sales Invoice row appears before its related Project Claim rows
+        def sort_key(transaction):
+            # First sort by transaction type (sales_invoice first, then project_claim)
+            type_order = 0 if transaction.get('transaction_type') == 'sales_invoice' else 1
+            # Then sort by date within each type
+            date_value = transaction.get('date') or ''
+            return (type_order, date_value)
+
+        group['transactions'] = sorted(group['transactions'], key=sort_key)
 
         # Calculate totals
         group['total_value'] = sum(t['value'] for t in group['transactions'])

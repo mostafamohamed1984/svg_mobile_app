@@ -24,14 +24,14 @@ def get_customer_statement_data(customer, from_date=None, to_date=None):
     if not to_date:
         to_date = frappe.utils.today()
 
-    # Start from project claims (which always have dates) instead of project contractors
+    # Get ALL sales invoices for the customer (not just those referenced by claims)
+    sales_invoices = get_all_customer_sales_invoices(customer, from_date, to_date)
+
+    # Get project claims for the customer
     project_claims = get_customer_project_claims(customer, from_date, to_date)
 
     # Get project contractors referenced by these claims
     project_contractors = get_project_contractors_from_claims(project_claims)
-
-    # Get sales invoices referenced by these claims
-    sales_invoices = get_sales_invoices_from_claims(project_claims, from_date, to_date)
 
     # Get journal entries from these claims
     journal_entries = get_claim_journal_entries(project_claims, from_date, to_date)
@@ -86,15 +86,7 @@ def get_customer_project_claims(customer, from_date, to_date):
             # Get actual paid amounts from journal entries for submitted claims
             claim['actual_paid_amount'] = get_actual_paid_amount_from_journal_entries(claim['name'])
 
-        # Get available balances for items using the same logic as Project Claim dialog
-        if claim.get('reference_invoice'):
-            # Get available balances for this invoice using the same function as Project Claim
-            from svg_mobile_app.svg_mobile_app.doctype.project_claim.project_claim import get_available_invoice_balances
-            balance_data = get_available_invoice_balances([claim['reference_invoice']])
-            claim['item_balances'] = balance_data.get(claim['reference_invoice'], {})
-        else:
-            # For draft claims without reference invoice, use claim amounts
-            claim['item_balances'] = {}
+        # No need to get available balances - we'll calculate from original invoice amounts
 
     return claims
 
@@ -118,6 +110,25 @@ def get_project_contractors_from_claims(project_claims):
         ORDER BY COALESCE(date, '1900-01-01') DESC
     """, {
         'projects': project_names
+    }, as_dict=True)
+
+def get_all_customer_sales_invoices(customer, from_date, to_date):
+    """Get ALL sales invoices for the customer within date range"""
+    return frappe.db.sql("""
+        SELECT
+            si.name, si.posting_date, si.customer, si.grand_total,
+            si.outstanding_amount, si.status, si.custom_for_project,
+            pc.project_name, si.due_date, si.docstatus
+        FROM `tabSales Invoice` si
+        LEFT JOIN `tabProject Contractors` pc ON si.custom_for_project = pc.name
+        WHERE si.customer = %(customer)s
+        AND si.docstatus IN (0, 1)
+        AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
+        ORDER BY si.posting_date DESC
+    """, {
+        'customer': customer,
+        'from_date': from_date,
+        'to_date': to_date
     }, as_dict=True)
 
 def get_sales_invoices_from_claims(project_claims, from_date, to_date):
@@ -219,35 +230,46 @@ def get_claim_journal_entries(project_claims, from_date, to_date):
 
 def process_statement_data(customer_doc, project_contractors, sales_invoices,
                          project_claims, journal_entries, from_date, to_date):
-    """Process and organize data for customer statement display"""
+    """Process and organize data for customer statement display - starting from ALL sales invoices"""
 
     # Group data by individual items (not categories) and collect tax separately
     service_groups = {}
     tax_transactions = []  # Collect tax amounts for separate VAT section
     statement_currency = None  # Track the currency used in this statement
 
-    # Process project claims and their items
+    # Create a mapping of sales invoice -> project claims for quick lookup
+    invoice_to_claims = {}
     for claim in project_claims:
-        claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
-        claim_total_amount = flt(claim['claim_amount'])  # This includes tax
+        if claim.get('reference_invoice'):
+            if claim['reference_invoice'] not in invoice_to_claims:
+                invoice_to_claims[claim['reference_invoice']] = []
+            invoice_to_claims[claim['reference_invoice']].append(claim)
 
-        # Set statement currency from the first claim (assuming all claims use same currency)
-        if not statement_currency and claim.get('currency'):
-            statement_currency = claim['currency']
+    # Process ALL sales invoices (whether they have claims or not)
+    for invoice in sales_invoices:
+        # Set statement currency from the first invoice (assuming all invoices use same currency)
+        if not statement_currency:
+            invoice_currency = frappe.db.get_value('Sales Invoice', invoice['name'], 'currency')
+            if invoice_currency:
+                statement_currency = invoice_currency
+        # Get all items from this sales invoice
+        invoice_items = frappe.db.sql("""
+            SELECT
+                item_code, item_name, amount, qty, rate,
+                COALESCE(tax_amount, 0) as tax_amount
+            FROM `tabSales Invoice Item`
+            WHERE parent = %(invoice)s
+            ORDER BY idx
+        """, {'invoice': invoice['name']}, as_dict=True)
 
-        # Calculate total base amount and total tax amount for this claim
-        claim_base_total = 0
-        claim_tax_total = 0
+        # Get claims for this invoice (if any)
+        related_claims = invoice_to_claims.get(invoice['name'], [])
 
-        for item in claim.get('items', []):
-            claim_base_total += flt(item['amount'])  # Base amount
-            claim_tax_total += flt(item.get('tax_amount', 0))  # Tax amount
-
-        # Process each item for base amounts (excluding tax)
-        for item in claim.get('items', []):
+        # Process each item in the sales invoice
+        for invoice_item in invoice_items:
             # Use item name as the service key (each item gets its own section)
-            item_name = item.get('item_name') or item.get('item', 'Unknown Item')
-            service_key = f"{item_name}_{item.get('item', '')}"  # Ensure uniqueness
+            item_name = invoice_item.get('item_name') or invoice_item.get('item_code', 'Unknown Item')
+            service_key = f"{item_name}_{invoice_item.get('item_code', '')}"  # Ensure uniqueness
 
             if service_key not in service_groups:
                 service_groups[service_key] = {
@@ -259,67 +281,126 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                     'total_balance': 0
                 }
 
-            # Calculate proportional paid amount for this item (base amount only)
-            item_base_amount = flt(item['amount'])  # Base amount excluding tax
-            total_claim_base_and_tax = claim_base_total + claim_tax_total
+            # Calculate total paid amount for this item across all related claims
+            total_paid_for_item = 0
 
-            if total_claim_base_and_tax > 0 and claim_actual_paid > 0:
-                # Distribute paid amount proportionally based on base amount
-                item_paid = claim_actual_paid * (item_base_amount / total_claim_base_and_tax)
+            # If there are related claims, calculate paid amounts from them
+            for claim in related_claims:
+                claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
+
+                # Find this item in the claim
+                for claim_item in claim.get('items', []):
+                    if claim_item.get('item') == invoice_item['item_code']:
+                        # Calculate proportional paid amount for this item
+                        claim_base_total = sum(flt(ci['amount']) for ci in claim.get('items', []))
+                        claim_tax_total = sum(flt(ci.get('tax_amount', 0)) for ci in claim.get('items', []))
+                        total_claim_amount = claim_base_total + claim_tax_total
+
+                        if total_claim_amount > 0 and claim_actual_paid > 0:
+                            item_base_amount = flt(claim_item['amount'])
+                            item_paid = claim_actual_paid * (item_base_amount / total_claim_amount)
+                            total_paid_for_item += item_paid
+
+            # Calculate balance: Original Invoice Amount - Total Paid
+            original_amount = flt(invoice_item['amount'])  # Original amount from sales invoice
+            item_balance = original_amount - total_paid_for_item
+
+            # Create transaction entry
+            if related_claims:
+                # If there are claims, create entries for each claim
+                for claim in related_claims:
+                    # Check if this item exists in this claim
+                    claim_item_found = False
+                    for claim_item in claim.get('items', []):
+                        if claim_item.get('item') == invoice_item['item_code']:
+                            claim_item_found = True
+                            break
+
+                    if claim_item_found:
+                        transaction = {
+                            'date': claim['date'],
+                            'document_number': claim['name'],
+                            'description': claim.get('being', '') or item_name,
+                            'value': original_amount,
+                            'paid': total_paid_for_item,  # Total paid across all claims
+                            'balance': item_balance,  # Original - Total Paid
+                            'invoice_reference': invoice['name'],
+                            'claim_status': claim['status']
+                        }
+                        service_groups[service_key]['transactions'].append(transaction)
             else:
-                item_paid = 0
-
-            # Use available balance from the same logic as Project Claim dialog
-            item_balances = claim.get('item_balances', {})
-            if item['item'] in item_balances:
-                # Use the actual available balance calculated by the Project Claim logic
-                item_balance = flt(item_balances[item['item']].get('available_balance', 0))
-            else:
-                # Fallback to simple calculation if no balance data available
-                item_balance = item_base_amount - item_paid
-
-            # Add transaction to service group (base amount only)
-            transaction = {
-                'date': claim['date'],
-                'document_number': claim['name'],
-                'description': claim.get('being', '') or item_name,  # Use 'being' field as description
-                'value': item_base_amount,  # Base amount only
-                'paid': item_paid,
-                'balance': item_balance,  # Use available balance from Project Claim logic
-                'invoice_reference': item['invoice_reference'],
-                'claim_status': claim['status'],
-                'available_balance': item_balance
-            }
-
-            service_groups[service_key]['transactions'].append(transaction)
+                # No claims for this item - show as unclaimed
+                transaction = {
+                    'date': '',  # No date since no claim
+                    'document_number': '',  # No document number since no claim
+                    'description': '',  # No description since no claim
+                    'value': original_amount,
+                    'paid': 0,  # Nothing paid since no claim
+                    'balance': original_amount,  # Full amount outstanding
+                    'invoice_reference': invoice['name'],
+                    'claim_status': 'Unclaimed'
+                }
+                service_groups[service_key]['transactions'].append(transaction)
 
             # Collect tax amount for separate VAT section
-            item_tax_amount = flt(item.get('tax_amount', 0))
+            item_tax_amount = flt(invoice_item.get('tax_amount', 0))
             if item_tax_amount > 0:
-                # Calculate proportional tax paid amount
-                if total_claim_base_and_tax > 0 and claim_actual_paid > 0:
-                    tax_paid = claim_actual_paid * (item_tax_amount / total_claim_base_and_tax)
-                else:
-                    tax_paid = 0
+                # Calculate total tax paid for this item across all related claims
+                total_tax_paid_for_item = 0
 
-                # For tax items, calculate balance based on the proportion of the main item's available balance
-                if item_balance > 0 and item_base_amount > 0:
-                    # Tax balance is proportional to the main item's available balance
-                    tax_balance = item_balance * (item_tax_amount / item_base_amount)
-                else:
-                    tax_balance = item_tax_amount - tax_paid
+                for claim in related_claims:
+                    claim_actual_paid = flt(claim.get('actual_paid_amount', 0))
 
-                tax_transactions.append({
-                    'date': claim['date'],
-                    'document_number': claim['name'],
-                    'description': claim.get('being', '') or item_name,
-                    'value': item_tax_amount,
-                    'paid': tax_paid,
-                    'balance': tax_balance,  # Use proportional invoice outstanding amount
-                    'invoice_reference': item['invoice_reference'],
-                    'claim_status': claim['status'],
-                    'tax_rate': flt(item.get('tax_rate', 0)) or flt(claim.get('tax_ratio', 0))
-                })
+                    # Find this item in the claim
+                    for claim_item in claim.get('items', []):
+                        if claim_item.get('item') == invoice_item['item_code']:
+                            # Calculate proportional tax paid amount for this item
+                            claim_base_total = sum(flt(ci['amount']) for ci in claim.get('items', []))
+                            claim_tax_total = sum(flt(ci.get('tax_amount', 0)) for ci in claim.get('items', []))
+                            total_claim_amount = claim_base_total + claim_tax_total
+
+                            if total_claim_amount > 0 and claim_actual_paid > 0:
+                                item_tax_paid = claim_actual_paid * (item_tax_amount / total_claim_amount)
+                                total_tax_paid_for_item += item_tax_paid
+
+                # Calculate tax balance: Original Tax Amount - Total Tax Paid
+                tax_balance = item_tax_amount - total_tax_paid_for_item
+
+                # Add tax transaction (only if there are related claims or if showing unclaimed)
+                if related_claims:
+                    for claim in related_claims:
+                        # Check if this item exists in this claim
+                        claim_item_found = False
+                        for claim_item in claim.get('items', []):
+                            if claim_item.get('item') == invoice_item['item_code']:
+                                claim_item_found = True
+                                break
+
+                        if claim_item_found:
+                            tax_transactions.append({
+                                'date': claim['date'],
+                                'document_number': claim['name'],
+                                'description': claim.get('being', '') or item_name,
+                                'value': item_tax_amount,
+                                'paid': total_tax_paid_for_item,
+                                'balance': tax_balance,
+                                'invoice_reference': invoice['name'],
+                                'claim_status': claim['status'],
+                                'tax_rate': 5  # Default tax rate
+                            })
+                else:
+                    # Unclaimed tax
+                    tax_transactions.append({
+                        'date': '',
+                        'document_number': '',
+                        'description': '',
+                        'value': item_tax_amount,
+                        'paid': 0,
+                        'balance': item_tax_amount,
+                        'invoice_reference': invoice['name'],
+                        'claim_status': 'Unclaimed',
+                        'tax_rate': 5  # Default tax rate
+                    })
 
     # Create VAT section if there are tax transactions
     if tax_transactions:

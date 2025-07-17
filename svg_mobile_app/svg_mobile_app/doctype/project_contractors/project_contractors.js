@@ -169,36 +169,66 @@ function show_employee_advance_dialog(frm, advance_data) {
     
     dialog.fields_dict.available_amount_info.$wrapper.html(info_html);
 
-    // Show advance details
+    // Show advance details with enhanced tracking information
     let details_html = `
         <div class="table-responsive">
             <table class="table table-bordered">
                 <thead>
                     <tr>
                         <th>Employee Advance</th>
+                        <th>Employee</th>
+                        <th>Created By</th>
                         <th>Advance Amount</th>
                         <th>Paid Amount</th>
                         <th>Claimed Amount</th>
                         <th>Return Amount</th>
                         <th>Outstanding</th>
+                        <th>Tracking Details</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
-    
+
     advance_data.advance_details.forEach(advance => {
+        // Build tracking details summary
+        let tracking_summary = '';
+        if (advance.tracking_details) {
+            let payment_count = advance.tracking_details.payment_entries ? advance.tracking_details.payment_entries.length : 0;
+            let expense_count = advance.tracking_details.expense_claims ? advance.tracking_details.expense_claims.length : 0;
+
+            tracking_summary = `
+                <small>
+                    ${payment_count} Payment(s)<br>
+                    ${expense_count} Expense Claim(s)
+                </small>
+            `;
+        }
+
+        // Created by information
+        let created_by = advance.tracking_details && advance.tracking_details.created_by_document
+            ? `<a href="/app/project-advances/${advance.tracking_details.created_by_document}" target="_blank">${advance.tracking_details.created_by_document}</a>`
+            : 'Manual';
+
         details_html += `
             <tr>
                 <td><a href="/app/employee-advance/${advance.name}" target="_blank">${advance.name}</a></td>
+                <td>${advance.employee || 'N/A'}</td>
+                <td>${created_by}</td>
                 <td>${frappe.format(advance.advance_amount, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(advance.paid_amount, {'fieldtype': 'Currency'})}</td>
                 <td>${frappe.format(advance.claimed_amount, {'fieldtype': 'Currency'})}</td>
-                                            <td>${frappe.format(advance.return_amount, {'fieldtype': 'Currency'})}</td>
+                <td>${frappe.format(advance.return_amount, {'fieldtype': 'Currency'})}</td>
                 <td><strong>${frappe.format(advance.outstanding, {'fieldtype': 'Currency'})}</strong></td>
+                <td>
+                    <button class="btn btn-xs btn-info" onclick="show_tracking_details('${advance.name}', ${JSON.stringify(advance.tracking_details).replace(/"/g, '&quot;')})">
+                        View Details
+                    </button>
+                    ${tracking_summary}
+                </td>
             </tr>
         `;
     });
-    
+
     details_html += `
                 </tbody>
             </table>
@@ -208,6 +238,118 @@ function show_employee_advance_dialog(frm, advance_data) {
     dialog.fields_dict.advance_details_html.$wrapper.html(details_html);
     dialog.show();
 }
+
+// Global function to show tracking details popup
+window.show_tracking_details = function(employee_advance_name, tracking_details) {
+    let tracking_dialog = new frappe.ui.Dialog({
+        title: __('Tracking Details for {0}', [employee_advance_name]),
+        size: 'large',
+        fields: [
+            {
+                fieldname: 'tracking_html',
+                fieldtype: 'HTML',
+                label: __('Tracking Information')
+            }
+        ]
+    });
+
+    let tracking_html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="fa fa-credit-card"></i> Payment Entries</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Payment Entry</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Mode</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+
+    if (tracking_details.payment_entries && tracking_details.payment_entries.length > 0) {
+        tracking_details.payment_entries.forEach(pe => {
+            tracking_html += `
+                <tr>
+                    <td><a href="/app/payment-entry/${pe.name}" target="_blank">${pe.name}</a></td>
+                    <td>${frappe.datetime.str_to_user(pe.posting_date)}</td>
+                    <td>${frappe.format(pe.paid_amount, {'fieldtype': 'Currency'})}</td>
+                    <td>${pe.mode_of_payment || 'N/A'}</td>
+                </tr>
+            `;
+        });
+    } else {
+        tracking_html += `
+            <tr>
+                <td colspan="4" class="text-center text-muted">No Payment Entries found</td>
+            </tr>
+        `;
+    }
+
+    tracking_html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h5><i class="fa fa-file-text"></i> Expense Claims</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Expense Claim</th>
+                                <th>Date</th>
+                                <th>Claimed</th>
+                                <th>Sanctioned</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+    `;
+
+    if (tracking_details.expense_claims && tracking_details.expense_claims.length > 0) {
+        tracking_details.expense_claims.forEach(ec => {
+            tracking_html += `
+                <tr>
+                    <td><a href="/app/expense-claim/${ec.name}" target="_blank">${ec.name}</a></td>
+                    <td>${frappe.datetime.str_to_user(ec.posting_date)}</td>
+                    <td>${frappe.format(ec.total_claimed_amount, {'fieldtype': 'Currency'})}</td>
+                    <td>${frappe.format(ec.total_sanctioned_amount, {'fieldtype': 'Currency'})}</td>
+                    <td><span class="label label-info">${ec.status}</span></td>
+                </tr>
+            `;
+        });
+    } else {
+        tracking_html += `
+            <tr>
+                <td colspan="5" class="text-center text-muted">No Expense Claims found</td>
+            </tr>
+        `;
+    }
+
+    tracking_html += `
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    <strong>Created By:</strong> ${tracking_details.created_by_type || 'Manual'}
+                    ${tracking_details.created_by_document ? `(<a href="/app/project-advances/${tracking_details.created_by_document}" target="_blank">${tracking_details.created_by_document}</a>)` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+
+    tracking_dialog.fields_dict.tracking_html.$wrapper.html(tracking_html);
+    tracking_dialog.show();
+};
 
 // Distribution functions removed - functionality simplified to reference-only
 

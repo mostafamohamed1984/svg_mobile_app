@@ -176,7 +176,7 @@ class ProjectContractors(Document):
 	@frappe.whitelist()
 	def check_paid_employee_advance_availability(self):
 		"""Check if there are paid Employee Advances from Project Advances system available for distribution
-		
+
 		CRITICAL LOGIC:
 		- Only count Employee Advances created BY Project Advances system (have custom_project_advance_reference)
 		- Only count those that are PAID (status = 'Paid')
@@ -184,7 +184,7 @@ class ProjectContractors(Document):
 		"""
 		if self.docstatus != 1:
 			return {"available_amount": 0, "message": "Project Contractor must be submitted"}
-		
+
 		# Find Employee Advances created by Project Advances system that are PAID
 		project_advances_created = frappe.get_all(
 			"Employee Advance",
@@ -194,7 +194,7 @@ class ProjectContractors(Document):
 				"status": "Paid",  # Must be paid to be available for distribution
 				"docstatus": 1
 			},
-			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "return_amount", "pending_amount", "custom_project_advance_reference"]
+			fields=["name", "advance_amount", "paid_amount", "claimed_amount", "return_amount", "pending_amount", "custom_project_advance_reference", "employee", "posting_date"]
 		)
 		
 		if not project_advances_created:
@@ -209,10 +209,13 @@ class ProjectContractors(Document):
 			paid_amount = flt(advance.paid_amount or 0)
 			claimed_amount = flt(advance.claimed_amount or 0)
 			return_amount = flt(advance.return_amount or 0)
-			
+
 			# Calculate outstanding correctly: Paid - Claimed - Returned
 			outstanding_amount = paid_amount - claimed_amount - return_amount
-			
+
+			# Get detailed tracking information
+			tracking_info = self.get_employee_advance_tracking_details(advance.name)
+
 			total_paid_from_project_advances += paid_amount
 			advance_details.append({
 				"name": advance.name,
@@ -220,7 +223,11 @@ class ProjectContractors(Document):
 				"paid_amount": advance.paid_amount,
 				"claimed_amount": claimed_amount,
 				"return_amount": return_amount,
-				"outstanding": outstanding_amount  # Correctly calculated outstanding balance
+				"outstanding": outstanding_amount,  # Correctly calculated outstanding balance
+				"project_advance_reference": advance.custom_project_advance_reference,
+				"employee": advance.employee,
+				"posting_date": advance.posting_date,
+				"tracking_details": tracking_info
 			})
 		
 		# Available amount = Total PAID amount from Project Advances
@@ -235,7 +242,80 @@ class ProjectContractors(Document):
 		}
 
 	# get_project_items_for_distribution method removed - distribution functionality simplified
-	
+
+	def get_employee_advance_tracking_details(self, employee_advance_name):
+		"""Get detailed tracking information for an Employee Advance including Payment Entries and Expense Claims"""
+		tracking_details = {
+			"payment_entries": [],
+			"expense_claims": [],
+			"created_by_document": None,
+			"created_by_type": None
+		}
+
+		try:
+			# Get Employee Advance document
+			employee_advance = frappe.get_doc("Employee Advance", employee_advance_name)
+
+			# Determine what created this Employee Advance
+			if employee_advance.custom_project_advance_reference:
+				tracking_details["created_by_document"] = employee_advance.custom_project_advance_reference
+				tracking_details["created_by_type"] = "Project Advance"
+
+			# Get Payment Entries that reference this Employee Advance
+			# Check both reference_no field and custom project reference fields
+			payment_entries = frappe.get_all(
+				"Payment Entry",
+				filters=[
+					["docstatus", "=", 1],
+					["OR", [
+						["reference_no", "=", employee_advance_name],
+						["custom_project_contractors_reference", "=", employee_advance.project_contractors_reference]
+					]]
+				],
+				fields=["name", "posting_date", "paid_amount", "mode_of_payment", "reference_date", "custom_project_contractors_reference", "custom_project_advance_reference"]
+			)
+
+			for pe in payment_entries:
+				tracking_details["payment_entries"].append({
+					"name": pe.name,
+					"posting_date": pe.posting_date,
+					"paid_amount": pe.paid_amount,
+					"mode_of_payment": pe.mode_of_payment,
+					"reference_date": pe.reference_date,
+					"project_contractors_reference": pe.custom_project_contractors_reference,
+					"project_advance_reference": pe.custom_project_advance_reference
+				})
+
+			# Get Expense Claims that reference this Employee Advance
+			# Check both advance_paid field and custom project reference fields
+			expense_claims = frappe.get_all(
+				"Expense Claim",
+				filters=[
+					["docstatus", "=", 1],
+					["OR", [
+						["advance_paid", "=", employee_advance_name],
+						["custom_project_contractors_reference", "=", employee_advance.project_contractors_reference]
+					]]
+				],
+				fields=["name", "posting_date", "total_claimed_amount", "total_sanctioned_amount", "status", "custom_project_contractors_reference", "custom_project_advance_reference"]
+			)
+
+			for ec in expense_claims:
+				tracking_details["expense_claims"].append({
+					"name": ec.name,
+					"posting_date": ec.posting_date,
+					"total_claimed_amount": ec.total_claimed_amount,
+					"total_sanctioned_amount": ec.total_sanctioned_amount,
+					"status": ec.status,
+					"project_contractors_reference": ec.custom_project_contractors_reference,
+					"project_advance_reference": ec.custom_project_advance_reference
+				})
+
+		except Exception as e:
+			frappe.logger().error(f"Error getting tracking details for Employee Advance {employee_advance_name}: {str(e)}")
+
+		return tracking_details
+
 	def get_claimed_amount_for_item(self, item_code):
 		"""Get claimed amount for an item from Project Claims"""
 		# Find Project Claims that include this item and contractor

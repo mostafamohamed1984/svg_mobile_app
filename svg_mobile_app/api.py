@@ -7,6 +7,7 @@ import json
 import os
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
+from frappe.model.workflow import apply_workflow
 # FCM Notification Functions
 def get_firebase_access_token():
     """Get Firebase access token using service account or server key"""
@@ -1928,7 +1929,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
     try:
         if status.lower() == "rejected":
             # Use workflow transition for rejection
-            doc.apply_workflow(doc, "Reject")
+            apply_workflow(doc, "Reject")
             if reason:
                 doc.remark = reason
                 doc.save(ignore_permissions=True)
@@ -1955,7 +1956,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 # First level approval
                 if is_direct_manager and employee_doc.leave_approver and employee_doc.leave_approver != frappe.session.user:
                     # Manager approval: Requested → Manager Approved
-                    doc.apply_workflow(doc, "Approve")
+                    apply_workflow(doc, "Approve")
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     frappe.db.commit()
@@ -1968,16 +1969,16 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     # HR can directly approve from Requested to Approved (via Manager Approved)
                     if doc.workflow_state == "Requested":
                         # First transition: Requested → Manager Approved
-                        doc.apply_workflow(doc, "Approve")
+                        apply_workflow(doc, "Approve")
                         frappe.db.commit()
 
                         # Second transition: Manager Approved → Approved
                         doc.reload()
-                        doc.apply_workflow(doc, "Approve")
+                        apply_workflow(doc, "Approve")
                         frappe.db.commit()
                     elif doc.workflow_state == "Manager Approved":
                         # Direct transition: Manager Approved → Approved
-                        doc.apply_workflow(doc, "Approve")
+                        apply_workflow(doc, "Approve")
                         frappe.db.commit()
 
                     # Send FCM notification for final approval
@@ -2003,7 +2004,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
             elif doc.status == "Manager Approved":
                 # Second level approval: Manager Approved → Approved
                 if is_designated_approver or is_hr:
-                    doc.apply_workflow(doc, "Approve")
+                    apply_workflow(doc, "Approve")
                     frappe.db.commit()
 
                     # Send FCM notification for final approval
@@ -2036,7 +2037,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
     try:
         if status.lower() == "rejected":
             # Use workflow transition for rejection
-            doc.apply_workflow(doc, "Reject")
+            apply_workflow(doc, "Reject")
             if reason:
                 from frappe.desk.form.utils import add_comment
                 add_comment("Shift Request", doc.name, f"Rejection reason: {reason}",
@@ -2065,7 +2066,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 # First level approval - ONLY MANAGER can approve
                 if is_direct_manager:
                     # Manager approval: Requested → Manager Approved
-                    doc.apply_workflow(doc, "Approve")
+                    apply_workflow(doc, "Approve")
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     frappe.db.commit()
@@ -2079,7 +2080,7 @@ def _handle_shift_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                 # Second level approval - ONLY HR/Designated Approver can approve
                 if is_designated_approver or is_hr:
                     # HR approval: Manager Approved → Approved
-                    doc.apply_workflow(doc, "Approve")
+                    apply_workflow(doc, "Approve")
                     frappe.db.commit()
 
                     # Send FCM notification for final approval
@@ -2113,7 +2114,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
     try:
         if status.lower() == "rejected":
             # Use workflow transition for rejection
-            doc.apply_workflow(doc, "Reject")
+            apply_workflow(doc, "Reject")
             if reason:
                 doc.reason = reason
                 doc.save(ignore_permissions=True)
@@ -2140,7 +2141,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                 # First level approval
                 if is_direct_manager and employee_doc.reports_to and employee_doc.reports_to != frappe.session.user:
                     # Manager approval: Requested → Manager Approved
-                    doc.apply_workflow(doc, "Approve")
+                    apply_workflow(doc, "Approve")
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     frappe.db.commit()
@@ -2151,16 +2152,16 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
                     # HR can directly approve from Requested to Approved (via Manager Approved)
                     if doc.workflow_state == "Requested":
                         # First transition: Requested → Manager Approved
-                        doc.apply_workflow(doc, "Approve")
+                        apply_workflow(doc, "Approve")
                         frappe.db.commit()
 
                         # Second transition: Manager Approved → Approved
                         doc.reload()
-                        doc.apply_workflow(doc, "Approve")
+                        apply_workflow(doc, "Approve")
                         frappe.db.commit()
                     elif doc.workflow_state == "Manager Approved":
                         # Direct transition: Manager Approved → Approved
-                        doc.apply_workflow(doc, "Approve")
+                        apply_workflow(doc, "Approve")
                         frappe.db.commit()
 
                     # Send FCM notification for final approval
@@ -2185,7 +2186,7 @@ def _handle_overtime_approval(doc, employee_doc, status, reason, is_hr, is_direc
             elif doc.status == "Manager Approved":
                 # Second level approval: Manager Approved → Approved
                 if is_designated_approver or is_hr:
-                    doc.apply_workflow(doc, "Approve")
+                    apply_workflow(doc, "Approve")
                     frappe.db.commit()
 
                     # Send FCM notification for final approval

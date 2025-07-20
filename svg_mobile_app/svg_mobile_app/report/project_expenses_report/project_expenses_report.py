@@ -15,13 +15,14 @@ def execute(filters=None):
     # Define columns
     columns = [
         {"label": _("Expense Date"), "fieldname": "expense_date", "fieldtype": "Date", "width": 100},
-        {"label": _("Expense Type"), "fieldname": "expense_type", "fieldtype": "Link", "options": "Expense Claim Type", "width": 120},
-        {"label": _("Description"), "fieldname": "description", "fieldtype": "Data", "width": 200},
-        {"label": _("Amount"), "fieldname": "amount", "fieldtype": "Currency", "width": 100},
-        {"label": _("Employee"), "fieldname": "employee_name", "fieldtype": "Data", "width": 150},
-        {"label": _("Employee ID"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 100},
-        {"label": _("Expense Claim"), "fieldname": "expense_claim", "fieldtype": "Link", "options": "Expense Claim", "width": 120},
+        {"label": _("Expense Type"), "fieldname": "expense_type", "fieldtype": "Link", "options": "Expense Claim Type", "width": 200},
+        {"label": _("Description"), "fieldname": "description", "fieldtype": "Data", "width": 300},
+        {"label": _("Amount"), "fieldname": "amount", "fieldtype": "Currency", "width": 150},
+        {"label": _("Employee"), "fieldname": "employee_name", "fieldtype": "Data", "width": 200},
+        {"label": _("Employee ID"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 200},
+        {"label": _("Expense Claim"), "fieldname": "expense_claim", "fieldtype": "Link", "options": "Expense Claim", "width": 220},
         {"label": _("Project Contractor"), "fieldname": "project_contractor", "fieldtype": "Link", "options": "Project Contractors", "width": 150},
+        {"label": _("Project Name"), "fieldname": "project_name", "fieldtype": "Data", "width": 200},
         {"label": _("Customer"), "fieldname": "customer", "fieldtype": "Link", "options": "Customer", "width": 120},
         {"label": _("Customer Name"), "fieldname": "customer_name", "fieldtype": "Data", "width": 150},
         {"label": _("Posting Date"), "fieldname": "posting_date", "fieldtype": "Date", "width": 100}
@@ -85,6 +86,7 @@ def execute(filters=None):
             `tabExpense Claim`.`employee`,
             `tabExpense Claim`.`name` AS `expense_claim`,
             `tabExpense Claim Detail`.`for_project` AS `project_contractor`,
+            `tabProject Contractors`.`project_name`,
             `tabProject Contractors`.`customer`,
             `tabProject Contractors`.`customer_name`,
             `tabExpense Claim`.`posting_date`

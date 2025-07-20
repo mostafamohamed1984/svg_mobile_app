@@ -1,0 +1,472 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "field:offer_code",
+ "creation": "2025-01-20 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "main_data_section",
+  "offer_code",
+  "numeric_sort_field",
+  "serial_number",
+  "year",
+  "model",
+  "project_number",
+  "column_break_main",
+  "community",
+  "path_cloud_url",
+  "offer_image",
+  "area_pricing_section",
+  "area_ft",
+  "area_sm",
+  "dimensions",
+  "column_break_pricing",
+  "price_shj",
+  "price_auh",
+  "price_dxb",
+  "remarks_section",
+  "remarks_shj",
+  "remarks_auh",
+  "column_break_remarks",
+  "remarks_egy",
+  "room_details_section",
+  "bedroom",
+  "no_of_floors",
+  "service_block",
+  "majlis",
+  "family_living",
+  "kitchen",
+  "column_break_rooms",
+  "bathrooms",
+  "maidroom",
+  "laundry",
+  "dining_room",
+  "store",
+  "status_options_section",
+  "interior",
+  "status",
+  "offers_date",
+  "column_break_status",
+  "offer_material_status",
+  "social_media_tab",
+  "social_media_section",
+  "social_2d",
+  "social_3d_plan",
+  "social_3d_elevation",
+  "social_interior",
+  "column_break_social",
+  "social_offers",
+  "social_post",
+  "social_story",
+  "social_video",
+  "catalogue_section",
+  "catalogue_2d_3d_req",
+  "landscape_old",
+  "story_old",
+  "pages_2_old",
+  "column_break_catalogue",
+  "landscape",
+  "story",
+  "pages_2",
+  "catalogue_remarks",
+  "links_section",
+  "website_link",
+  "instagram_link",
+  "column_break_links",
+  "psd_link",
+  "final_link"
+ ],
+ "fields": [
+  {
+   "fieldname": "main_data_section",
+   "fieldtype": "Section Break",
+   "label": "Main Data"
+  },
+  {
+   "fieldname": "offer_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Offer Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "numeric_sort_field",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "Numeric Sort Field",
+   "read_only": 1
+  },
+  {
+   "fieldname": "serial_number",
+   "fieldtype": "Int",
+   "label": "Serial Number"
+  },
+  {
+   "fieldname": "year",
+   "fieldtype": "Select",
+   "label": "Year",
+   "options": "2020\n2021\n2022\n2023\n2024\n2025\n2026\n2027\n2028\n2029\n2030"
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model"
+  },
+  {
+   "fieldname": "project_number",
+   "fieldtype": "Data",
+   "label": "Project Number"
+  },
+  {
+   "fieldname": "column_break_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "community",
+   "fieldtype": "Link",
+   "label": "Community",
+   "options": "Community"
+  },
+  {
+   "fieldname": "path_cloud_url",
+   "fieldtype": "Data",
+   "label": "Path/Cloud URL"
+  },
+  {
+   "fieldname": "offer_image",
+   "fieldtype": "Attach Image",
+   "label": "Offer Picture"
+  },
+  {
+   "fieldname": "area_pricing_section",
+   "fieldtype": "Section Break",
+   "label": "Area & Pricing"
+  },
+  {
+   "fieldname": "area_ft",
+   "fieldtype": "Float",
+   "label": "Area (FT)",
+   "precision": "2"
+  },
+  {
+   "fieldname": "area_sm",
+   "fieldtype": "Float",
+   "label": "Area (SM)",
+   "precision": "2",
+   "read_only": 1
+  },
+  {
+   "fieldname": "dimensions",
+   "fieldtype": "Data",
+   "label": "Dimensions"
+  },
+  {
+   "fieldname": "column_break_pricing",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "price_shj",
+   "fieldtype": "Currency",
+   "label": "Price for SHJ"
+  },
+  {
+   "fieldname": "price_auh",
+   "fieldtype": "Currency",
+   "label": "Price for AUH"
+  },
+  {
+   "fieldname": "price_dxb",
+   "fieldtype": "Currency",
+   "label": "Price for DXB"
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks_shj",
+   "fieldtype": "Text",
+   "label": "Remarks SHJ"
+  },
+  {
+   "fieldname": "remarks_auh",
+   "fieldtype": "Text",
+   "label": "Remarks AUH"
+  },
+  {
+   "fieldname": "column_break_remarks",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks_egy",
+   "fieldtype": "Text",
+   "label": "Remarks EGY"
+  },
+  {
+   "fieldname": "room_details_section",
+   "fieldtype": "Section Break",
+   "label": "Room Details"
+  },
+  {
+   "fieldname": "bedroom",
+   "fieldtype": "Int",
+   "label": "Bedroom"
+  },
+  {
+   "fieldname": "no_of_floors",
+   "fieldtype": "Data",
+   "label": "No. of Floors"
+  },
+  {
+   "fieldname": "service_block",
+   "fieldtype": "Data",
+   "label": "Service Block"
+  },
+  {
+   "fieldname": "majlis",
+   "fieldtype": "Int",
+   "label": "Majlis"
+  },
+  {
+   "fieldname": "family_living",
+   "fieldtype": "Int",
+   "label": "Family Living"
+  },
+  {
+   "fieldname": "kitchen",
+   "fieldtype": "Int",
+   "label": "Kitchen"
+  },
+  {
+   "fieldname": "column_break_rooms",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bathrooms",
+   "fieldtype": "Int",
+   "label": "Bathrooms"
+  },
+  {
+   "fieldname": "maidroom",
+   "fieldtype": "Int",
+   "label": "Maidroom"
+  },
+  {
+   "fieldname": "laundry",
+   "fieldtype": "Int",
+   "label": "Laundry"
+  },
+  {
+   "fieldname": "dining_room",
+   "fieldtype": "Int",
+   "label": "Dining Room"
+  },
+  {
+   "fieldname": "store",
+   "fieldtype": "Int",
+   "label": "Store"
+  },
+  {
+   "fieldname": "status_options_section",
+   "fieldtype": "Section Break",
+   "label": "Status & Options"
+  },
+  {
+   "fieldname": "interior",
+   "fieldtype": "Check",
+   "label": "Interior"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Check",
+   "label": "Status"
+  },
+  {
+   "fieldname": "offers_date",
+   "fieldtype": "Date",
+   "label": "Offers Date"
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "offer_material_status",
+   "fieldtype": "Link",
+   "label": "Offer Material Status",
+   "options": "Offer Material Status"
+  },
+  {
+   "fieldname": "social_media_tab",
+   "fieldtype": "Tab Break",
+   "label": "Social Media & Marketing"
+  },
+  {
+   "fieldname": "social_media_section",
+   "fieldtype": "Section Break",
+   "label": "Social Media"
+  },
+  {
+   "fieldname": "social_2d",
+   "fieldtype": "Select",
+   "label": "2D",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "social_3d_plan",
+   "fieldtype": "Select",
+   "label": "3D Plan",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "social_3d_elevation",
+   "fieldtype": "Select",
+   "label": "3D Elevation",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "social_interior",
+   "fieldtype": "Select",
+   "label": "Interior",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "column_break_social",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "social_offers",
+   "fieldtype": "Select",
+   "label": "Offers",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "social_post",
+   "fieldtype": "Select",
+   "label": "Post",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "social_story",
+   "fieldtype": "Select",
+   "label": "Story",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "social_video",
+   "fieldtype": "Select",
+   "label": "Video",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "catalogue_section",
+   "fieldtype": "Section Break",
+   "label": "Catalogue"
+  },
+  {
+   "fieldname": "catalogue_2d_3d_req",
+   "fieldtype": "Data",
+   "label": "2D-3D REQ"
+  },
+  {
+   "fieldname": "landscape_old",
+   "fieldtype": "Data",
+   "label": "Landscape OLD"
+  },
+  {
+   "fieldname": "story_old",
+   "fieldtype": "Data",
+   "label": "Story OLD"
+  },
+  {
+   "fieldname": "pages_2_old",
+   "fieldtype": "Data",
+   "label": "2 Pages OLD"
+  },
+  {
+   "fieldname": "column_break_catalogue",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "landscape",
+   "fieldtype": "Data",
+   "label": "Landscape"
+  },
+  {
+   "fieldname": "story",
+   "fieldtype": "Data",
+   "label": "Story"
+  },
+  {
+   "fieldname": "pages_2",
+   "fieldtype": "Data",
+   "label": "2 Pages"
+  },
+  {
+   "fieldname": "catalogue_remarks",
+   "fieldtype": "Text",
+   "label": "Catalogue Remarks"
+  },
+  {
+   "fieldname": "links_section",
+   "fieldtype": "Section Break",
+   "label": "Links"
+  },
+  {
+   "fieldname": "website_link",
+   "fieldtype": "Data",
+   "label": "Website Link"
+  },
+  {
+   "fieldname": "instagram_link",
+   "fieldtype": "Data",
+   "label": "Instagram Link"
+  },
+  {
+   "fieldname": "column_break_links",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "psd_link",
+   "fieldtype": "Data",
+   "label": "PSD Link"
+  },
+  {
+   "fieldname": "final_link",
+   "fieldtype": "Data",
+   "label": "Final Link"
+  }
+ ],
+ "image_field": "offer_image",
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-20 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Offers Collection",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Project Data Collectoion",
+   "select": 1,
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "numeric_sort_field",
+ "sort_order": "DESC",
+ "states": []
+}

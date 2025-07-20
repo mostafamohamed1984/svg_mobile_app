@@ -11,6 +11,13 @@ frappe.query_reports["Project Expenses Report"] = {
             "width": "200px"
         },
         {
+            "fieldname": "customer",
+            "label": __("Customer"),
+            "fieldtype": "Link",
+            "options": "Customer",
+            "width": "200px"
+        },
+        {
             "fieldname": "employee",
             "label": __("Employee"),
             "fieldtype": "Link",
@@ -62,7 +69,11 @@ frappe.query_reports["Project Expenses Report"] = {
         if (column.fieldname == "project_contractor" && data && data.project_contractor) {
             value = `<a href="/app/project-contractors/${data.project_contractor}" target="_blank">${value}</a>`;
         }
-        
+
+        if (column.fieldname == "customer" && data && data.customer) {
+            value = `<a href="/app/customer/${data.customer}" target="_blank">${value}</a>`;
+        }
+
         if (column.fieldname == "expense_claim" && data && data.expense_claim) {
             value = `<a href="/app/expense-claim/${data.expense_claim}" target="_blank">${value}</a>`;
         }

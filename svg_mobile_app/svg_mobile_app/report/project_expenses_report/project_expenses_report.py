@@ -22,11 +22,14 @@ def execute(filters=None):
         {"label": _("Employee ID"), "fieldname": "employee", "fieldtype": "Link", "options": "Employee", "width": 100},
         {"label": _("Expense Claim"), "fieldname": "expense_claim", "fieldtype": "Link", "options": "Expense Claim", "width": 120},
         {"label": _("Project Contractor"), "fieldname": "project_contractor", "fieldtype": "Link", "options": "Project Contractors", "width": 150},
+        {"label": _("Customer"), "fieldname": "customer", "fieldtype": "Link", "options": "Customer", "width": 120},
+        {"label": _("Customer Name"), "fieldname": "customer_name", "fieldtype": "Data", "width": 150},
         {"label": _("Posting Date"), "fieldname": "posting_date", "fieldtype": "Date", "width": 100}
     ]
     
     # Get values from filters
     project_contractor = filters.get("project_contractor")
+    customer = filters.get("customer")
     employee = filters.get("employee")
     expense_type = filters.get("expense_type")
     from_date = filters.get("from_date")
@@ -46,6 +49,9 @@ def execute(filters=None):
     if project_contractor:
         conditions.append("`tabExpense Claim Detail`.`for_project` = %(project_contractor)s")
         params["project_contractor"] = project_contractor
+    if customer:
+        conditions.append("`tabProject Contractors`.`customer` = %(customer)s")
+        params["customer"] = customer
     if employee:
         conditions.append("`tabExpense Claim`.`employee` = %(employee)s")
         params["employee"] = employee
@@ -68,7 +74,7 @@ def execute(filters=None):
     # Combine conditions
     conditions_str = " AND ".join(conditions) if conditions else "1=1"
     
-    # SQL query - Using for_project field from Expense Claim Detail
+    # SQL query - Using for_project field from Expense Claim Detail and joining with Project Contractors for customer info
     sql = f"""
         SELECT
             `tabExpense Claim Detail`.`expense_date`,
@@ -79,11 +85,15 @@ def execute(filters=None):
             `tabExpense Claim`.`employee`,
             `tabExpense Claim`.`name` AS `expense_claim`,
             `tabExpense Claim Detail`.`for_project` AS `project_contractor`,
+            `tabProject Contractors`.`customer`,
+            `tabProject Contractors`.`customer_name`,
             `tabExpense Claim`.`posting_date`
         FROM
             `tabExpense Claim Detail`
         INNER JOIN
             `tabExpense Claim` ON `tabExpense Claim Detail`.`parent` = `tabExpense Claim`.`name`
+        LEFT JOIN
+            `tabProject Contractors` ON `tabExpense Claim Detail`.`for_project` = `tabProject Contractors`.`name`
         WHERE
             {conditions_str}
         ORDER BY

@@ -33,13 +33,16 @@ def get_customer_statement_data(customer, from_date=None, to_date=None):
     # Get project contractors referenced by these claims
     project_contractors = get_project_contractors_from_claims(project_claims)
 
+    # Get expense claims for the customer
+    expense_claims = get_customer_expense_claims(customer, from_date, to_date)
+
     # Get journal entries from these claims
     journal_entries = get_claim_journal_entries(project_claims, from_date, to_date)
 
     # Process and group data by service types
     statement_data = process_statement_data(
         customer_doc, project_contractors, sales_invoices,
-        project_claims, journal_entries, from_date, to_date
+        project_claims, expense_claims, journal_entries, from_date, to_date
     )
 
     return statement_data
@@ -111,6 +114,40 @@ def get_project_contractors_from_claims(project_claims):
     """, {
         'projects': project_names
     }, as_dict=True)
+
+def get_customer_expense_claims(customer, from_date, to_date):
+    """Get expense claims for the customer within date range through Project Contractors"""
+    expense_claims = frappe.db.sql("""
+        SELECT DISTINCT
+            ec.name, ec.posting_date, ec.employee, ec.employee_name,
+            ec.total_claimed_amount, ec.total_sanctioned_amount, ec.total_amount_reimbursed,
+            ec.status, ec.docstatus, ec.custom_project_contractors_reference,
+            pc.customer, pc.project_name, pc.customer_name
+        FROM `tabExpense Claim` ec
+        LEFT JOIN `tabProject Contractors` pc ON ec.custom_project_contractors_reference = pc.name
+        WHERE pc.customer = %(customer)s
+        AND ec.posting_date BETWEEN %(from_date)s AND %(to_date)s
+        AND ec.docstatus IN (0, 1)
+        ORDER BY ec.posting_date DESC
+    """, {
+        'customer': customer,
+        'from_date': from_date,
+        'to_date': to_date
+    }, as_dict=True)
+
+    # Get expense claim details for each claim
+    for claim in expense_claims:
+        claim['expenses'] = frappe.db.sql("""
+            SELECT
+                ecd.expense_date, ecd.expense_type, ecd.description,
+                ecd.amount, ecd.sanctioned_amount, ecd.for_project
+            FROM `tabExpense Claim Detail` ecd
+            WHERE ecd.parent = %(claim)s
+            AND ecd.for_project IS NOT NULL
+            ORDER BY ecd.expense_date DESC
+        """, {'claim': claim['name']}, as_dict=True)
+
+    return expense_claims
 
 def get_all_customer_sales_invoices(customer, from_date, to_date):
     """Get ALL sales invoices for the customer within date range"""
@@ -229,8 +266,8 @@ def get_claim_journal_entries(project_claims, from_date, to_date):
     return journal_entries
 
 def process_statement_data(customer_doc, project_contractors, sales_invoices,
-                         project_claims, journal_entries, from_date, to_date):
-    """Process and organize data for customer statement display - starting from ALL sales invoices"""
+                         project_claims, expense_claims, journal_entries, from_date, to_date):
+    """Process and organize data for customer statement display - starting from ALL sales invoices and expense claims"""
 
     # Group data by individual items (not categories) and collect tax separately
     service_groups = {}
@@ -422,6 +459,58 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                 # Add Project Claim tax transactions
                 tax_transactions.extend(tax_claim_transactions)
 
+    # Process Expense Claims
+    for expense_claim in expense_claims:
+        # Process each expense in the claim
+        for expense in expense_claim.get('expenses', []):
+            # Use expense type as the service key
+            expense_type = expense.get('expense_type', 'Other Expenses')
+            service_key = f"expense_{expense_type}_{expense_claim['name']}"
+
+            if service_key not in service_groups:
+                service_groups[service_key] = {
+                    'service_name': f"Expense: {expense_type}",
+                    'service_name_ar': f"مصروف: {expense_type}",
+                    'transactions': [],
+                    'total_value': 0,
+                    'total_paid': 0,
+                    'total_balance': 0,
+                    'is_expense_section': True
+                }
+
+            # Calculate amounts
+            expense_amount = flt(expense.get('amount', 0))
+            sanctioned_amount = flt(expense.get('sanctioned_amount', 0)) or expense_amount
+            reimbursed_amount = flt(expense_claim.get('total_amount_reimbursed', 0))
+
+            # Calculate proportional reimbursed amount for this expense
+            total_claim_amount = flt(expense_claim.get('total_sanctioned_amount', 0)) or flt(expense_claim.get('total_claimed_amount', 0))
+            if total_claim_amount > 0 and reimbursed_amount > 0:
+                proportional_reimbursed = reimbursed_amount * (sanctioned_amount / total_claim_amount)
+            else:
+                proportional_reimbursed = 0
+
+            # Calculate balance
+            expense_balance = sanctioned_amount - proportional_reimbursed
+
+            # Create Expense Claim transaction
+            expense_transaction = {
+                'date': expense['expense_date'],
+                'document_number': expense_claim['name'],
+                'description': expense.get('description', expense_type),
+                'value': sanctioned_amount,  # Amount that should be billed to customer
+                'paid': proportional_reimbursed,  # Amount reimbursed to employee
+                'balance': expense_balance,  # Outstanding amount
+                'expense_claim_reference': expense_claim['name'],
+                'project_reference': expense.get('for_project', ''),
+                'claim_status': expense_claim.get('status', 'Draft'),
+                'transaction_type': 'expense_claim',
+                'employee': expense_claim.get('employee_name', ''),
+                'expense_type': expense_type
+            }
+
+            service_groups[service_key]['transactions'].append(expense_transaction)
+
     # Create VAT section if there are tax transactions
     if tax_transactions:
         # Group tax transactions by tax rate (in case there are different rates)
@@ -517,6 +606,7 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             'total_projects': len(project_contractors),
             'total_invoices': len(sales_invoices),
             'total_claims': len(project_claims),
+            'total_expense_claims': len(expense_claims),
             'total_journal_entries': len(journal_entries),
             'grand_total_value': sum(group['total_value'] for group in service_groups.values()),
             'grand_total_paid': sum(group['total_paid'] for group in service_groups.values()),

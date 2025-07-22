@@ -63,12 +63,6 @@ class CustomerStatement {
                                 <div class="project-contractors-select"></div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>${__('Filter Logic')} - ${__('منطق التصفية')}</label>
-                                <div class="filter-logic-select"></div>
-                            </div>
-                        </div>
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label>&nbsp;</label>
@@ -138,21 +132,6 @@ class CustomerStatement {
             },
             render_input: true
         });
-
-        // Filter logic selection
-        this.filter_logic_field = frappe.ui.form.make_control({
-            parent: this.wrapper.find('.filter-logic-select'),
-            df: {
-                fieldtype: 'Select',
-                options: [
-                    {label: __('Customer AND Project'), value: 'and'},
-                    {label: __('Customer OR Project'), value: 'or'}
-                ],
-                default: 'and',
-                placeholder: __('Filter Logic')
-            },
-            render_input: true
-        });
     }
 
     setup_actions() {
@@ -182,21 +161,21 @@ class CustomerStatement {
     get_customer_statement() {
         const customer = this.customer_field.get_value();
         const project_contractors = this.project_contractors_field.get_value();
-        const filter_logic = this.filter_logic_field.get_value() || 'and';
         const from_date = this.from_date_field.get_value();
         const to_date = this.to_date_field.get_value();
 
-        // Validate filters based on logic
-        if (filter_logic === 'and') {
-            if (!customer) {
-                frappe.msgprint(__('Please select a customer when using AND logic'));
-                return;
-            }
-        } else { // OR logic
-            if (!customer && !project_contractors) {
-                frappe.msgprint(__('Please select either a customer or project when using OR logic'));
-                return;
-            }
+        // Automatically determine filter logic based on what's provided
+        let filter_logic;
+        if (customer && project_contractors) {
+            // Both provided: use AND logic (show data that matches both)
+            filter_logic = 'and';
+        } else if (customer || project_contractors) {
+            // Only one provided: use OR logic (show data for the provided filter)
+            filter_logic = 'or';
+        } else {
+            // Neither provided: require at least one
+            frappe.msgprint(__('Please select either a customer or project'));
+            return;
         }
 
         // Show loading

@@ -7,16 +7,24 @@ from frappe import _
 import json
 
 @frappe.whitelist()
-def get_customer_statement_data(customer, from_date=None, to_date=None):
+def get_customer_statement_data(customer=None, project_contractors=None, filter_logic='and', from_date=None, to_date=None):
     """
     Get comprehensive customer statement data showing the complete business flow:
     Start from Project Claims (which always have dates) and work backwards/forwards
+    Supports filtering by customer AND/OR project contractors
     """
-    if not customer:
-        frappe.throw(_("Customer is required"))
+    # Validate filter parameters
+    if filter_logic == 'and':
+        if not customer:
+            frappe.throw(_("Customer is required when using AND logic"))
+    else:  # OR logic
+        if not customer and not project_contractors:
+            frappe.throw(_("Either Customer or Project Contractors is required when using OR logic"))
 
-    # Get customer details
-    customer_doc = frappe.get_doc("Customer", customer)
+    # Get customer details (if customer is provided)
+    customer_doc = None
+    if customer:
+        customer_doc = frappe.get_doc("Customer", customer)
 
     # Set default date range if not provided
     if not from_date:
@@ -24,32 +32,61 @@ def get_customer_statement_data(customer, from_date=None, to_date=None):
     if not to_date:
         to_date = frappe.utils.today()
 
-    # Get ALL sales invoices for the customer (not just those referenced by claims)
-    sales_invoices = get_all_customer_sales_invoices(customer, from_date, to_date)
+    # Get ALL sales invoices based on filter logic
+    sales_invoices = get_filtered_sales_invoices(customer, project_contractors, filter_logic, from_date, to_date)
 
-    # Get project claims for the customer
-    project_claims = get_customer_project_claims(customer, from_date, to_date)
+    # Get project claims based on filter logic
+    project_claims = get_filtered_project_claims(customer, project_contractors, filter_logic, from_date, to_date)
 
     # Get project contractors referenced by these claims
-    project_contractors = get_project_contractors_from_claims(project_claims)
+    project_contractors_data = get_project_contractors_from_claims(project_claims)
 
-    # Get expense claims for the customer
-    expense_claims = get_customer_expense_claims(customer, from_date, to_date)
+    # Get expense claims based on filter logic
+    expense_claims = get_filtered_expense_claims(customer, project_contractors, filter_logic, from_date, to_date)
 
     # Get journal entries from these claims
     journal_entries = get_claim_journal_entries(project_claims, from_date, to_date)
 
     # Process and group data by service types
     statement_data = process_statement_data(
-        customer_doc, project_contractors, sales_invoices,
+        customer_doc, project_contractors_data, sales_invoices,
         project_claims, expense_claims, journal_entries, from_date, to_date
     )
 
     return statement_data
 
-def get_customer_project_claims(customer, from_date, to_date):
-    """Get all project claims for the customer within date range - including draft and submitted"""
-    claims = frappe.db.sql("""
+def get_filtered_project_claims(customer, project_contractors, filter_logic, from_date, to_date):
+    """Get project claims based on customer and/or project contractors filter"""
+    conditions = []
+    params = {
+        'from_date': from_date,
+        'to_date': to_date
+    }
+
+    if filter_logic == 'and':
+        # Both customer AND project must match
+        if customer:
+            conditions.append("pc.customer = %(customer)s")
+            params['customer'] = customer
+        if project_contractors:
+            conditions.append("pc.for_project = %(project_contractors)s")
+            params['project_contractors'] = project_contractors
+    else:  # OR logic
+        # Either customer OR project can match
+        or_conditions = []
+        if customer:
+            or_conditions.append("pc.customer = %(customer)s")
+            params['customer'] = customer
+        if project_contractors:
+            or_conditions.append("pc.for_project = %(project_contractors)s")
+            params['project_contractors'] = project_contractors
+
+        if or_conditions:
+            conditions.append(f"({' OR '.join(or_conditions)})")
+
+    conditions_str = ' AND '.join(conditions) if conditions else '1=1'
+
+    claims = frappe.db.sql(f"""
         SELECT
             pc.name, pc.date, pc.customer, pc.claim_amount,
             pc.paid_amount, pc.outstanding_amount, pc.status,
@@ -57,15 +94,11 @@ def get_customer_project_claims(customer, from_date, to_date):
             pc.being, pc.mode_of_payment, pc.reference_number,
             pc.tax_ratio, pc.tax_amount, pc.docstatus
         FROM `tabProject Claim` pc
-        WHERE pc.customer = %(customer)s
+        WHERE {conditions_str}
         AND pc.date BETWEEN %(from_date)s AND %(to_date)s
         AND pc.docstatus IN (0, 1)
         ORDER BY pc.date DESC, pc.docstatus DESC
-    """, {
-        'customer': customer,
-        'from_date': from_date,
-        'to_date': to_date
-    }, as_dict=True)
+    """, params, as_dict=True)
 
     # Get claim items for each claim with tax information
     for claim in claims:
@@ -115,9 +148,38 @@ def get_project_contractors_from_claims(project_claims):
         'projects': project_names
     }, as_dict=True)
 
-def get_customer_expense_claims(customer, from_date, to_date):
-    """Get expense claims for the customer within date range through Project Contractors"""
-    expense_claims = frappe.db.sql("""
+def get_filtered_expense_claims(customer, project_contractors, filter_logic, from_date, to_date):
+    """Get expense claims based on customer and/or project contractors filter"""
+    conditions = []
+    params = {
+        'from_date': from_date,
+        'to_date': to_date
+    }
+
+    if filter_logic == 'and':
+        # Both customer AND project must match
+        if customer:
+            conditions.append("pc.customer = %(customer)s")
+            params['customer'] = customer
+        if project_contractors:
+            conditions.append("ec.custom_project_contractors_reference = %(project_contractors)s")
+            params['project_contractors'] = project_contractors
+    else:  # OR logic
+        # Either customer OR project can match
+        or_conditions = []
+        if customer:
+            or_conditions.append("pc.customer = %(customer)s")
+            params['customer'] = customer
+        if project_contractors:
+            or_conditions.append("ec.custom_project_contractors_reference = %(project_contractors)s")
+            params['project_contractors'] = project_contractors
+
+        if or_conditions:
+            conditions.append(f"({' OR '.join(or_conditions)})")
+
+    conditions_str = ' AND '.join(conditions) if conditions else '1=1'
+
+    expense_claims = frappe.db.sql(f"""
         SELECT DISTINCT
             ec.name, ec.posting_date, ec.employee, ec.employee_name,
             ec.total_claimed_amount, ec.total_sanctioned_amount, ec.total_amount_reimbursed,
@@ -125,15 +187,11 @@ def get_customer_expense_claims(customer, from_date, to_date):
             pc.customer, pc.project_name, pc.customer_name
         FROM `tabExpense Claim` ec
         LEFT JOIN `tabProject Contractors` pc ON ec.custom_project_contractors_reference = pc.name
-        WHERE pc.customer = %(customer)s
+        WHERE {conditions_str}
         AND ec.posting_date BETWEEN %(from_date)s AND %(to_date)s
         AND ec.docstatus IN (0, 1)
         ORDER BY ec.posting_date DESC
-    """, {
-        'customer': customer,
-        'from_date': from_date,
-        'to_date': to_date
-    }, as_dict=True)
+    """, params, as_dict=True)
 
     # Get expense claim details for each claim
     for claim in expense_claims:
@@ -149,24 +207,49 @@ def get_customer_expense_claims(customer, from_date, to_date):
 
     return expense_claims
 
-def get_all_customer_sales_invoices(customer, from_date, to_date):
-    """Get ALL sales invoices for the customer within date range"""
-    return frappe.db.sql("""
+def get_filtered_sales_invoices(customer, project_contractors, filter_logic, from_date, to_date):
+    """Get sales invoices based on customer and/or project contractors filter"""
+    conditions = []
+    params = {
+        'from_date': from_date,
+        'to_date': to_date
+    }
+
+    if filter_logic == 'and':
+        # Both customer AND project must match
+        if customer:
+            conditions.append("si.customer = %(customer)s")
+            params['customer'] = customer
+        if project_contractors:
+            conditions.append("si.custom_for_project = %(project_contractors)s")
+            params['project_contractors'] = project_contractors
+    else:  # OR logic
+        # Either customer OR project can match
+        or_conditions = []
+        if customer:
+            or_conditions.append("si.customer = %(customer)s")
+            params['customer'] = customer
+        if project_contractors:
+            or_conditions.append("si.custom_for_project = %(project_contractors)s")
+            params['project_contractors'] = project_contractors
+
+        if or_conditions:
+            conditions.append(f"({' OR '.join(or_conditions)})")
+
+    conditions_str = ' AND '.join(conditions) if conditions else '1=1'
+
+    return frappe.db.sql(f"""
         SELECT
             si.name, si.posting_date, si.customer, si.grand_total,
             si.outstanding_amount, si.status, si.custom_for_project,
             pc.project_name, si.due_date, si.docstatus
         FROM `tabSales Invoice` si
         LEFT JOIN `tabProject Contractors` pc ON si.custom_for_project = pc.name
-        WHERE si.customer = %(customer)s
+        WHERE {conditions_str}
         AND si.docstatus IN (0, 1)
         AND si.posting_date BETWEEN %(from_date)s AND %(to_date)s
         ORDER BY si.posting_date DESC
-    """, {
-        'customer': customer,
-        'from_date': from_date,
-        'to_date': to_date
-    }, as_dict=True)
+    """, params, as_dict=True)
 
 def get_sales_invoices_from_claims(project_claims, from_date, to_date):
     """Get sales invoices referenced by the claims (both draft and submitted claims)"""
@@ -584,15 +667,38 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             'email': getattr(company_doc, 'email', '')
         })
 
-    # Prepare final statement data
-    statement_data = {
-        'customer': {
+    # Prepare customer information
+    customer_info = {}
+    if customer_doc:
+        customer_info = {
             'name': customer_doc.name,
             'customer_name': customer_doc.customer_name,
             'tax_id': getattr(customer_doc, 'tax_id', ''),
             'customer_group': customer_doc.customer_group,
             'territory': customer_doc.territory
-        },
+        }
+    elif customer:
+        # If customer is provided but doc not found, use basic info
+        customer_info = {
+            'name': customer,
+            'customer_name': customer,
+            'tax_id': '',
+            'customer_group': '',
+            'territory': ''
+        }
+    else:
+        # No customer filter, use project-based info
+        customer_info = {
+            'name': 'Multiple/Project-Based',
+            'customer_name': 'Multiple Customers or Project-Based Filter',
+            'tax_id': '',
+            'customer_group': '',
+            'territory': ''
+        }
+
+    # Prepare final statement data
+    statement_data = {
+        'customer': customer_info,
         'company': company_info,
         'date_range': {
             'from_date': from_date,
@@ -626,6 +732,16 @@ def get_customers_list():
         FROM `tabCustomer`
         WHERE disabled = 0
         ORDER BY customer_name
+    """, as_dict=True)
+
+@frappe.whitelist()
+def get_project_contractors_list():
+    """Get list of project contractors for selection"""
+    return frappe.db.sql("""
+        SELECT name, project_name, customer_name, date
+        FROM `tabProject Contractors`
+        WHERE docstatus IN (0, 1)
+        ORDER BY project_name, date DESC
     """, as_dict=True)
 
 @frappe.whitelist()

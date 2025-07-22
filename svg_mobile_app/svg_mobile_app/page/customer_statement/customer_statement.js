@@ -55,7 +55,21 @@ class CustomerStatement {
                                 <div class="to-date"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-3">
+                            <div class="form-group">
+                                <label>${__('Project Contractors')} - ${__('مقاولي المشروع')}</label>
+                                <div class="project-contractors-select"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>${__('Filter Logic')} - ${__('منطق التصفية')}</label>
+                                <div class="filter-logic-select"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="form-group">
                                 <label>&nbsp;</label>
                                 <div class="filter-actions">
@@ -112,6 +126,33 @@ class CustomerStatement {
             },
             render_input: true
         });
+
+        // Project Contractors selection
+        this.project_contractors_field = frappe.ui.form.make_control({
+            parent: this.wrapper.find('.project-contractors-select'),
+            df: {
+                fieldtype: 'Link',
+                options: 'Project Contractors',
+                placeholder: __('Select Project (Optional)'),
+                change: () => this.on_project_change()
+            },
+            render_input: true
+        });
+
+        // Filter logic selection
+        this.filter_logic_field = frappe.ui.form.make_control({
+            parent: this.wrapper.find('.filter-logic-select'),
+            df: {
+                fieldtype: 'Select',
+                options: [
+                    {label: __('Customer AND Project'), value: 'and'},
+                    {label: __('Customer OR Project'), value: 'or'}
+                ],
+                default: 'and',
+                placeholder: __('Filter Logic')
+            },
+            render_input: true
+        });
     }
 
     setup_actions() {
@@ -132,14 +173,30 @@ class CustomerStatement {
         this.wrapper.find('.no-data-message').show();
     }
 
+    on_project_change() {
+        // Clear previous data when project changes
+        this.wrapper.find('.statement-data').hide();
+        this.wrapper.find('.no-data-message').show();
+    }
+
     get_customer_statement() {
         const customer = this.customer_field.get_value();
+        const project_contractors = this.project_contractors_field.get_value();
+        const filter_logic = this.filter_logic_field.get_value() || 'and';
         const from_date = this.from_date_field.get_value();
         const to_date = this.to_date_field.get_value();
 
-        if (!customer) {
-            frappe.msgprint(__('Please select a customer'));
-            return;
+        // Validate filters based on logic
+        if (filter_logic === 'and') {
+            if (!customer) {
+                frappe.msgprint(__('Please select a customer when using AND logic'));
+                return;
+            }
+        } else { // OR logic
+            if (!customer && !project_contractors) {
+                frappe.msgprint(__('Please select either a customer or project when using OR logic'));
+                return;
+            }
         }
 
         // Show loading
@@ -151,6 +208,8 @@ class CustomerStatement {
             method: 'svg_mobile_app.svg_mobile_app.page.customer_statement.customer_statement.get_customer_statement_data',
             args: {
                 customer: customer,
+                project_contractors: project_contractors,
+                filter_logic: filter_logic,
                 from_date: from_date,
                 to_date: to_date
             },

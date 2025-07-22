@@ -1705,12 +1705,18 @@ def get_pending_requests(employee_id=None, from_date=None, to_date=None, pending
         elif to_date:
             filters.append(["creation", "<=", to_date])
         
-        # Add status filter for pending requests
+        # Add status filter for pending requests based on user role
         if pending_only:
-            # Include both initial status and intermediate approval statuses
-            leave_filters = filters + [["status", "in", ["Requested", "Manager Approved"]]]
-            shift_filters = filters + [["status", "in", ["Requested", "Manager Approved"]]]
-            overtime_filters = filters + [["status", "in", ["Requested", "Manager Approved"]]]
+            if is_hr:
+                # HR users see requests that need HR approval (Manager Approved status)
+                leave_filters = filters + [["status", "in", ["Manager Approved"]]]
+                shift_filters = filters + [["status", "in", ["Manager Approved"]]]
+                overtime_filters = filters + [["status", "in", ["Manager Approved"]]]
+            else:
+                # Direct Managers see requests that need manager approval (Requested status)
+                leave_filters = filters + [["status", "in", ["Requested"]]]
+                shift_filters = filters + [["status", "in", ["Requested"]]]
+                overtime_filters = filters + [["status", "in", ["Requested"]]]
         else:
             leave_filters = filters.copy()
             shift_filters = filters.copy()

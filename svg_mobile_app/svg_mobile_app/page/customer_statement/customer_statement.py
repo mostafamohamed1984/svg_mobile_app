@@ -363,14 +363,21 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                     # Find this item in the claim
                     for claim_item in claim.get('items', []):
                         if claim_item.get('item') == invoice_item['item_code']:
-                            # Calculate proportional tax paid amount for this item in this specific claim
+                            # Use actual claim item tax amount instead of proportional calculation
+                            claim_item_tax_amount = flt(claim_item.get('tax_amount', 0))
+
+                            # Calculate proportional tax paid amount based on claim item's actual tax amount
                             claim_base_total = sum(flt(ci['amount']) for ci in claim.get('items', []))
                             claim_tax_total = sum(flt(ci.get('tax_amount', 0)) for ci in claim.get('items', []))
                             total_claim_amount = claim_base_total + claim_tax_total
 
-                            if total_claim_amount > 0 and claim_actual_paid > 0:
-                                item_tax_paid_in_claim = claim_actual_paid * (item_tax_amount / total_claim_amount)
+                            if total_claim_amount > 0 and claim_actual_paid > 0 and claim_item_tax_amount > 0:
+                                # Calculate tax paid based on claim item's tax amount, not invoice tax amount
+                                item_tax_paid_in_claim = claim_actual_paid * (claim_item_tax_amount / total_claim_amount)
                                 total_tax_paid_for_item += item_tax_paid_in_claim
+
+                                # Get tax rate from claim item (fallback to 5%)
+                                tax_rate = flt(claim_item.get('tax_rate', 5))
 
                                 # Create tax Project Claim transaction
                                 tax_claim_transactions.append({
@@ -381,13 +388,19 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                                     'paid': item_tax_paid_in_claim,
                                     'balance': 0,  # Will be calculated after
                                     'invoice_reference': invoice['name'],
+                                    'claim_reference': claim['name'],  # Add claim reference for clarity
                                     'claim_status': claim['status'],
-                                    'tax_rate': 5,  # Default tax rate
-                                    'transaction_type': 'project_claim'
+                                    'tax_rate': tax_rate,  # Use actual tax rate from claim item
+                                    'transaction_type': 'project_claim',
+                                    'item_code': invoice_item['item_code'],  # Add item reference
+                                    'claim_item_tax_amount': claim_item_tax_amount  # Add for debugging
                                 })
 
                 # Calculate tax balance: Original Tax Amount - Total Tax Paid
                 tax_balance = item_tax_amount - total_tax_paid_for_item
+
+                # Get tax rate from invoice item or use default
+                invoice_tax_rate = 5  # Default, could be enhanced to get from Sales Invoice Item
 
                 # Create Sales Invoice tax transaction
                 tax_transactions.append({
@@ -398,9 +411,12 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
                     'paid': 0,  # Sales invoice doesn't show paid amount
                     'balance': tax_balance,  # Remaining tax balance
                     'invoice_reference': invoice['name'],
+                    'claim_reference': '',  # No claim reference for invoice transactions
                     'claim_status': 'Sales Invoice',
-                    'tax_rate': 5,  # Default tax rate
-                    'transaction_type': 'sales_invoice'
+                    'tax_rate': invoice_tax_rate,  # Use invoice tax rate
+                    'transaction_type': 'sales_invoice',
+                    'item_code': invoice_item['item_code'],  # Add item reference
+                    'invoice_item_tax_amount': item_tax_amount  # Add for debugging
                 })
 
                 # Add Project Claim tax transactions
@@ -408,20 +424,27 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
 
     # Create VAT section if there are tax transactions
     if tax_transactions:
-        # Get the tax rate from the first transaction (assuming all have same rate)
-        tax_rate = tax_transactions[0].get('tax_rate', 5) if tax_transactions else 5
+        # Group tax transactions by tax rate (in case there are different rates)
+        tax_groups = {}
+        for tax_transaction in tax_transactions:
+            tax_rate = tax_transaction.get('tax_rate', 5)
+            if tax_rate not in tax_groups:
+                tax_groups[tax_rate] = []
+            tax_groups[tax_rate].append(tax_transaction)
 
-        vat_service_key = f"vat_{tax_rate}"
-        service_groups[vat_service_key] = {
-            'service_name': f'ضريبة القيمة المضافة',
-            'service_name_ar': f'ضريبة القيمة المضافة',
-            'tax_rate': tax_rate,
-            'is_tax_section': True,
-            'transactions': tax_transactions,
-            'total_value': 0,
-            'total_paid': 0,
-            'total_balance': 0
-        }
+        # Create separate VAT sections for each tax rate
+        for tax_rate, rate_transactions in tax_groups.items():
+            vat_service_key = f"vat_{tax_rate}"
+            service_groups[vat_service_key] = {
+                'service_name': f'ضريبة القيمة المضافة {tax_rate}%',
+                'service_name_ar': f'ضريبة القيمة المضافة {tax_rate}%',
+                'tax_rate': tax_rate,
+                'is_tax_section': True,
+                'transactions': rate_transactions,
+                'total_value': 0,
+                'total_paid': 0,
+                'total_balance': 0
+            }
 
     # Calculate totals for each service group (balance is already calculated from invoice outstanding)
     for service_key, group in service_groups.items():
@@ -432,7 +455,9 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             type_order = 0 if transaction.get('transaction_type') == 'sales_invoice' else 1
             # Then sort by date within each type
             date_value = transaction.get('date') or ''
-            return (type_order, date_value)
+            # For VAT sections, also sort by item_code to group related transactions
+            item_code = transaction.get('item_code', '')
+            return (type_order, item_code, date_value)
 
         group['transactions'] = sorted(group['transactions'], key=sort_key)
 
@@ -440,6 +465,35 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
         group['total_value'] = sum(t['value'] for t in group['transactions'])
         group['total_paid'] = sum(t['paid'] for t in group['transactions'])
         group['total_balance'] = sum(t['balance'] for t in group['transactions'])
+
+        # For VAT sections, add debugging info in development
+        if group.get('is_tax_section'):
+            group['debug_info'] = {
+                'transaction_count': len(group['transactions']),
+                'invoice_transactions': len([t for t in group['transactions'] if t.get('transaction_type') == 'sales_invoice']),
+                'claim_transactions': len([t for t in group['transactions'] if t.get('transaction_type') == 'project_claim'])
+            }
+
+    # Get current user's default company information
+    current_company = frappe.defaults.get_user_default("Company")
+    company_info = {
+        'name': current_company or 'Smart Vision Group',
+        'company_name': current_company or 'Smart Vision Group',
+        'company_name_ar': 'الرؤية الذكية للاستشارات الهندسية'  # Default Arabic name
+    }
+
+    # Get company details if available
+    if current_company:
+        company_doc = frappe.get_doc("Company", current_company)
+        company_info.update({
+            'name': company_doc.name,
+            'company_name': company_doc.company_name,
+            'company_name_ar': getattr(company_doc, 'company_name_ar', company_doc.company_name),
+            'tax_id': getattr(company_doc, 'tax_id', ''),
+            'address': getattr(company_doc, 'address', ''),
+            'phone': getattr(company_doc, 'phone_no', ''),
+            'email': getattr(company_doc, 'email', '')
+        })
 
     # Prepare final statement data
     statement_data = {
@@ -450,6 +504,7 @@ def process_statement_data(customer_doc, project_contractors, sales_invoices,
             'customer_group': customer_doc.customer_group,
             'territory': customer_doc.territory
         },
+        'company': company_info,
         'date_range': {
             'from_date': from_date,
             'to_date': to_date,
@@ -482,3 +537,34 @@ def get_customers_list():
         WHERE disabled = 0
         ORDER BY customer_name
     """, as_dict=True)
+
+@frappe.whitelist()
+def get_current_company_info():
+    """Get current user's default company information"""
+    current_company = frappe.defaults.get_user_default("Company")
+
+    if not current_company:
+        return {
+            'name': 'Smart Vision Group',
+            'company_name': 'Smart Vision Group',
+            'company_name_ar': 'الرؤية الذكية للاستشارات الهندسية'
+        }
+
+    try:
+        company_doc = frappe.get_doc("Company", current_company)
+        return {
+            'name': company_doc.name,
+            'company_name': company_doc.company_name,
+            'company_name_ar': getattr(company_doc, 'company_name_ar', company_doc.company_name),
+            'tax_id': getattr(company_doc, 'tax_id', ''),
+            'address': getattr(company_doc, 'address', ''),
+            'phone': getattr(company_doc, 'phone_no', ''),
+            'email': getattr(company_doc, 'email', '')
+        }
+    except Exception:
+        # Fallback if company doesn't exist
+        return {
+            'name': current_company,
+            'company_name': current_company,
+            'company_name_ar': current_company
+        }

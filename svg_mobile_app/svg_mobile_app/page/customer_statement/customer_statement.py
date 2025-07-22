@@ -159,7 +159,7 @@ def get_project_contractors_from_claims(project_claims):
     }, as_dict=True)
 
 def get_filtered_expense_claims(customer, project_contractors, filter_logic, from_date, to_date):
-    """Get expense claims based on customer and/or project contractors filter"""
+    """Get expense claims based on customer and/or project contractors filter through Expense Claim Detail for_project field"""
     conditions = []
     params = {
         'from_date': from_date,
@@ -172,7 +172,7 @@ def get_filtered_expense_claims(customer, project_contractors, filter_logic, fro
             conditions.append("pc.customer = %(customer)s")
             params['customer'] = customer
         if project_contractors:
-            conditions.append("ec.custom_project_contractors_reference = %(project_contractors)s")
+            conditions.append("ecd.for_project = %(project_contractors)s")
             params['project_contractors'] = project_contractors
     else:  # OR logic
         # Either customer OR project can match
@@ -181,7 +181,7 @@ def get_filtered_expense_claims(customer, project_contractors, filter_logic, fro
             or_conditions.append("pc.customer = %(customer)s")
             params['customer'] = customer
         if project_contractors:
-            or_conditions.append("ec.custom_project_contractors_reference = %(project_contractors)s")
+            or_conditions.append("ecd.for_project = %(project_contractors)s")
             params['project_contractors'] = project_contractors
 
         if or_conditions:
@@ -193,13 +193,15 @@ def get_filtered_expense_claims(customer, project_contractors, filter_logic, fro
         SELECT DISTINCT
             ec.name, ec.posting_date, ec.employee, ec.employee_name,
             ec.total_claimed_amount, ec.total_sanctioned_amount, ec.total_amount_reimbursed,
-            ec.status, ec.docstatus, ec.custom_project_contractors_reference,
+            ec.status, ec.docstatus,
             pc.customer, pc.project_name, pc.customer_name
         FROM `tabExpense Claim` ec
-        LEFT JOIN `tabProject Contractors` pc ON ec.custom_project_contractors_reference = pc.name
+        INNER JOIN `tabExpense Claim Detail` ecd ON ec.name = ecd.parent
+        LEFT JOIN `tabProject Contractors` pc ON ecd.for_project = pc.name
         WHERE {conditions_str}
         AND ec.posting_date BETWEEN %(from_date)s AND %(to_date)s
         AND ec.docstatus IN (0, 1)
+        AND ecd.for_project IS NOT NULL
         ORDER BY ec.posting_date DESC
     """, params, as_dict=True)
 

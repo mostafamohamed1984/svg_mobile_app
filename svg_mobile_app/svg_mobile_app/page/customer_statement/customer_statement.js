@@ -128,7 +128,8 @@ class CustomerStatement {
                 fieldtype: 'Link',
                 options: 'Project Contractors',
                 placeholder: __('Select Project (Optional)'),
-                change: () => this.on_project_change()
+                change: () => this.on_project_change(),
+                get_query: () => this.get_project_contractors_query()
             },
             render_input: true
         });
@@ -150,12 +151,116 @@ class CustomerStatement {
         // Clear previous data when customer changes
         this.wrapper.find('.statement-data').hide();
         this.wrapper.find('.no-data-message').show();
+
+        // Clear project selection when customer changes
+        const current_project = this.project_contractors_field.get_value();
+        if (current_project) {
+            // Check if current project belongs to the new customer
+            const customer = this.customer_field.get_value();
+            if (customer) {
+                this.validate_project_customer_match(current_project, customer);
+            }
+        }
+
+        // Refresh project contractors field to update filtering
+        this.project_contractors_field.refresh();
     }
 
     on_project_change() {
         // Clear previous data when project changes
         this.wrapper.find('.statement-data').hide();
         this.wrapper.find('.no-data-message').show();
+
+        // Auto-fill customer when project is selected
+        const project = this.project_contractors_field.get_value();
+        if (project) {
+            this.auto_fill_customer_from_project(project);
+        }
+    }
+
+    get_project_contractors_query() {
+        const customer = this.customer_field.get_value();
+        if (customer) {
+            // Filter projects by selected customer
+            return {
+                filters: [
+                    ['Project Contractors', 'customer', '=', customer]
+                ]
+            };
+        }
+        // No customer selected, show all projects
+        return {};
+    }
+
+    validate_project_customer_match(project, customer) {
+        // Check if the selected project belongs to the selected customer
+        frappe.call({
+            method: 'frappe.client.get_value',
+            args: {
+                doctype: 'Project Contractors',
+                fieldname: 'customer',
+                filters: { name: project }
+            },
+            callback: (response) => {
+                if (response.message && response.message.customer !== customer) {
+                    // Project doesn't belong to selected customer, clear it
+                    this.project_contractors_field.set_value('');
+                    frappe.show_alert({
+                        message: __('Project cleared as it does not belong to the selected customer'),
+                        indicator: 'orange'
+                    }, 3);
+                }
+            }
+        });
+    }
+
+    auto_fill_customer_from_project(project) {
+        // Get customer for the selected project
+        frappe.call({
+            method: 'frappe.client.get_value',
+            args: {
+                doctype: 'Project Contractors',
+                fieldname: ['customer', 'customer_name'],
+                filters: { name: project }
+            },
+            callback: (response) => {
+                if (response.message && response.message.customer) {
+                    const current_customer = this.customer_field.get_value();
+                    const project_customer = response.message.customer;
+
+                    if (!current_customer) {
+                        // No customer selected, auto-fill from project
+                        this.customer_field.set_value(project_customer);
+                        frappe.show_alert({
+                            message: __('Customer auto-filled from selected project: {0}', [response.message.customer_name || project_customer]),
+                            indicator: 'green'
+                        }, 3);
+                    } else if (current_customer !== project_customer) {
+                        // Different customer selected, ask user what to do
+                        frappe.confirm(
+                            __('The selected project belongs to customer "{0}" but you have "{1}" selected. Do you want to change the customer to match the project?',
+                               [response.message.customer_name || project_customer, current_customer]),
+                            () => {
+                                // User confirmed, change customer
+                                this.customer_field.set_value(project_customer);
+                                frappe.show_alert({
+                                    message: __('Customer changed to match selected project'),
+                                    indicator: 'green'
+                                }, 3);
+                            },
+                            () => {
+                                // User cancelled, clear project
+                                this.project_contractors_field.set_value('');
+                                frappe.show_alert({
+                                    message: __('Project cleared to maintain customer selection'),
+                                    indicator: 'orange'
+                                }, 3);
+                            }
+                        );
+                    }
+                }
+            }
+        });
     }
 
     get_customer_statement() {

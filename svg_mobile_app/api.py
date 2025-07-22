@@ -2004,9 +2004,9 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
         elif status.lower() == "approved":
             # Check current status and determine next step
             if current_workflow_state in ["Requested", "Open"]:
-                # First level approval
-                if is_direct_manager and employee_doc.leave_approver and employee_doc.leave_approver != frappe.session.user:
-                    # Manager approval: Requested → Manager Approved
+                # First level approval - Manager step
+                if is_direct_manager:
+                    # Manager approval: Requested → Manager Approved (regardless of who the designated approver is)
                     try:
                         apply_workflow(doc, "Approve")
                     except Exception as workflow_error:
@@ -2015,7 +2015,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                         doc.status = "Manager Approved"
                         doc.workflow_state = "Manager Approved"
                         doc.save(ignore_permissions=True)
-                    
+
                     doc.custom_manager_approved_by = frappe.session.user
                     doc.custom_manager_approved_on = frappe.utils.now()
                     doc.save(ignore_permissions=True)
@@ -2024,22 +2024,17 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     return {"status": "success", "message": _("Request approved and forwarded to leave approver"),
                            "data": {"name": doc.name, "status": doc.status}}
 
-                elif is_designated_approver or is_hr:
-                    # HR can directly approve from Requested to Approved
+                elif is_hr:
+                    # Only HR can bypass manager approval and do both transitions
                     try:
-                        if current_workflow_state in ["Requested", "Open"]:
-                            # First transition: Requested → Manager Approved
-                            apply_workflow(doc, "Approve")
-                            frappe.db.commit()
+                        # First transition: Requested → Manager Approved
+                        apply_workflow(doc, "Approve")
+                        frappe.db.commit()
 
-                            # Second transition: Manager Approved → Approved
-                            doc.reload()
-                            apply_workflow(doc, "Approve")
-                            frappe.db.commit()
-                        elif current_workflow_state == "Manager Approved":
-                            # Direct transition: Manager Approved → Approved
-                            apply_workflow(doc, "Approve")
-                            frappe.db.commit()
+                        # Second transition: Manager Approved → Approved
+                        doc.reload()
+                        apply_workflow(doc, "Approve")
+                        frappe.db.commit()
                     except Exception as workflow_error:
                         # If workflow fails, update status directly
                         frappe.log_error(f"Workflow approval failed: {str(workflow_error)}", "Workflow Error")
@@ -2069,8 +2064,8 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                     return {"status": "fail", "message": _("You don't have permission to approve this request")}
 
             elif current_workflow_state == "Manager Approved":
-                # Second level approval: Manager Approved → Approved
-                if is_designated_approver or is_hr:
+                # Second level approval: Manager Approved → Approved (only HR or designated approver with HR role)
+                if is_hr or (is_designated_approver and "HR Manager" in frappe.get_roles(frappe.session.user)):
                     try:
                         apply_workflow(doc, "Approve")
                     except Exception as workflow_error:
@@ -2079,7 +2074,7 @@ def _handle_leave_approval(doc, employee_doc, status, reason, is_hr, is_direct_m
                         doc.status = "Approved"
                         doc.workflow_state = "Approved"
                         doc.save(ignore_permissions=True)
-                    
+
                     frappe.db.commit()
 
                     # Send FCM notification for final approval

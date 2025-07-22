@@ -59,7 +59,7 @@ def get_customer_statement_data(customer=None, project_contractors=None, filter_
 
     # Process and group data by service types
     statement_data = process_statement_data(
-        customer_doc, project_contractors_data, sales_invoices,
+        customer_doc, customer, project_contractors_data, sales_invoices,
         project_claims, expense_claims, journal_entries, from_date, to_date
     )
 
@@ -358,7 +358,7 @@ def get_claim_journal_entries(project_claims, from_date, to_date):
     
     return journal_entries
 
-def process_statement_data(customer_doc, project_contractors, sales_invoices,
+def process_statement_data(customer_doc, customer, project_contractors, sales_invoices,
                          project_claims, expense_claims, journal_entries, from_date, to_date):
     """Process and organize data for customer statement display - starting from ALL sales invoices and expense claims"""
 

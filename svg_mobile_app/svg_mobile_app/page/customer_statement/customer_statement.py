@@ -7,19 +7,29 @@ from frappe import _
 import json
 
 @frappe.whitelist()
-def get_customer_statement_data(customer=None, project_contractors=None, filter_logic='and', from_date=None, to_date=None):
+def get_customer_statement_data(customer=None, project_contractors=None, filter_logic=None, from_date=None, to_date=None):
     """
     Get comprehensive customer statement data showing the complete business flow:
     Start from Project Claims (which always have dates) and work backwards/forwards
-    Supports filtering by customer AND/OR project contractors
+    Supports dynamic filtering by customer and/or project contractors
     """
+    # Automatically determine filter logic if not provided
+    if not filter_logic:
+        if customer and project_contractors:
+            # Both provided: use AND logic (show data that matches both)
+            filter_logic = 'and'
+        elif customer or project_contractors:
+            # Only one provided: use OR logic (show data for the provided filter)
+            filter_logic = 'or'
+        else:
+            # Neither provided: require at least one
+            frappe.throw(_("Either Customer or Project Contractors is required"))
+
     # Validate filter parameters
-    if filter_logic == 'and':
-        if not customer:
-            frappe.throw(_("Customer is required when using AND logic"))
-    else:  # OR logic
-        if not customer and not project_contractors:
-            frappe.throw(_("Either Customer or Project Contractors is required when using OR logic"))
+    if filter_logic == 'and' and not customer:
+        frappe.throw(_("Customer is required when both filters are used"))
+    elif filter_logic == 'or' and not customer and not project_contractors:
+        frappe.throw(_("Either Customer or Project Contractors is required"))
 
     # Get customer details (if customer is provided)
     customer_doc = None

@@ -1,4 +1,4 @@
-frappe.pages['project-contractors-report'].on_page_load = function(wrapper) {
+﻿frappe.pages['project-contractors-report'].on_page_load = function(wrapper) {
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: __('Project Contractors Report') + ' - ' + __('تقرير مقاولي المشروع'),
@@ -3430,13 +3430,4 @@ class ProjectContractorsReport {
         // Refresh the page data if needed
         this.load_filter_options();
     }
-} } 
- 
- 
- 
- / /   I n i t i a l i z e   t h e   p a g e   w h e n   D O M   i s   r e a d y 
- 
- f r a p p e . r e a d y ( ( )   = >   {  
-         n e w   P r o j e c t C o n t r a c t o r s R e p o r t ( ) ;  
- } ) ;  
- 
+}

@@ -1992,6 +1992,36 @@ class ProjectContractorsReport {
     }
 
     print_report() {
+        // Show language selection dialog
+        const dialog = new frappe.ui.Dialog({
+            title: __('Select Print Language'),
+            fields: [
+                {
+                    fieldtype: 'Select',
+                    fieldname: 'language',
+                    label: __('Language'),
+                    options: [
+                        { label: 'English', value: 'english' },
+                        { label: 'العربية', value: 'arabic' }
+                    ],
+                    default: 'english',
+                    reqd: 1
+                }
+            ],
+            primary_action_label: __('Print'),
+            primary_action: (values) => {
+                dialog.hide();
+                if (values.language === 'arabic') {
+                    this.print_report_arabic();
+                } else {
+                    this.print_report_english();
+                }
+            }
+        });
+        dialog.show();
+    }
+
+    print_report_english() {
         // Get the currently active tab
         const activeTab = this.wrapper.find('.tab-button.active').attr('data-tab');
         
@@ -1999,160 +2029,1335 @@ class ProjectContractorsReport {
         let printContent = '';
         let printTitle = 'Project Contractors Report';
         
-        // Get report header
-        const reportHeader = this.wrapper.find('.report-header').html();
-        
         switch(activeTab) {
             case 'summary':
-                printContent = this.wrapper.find('.summary-content').html();
+                printContent = this.get_summary_print_content_english();
                 printTitle = 'Project Contractors Report - Summary';
                 break;
             case 'customerData':
-                printContent = this.wrapper.find('.customer-content').html();
+                printContent = this.get_customer_statement_print_content_english();
                 printTitle = 'Project Contractors Report - Customer Statement';
                 break;
             case 'expensesData':
-                printContent = this.wrapper.find('.expenses-content').html();
+                printContent = this.get_expenses_print_content_english();
                 printTitle = 'Project Contractors Report - Project Expenses';
                 break;
             case 'combinedData':
-                printContent = this.wrapper.find('.combined-content').html();
+                printContent = this.get_combined_print_content_english();
                 printTitle = 'Project Contractors Report - Combined View';
                 break;
             default:
-                // Fallback to full report
-                printContent = this.wrapper.find('.unified-report').html();
+                printContent = this.get_summary_print_content_english();
                 printTitle = 'Project Contractors Report - Complete';
         }
         
+        this.create_print_window(printContent, printTitle, 'english');
+    }
+
+    print_report_arabic() {
+        // Get the currently active tab
+        const activeTab = this.wrapper.find('.tab-button.active').attr('data-tab');
+        
+        // Get the content of the active tab only
+        let printContent = '';
+        let printTitle = 'تقرير مقاولي المشروع';
+        
+        switch(activeTab) {
+            case 'summary':
+                printContent = this.get_summary_print_content_arabic();
+                printTitle = 'تقرير مقاولي المشروع - الملخص';
+                break;
+            case 'customerData':
+                printContent = this.get_customer_statement_print_content_arabic();
+                printTitle = 'تقرير مقاولي المشروع - كشف حساب العميل';
+                break;
+            case 'expensesData':
+                printContent = this.get_expenses_print_content_arabic();
+                printTitle = 'تقرير مقاولي المشروع - مصروفات المشاريع';
+                break;
+            case 'combinedData':
+                printContent = this.get_combined_print_content_arabic();
+                printTitle = 'تقرير مقاولي المشروع - العرض المدمج';
+                break;
+            default:
+                printContent = this.get_summary_print_content_arabic();
+                printTitle = 'تقرير مقاولي المشروع - كامل';
+        }
+        
+        this.create_print_window(printContent, printTitle, 'arabic');
+    }
+
+    get_summary_print_content_english() {
+        // Get summary data
+        let totalInvoiced = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+        let serviceCount = 0;
+
+        if (this.data.customerStatementData && this.data.customerStatementData.service_groups) {
+            this.data.customerStatementData.service_groups.forEach(group => {
+                totalInvoiced += group.total_value || 0;
+                totalPaid += group.total_paid || 0;
+                totalBalance += group.total_balance || 0;
+                serviceCount++;
+            });
+        }
+
+        const totalExpenses = this.data.projectExpenses.reduce((sum, item) =>
+            sum + parseFloat(item.amount || 0), 0);
+
+        const netPosition = totalPaid - totalExpenses;
+        const expenseRecords = this.data.projectExpenses.length;
+
+        // Get filter info
+        const selectedCustomer = this.filters.customer || 'All Customers';
+        let customerName = selectedCustomer;
+        if (this.data.customerStatementData && this.data.customerStatementData.customer) {
+            customerName = this.data.customerStatementData.customer.customer_name;
+        }
+
+        return `
+            <div class="summary-content-print">
+                <div class="summary-cards-container">
+                    <div class="summary-card-print card-primary">
+                        <div class="card-icon">💰</div>
+                        <div class="card-title">Total Invoiced</div>
+                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
+                        <div class="card-subtitle">Total billed to customers</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-success">
+                        <div class="card-icon">💵</div>
+                        <div class="card-title">Total Collected</div>
+                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
+                        <div class="card-subtitle">Actual payments received</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-warning">
+                        <div class="card-icon">💸</div>
+                        <div class="card-title">Project Expenses</div>
+                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
+                        <div class="card-subtitle">Total project costs</div>
+                    </div>
+                    
+                    <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}">
+                        <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
+                        <div class="card-title">Net Profit/Loss</div>
+                        <div class="card-amount">${this.formatCurrency(netPosition)}</div>
+                        <div class="card-subtitle">Collections minus expenses</div>
+                    </div>
+                </div>
+
+                <div class="report-info-section">
+                    <div class="info-row">
+                        <div class="info-item">
+                            <strong>Customer:</strong> ${customerName}
+                        </div>
+                        <div class="info-item">
+                            <strong>Date Range:</strong> ${this.filters.fromDate} to ${this.filters.toDate}
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-item">
+                            <strong>Service Groups:</strong> ${serviceCount}
+                        </div>
+                        <div class="info-item">
+                            <strong>Expense Records:</strong> ${expenseRecords}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="financial-summary">
+                    <div class="summary-row">
+                        <div class="summary-item">
+                            <strong>Outstanding Balance:</strong>
+                            <span class="amount">${this.formatCurrency(totalBalance)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Collection Rate:</strong>
+                            <span class="percentage">${totalInvoiced > 0 ? ((totalPaid / totalInvoiced) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>Profit Margin:</strong>
+                            <span class="percentage ${netPosition >= 0 ? 'positive' : 'negative'}">${totalPaid > 0 ? ((netPosition / totalPaid) * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    get_summary_print_content_arabic() {
+        // Get summary data (same as English)
+        let totalInvoiced = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+        let serviceCount = 0;
+
+        if (this.data.customerStatementData && this.data.customerStatementData.service_groups) {
+            this.data.customerStatementData.service_groups.forEach(group => {
+                totalInvoiced += group.total_value || 0;
+                totalPaid += group.total_paid || 0;
+                totalBalance += group.total_balance || 0;
+                serviceCount++;
+            });
+        }
+
+        const totalExpenses = this.data.projectExpenses.reduce((sum, item) =>
+            sum + parseFloat(item.amount || 0), 0);
+
+        const netPosition = totalPaid - totalExpenses;
+        const expenseRecords = this.data.projectExpenses.length;
+
+        // Get filter info
+        const selectedCustomer = this.filters.customer || 'جميع العملاء';
+        let customerName = selectedCustomer;
+        if (this.data.customerStatementData && this.data.customerStatementData.customer) {
+            customerName = this.data.customerStatementData.customer.customer_name;
+        }
+
+        return `
+            <div class="summary-content-print arabic-content">
+                <div class="summary-cards-container">
+                    <div class="summary-card-print card-primary">
+                        <div class="card-icon">💰</div>
+                        <div class="card-title">إجمالي الفواتير</div>
+                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
+                        <div class="card-subtitle">إجمالي المبالغ المفوترة للعملاء</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-success">
+                        <div class="card-icon">💵</div>
+                        <div class="card-title">إجمالي المحصل</div>
+                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
+                        <div class="card-subtitle">المدفوعات الفعلية المستلمة</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-warning">
+                        <div class="card-icon">💸</div>
+                        <div class="card-title">مصروفات المشاريع</div>
+                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
+                        <div class="card-subtitle">إجمالي تكاليف المشاريع</div>
+                    </div>
+                    
+                    <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}">
+                        <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
+                        <div class="card-title">صافي الربح/الخسارة</div>
+                        <div class="card-amount">${this.formatCurrency(netPosition)}</div>
+                        <div class="card-subtitle">المحصلات ناقص المصروفات</div>
+                    </div>
+                </div>
+
+                <div class="report-info-section">
+                    <div class="info-row">
+                        <div class="info-item">
+                            <strong>العميل:</strong> ${customerName}
+                        </div>
+                        <div class="info-item">
+                            <strong>الفترة الزمنية:</strong> ${this.filters.fromDate} إلى ${this.filters.toDate}
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-item">
+                            <strong>مجموعات الخدمات:</strong> ${serviceCount}
+                        </div>
+                        <div class="info-item">
+                            <strong>سجلات المصروفات:</strong> ${expenseRecords}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="financial-summary">
+                    <div class="summary-row">
+                        <div class="summary-item">
+                            <strong>الرصيد المستحق:</strong>
+                            <span class="amount">${this.formatCurrency(totalBalance)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>معدل التحصيل:</strong>
+                            <span class="percentage">${totalInvoiced > 0 ? ((totalPaid / totalInvoiced) * 100).toFixed(1) + '%' : 'غير متاح'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <strong>هامش الربح:</strong>
+                            <span class="percentage ${netPosition >= 0 ? 'positive' : 'negative'}">${totalPaid > 0 ? ((netPosition / totalPaid) * 100).toFixed(1) + '%' : 'غير متاح'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    get_customer_statement_print_content_english() {
+        if (!this.data.customerStatementData || !this.data.customerStatementData.service_groups) {
+            return `
+                <div class="no-data-message">
+                    <h4>No Customer Statement Data</h4>
+                    <p>Please select a customer and generate the report to view detailed statement.</p>
+                </div>
+            `;
+        }
+
+        const statementData = this.data.customerStatementData;
+        
+        // Get related project expenses for this customer
+        const customerExpenses = this.data.projectExpenses.filter(expense => 
+            expense.customer === this.filters.customer
+        );
+
+        let html = `
+            <div class="customer-statement-print">
+                <div class="statement-header">
+                    <h3>Detailed Customer Statement</h3>
+                    <div class="customer-info">
+                        <div class="info-row">
+                            <span><strong>Customer:</strong> ${statementData.customer.customer_name}</span>
+                            <span><strong>Customer ID:</strong> ${statementData.customer.name}</span>
+                        </div>
+                        <div class="info-row">
+                            <span><strong>Period:</strong> ${statementData.date_range.from_date_formatted} to ${statementData.date_range.to_date_formatted}</span>
+                            <span><strong>Currency:</strong> ${statementData.currency}</span>
+                        </div>
+                    </div>
+                </div>
+        `;
+
+        // Separate regular services from tax sections
+        const regularServices = statementData.service_groups.filter(group => !group.is_tax_section);
+        const taxSections = statementData.service_groups.filter(group => group.is_tax_section);
+
+        // Display regular service groups
+        regularServices.forEach(group => {
+            html += `
+                <div class="service-group-print">
+                    <div class="service-header">
+                        <h4>${group.service_name}</h4>
+                        <span class="item-code">Item Code: ${group.item_code || 'N/A'}</span>
+                    </div>
+                    <div class="service-table-container">
+                        <table class="service-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Document No.</th>
+                                    <th>Description</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Balance</th>
+                                    <th>Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            group.transactions.forEach(transaction => {
+                const typeName = transaction.transaction_type === 'sales_invoice' ? 'Invoice' : 'Payment';
+                const typeIcon = transaction.transaction_type === 'sales_invoice' ? '📄' : '💰';
+
+                html += `
+                    <tr>
+                        <td>${this.formatDisplayDate(transaction.date)}</td>
+                        <td>${transaction.document_number}</td>
+                        <td>${transaction.description}</td>
+                        <td class="amount-cell">${transaction.value > 0 ? this.formatCurrency(transaction.value) : ''}</td>
+                        <td class="amount-cell">${transaction.paid > 0 ? this.formatCurrency(transaction.paid) : ''}</td>
+                        <td class="amount-cell ${transaction.balance >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(transaction.balance)}</td>
+                        <td class="type-cell">${typeIcon} ${typeName}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                            <tfoot>
+                                <tr class="totals-row">
+                                    <td colspan="3"><strong>${group.service_name} Totals</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Add project expenses section if available
+        if (customerExpenses.length > 0) {
+            html += `
+                <div class="project-expenses-section">
+                    <h4>Related Project Expenses</h4>
+                    <table class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Employee</th>
+                                <th>Project</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            customerExpenses.forEach(expense => {
+                html += `
+                    <tr>
+                        <td><span class="status-badge approved">Approved</span></td>
+                        <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
+                        <td>${this.formatDisplayDate(expense.expense_date)}</td>
+                        <td>${expense.description}</td>
+                        <td>${expense.employee_name}</td>
+                        <td>${expense.project_name}</td>
+                    </tr>
+                `;
+            });
+
+            const totalExpenses = customerExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+            html += `
+                        </tbody>
+                        <tfoot>
+                            <tr class="totals-row">
+                                <td colspan="1"><strong>Total Expenses</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
+                                <td colspan="4"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
+        html += `</div>`;
+        return html;
+    }
+
+    get_customer_statement_print_content_arabic() {
+        if (!this.data.customerStatementData || !this.data.customerStatementData.service_groups) {
+            return `
+                <div class="no-data-message arabic-content">
+                    <h4>لا توجد بيانات كشف حساب العميل</h4>
+                    <p>يرجى اختيار عميل وإنشاء التقرير لعرض الكشف التفصيلي.</p>
+                </div>
+            `;
+        }
+
+        const statementData = this.data.customerStatementData;
+        
+        // Get related project expenses for this customer
+        const customerExpenses = this.data.projectExpenses.filter(expense => 
+            expense.customer === this.filters.customer
+        );
+
+        let html = `
+            <div class="customer-statement-print arabic-content">
+                <div class="statement-header">
+                    <h3>كشف حساب العميل التفصيلي</h3>
+                    <div class="customer-info">
+                        <div class="info-row">
+                            <span><strong>العميل:</strong> ${statementData.customer.customer_name}</span>
+                            <span><strong>رقم العميل:</strong> ${statementData.customer.name}</span>
+                        </div>
+                        <div class="info-row">
+                            <span><strong>الفترة:</strong> ${statementData.date_range.from_date_formatted} إلى ${statementData.date_range.to_date_formatted}</span>
+                            <span><strong>العملة:</strong> ${statementData.currency}</span>
+                        </div>
+                    </div>
+                </div>
+        `;
+
+        // Separate regular services from tax sections
+        const regularServices = statementData.service_groups.filter(group => !group.is_tax_section);
+        const taxSections = statementData.service_groups.filter(group => group.is_tax_section);
+
+        // Display regular service groups
+        regularServices.forEach(group => {
+            html += `
+                <div class="service-group-print">
+                    <div class="service-header">
+                        <h4>${group.service_name}</h4>
+                        <span class="item-code">كود الصنف: ${group.item_code || 'غير متاح'}</span>
+                    </div>
+                    <div class="service-table-container">
+                        <table class="service-table">
+                            <thead>
+                                <tr>
+                                    <th>التاريخ</th>
+                                    <th>رقم المستند</th>
+                                    <th>الوصف</th>
+                                    <th>مدين</th>
+                                    <th>دائن</th>
+                                    <th>الرصيد</th>
+                                    <th>النوع</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            group.transactions.forEach(transaction => {
+                const typeName = transaction.transaction_type === 'sales_invoice' ? 'فاتورة' : 'دفعة';
+                const typeIcon = transaction.transaction_type === 'sales_invoice' ? '📄' : '💰';
+
+                html += `
+                    <tr>
+                        <td>${this.formatDisplayDate(transaction.date)}</td>
+                        <td>${transaction.document_number}</td>
+                        <td>${transaction.description}</td>
+                        <td class="amount-cell">${transaction.value > 0 ? this.formatCurrency(transaction.value) : ''}</td>
+                        <td class="amount-cell">${transaction.paid > 0 ? this.formatCurrency(transaction.paid) : ''}</td>
+                        <td class="amount-cell ${transaction.balance >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(transaction.balance)}</td>
+                        <td class="type-cell">${typeIcon} ${typeName}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                            </tbody>
+                            <tfoot>
+                                <tr class="totals-row">
+                                    <td colspan="3"><strong>مجموع ${group.service_name}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Add project expenses section if available
+        if (customerExpenses.length > 0) {
+            html += `
+                <div class="project-expenses-section">
+                    <h4>مصروفات المشاريع ذات الصلة</h4>
+                    <table class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>الحالة</th>
+                                <th>المبلغ</th>
+                                <th>التاريخ</th>
+                                <th>الوصف</th>
+                                <th>الموظف</th>
+                                <th>المشروع</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            customerExpenses.forEach(expense => {
+                html += `
+                    <tr>
+                        <td><span class="status-badge approved">معتمد</span></td>
+                        <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
+                        <td>${this.formatDisplayDate(expense.expense_date)}</td>
+                        <td>${expense.description}</td>
+                        <td>${expense.employee_name}</td>
+                        <td>${expense.project_name}</td>
+                    </tr>
+                `;
+            });
+
+            const totalExpenses = customerExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+            html += `
+                        </tbody>
+                        <tfoot>
+                            <tr class="totals-row">
+                                <td colspan="1"><strong>إجمالي المصروفات</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
+                                <td colspan="4"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
+        html += `</div>`;
+        return html;
+    }
+
+    get_expenses_print_content_english() {
+        if (!this.data.projectExpenses || this.data.projectExpenses.length === 0) {
+            return `
+                <div class="no-data-message">
+                    <h4>No Project Expenses Data</h4>
+                    <p>No expenses found for the selected criteria.</p>
+                </div>
+            `;
+        }
+
+        // Group expenses by project contractor
+        const expensesByProject = {};
+        let totalExpenses = 0;
+
+        this.data.projectExpenses.forEach(expense => {
+            const projectKey = expense.project_contractor || 'Unknown Project';
+            const expenseAmount = parseFloat(expense.amount || 0);
+            totalExpenses += expenseAmount;
+
+            if (!expensesByProject[projectKey]) {
+                expensesByProject[projectKey] = {
+                    project_name: expense.project_name || projectKey,
+                    customer_name: expense.customer_name || 'Unknown Customer',
+                    expenses: [],
+                    total_amount: 0
+                };
+            }
+            expensesByProject[projectKey].expenses.push(expense);
+            expensesByProject[projectKey].total_amount += expenseAmount;
+        });
+
+        let html = `
+            <div class="expenses-content-print">
+                <div class="expenses-header">
+                    <h3>Project Expenses & Cost Analysis</h3>
+                    <div class="total-expenses">
+                        <strong>Total Project Costs: ${this.formatCurrency(totalExpenses)}</strong>
+                    </div>
+                </div>
+        `;
+
+        Object.keys(expensesByProject).forEach(projectKey => {
+            const projectGroup = expensesByProject[projectKey];
+            
+            html += `
+                <div class="project-group-print">
+                    <div class="project-header">
+                        <h4>${projectGroup.project_name}</h4>
+                        <span class="customer-name">Customer: ${projectGroup.customer_name}</span>
+                        <span class="project-total">Total: ${this.formatCurrency(projectGroup.total_amount)}</span>
+                    </div>
+                    <table class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Expense Type</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Employee</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            projectGroup.expenses.forEach(expense => {
+                html += `
+                    <tr>
+                        <td>${this.formatDisplayDate(expense.expense_date)}</td>
+                        <td>${expense.expense_type}</td>
+                        <td>${expense.description}</td>
+                        <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
+                        <td>${expense.employee_name}</td>
+                        <td><span class="status-badge approved">Approved</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                        <tfoot>
+                            <tr class="totals-row">
+                                <td colspan="3"><strong>${projectGroup.project_name} Total</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        return html;
+    }
+
+    get_expenses_print_content_arabic() {
+        if (!this.data.projectExpenses || this.data.projectExpenses.length === 0) {
+            return `
+                <div class="no-data-message arabic-content">
+                    <h4>لا توجد بيانات مصروفات المشاريع</h4>
+                    <p>لم يتم العثور على مصروفات للمعايير المحددة.</p>
+                </div>
+            `;
+        }
+
+        // Group expenses by project contractor
+        const expensesByProject = {};
+        let totalExpenses = 0;
+
+        this.data.projectExpenses.forEach(expense => {
+            const projectKey = expense.project_contractor || 'مشروع غير معروف';
+            const expenseAmount = parseFloat(expense.amount || 0);
+            totalExpenses += expenseAmount;
+
+            if (!expensesByProject[projectKey]) {
+                expensesByProject[projectKey] = {
+                    project_name: expense.project_name || projectKey,
+                    customer_name: expense.customer_name || 'عميل غير معروف',
+                    expenses: [],
+                    total_amount: 0
+                };
+            }
+            expensesByProject[projectKey].expenses.push(expense);
+            expensesByProject[projectKey].total_amount += expenseAmount;
+        });
+
+        let html = `
+            <div class="expenses-content-print arabic-content">
+                <div class="expenses-header">
+                    <h3>مصروفات المشاريع وتحليل التكاليف</h3>
+                    <div class="total-expenses">
+                        <strong>إجمالي تكاليف المشاريع: ${this.formatCurrency(totalExpenses)}</strong>
+                    </div>
+                </div>
+        `;
+
+        Object.keys(expensesByProject).forEach(projectKey => {
+            const projectGroup = expensesByProject[projectKey];
+            
+            html += `
+                <div class="project-group-print">
+                    <div class="project-header">
+                        <h4>${projectGroup.project_name}</h4>
+                        <span class="customer-name">العميل: ${projectGroup.customer_name}</span>
+                        <span class="project-total">المجموع: ${this.formatCurrency(projectGroup.total_amount)}</span>
+                    </div>
+                    <table class="expenses-table">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>نوع المصروف</th>
+                                <th>الوصف</th>
+                                <th>المبلغ</th>
+                                <th>الموظف</th>
+                                <th>الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            projectGroup.expenses.forEach(expense => {
+                html += `
+                    <tr>
+                        <td>${this.formatDisplayDate(expense.expense_date)}</td>
+                        <td>${expense.expense_type}</td>
+                        <td>${expense.description}</td>
+                        <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
+                        <td>${expense.employee_name}</td>
+                        <td><span class="status-badge approved">معتمد</span></td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                        <tfoot>
+                            <tr class="totals-row">
+                                <td colspan="3"><strong>مجموع ${projectGroup.project_name}</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        return html;
+    }
+
+    get_combined_print_content_english() {
+        const combinedTransactions = [];
+        let totalRevenue = 0;
+        let totalExpenses = 0;
+
+        // Add revenue transactions from customer statement
+        if (this.data.customerStatementData && this.data.customerStatementData.service_groups) {
+            this.data.customerStatementData.service_groups.forEach(group => {
+                if (!group.is_tax_section) {
+                    group.transactions.forEach(transaction => {
+                        if (transaction.value > 0) {
+                            combinedTransactions.push({
+                                date: transaction.date,
+                                type: 'Revenue',
+                                description: transaction.description,
+                                reference: transaction.document_number,
+                                amount: transaction.value,
+                                category: 'Sales Invoice'
+                            });
+                            totalRevenue += transaction.value;
+                        }
+                        if (transaction.paid > 0) {
+                            combinedTransactions.push({
+                                date: transaction.date,
+                                type: 'Collection',
+                                description: transaction.description,
+                                reference: transaction.document_number,
+                                amount: transaction.paid,
+                                category: 'Project Claim'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Add expense transactions
+        if (this.data.projectExpenses && this.data.projectExpenses.length > 0) {
+            this.data.projectExpenses.forEach(expense => {
+                const expenseAmount = parseFloat(expense.amount || 0);
+                combinedTransactions.push({
+                    date: expense.expense_date,
+                    type: 'Expense',
+                    description: `${expense.expense_type}: ${expense.description}`,
+                    reference: expense.expense_claim,
+                    amount: expenseAmount,
+                    category: expense.expense_type
+                });
+                totalExpenses += expenseAmount;
+            });
+        }
+
+        // Sort transactions by date
+        combinedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const netPosition = totalRevenue - totalExpenses;
+
+        let html = `
+            <div class="combined-content-print">
+                <div class="combined-header">
+                    <h3>Combined Financial Analysis - All Transactions</h3>
+                    <div class="financial-summary">
+                        <div class="summary-item">
+                            <span class="label">Total Revenue:</span>
+                            <span class="amount positive">${this.formatCurrency(totalRevenue)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">Total Expenses:</span>
+                            <span class="amount negative">${this.formatCurrency(totalExpenses)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">Net Position:</span>
+                            <span class="amount ${netPosition >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(netPosition)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="combined-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Reference</th>
+                            <th>Amount</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        combinedTransactions.forEach(transaction => {
+            const typeIcon = transaction.type === 'Expense' ? '💸' : 
+                           transaction.type === 'Collection' ? '💵' : '💰';
+            const amountClass = transaction.type === 'Expense' ? 'negative' : 'positive';
+
+            html += `
+                <tr>
+                    <td>${this.formatDisplayDate(transaction.date)}</td>
+                    <td class="type-cell">${typeIcon} ${transaction.type}</td>
+                    <td>${transaction.description}</td>
+                    <td>${transaction.reference}</td>
+                    <td class="amount-cell ${amountClass}">${this.formatCurrency(transaction.amount)}</td>
+                    <td>${transaction.category}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                    <tfoot>
+                        <tr class="totals-row">
+                            <td colspan="4"><strong>Combined Totals Summary</strong></td>
+                            <td class="amount-cell">
+                                <div>Revenue: ${this.formatCurrency(totalRevenue)}</div>
+                                <div>Expenses: ${this.formatCurrency(totalExpenses)}</div>
+                                <div><strong>Net: ${this.formatCurrency(netPosition)}</strong></div>
+                            </td>
+                            <td><strong>${combinedTransactions.length} Transactions</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        `;
+
+        return html;
+    }
+
+    get_combined_print_content_arabic() {
+        const combinedTransactions = [];
+        let totalRevenue = 0;
+        let totalExpenses = 0;
+
+        // Add revenue transactions from customer statement
+        if (this.data.customerStatementData && this.data.customerStatementData.service_groups) {
+            this.data.customerStatementData.service_groups.forEach(group => {
+                if (!group.is_tax_section) {
+                    group.transactions.forEach(transaction => {
+                        if (transaction.value > 0) {
+                            combinedTransactions.push({
+                                date: transaction.date,
+                                type: 'إيرادات',
+                                description: transaction.description,
+                                reference: transaction.document_number,
+                                amount: transaction.value,
+                                category: 'فاتورة مبيعات'
+                            });
+                            totalRevenue += transaction.value;
+                        }
+                        if (transaction.paid > 0) {
+                            combinedTransactions.push({
+                                date: transaction.date,
+                                type: 'تحصيل',
+                                description: transaction.description,
+                                reference: transaction.document_number,
+                                amount: transaction.paid,
+                                category: 'مطالبة مشروع'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        // Add expense transactions
+        if (this.data.projectExpenses && this.data.projectExpenses.length > 0) {
+            this.data.projectExpenses.forEach(expense => {
+                const expenseAmount = parseFloat(expense.amount || 0);
+                combinedTransactions.push({
+                    date: expense.expense_date,
+                    type: 'مصروف',
+                    description: `${expense.expense_type}: ${expense.description}`,
+                    reference: expense.expense_claim,
+                    amount: expenseAmount,
+                    category: expense.expense_type
+                });
+                totalExpenses += expenseAmount;
+            });
+        }
+
+        // Sort transactions by date
+        combinedTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const netPosition = totalRevenue - totalExpenses;
+
+        let html = `
+            <div class="combined-content-print arabic-content">
+                <div class="combined-header">
+                    <h3>التحليل المالي المدمج - جميع المعاملات</h3>
+                    <div class="financial-summary">
+                        <div class="summary-item">
+                            <span class="label">إجمالي الإيرادات:</span>
+                            <span class="amount positive">${this.formatCurrency(totalRevenue)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">إجمالي المصروفات:</span>
+                            <span class="amount negative">${this.formatCurrency(totalExpenses)}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">صافي الوضع:</span>
+                            <span class="amount ${netPosition >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(netPosition)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="combined-table">
+                    <thead>
+                        <tr>
+                            <th>التاريخ</th>
+                            <th>النوع</th>
+                            <th>الوصف</th>
+                            <th>المرجع</th>
+                            <th>المبلغ</th>
+                            <th>الفئة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        combinedTransactions.forEach(transaction => {
+            const typeIcon = transaction.type === 'مصروف' ? '💸' : 
+                           transaction.type === 'تحصيل' ? '💵' : '💰';
+            const amountClass = transaction.type === 'مصروف' ? 'negative' : 'positive';
+
+            html += `
+                <tr>
+                    <td>${this.formatDisplayDate(transaction.date)}</td>
+                    <td class="type-cell">${typeIcon} ${transaction.type}</td>
+                    <td>${transaction.description}</td>
+                    <td>${transaction.reference}</td>
+                    <td class="amount-cell ${amountClass}">${this.formatCurrency(transaction.amount)}</td>
+                    <td>${transaction.category}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                    <tfoot>
+                        <tr class="totals-row">
+                            <td colspan="4"><strong>ملخص المجاميع المدمجة</strong></td>
+                            <td class="amount-cell">
+                                <div>الإيرادات: ${this.formatCurrency(totalRevenue)}</div>
+                                <div>المصروفات: ${this.formatCurrency(totalExpenses)}</div>
+                                <div><strong>الصافي: ${this.formatCurrency(netPosition)}</strong></div>
+                            </td>
+                            <td><strong>${combinedTransactions.length} معاملة</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        `;
+
+        return html;
+    }
+
+    create_print_window(printContent, printTitle, language) {
+        const isArabic = language === 'arabic';
+        const direction = isArabic ? 'rtl' : 'ltr';
+        const langAttr = isArabic ? 'ar' : 'en';
+        
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
-            <html>
+            <html lang="${langAttr}" dir="${direction}">
                 <head>
                     <title>${printTitle}</title>
-                    <link rel="stylesheet" href="/assets/frappe/css/frappe-web.css">
+                    <meta charset="UTF-8">
                     <style>
                         body { 
                             font-family: Arial, sans-serif; 
-                            margin: 20px;
+                            margin: 0;
+                            padding: 20px;
                             background: white;
-                        }
-                        .report-header {
-                            text-align: center; 
-                            margin-bottom: 30px; 
-                            padding: 20px; 
-                            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); 
-                            color: white; 
-                            border-radius: 10px; 
-                            position: relative;
-                        }
-                        .orbit-logo img {
-                            height: 40px; 
-                            width: auto;
-                        }
-                        .tab-content .tab-pane { display: block !important; }
-                        .report-nav { display: none; }
-                        .filter-section { display: none; }
-                        .no-print { display: none; }
-                        
-                        /* Print-specific styles */
-                        @media print {
-                            body { margin: 0; }
-                            .report-header { 
-                                background: #2c3e50 !important; 
-                                -webkit-print-color-adjust: exact;
-                                color-adjust: exact;
-                            }
-                            .card { break-inside: avoid; }
-                            .table { font-size: 12px; }
-                            .summary-card {
-                                background: #34495e !important;
-                                -webkit-print-color-adjust: exact;
-                                color-adjust: exact;
-                            }
+                            color: #333;
+                            direction: ${direction};
                         }
                         
-                        /* Table styles for better printing */
-                        .table {
+                        /* Company Header and Footer */
+                        .company-header {
+                            width: 100%;
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        
+                        .company-header img {
+                            width: 100%;
+                            height: auto;
+                            max-height: 150px;
+                            object-fit: contain;
+                        }
+                        
+                        .company-footer {
+                            width: 100%;
+                            text-align: center;
+                            margin-top: 40px;
+                            page-break-inside: avoid;
+                        }
+                        
+                        .company-footer img {
+                            width: 100%;
+                            height: auto;
+                            max-height: 100px;
+                            object-fit: contain;
+                        }
+                        
+                        .report-title {
+                            text-align: center;
+                            font-size: 24px;
+                            font-weight: bold;
+                            margin: 20px 0;
+                            color: #2c3e50;
+                        }
+                        
+                        .report-info {
+                            text-align: center;
+                            font-size: 14px;
+                            color: #666;
+                            margin-bottom: 30px;
+                        }
+                        
+                        /* Summary Cards */
+                        .summary-cards-container {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 20px 0;
+                            gap: 15px;
+                            page-break-inside: avoid;
+                        }
+                        
+                        .summary-card-print {
+                            flex: 1;
+                            text-align: center;
+                            padding: 20px;
+                            border-radius: 8px;
+                            color: white;
+                            page-break-inside: avoid;
+                        }
+                        
+                        .summary-card-print.card-primary {
+                            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                        }
+                        
+                        .summary-card-print.card-success {
+                            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+                        }
+                        
+                        .summary-card-print.card-warning {
+                            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+                            color: #212529;
+                        }
+                        
+                        .summary-card-print.card-danger {
+                            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                        }
+                        
+                        .card-icon {
+                            font-size: 24px;
+                            margin-bottom: 10px;
+                        }
+                        
+                        .card-title {
+                            font-size: 14px;
+                            font-weight: 600;
+                            margin-bottom: 8px;
+                        }
+                        
+                        .card-amount {
+                            font-size: 20px;
+                            font-weight: bold;
+                            margin-bottom: 5px;
+                        }
+                        
+                        .card-subtitle {
+                            font-size: 12px;
+                            opacity: 0.9;
+                        }
+                        
+                        /* Tables */
+                        .service-table, .expenses-table, .combined-table {
                             width: 100%;
                             border-collapse: collapse;
+                            margin: 20px 0;
+                            font-size: 12px;
                         }
-                        .table th, .table td {
+                        
+                        .service-table th, .expenses-table th, .combined-table th,
+                        .service-table td, .expenses-table td, .combined-table td {
                             border: 1px solid #dee2e6;
                             padding: 8px;
-                            text-align: left;
+                            text-align: ${isArabic ? 'right' : 'left'};
                         }
-                        .table th {
+                        
+                        .service-table th, .expenses-table th, .combined-table th {
                             background-color: #f8f9fa;
                             font-weight: bold;
-                        }
-                        .amount-cell {
-                            text-align: right;
-                        }
-                        .text-right {
-                            text-align: right;
-                        }
-                        .text-center {
                             text-align: center;
                         }
                         
-                        /* Card styles */
-                        .card {
-                            border: 1px solid #dee2e6;
-                            border-radius: 8px;
-                            margin-bottom: 20px;
-                        }
-                        .card-header {
-                            background-color: #f8f9fa;
-                            padding: 15px;
-                            border-bottom: 1px solid #dee2e6;
+                        .amount-cell {
+                            text-align: right !important;
                             font-weight: bold;
                         }
-                        .card-body {
-                            padding: 15px;
+                        
+                        .positive {
+                            color: #28a745;
                         }
                         
-                        /* Badge styles */
-                        .badge {
-                            display: inline-block;
-                            padding: 4px 8px;
+                        .negative {
+                            color: #dc3545;
+                        }
+                        
+                        .totals-row {
+                            background-color: #f8f9fa;
+                            font-weight: bold;
+                            page-break-inside: avoid;
+                        }
+                        
+                        .totals-row td {
+                            border-top: 2px solid #007bff;
+                        }
+                        
+                        /* Service Groups */
+                        .service-group-print, .project-group-print {
+                            margin: 30px 0;
+                            page-break-inside: avoid;
+                        }
+                        
+                        .service-header, .project-header {
+                            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                            color: white;
+                            padding: 15px;
+                            border-radius: 8px 8px 0 0;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        }
+                        
+                        .service-header h4, .project-header h4 {
+                            margin: 0;
+                            font-size: 16px;
+                        }
+                        
+                        .item-code, .customer-name, .project-total {
                             font-size: 12px;
+                            opacity: 0.9;
+                        }
+                        
+                        /* Status badges */
+                        .status-badge {
+                            padding: 4px 8px;
                             border-radius: 4px;
+                            font-size: 11px;
+                            font-weight: bold;
+                        }
+                        
+                        .status-badge.approved {
+                            background-color: #28a745;
                             color: white;
                         }
-                        .badge-primary { background-color: #007bff; }
-                        .badge-success { background-color: #28a745; }
-                        .badge-warning { background-color: #ffc107; color: #212529; }
-                        .badge-secondary { background-color: #6c757d; }
                         
-                        /* Color classes */
-                        .text-primary { color: #007bff; }
-                        .text-success { color: #28a745; }
-                        .text-warning { color: #ffc107; }
-                        .text-danger { color: #dc3545; }
-                        .text-info { color: #17a2b8; }
-                        .text-muted { color: #6c757d; }
+                        .type-cell {
+                            text-align: center;
+                            font-size: 11px;
+                        }
                         
-                        .bg-primary { background-color: #007bff; color: white; }
-                        .bg-success { background-color: #28a745; color: white; }
-                        .bg-warning { background-color: #ffc107; color: #212529; }
-                        .bg-secondary { background-color: #6c757d; color: white; }
-                        .bg-info { background-color: #17a2b8; color: white; }
-                        .bg-light { background-color: #f8f9fa; }
+                        /* Report sections */
+                        .report-info-section, .financial-summary {
+                            margin: 20px 0;
+                            padding: 15px;
+                            background-color: #f8f9fa;
+                            border-radius: 8px;
+                            page-break-inside: avoid;
+                        }
+                        
+                        .info-row, .summary-row {
+                            display: flex;
+                            justify-content: space-between;
+                            margin: 10px 0;
+                        }
+                        
+                        .info-item, .summary-item {
+                            flex: 1;
+                            padding: 0 10px;
+                        }
+                        
+                        .statement-header, .expenses-header, .combined-header {
+                            margin-bottom: 30px;
+                            padding: 20px;
+                            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                            border-radius: 8px;
+                            border-left: 4px solid #007bff;
+                        }
+                        
+                        .customer-info {
+                            margin-top: 15px;
+                        }
+                        
+                        .no-data-message {
+                            text-align: center;
+                            padding: 50px;
+                            color: #666;
+                        }
+                        
+                        /* Arabic specific styles */
+                        .arabic-content {
+                            font-family: 'Arial', 'Tahoma', sans-serif;
+                            direction: rtl;
+                            text-align: right;
+                        }
+                        
+                        .arabic-content .amount-cell {
+                            text-align: left !important;
+                        }
+                        
+                        .arabic-content .summary-cards-container {
+                            direction: rtl;
+                        }
+                        
+                        .arabic-content .service-header,
+                        .arabic-content .project-header {
+                            text-align: right;
+                        }
+                        
+                        /* Print specific styles */
+                        @media print {
+                            body { 
+                                margin: 0; 
+                                font-size: 11px;
+                            }
+                            
+                            .company-header, .company-footer {
+                                page-break-inside: avoid !important;
+                            }
+                            
+                            .company-footer {
+                                position: fixed;
+                                bottom: 0;
+                                left: 0;
+                                right: 0;
+                            }
+                            
+                            .summary-cards-container {
+                                page-break-inside: avoid !important;
+                            }
+                            
+                            .service-group-print, .project-group-print {
+                                page-break-inside: avoid !important;
+                            }
+                            
+                            .totals-row {
+                                page-break-inside: avoid !important;
+                            }
+                            
+                            .service-table, .expenses-table, .combined-table {
+                                font-size: 10px;
+                            }
+                            
+                            @page {
+                                size: A4;
+                                margin: 15mm;
+                                margin-bottom: 25mm;
+                            }
+                        }
                     </style>
                 </head>
                 <body>
-                    <div class="report-header">
-                        <div class="orbit-logo">
-                            <img src="/files/orbit_logo.png" alt="Orbit Logo" onerror="this.style.display='none'">
-                        </div>
-                        <h2>Customer Balance & Project Expense Report</h2>
-                        <p>Comprehensive financial analysis and project cost tracking</p>
-                        <p><strong>Report Section:</strong> ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('Data', ' Data')}</p>
-                        <p><strong>Generated on:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+                    <!-- Company Header -->
+                    <div class="company-header">
+                        <img src="/files/Asset 8.png" alt="Company Header" onerror="this.style.display='none'">
                     </div>
+                    
+                    <!-- Report Title and Info -->
+                    <div class="report-title">${printTitle}</div>
+                    <div class="report-info">
+                        <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
+                    </div>
+                    
+                    <!-- Print Content -->
                     <div class="print-content">
                         ${printContent}
+                    </div>
+                    
+                    <!-- Company Footer -->
+                    <div class="company-footer">
+                        <img src="/files/Asset 9.png" alt="Company Footer" onerror="this.style.display='none'">
                     </div>
                 </body>
             </html>
@@ -2162,11 +3367,11 @@ class ProjectContractorsReport {
         // Give the window time to load before printing
         setTimeout(() => {
             printWindow.print();
-            // Close the print window after printing (optional)
+            // Close the print window after printing
             printWindow.onafterprint = () => {
                 printWindow.close();
             };
-        }, 500);
+        }, 1000);
     }
 
     show_loading() {
@@ -2225,4 +3430,13 @@ class ProjectContractorsReport {
         // Refresh the page data if needed
         this.load_filter_options();
     }
-} 
+} } 
+ 
+ 
+ 
+ / /   I n i t i a l i z e   t h e   p a g e   w h e n   D O M   i s   r e a d y 
+ 
+ f r a p p e . r e a d y ( ( )   = >   {  
+         n e w   P r o j e c t C o n t r a c t o r s R e p o r t ( ) ;  
+ } ) ;  
+ 

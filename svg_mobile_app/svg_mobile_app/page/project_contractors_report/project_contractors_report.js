@@ -2118,35 +2118,35 @@ class ProjectContractorsReport {
 
         return `
             <div class="summary-content-print">
-                <div class="summary-cards-container">
-                    <div class="summary-card-print card-primary">
-                        <div class="card-icon">💰</div>
-                        <div class="card-title">Total Invoiced</div>
-                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
-                        <div class="card-subtitle">Total billed to customers</div>
+                                    <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap;">
+                        <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💰</div>
+                            <div class="card-title">Total Invoiced</div>
+                            <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
+                            <div class="card-subtitle">Total billed to customers</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💵</div>
+                            <div class="card-title">Total Collected</div>
+                            <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
+                            <div class="card-subtitle">Actual payments received</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💸</div>
+                            <div class="card-title">Project Expenses</div>
+                            <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
+                            <div class="card-subtitle">Total project costs</div>
+                        </div>
+                        
+                        <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
+                            <div class="card-title">Net Profit/Loss</div>
+                            <div class="card-amount">${this.formatCurrency(netPosition)}</div>
+                            <div class="card-subtitle">Collections minus expenses</div>
+                        </div>
                     </div>
-                    
-                    <div class="summary-card-print card-success">
-                        <div class="card-icon">💵</div>
-                        <div class="card-title">Total Collected</div>
-                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
-                        <div class="card-subtitle">Actual payments received</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-warning">
-                        <div class="card-icon">💸</div>
-                        <div class="card-title">Project Expenses</div>
-                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
-                        <div class="card-subtitle">Total project costs</div>
-                    </div>
-                    
-                    <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}">
-                        <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
-                        <div class="card-title">Net Profit/Loss</div>
-                        <div class="card-amount">${this.formatCurrency(netPosition)}</div>
-                        <div class="card-subtitle">Collections minus expenses</div>
-                    </div>
-                </div>
 
                 <div class="report-info-section">
                     <div class="info-row">
@@ -2218,29 +2218,29 @@ class ProjectContractorsReport {
 
         return `
             <div class="summary-content-print arabic-content">
-                <div class="summary-cards-container">
-                    <div class="summary-card-print card-primary">
+                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap;">
+                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
                         <div class="card-icon">💰</div>
                         <div class="card-title">إجمالي الفواتير</div>
                         <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
                         <div class="card-subtitle">إجمالي المبالغ المفوترة للعملاء</div>
                     </div>
                     
-                    <div class="summary-card-print card-success">
+                    <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
                         <div class="card-icon">💵</div>
                         <div class="card-title">إجمالي المحصل</div>
                         <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
                         <div class="card-subtitle">المدفوعات الفعلية المستلمة</div>
                     </div>
                     
-                    <div class="summary-card-print card-warning">
+                    <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
                         <div class="card-icon">💸</div>
                         <div class="card-title">مصروفات المشاريع</div>
                         <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
                         <div class="card-subtitle">إجمالي تكاليف المشاريع</div>
                     </div>
                     
-                    <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}">
+                    <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
                         <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
                         <div class="card-title">صافي الربح/الخسارة</div>
                         <div class="card-amount">${this.formatCurrency(netPosition)}</div>
@@ -3093,22 +3093,27 @@ class ProjectContractorsReport {
                             margin-bottom: 30px;
                         }
                         
-                        /* Summary Cards */
+                        /* Summary Cards - Fixed to display properly side by side */
                         .summary-cards-container {
                             display: flex;
                             justify-content: space-between;
                             margin: 20px 0;
-                            gap: 15px;
+                            gap: 10px;
                             page-break-inside: avoid;
+                            width: 100%;
+                            flex-wrap: nowrap;
                         }
                         
                         .summary-card-print {
                             flex: 1;
+                            min-width: 22%;
+                            max-width: 25%;
                             text-align: center;
-                            padding: 20px;
+                            padding: 15px 10px;
                             border-radius: 8px;
                             color: white;
                             page-break-inside: avoid;
+                            box-sizing: border-box;
                         }
                         
                         .summary-card-print.card-primary {
@@ -3188,16 +3193,40 @@ class ProjectContractorsReport {
                             background-color: #f8f9fa;
                             font-weight: bold;
                             page-break-inside: avoid;
+                            page-break-after: avoid;
+                            break-inside: avoid;
+                            break-after: avoid;
                         }
                         
                         .totals-row td {
                             border-top: 2px solid #007bff;
+                            page-break-inside: avoid;
+                        }
+                        
+                        /* Prevent totals from repeating on page breaks */
+                        .service-table tfoot,
+                        .expenses-table tfoot,
+                        .combined-table tfoot {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                            display: table-footer-group;
                         }
                         
                         /* Service Groups */
                         .service-group-print, .project-group-print {
                             margin: 30px 0;
                             page-break-inside: avoid;
+                            break-inside: avoid;
+                        }
+                        
+                        /* Ensure table structure stays together */
+                        .service-table-container {
+                            page-break-inside: auto;
+                        }
+                        
+                        .service-table tbody tr {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
                         }
                         
                         .service-header, .project-header {
@@ -3314,20 +3343,55 @@ class ProjectContractorsReport {
                                 right: 0;
                             }
                             
+                            /* Force cards to stay in one row */
                             .summary-cards-container {
                                 page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                display: flex !important;
+                                flex-wrap: nowrap !important;
+                                width: 100% !important;
+                            }
+                            
+                            .summary-card-print {
+                                flex: 1 !important;
+                                min-width: 22% !important;
+                                max-width: 25% !important;
+                                font-size: 10px !important;
+                                padding: 12px 8px !important;
                             }
                             
                             .service-group-print, .project-group-print {
                                 page-break-inside: avoid !important;
+                                break-inside: avoid !important;
                             }
                             
+                            /* Prevent totals row repetition */
                             .totals-row {
                                 page-break-inside: avoid !important;
+                                page-break-after: avoid !important;
+                                break-inside: avoid !important;
+                                break-after: avoid !important;
+                            }
+                            
+                            .service-table tfoot,
+                            .expenses-table tfoot,
+                            .combined-table tfoot {
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                display: table-footer-group !important;
                             }
                             
                             .service-table, .expenses-table, .combined-table {
                                 font-size: 10px;
+                                page-break-inside: auto;
+                            }
+                            
+                            /* Keep table rows together when possible */
+                            .service-table tbody tr,
+                            .expenses-table tbody tr,
+                            .combined-table tbody tr {
+                                page-break-inside: avoid;
+                                break-inside: avoid;
                             }
                             
                             @page {

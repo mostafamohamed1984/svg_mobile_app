@@ -460,7 +460,6 @@ class ProjectContractorsReport {
                 });
             }
         }).catch((error) => {
-            console.error('Error loading customer statement data:', error);
             this.data.customerStatements = [];
             this.data.customerStatementData = null;
         });
@@ -486,7 +485,6 @@ class ProjectContractorsReport {
                 status: 'Approved'
             }));
         }).catch((error) => {
-            console.error('Error loading project expenses data:', error);
             this.data.projectExpenses = [];
         });
     }
@@ -495,11 +493,6 @@ class ProjectContractorsReport {
         if (!this.filters.customer) return null;
 
         try {
-            console.log('Customer Statement Filters:', {
-                customer: this.filters.customer,
-                fromDate: this.filters.fromDate,
-                toDate: this.filters.toDate
-            });
             
             // Get customer details
             const customer = await frappe.db.get_doc('Customer', this.filters.customer);
@@ -514,8 +507,6 @@ class ProjectContractorsReport {
                 },
                 order_by: 'posting_date desc'
             });
-            
-            console.log(`Found ${salesInvoices.length} sales invoices for customer ${this.filters.customer}:`, salesInvoices);
 
             // Get project claims for the customer
             const projectClaims = await frappe.db.get_list('Project Claim', {
@@ -548,7 +539,6 @@ class ProjectContractorsReport {
                 service_groups: serviceGroups
             };
         } catch (error) {
-            console.error('Error getting customer statement from DB:', error);
             return null;
         }
     }
@@ -573,17 +563,14 @@ class ProjectContractorsReport {
                         }
                     });
                     projectContractorNames = customerProjectContractors.map(pc => pc.name);
-                    console.log(`Found ${projectContractorNames.length} project contractors for customer ${this.filters.customer}:`, projectContractorNames);
 
                     if (projectContractorNames.length > 0) {
                         filters.for_project = ['in', projectContractorNames];
                     } else {
                         // No project contractors found for this customer, return empty result
-                        console.log('No project contractors found for customer, returning empty result');
                         return [];
                     }
                 } catch (error) {
-                    console.log('Error fetching project contractors for customer:', error);
                     return [];
                 }
             } else if (this.filters.contractor) {
@@ -612,7 +599,6 @@ class ProjectContractorsReport {
                 }
 
                 const expenseClaims = await frappe.db.get_list('Expense Claim', expenseClaimsQuery);
-                console.log(`Found ${expenseClaims.length} expense claims in date range`);
 
                 if (expenseClaims.length === 0) {
                     return [];
@@ -667,13 +653,11 @@ class ProjectContractorsReport {
                             });
                         }
                     } catch (docError) {
-                        console.log(`Error getting full document for ${claim.name}:`, docError);
+                        // Skip this claim if there's an error
                     }
                 }
 
                 expenseDetails = allExpenseDetails;
-
-                console.log(`Found ${expenseDetails.length} expense claim details with filters:`, detailFilters);
 
                 // Get project contractors for the found expense details
                 const projectNames = [...new Set(expenseDetails.map(detail => detail.for_project).filter(Boolean))];
@@ -687,7 +671,6 @@ class ProjectContractorsReport {
                             }
                         });
                     } catch (error) {
-                        console.log('Error fetching project contractors:', error);
                         projectContractors = [];
                     }
                 }
@@ -723,15 +706,12 @@ class ProjectContractorsReport {
                     }
                 });
 
-                console.log(`Final project expenses result: ${result.length} items`, result);
                 return result;
 
             } catch (error) {
-                console.log('Error in expense processing:', error);
                 return [];
             }
         } catch (error) {
-            console.error('Error getting project expenses from DB:', error);
             return [];
         }
     }
@@ -749,9 +729,7 @@ class ProjectContractorsReport {
                         fields: ['item_code', 'item_name', 'amount', 'base_amount', 'qty', 'rate', 'base_rate'],
                         filters: { parent: invoice.name }
                     });
-                    console.log(`Found ${invoiceItems.length} items for invoice ${invoice.name}`);
                 } catch (itemError) {
-                    console.error('Error fetching Sales Invoice Items:', itemError);
                     // Fallback: create a single item using invoice-level data
                     invoiceItems = [{
                         item_code: 'INVOICE_TOTAL',
@@ -762,7 +740,6 @@ class ProjectContractorsReport {
                         rate: invoice.grand_total,
                         base_rate: invoice.grand_total
                     }];
-                    console.log(`Using fallback invoice-level data for ${invoice.name}: ${invoice.grand_total}`);
                 }
 
                 // Get all claim items for this invoice to track partial payments
@@ -775,14 +752,12 @@ class ProjectContractorsReport {
                             project_contractor_reference: ['!=', '']
                         }
                     });
-                    console.log(`Found ${claimItems.length} claim items for invoice ${invoice.name}:`, claimItems);
+
 
                     // If tax_amount is undefined, get it from the Project Claim document
                     if (claimItems.length > 0 && claimItems[0].tax_amount === undefined && claimItems[0].parent) {
-                        console.log(`Getting tax info from Project Claim: ${claimItems[0].parent}`);
                         try {
                             const projectClaim = await frappe.db.get_doc('Project Claim', claimItems[0].parent);
-                            console.log('Project Claim document:', projectClaim);
 
                             if (projectClaim.claim_items && projectClaim.claim_items.length > 0) {
                                 // Match claim items with their tax amounts from the full document
@@ -796,16 +771,14 @@ class ProjectContractorsReport {
                                         claimItem.tax_amount = parseFloat(fullClaimItem.tax_amount || 0);
                                         claimItem.item = fullClaimItem.item;
                                         claimItem.project_contractor_reference = fullClaimItem.project_contractor_reference;
-                                        console.log(`Updated claim item with tax_amount: ${claimItem.tax_amount}`);
                                     }
                                 });
                             }
                         } catch (docError) {
-                            console.log('Error getting Project Claim document:', docError);
+                            // Skip if unable to get project claim document
                         }
                     }
                 } catch (error) {
-                    console.log('Error fetching claim items:', error);
                     claimItems = [];
                 }
 
@@ -845,15 +818,11 @@ class ProjectContractorsReport {
                     // Add related claim transactions for this specific item (credits)
                     const itemClaims = claimItems.filter(claim => claim.item === item.item_name);
                     
-                    console.log(`Processing ${itemClaims.length} claim items for invoice item ${item.item_name}`);
                     for (const claimItem of itemClaims) {
-                        console.log('Processing claim item:', claimItem);
                         // Get the parent project claim details
                         const projectClaimDetails = projectClaims.find(pc => pc.name === claimItem.parent);
-                        console.log('Found project claim details:', projectClaimDetails ? 'YES' : 'NO');
 
                         if (projectClaimDetails && parseFloat(claimItem.amount || 0) > 0) {
-                            console.log(`Adding regular payment transaction for item ${item.item_name}: ${claimItem.amount}`);
                             serviceGroup.transactions.push({
                                 date: projectClaimDetails.date,
                                 document_number: claimItem.parent,
@@ -866,7 +835,6 @@ class ProjectContractorsReport {
                                 invoice_reference: invoice.name,
                                 claim_reference: claimItem.parent
                             });
-                            console.log('Regular payment transaction added successfully');
                         }
                     }
                 }
@@ -879,7 +847,6 @@ class ProjectContractorsReport {
                         filters: { parent: invoice.name }
                     });
                 } catch (error) {
-                    console.log('Error fetching tax details:', error);
                     taxDetails = [];
                 }
 
@@ -947,7 +914,7 @@ class ProjectContractorsReport {
                 }
 
             } catch (error) {
-                console.error('Error processing invoice:', invoice.name, error);
+                // Skip this invoice if there's an error processing it
             }
         }
 
@@ -1071,7 +1038,7 @@ class ProjectContractorsReport {
                     selectedContractor = contractorData.project_name;
                 }
             }).catch(error => {
-                console.log('Could not fetch project name from contractor:', error);
+                // Skip if unable to fetch project name
             });
         }
 

@@ -2304,8 +2304,55 @@ class ProjectContractorsReport {
             expense.customer === this.filters.customer
         );
 
+        // Calculate totals for cards
+        let totalInvoiced = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+        let serviceCount = 0;
+
+        const regularServicesForCards = statementData.service_groups.filter(group => !group.is_tax_section);
+        regularServicesForCards.forEach(group => {
+            totalInvoiced += group.total_value || 0;
+            totalPaid += group.total_paid || 0;
+            totalBalance += group.total_balance || 0;
+            serviceCount++;
+        });
+
+        const paymentRate = totalInvoiced > 0 ? ((totalPaid / totalInvoiced) * 100).toFixed(1) : 0;
+
         let html = `
             <div class="customer-statement-print">
+                <!-- Summary Cards for Customer Statement -->
+                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
+                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">💰</div>
+                        <div class="card-title">Total Invoiced</div>
+                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
+                        <div class="card-subtitle">Total billed</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">💵</div>
+                        <div class="card-title">Total Paid</div>
+                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
+                        <div class="card-subtitle">Payments received</div>
+                    </div>
+                    
+                    <div class="summary-card-print ${totalBalance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">${totalBalance > 0 ? '⏳' : '✅'}</div>
+                        <div class="card-title">Outstanding</div>
+                        <div class="card-amount">${this.formatCurrency(totalBalance)}</div>
+                        <div class="card-subtitle">Balance due</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📊</div>
+                        <div class="card-title">Payment Rate</div>
+                        <div class="card-amount">${paymentRate}%</div>
+                        <div class="card-subtitle">Collection rate</div>
+                    </div>
+                </div>
+
                 <div class="statement-header">
                     <h3>Detailed Customer Statement</h3>
                     <div class="customer-info">
@@ -2451,8 +2498,55 @@ class ProjectContractorsReport {
             expense.customer === this.filters.customer
         );
 
+        // Calculate totals for cards
+        let totalInvoiced = 0;
+        let totalPaid = 0;
+        let totalBalance = 0;
+        let serviceCount = 0;
+
+        const regularServicesArabic = statementData.service_groups.filter(group => !group.is_tax_section);
+        regularServicesArabic.forEach(group => {
+            totalInvoiced += group.total_value || 0;
+            totalPaid += group.total_paid || 0;
+            totalBalance += group.total_balance || 0;
+            serviceCount++;
+        });
+
+        const paymentRate = totalInvoiced > 0 ? ((totalPaid / totalInvoiced) * 100).toFixed(1) : 0;
+
         let html = `
             <div class="customer-statement-print arabic-content">
+                <!-- Summary Cards for Customer Statement -->
+                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
+                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">💰</div>
+                        <div class="card-title">إجمالي الفواتير</div>
+                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
+                        <div class="card-subtitle">إجمالي المفوتر</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">💵</div>
+                        <div class="card-title">إجمالي المدفوع</div>
+                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
+                        <div class="card-subtitle">المدفوعات المستلمة</div>
+                    </div>
+                    
+                    <div class="summary-card-print ${totalBalance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">${totalBalance > 0 ? '⏳' : '✅'}</div>
+                        <div class="card-title">المستحق</div>
+                        <div class="card-amount">${this.formatCurrency(totalBalance)}</div>
+                        <div class="card-subtitle">الرصيد المطلوب</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📊</div>
+                        <div class="card-title">معدل الدفع</div>
+                        <div class="card-amount">${paymentRate}%</div>
+                        <div class="card-subtitle">معدل التحصيل</div>
+                    </div>
+                </div>
+
                 <div class="statement-header">
                     <h3>كشف حساب العميل التفصيلي</h3>
                     <div class="customer-info">
@@ -2594,11 +2688,13 @@ class ProjectContractorsReport {
         // Group expenses by project contractor
         const expensesByProject = {};
         let totalExpenses = 0;
+        let expenseCount = 0;
 
         this.data.projectExpenses.forEach(expense => {
             const projectKey = expense.project_contractor || 'Unknown Project';
             const expenseAmount = parseFloat(expense.amount || 0);
             totalExpenses += expenseAmount;
+            expenseCount++;
 
             if (!expensesByProject[projectKey]) {
                 expensesByProject[projectKey] = {
@@ -2612,13 +2708,44 @@ class ProjectContractorsReport {
             expensesByProject[projectKey].total_amount += expenseAmount;
         });
 
+        const projectCount = Object.keys(expensesByProject).length;
+        const avgExpensePerProject = projectCount > 0 ? totalExpenses / projectCount : 0;
+
         let html = `
             <div class="expenses-content-print">
+                <!-- Summary Cards for Project Expenses -->
+                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
+                    <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">💸</div>
+                        <div class="card-title">Total Expenses</div>
+                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
+                        <div class="card-subtitle">All project costs</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📊</div>
+                        <div class="card-title">Projects</div>
+                        <div class="card-amount">${projectCount}</div>
+                        <div class="card-subtitle">Active projects</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📋</div>
+                        <div class="card-title">Expense Records</div>
+                        <div class="card-amount">${expenseCount}</div>
+                        <div class="card-subtitle">Total transactions</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📈</div>
+                        <div class="card-title">Avg per Project</div>
+                        <div class="card-amount">${this.formatCurrency(avgExpensePerProject)}</div>
+                        <div class="card-subtitle">Average cost</div>
+                    </div>
+                </div>
+
                 <div class="expenses-header">
                     <h3>Project Expenses & Cost Analysis</h3>
-                    <div class="total-expenses">
-                        <strong>Total Project Costs: ${this.formatCurrency(totalExpenses)}</strong>
-                    </div>
                 </div>
         `;
 
@@ -2690,11 +2817,13 @@ class ProjectContractorsReport {
         // Group expenses by project contractor
         const expensesByProject = {};
         let totalExpenses = 0;
+        let expenseCount = 0;
 
         this.data.projectExpenses.forEach(expense => {
             const projectKey = expense.project_contractor || 'مشروع غير معروف';
             const expenseAmount = parseFloat(expense.amount || 0);
             totalExpenses += expenseAmount;
+            expenseCount++;
 
             if (!expensesByProject[projectKey]) {
                 expensesByProject[projectKey] = {
@@ -2708,13 +2837,44 @@ class ProjectContractorsReport {
             expensesByProject[projectKey].total_amount += expenseAmount;
         });
 
+        const projectCount = Object.keys(expensesByProject).length;
+        const avgExpensePerProject = projectCount > 0 ? totalExpenses / projectCount : 0;
+
         let html = `
             <div class="expenses-content-print arabic-content">
+                <!-- Summary Cards for Project Expenses -->
+                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
+                    <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">💸</div>
+                        <div class="card-title">إجمالي المصروفات</div>
+                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
+                        <div class="card-subtitle">جميع تكاليف المشاريع</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📊</div>
+                        <div class="card-title">المشاريع</div>
+                        <div class="card-amount">${projectCount}</div>
+                        <div class="card-subtitle">المشاريع النشطة</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📋</div>
+                        <div class="card-title">سجلات المصروفات</div>
+                        <div class="card-amount">${expenseCount}</div>
+                        <div class="card-subtitle">إجمالي المعاملات</div>
+                    </div>
+                    
+                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                        <div class="card-icon">📈</div>
+                        <div class="card-title">متوسط لكل مشروع</div>
+                        <div class="card-amount">${this.formatCurrency(avgExpensePerProject)}</div>
+                        <div class="card-subtitle">متوسط التكلفة</div>
+                    </div>
+                </div>
+
                 <div class="expenses-header">
                     <h3>مصروفات المشاريع وتحليل التكاليف</h3>
-                    <div class="total-expenses">
-                        <strong>إجمالي تكاليف المشاريع: ${this.formatCurrency(totalExpenses)}</strong>
-                    </div>
                 </div>
         `;
 
@@ -3131,6 +3291,10 @@ class ProjectContractorsReport {
                         
                         .summary-card-print.card-danger {
                             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                        }
+                        
+                        .summary-card-print.card-info {
+                            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
                         }
                         
                         .card-icon {

@@ -3495,10 +3495,8 @@ class ProjectContractorsReport {
                             }
                             
                             .company-footer {
-                                position: fixed;
-                                bottom: 0;
-                                left: 0;
-                                right: 0;
+                                page-break-inside: avoid !important;
+                                margin-top: 20px !important;
                             }
                             
                             /* Enhanced print layout for better card display */
@@ -3532,10 +3530,12 @@ class ProjectContractorsReport {
                             .summary-cards-container {
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
+                                page-break-after: avoid !important;
+                                break-after: avoid !important;
                                 display: flex !important;
                                 flex-wrap: nowrap !important;
                                 width: 100% !important;
-                                margin: 15px 0 !important;
+                                margin: 10px 0 5px 0 !important;
                             }
                             
                             .summary-card-print {
@@ -3547,8 +3547,16 @@ class ProjectContractorsReport {
                             }
                             
                             .service-group-print, .project-group-print {
-                                page-break-inside: avoid !important;
-                                break-inside: avoid !important;
+                                page-break-inside: auto !important;
+                                break-inside: auto !important;
+                                margin-bottom: 10px !important;
+                            }
+                            
+                            /* Allow first content group to start on same page */
+                            .service-group-print:first-of-type, 
+                            .project-group-print:first-of-type {
+                                page-break-before: avoid !important;
+                                break-before: avoid !important;
                             }
                             
                             /* Prevent totals row repetition */
@@ -3578,9 +3586,31 @@ class ProjectContractorsReport {
                                 widows: 3 !important;
                             }
                             
+                            /* Ensure content headers stay close to cards */
+                            .expenses-header, .statement-header {
+                                page-break-before: avoid !important;
+                                page-break-after: avoid !important;
+                                break-before: avoid !important;
+                                break-after: avoid !important;
+                                margin: 5px 0 !important;
+                            }
+                            
+                            .expenses-header h3, .statement-header h3 {
+                                margin: 5px 0 !important;
+                                page-break-after: avoid !important;
+                            }
+                            
                             .service-table, .expenses-table, .combined-table {
                                 font-size: 10px;
                                 page-break-inside: auto;
+                                margin: 5px 0 !important;
+                            }
+                            
+                            /* Ensure first table starts on same page */
+                            .service-table:first-of-type, 
+                            .expenses-table:first-of-type {
+                                page-break-before: avoid !important;
+                                break-before: avoid !important;
                             }
                             
                             /* Keep table rows together when possible */

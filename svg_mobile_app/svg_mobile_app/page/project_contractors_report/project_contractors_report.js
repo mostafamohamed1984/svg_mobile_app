@@ -66,7 +66,7 @@ class ProjectContractorsReport {
             <div class="unified-report">
                 <div class="report-header">
                     <div class="orbit-logo">
-                        <img src="/files/orbit_logo.png" alt="Orbit Logo" onerror="this.style.display='none'">
+                        <img src="/files/orbit_logo.png" alt="Orbit Logo" onerror="this.parentElement.style.display='none'">
                     </div>
                     <h2>Customer Balance & Project Expense Report</h2>
                     <p>Comprehensive financial analysis and project cost tracking</p>

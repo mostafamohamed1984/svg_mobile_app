@@ -1,0 +1,116 @@
+<div class="unified-report">
+    <div class="report-header" style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; border-radius: 10px; position: relative;">
+        <div class="orbit-logo" style="position: absolute; top: 15px; left: 20px;">
+            <img src="/files/orbit_logo.png" alt="Orbit Logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
+        </div>
+        <h2>Customer Balance & Project Expense Report</h2>
+        <p style="margin: 0;">Comprehensive financial analysis and project cost tracking</p>
+    </div>
+
+    <div class="filter-section" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #dee2e6; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+        <h5 style="color: #495057; font-weight: 600; margin-bottom: 20px;">🔍 Report Filters</h5>
+        
+        <div class="row">
+            <div class="col-md-3">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">Customer</label>
+                    <div id="customer-field"></div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">Project Contractor</label>
+                    <div id="contractor-field"></div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">Employee</label>
+                    <div id="employee-field"></div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">Expense Type</label>
+                    <div id="expense-type-field"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">From Date</label>
+                    <input type="date" id="fromDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff;">
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">To Date</label>
+                    <input type="date" id="toDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff;">
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">&nbsp;</label>
+                    <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; margin-right: 10px; width: 100%;">
+                        Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); color: white; margin-right: 10px;">
+                    Clear Filters
+                </button>
+                <button id="exportExcel" class="btn btn-success" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #00b894 0%, #00a085 100%); color: white; margin-right: 10px; display: none;">
+                    Export Excel
+                </button>
+                <button id="printReport" class="btn btn-info" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; display: none;">
+                    Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingSpinner" style="display: none; text-align: center; padding: 60px 40px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; margin: 20px 0;">
+        <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid rgba(231, 76, 60, 0.2); border-radius: 50%; border-top-color: #e74c3c; animation: spin 1s ease-in-out infinite; margin-bottom: 15px;"></div>
+        <p style="color: #495057; font-weight: 500; margin: 0;">Loading report data...</p>
+    </div>
+
+    <div id="reportTabs" style="display: none; margin-bottom: 20px;">
+        <div class="report-nav" style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+            <button class="tab-button active" data-tab="summary" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Summary</button>
+            <button class="tab-button" data-tab="customerData" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Customer Statement</button>
+            <button class="tab-button" data-tab="expensesData" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Project Expenses</button>
+            <button class="tab-button" data-tab="combinedData" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Combined View</button>
+        </div>
+
+        <div class="tab-content">
+            <div id="summary" class="tab-pane active" style="display: block;">
+                <div id="summaryContent"></div>
+            </div>
+            <div id="customerData" class="tab-pane" style="display: none;">
+                <div id="customerContent"></div>
+            </div>
+            <div id="expensesData" class="tab-pane" style="display: none;">
+                <div id="expensesContent"></div>
+            </div>
+            <div id="combinedData" class="tab-pane" style="display: none;">
+                <div id="combinedContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="errorMessage" style="display: none; padding: 15px; margin-bottom: 20px; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24; background-color: #f8d7da;">
+        <h5>Error</h5>
+        <p id="errorText"></p>
+    </div>
+</div>

@@ -1,0 +1,223 @@
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.unified-report {
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.tab-button:hover {
+    background: #e74c3c !important;
+    color: white !important;
+}
+
+.tab-button.active {
+    background: #e74c3c !important;
+    color: white !important;
+}
+
+.data-table {
+    font-size: 14px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background-color: #2c3e50;
+    color: white;
+    text-align: center;
+    padding: 12px 8px;
+    border: 1px solid #dee2e6;
+}
+
+.data-table td {
+    padding: 8px;
+    vertical-align: middle;
+    border: 1px solid #dee2e6;
+}
+
+.amount-cell {
+    text-align: right;
+    font-weight: bold;
+}
+
+.positive-amount {
+    color: #27ae60;
+}
+
+.negative-amount {
+    color: #e74c3c;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.badge-status {
+    font-size: 0.8em;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.bg-success { background-color: #27ae60 !important; color: white; }
+.bg-warning { background-color: #f39c12 !important; color: white; }
+.bg-info { background-color: #3498db !important; color: white; }
+.bg-primary { background-color: #e74c3c !important; color: white; }
+.bg-secondary { background-color: #95a5a6 !important; color: white; }
+.bg-danger { background-color: #e74c3c !important; color: white; }
+
+.link-cell a {
+    color: #e74c3c;
+    text-decoration: none;
+}
+
+.link-cell a:hover {
+    text-decoration: underline;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0,0,0,.05);
+}
+
+.card {
+    border: 1px solid rgba(0,0,0,.125);
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.text-center { text-align: center !important; }
+.text-primary { color: #e74c3c !important; }
+.text-warning { color: #f39c12 !important; }
+.text-success { color: #27ae60 !important; }
+.text-danger { color: #e74c3c !important; }
+.text-info { color: #3498db !important; }
+.text-secondary { color: #95a5a6 !important; }
+
+/* Enhanced color scheme for better contrast */
+.card.border-primary { border-color: #e74c3c !important; }
+.card.border-success { border-color: #27ae60 !important; }
+.card.border-warning { border-color: #f39c12 !important; }
+.card.border-info { border-color: #3498db !important; }
+.card.border-secondary { border-color: #95a5a6 !important; }
+.card.border-danger { border-color: #e74c3c !important; }
+
+.table-primary { background-color: #e74c3c; color: white; }
+.table-success { background-color: #27ae60; color: white; }
+.table-warning { background-color: #f39c12; color: white; }
+.table-info { background-color: #3498db; color: white; }
+.table-secondary { background-color: #95a5a6; color: white; }
+
+/* Combined view table styles */
+.combined-table {
+    font-size: 13px;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.combined-table th {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 12px 8px;
+    text-align: center;
+    border: 1px solid #bdc3c7;
+    font-weight: 600;
+}
+
+.combined-table td {
+    padding: 10px 8px;
+    border: 1px solid #bdc3c7;
+    vertical-align: top;
+}
+
+.combined-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.revenue-row {
+    background-color: #d5f4e6;
+}
+
+.expense-row {
+    background-color: #ffeaa7;
+}
+
+/* Print styles */
+@media print {
+    .unified-report {
+        box-shadow: none;
+        padding: 10px;
+    }
+    
+    .orbit-logo img {
+        height: 30px !important;
+    }
+    
+    .report-header {
+        background: #2c3e50 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+    
+    .filter-section {
+        display: none;
+    }
+    
+    .report-nav {
+        display: none;
+    }
+    
+    .tab-pane {
+        display: block !important;
+    }
+    
+    .card {
+        break-inside: avoid;
+    }
+    
+    .table {
+        font-size: 11px;
+    }
+    
+    .summary-card {
+        background: #34495e !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+    }
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .unified-report {
+        padding: 10px;
+    }
+    
+    .report-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .orbit-logo {
+        position: relative !important;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    
+    .tab-button {
+        padding: 8px 12px !important;
+        font-size: 12px;
+    }
+}

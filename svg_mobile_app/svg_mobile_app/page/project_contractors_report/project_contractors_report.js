@@ -54,11 +54,135 @@ class ProjectContractorsReport {
         // Add custom CSS
         this.add_custom_css();
         
-        // Hide initial loading and show main content
-        this.wrapper.find('.initial-loading').hide();
-        this.wrapper.find('.unified-report').show();
+        // Generate the complete HTML structure
+        this.create_page_content();
         
         this.setup_tab_functionality();
+    }
+
+    create_page_content() {
+        // Create the complete HTML structure dynamically
+        const html = `
+            <div class="unified-report">
+                <div class="report-header">
+                    <div class="orbit-logo">
+                        <img src="/files/orbit_logo.png" alt="Orbit Logo" onerror="this.style.display='none'">
+                    </div>
+                    <h2>Customer Balance & Project Expense Report</h2>
+                    <p>Comprehensive financial analysis and project cost tracking</p>
+                </div>
+
+                <div class="filter-section">
+                    <h5>🔍 Report Filters</h5>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label>Customer</label>
+                                <div class="customer-field"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label>Project Contractor</label>
+                                <div class="contractor-field"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label>Employee</label>
+                                <div class="employee-field"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="filter-group">
+                                <label>Expense Type</label>
+                                <div class="expense-type-field"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <label>From Date</label>
+                                <div class="from-date-field"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <label>To Date</label>
+                                <div class="to-date-field"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <label>&nbsp;</label>
+                                <button class="btn btn-primary generate-report">
+                                    Generate Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <button class="btn btn-secondary clear-filters">
+                                Clear Filters
+                            </button>
+                            <button class="btn btn-success export-excel" style="display:none;">
+                                Export Excel
+                            </button>
+                            <button class="btn btn-info print-report" style="display:none;">
+                                Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="loading-spinner" style="display:none;">
+                    <div class="spinner"></div>
+                    <p>Loading report data...</p>
+                </div>
+
+                <div class="report-tabs" style="display:none;">
+                    <div class="report-nav">
+                        <button class="tab-button active" data-tab="summary">Summary</button>
+                        <button class="tab-button" data-tab="customerData">Customer Statement</button>
+                        <button class="tab-button" data-tab="expensesData">Project Expenses</button>
+                        <button class="tab-button" data-tab="combinedData">Combined View</button>
+                    </div>
+
+                    <div class="tab-content">
+                        <div class="summary tab-pane active">
+                            <div class="summary-content"></div>
+                        </div>
+                        <div class="customerData tab-pane">
+                            <div class="customer-content"></div>
+                        </div>
+                        <div class="expensesData tab-pane">
+                            <div class="expenses-content"></div>
+                        </div>
+                        <div class="combinedData tab-pane">
+                            <div class="combined-content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="error-message" style="display:none;">
+                    <h5>Error</h5>
+                    <p class="error-text"></p>
+                </div>
+            </div>
+        `;
+        
+        // Insert the HTML into the page
+        this.wrapper.html(html);
     }
 
     add_custom_css() {
@@ -72,13 +196,12 @@ class ProjectContractorsReport {
                 background: #f8f9fa;
             }
             
-            /* Ensure proper RTL support */
             .project-contractors-report-wrapper .unified-report {
-                direction: ltr; /* Main content in LTR for better compatibility */
+                direction: ltr;
             }
             
             .project-contractors-report-wrapper .unified-report table {
-                direction: rtl; /* Tables in RTL for Arabic support */
+                direction: rtl;
             }
         </style>`).appendTo('head');
     }
@@ -362,33 +485,33 @@ class ProjectContractorsReport {
         const summaryHtml = `
             <div class="row">
                 <div class="col-md-3">
-                    <div class="card text-center" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; border: none; border-radius: 12px; padding: 20px;">
+                    <div class="card text-center summary-card">
                         <h3>${this.format_currency(summaryData.total_invoiced || 0)}</h3>
-                        <p style="margin: 0; opacity: 0.9;">${__('Total Invoiced')}</p>
+                        <p>${__('Total Invoiced')}</p>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card text-center" style="background: linear-gradient(135deg, #00b894 0%, #00a085 100%); color: white; border: none; border-radius: 12px; padding: 20px;">
+                    <div class="card text-center summary-card success">
                         <h3>${this.format_currency(summaryData.total_paid || 0)}</h3>
-                        <p style="margin: 0; opacity: 0.9;">${__('Total Paid')}</p>
+                        <p>${__('Total Paid')}</p>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card text-center" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; border: none; border-radius: 12px; padding: 20px;">
+                    <div class="card text-center summary-card warning">
                         <h3>${this.format_currency(summaryData.total_outstanding || 0)}</h3>
-                        <p style="margin: 0; opacity: 0.9;">${__('Outstanding')}</p>
+                        <p>${__('Outstanding')}</p>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <div class="card text-center" style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: white; border: none; border-radius: 12px; padding: 20px;">
+                    <div class="card text-center summary-card info">
                         <h3>${this.format_currency(summaryData.total_expenses || 0)}</h3>
-                        <p style="margin: 0; opacity: 0.9;">${__('Total Expenses')}</p>
+                        <p>${__('Total Expenses')}</p>
                     </div>
                 </div>
             </div>
             <div class="row mt-4">
                 <div class="col-md-12">
-                    <div class="card" style="border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <div class="card">
                         <div class="card-body">
                             <h5 class="card-title">${__('Report Statistics')}</h5>
                             <div class="row">

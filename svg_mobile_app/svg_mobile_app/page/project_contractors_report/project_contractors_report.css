@@ -2,11 +2,165 @@
     to { transform: rotate(360deg); }
 }
 
+/* Page Layout */
+.project-contractors-report-page {
+    direction: rtl;
+    text-align: right;
+    font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+}
+
+.initial-loading {
+    text-align: center;
+    padding: 50px;
+}
+
 .unified-report {
     padding: 20px;
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: none;
+}
+
+/* Report Header */
+.report-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 20px;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    border-radius: 10px;
+    position: relative;
+}
+
+.orbit-logo {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+}
+
+.orbit-logo img {
+    height: 40px;
+    width: auto;
+}
+
+.report-header p {
+    margin: 0;
+}
+
+/* Filter Section */
+.filter-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    border: 1px solid #dee2e6;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.filter-section h5 {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.filter-group {
+    margin-bottom: 20px;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    display: block;
+    font-size: 0.9em;
+}
+
+/* Buttons */
+.generate-report {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    margin-right: 10px;
+    width: 100%;
+}
+
+.clear-filters {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+    color: white;
+    margin-right: 10px;
+}
+
+.export-excel {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+    color: white;
+    margin-right: 10px;
+}
+
+.print-report {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    border: none;
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    text-align: center;
+    padding: 60px 40px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    margin: 20px 0;
+}
+
+.spinner {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(231, 76, 60, 0.2);
+    border-radius: 50%;
+    border-top-color: #e74c3c;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 15px;
+}
+
+.loading-spinner p {
+    color: #495057;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Report Tabs */
+.report-tabs {
+    margin-bottom: 20px;
+}
+
+.report-nav {
+    border-bottom: 2px solid #dee2e6;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 12px 20px;
+    margin-right: 5px;
+    border: none;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
 }
 
 .tab-button:hover {
@@ -19,6 +173,26 @@
     color: white !important;
 }
 
+/* Tab Content */
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Error Message */
+.error-message {
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+    color: #721c24;
+    background-color: #f8d7da;
+}
+
+/* Data Tables */
 .data-table {
     font-size: 14px;
     width: 100%;
@@ -52,172 +226,82 @@
     color: #e74c3c;
 }
 
-.summary-card {
-    background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-    color: white;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+/* Arabic RTL Support */
+.project-contractors-report-page .form-control,
+.project-contractors-report-page input,
+.project-contractors-report-page select {
+    text-align: right;
+    direction: rtl;
 }
 
-.badge-status {
-    font-size: 0.8em;
-    padding: 4px 8px;
-    border-radius: 4px;
+.project-contractors-report-page table {
+    direction: rtl;
+    text-align: right;
 }
 
-.bg-success { background-color: #27ae60 !important; color: white; }
-.bg-warning { background-color: #f39c12 !important; color: white; }
-.bg-info { background-color: #3498db !important; color: white; }
-.bg-primary { background-color: #e74c3c !important; color: white; }
-.bg-secondary { background-color: #95a5a6 !important; color: white; }
-.bg-danger { background-color: #e74c3c !important; color: white; }
-
-.link-cell a {
-    color: #e74c3c;
-    text-decoration: none;
-}
-
-.link-cell a:hover {
-    text-decoration: underline;
-}
-
-.table-responsive {
-    overflow-x: auto;
-}
-
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: rgba(0,0,0,.05);
-}
-
-.card {
-    border: 1px solid rgba(0,0,0,.125);
-    border-radius: 0.25rem;
-    margin-bottom: 1rem;
-}
-
-.card-body {
-    padding: 1.25rem;
-}
-
-.text-center { text-align: center !important; }
-.text-primary { color: #e74c3c !important; }
-.text-warning { color: #f39c12 !important; }
-.text-success { color: #27ae60 !important; }
-.text-danger { color: #e74c3c !important; }
-.text-info { color: #3498db !important; }
-.text-secondary { color: #95a5a6 !important; }
-
-/* Enhanced color scheme for better contrast */
-.card.border-primary { border-color: #e74c3c !important; }
-.card.border-success { border-color: #27ae60 !important; }
-.card.border-warning { border-color: #f39c12 !important; }
-.card.border-info { border-color: #3498db !important; }
-.card.border-secondary { border-color: #95a5a6 !important; }
-.card.border-danger { border-color: #e74c3c !important; }
-
-.table-primary { background-color: #e74c3c; color: white; }
-.table-success { background-color: #27ae60; color: white; }
-.table-warning { background-color: #f39c12; color: white; }
-.table-info { background-color: #3498db; color: white; }
-.table-secondary { background-color: #95a5a6; color: white; }
-
-/* Combined view table styles */
-.combined-table {
-    font-size: 13px;
-    border-collapse: collapse;
-    width: 100%;
-}
-
-.combined-table th {
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-    color: white;
-    padding: 12px 8px;
+.project-contractors-report-page .table th,
+.project-contractors-report-page .table td {
     text-align: center;
-    border: 1px solid #bdc3c7;
-    font-weight: 600;
+    vertical-align: middle;
 }
 
-.combined-table td {
-    padding: 10px 8px;
-    border: 1px solid #bdc3c7;
-    vertical-align: top;
+.project-contractors-report-page .text-right {
+    text-align: right !important;
 }
 
-.combined-table tbody tr:hover {
-    background-color: #f8f9fa;
+.project-contractors-report-page .text-left {
+    text-align: left !important;
 }
 
-.revenue-row {
-    background-color: #d5f4e6;
+.project-contractors-report-page .text-center {
+    text-align: center !important;
 }
 
-.expense-row {
-    background-color: #ffeaa7;
-}
-
-/* Print styles */
-@media print {
-    .unified-report {
-        box-shadow: none;
-        padding: 10px;
-    }
-    
-    .orbit-logo img {
-        height: 30px !important;
-    }
-    
-    .report-header {
-        background: #2c3e50 !important;
-        -webkit-print-color-adjust: exact;
-        color-adjust: exact;
-    }
-    
-    .filter-section {
-        display: none;
-    }
-    
-    .report-nav {
-        display: none;
-    }
-    
-    .tab-pane {
-        display: block !important;
-    }
-    
-    .card {
-        break-inside: avoid;
-    }
-    
-    .table {
-        font-size: 11px;
-    }
-    
-    .summary-card {
-        background: #34495e !important;
-        -webkit-print-color-adjust: exact;
-        color-adjust: exact;
-    }
-}
-
-/* Responsive improvements */
+/* Responsive Design */
 @media (max-width: 768px) {
-    .unified-report {
-        padding: 10px;
+    .project-contractors-report-page .col-md-3,
+    .project-contractors-report-page .col-md-4 {
+        margin-bottom: 15px;
     }
     
-    .report-header h2 {
+    .project-contractors-report-page .report-header h2 {
         font-size: 1.5rem;
     }
     
-    .orbit-logo {
-        position: relative !important;
-        text-align: center;
-        margin-bottom: 10px;
+    .project-contractors-report-page .tab-button {
+        font-size: 0.9rem;
+        padding: 10px 15px;
     }
-    
-    .tab-button {
-        padding: 8px 12px !important;
-        font-size: 12px;
-    }
+}
+
+/* Summary Cards */
+.summary-card {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.summary-card.success {
+    background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
+}
+
+.summary-card.warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.summary-card.info {
+    background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+}
+
+.summary-card h3 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.summary-card p {
+    margin: 0;
+    opacity: 0.9;
 }

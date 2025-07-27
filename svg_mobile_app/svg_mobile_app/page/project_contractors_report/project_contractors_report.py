@@ -69,11 +69,11 @@ def get_customer_statement_data(customer, contractor=None, from_date=None, to_da
         if contractor:
             sales_invoice_filters['custom_for_project'] = contractor
 
-        sales_invoices = frappe.db.get_list('Sales Invoice', {
-            'fields': ['name', 'posting_date', 'customer', 'grand_total', 'outstanding_amount', 'custom_for_project'],
-            'filters': sales_invoice_filters,
-            'order_by': 'posting_date desc'
-        })
+        sales_invoices = frappe.db.get_list('Sales Invoice',
+            fields=['name', 'posting_date', 'customer', 'grand_total', 'outstanding_amount', 'custom_for_project'],
+            filters=sales_invoice_filters,
+            order_by='posting_date desc'
+        )
 
         # Get project claims for the customer
         project_claim_filters = {
@@ -82,11 +82,11 @@ def get_customer_statement_data(customer, contractor=None, from_date=None, to_da
             'docstatus': 1
         }
 
-        project_claims = frappe.db.get_list('Project Claim', {
-            'fields': ['name', 'date', 'customer', 'claim_amount', 'paid_amount', 'reference_invoice', 'being'],
-            'filters': project_claim_filters,
-            'order_by': 'date desc'
-        })
+        project_claims = frappe.db.get_list('Project Claim',
+            fields=['name', 'date', 'customer', 'claim_amount', 'paid_amount', 'reference_invoice', 'being'],
+            filters=project_claim_filters,
+            order_by='date desc'
+        )
 
         # Process the data to create service groups
         service_groups = process_statement_data(sales_invoices, project_claims)
@@ -134,10 +134,10 @@ def get_project_expenses_data(customer=None, contractor=None, employee=None, exp
 
         if customer and not contractor:
             # Filter by Customer: Get all Project Contractors for that customer
-            customer_project_contractors = frappe.db.get_list('Project Contractors', {
-                'fields': ['name'],
-                'filters': {'customer': customer}
-            })
+            customer_project_contractors = frappe.db.get_list('Project Contractors',
+                fields=['name'],
+                filters={'customer': customer}
+            )
             project_contractor_names = [pc.name for pc in customer_project_contractors]
 
             if project_contractor_names:
@@ -252,10 +252,10 @@ def process_statement_data(sales_invoices, project_claims):
     for invoice in sales_invoices:
         try:
             # Get invoice items
-            invoice_items = frappe.db.get_list('Sales Invoice Item', {
-                'fields': ['item_code', 'item_name', 'amount', 'qty', 'rate'],
-                'filters': {'parent': invoice.name}
-            })
+            invoice_items = frappe.db.get_list('Sales Invoice Item',
+                fields=['item_code', 'item_name', 'amount', 'qty', 'rate'],
+                filters={'parent': invoice.name}
+            )
 
             if not invoice_items:
                 # Fallback: create a single item using invoice-level data
@@ -268,10 +268,10 @@ def process_statement_data(sales_invoices, project_claims):
                 }]
 
             # Get claim items for this invoice
-            claim_items = frappe.db.get_list('Claim Items', {
-                'fields': ['item', 'amount', 'tax_amount', 'invoice_reference', 'parent'],
-                'filters': {'invoice_reference': invoice.name}
-            })
+            claim_items = frappe.db.get_list('Claim Items',
+                fields=['item', 'amount', 'tax_amount', 'invoice_reference', 'parent'],
+                filters={'invoice_reference': invoice.name}
+            )
 
             # Process each invoice item
             for item in invoice_items:
@@ -421,23 +421,23 @@ def get_filter_options():
     """Get options for filter dropdowns"""
     try:
         # Get customers
-        customers = frappe.db.get_list('Customer', {
-            'fields': ['name', 'customer_name'],
-            'order_by': 'customer_name'
-        })
+        customers = frappe.db.get_list('Customer',
+            fields=['name', 'customer_name'],
+            order_by='customer_name'
+        )
 
         # Get project contractors
-        contractors = frappe.db.get_list('Project Contractors', {
-            'fields': ['name', 'project_name', 'customer'],
-            'order_by': 'project_name'
-        })
+        contractors = frappe.db.get_list('Project Contractors',
+            fields=['name', 'project_name', 'customer'],
+            order_by='project_name'
+        )
 
         # Get employees
-        employees = frappe.db.get_list('Employee', {
-            'fields': ['name', 'employee_name'],
-            'filters': {'status': 'Active'},
-            'order_by': 'employee_name'
-        })
+        employees = frappe.db.get_list('Employee',
+            fields=['name', 'employee_name'],
+            filters={'status': 'Active'},
+            order_by='employee_name'
+        )
 
         # Get expense types
         expense_types = frappe.db.sql("""

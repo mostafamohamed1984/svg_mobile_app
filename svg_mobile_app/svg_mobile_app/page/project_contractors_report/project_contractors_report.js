@@ -3199,13 +3199,18 @@ class ProjectContractorsReport {
                             width: 100%;
                             text-align: center;
                             margin-bottom: 15px;
+                            min-height: 60px;
+                            max-height: 120px;
+                            overflow: hidden;
                         }
                         
                         .company-header img {
-                            width: 100%;
+                            max-width: 80%;
                             height: auto;
-                            max-height: 150px;
+                            max-height: 100px;
                             object-fit: contain;
+                            display: block;
+                            margin: 0 auto;
                         }
                         
                         .company-footer {
@@ -3213,13 +3218,18 @@ class ProjectContractorsReport {
                             text-align: center;
                             margin-top: 40px;
                             page-break-inside: avoid;
+                            min-height: 40px;
+                            max-height: 80px;
+                            overflow: hidden;
                         }
                         
                         .company-footer img {
-                            width: 100%;
+                            max-width: 80%;
                             height: auto;
-                            max-height: 100px;
+                            max-height: 60px;
                             object-fit: contain;
+                            display: block;
+                            margin: 0 auto;
                         }
                         
                         .report-title {
@@ -3239,25 +3249,25 @@ class ProjectContractorsReport {
                         
                         /* Summary Cards - Fixed to display properly side by side */
                         .summary-cards-container {
-                            display: flex;
-                            justify-content: space-between;
-                            margin: 20px 0;
-                            gap: 10px;
-                            page-break-inside: avoid;
-                            width: 100%;
-                            flex-wrap: nowrap;
+                            display: flex !important;
+                            justify-content: space-between !important;
+                            margin: 20px 0 !important;
+                            gap: 10px !important;
+                            page-break-inside: avoid !important;
+                            width: 100% !important;
+                            flex-wrap: nowrap !important;
                         }
                         
                         .summary-card-print {
-                            flex: 1;
-                            min-width: 22%;
-                            max-width: 25%;
+                            flex: 1 !important;
+                            min-width: 22% !important;
+                            max-width: 25% !important;
                             text-align: center;
                             padding: 15px 10px;
                             border-radius: 8px;
                             color: white;
                             page-break-inside: avoid;
-                            box-sizing: border-box;
+                            box-sizing: border-box !important;
                         }
                         
                         .summary-card-print.card-primary {
@@ -3491,6 +3501,33 @@ class ProjectContractorsReport {
                                 right: 0;
                             }
                             
+                            /* Enhanced print layout for better card display */
+                            .company-header {
+                                min-height: 60px !important;
+                                max-height: 120px !important;
+                                overflow: hidden !important;
+                            }
+                            
+                            .company-header img {
+                                max-width: 80% !important;
+                                max-height: 100px !important;
+                                display: block !important;
+                                margin: 0 auto !important;
+                            }
+                            
+                            .company-footer {
+                                min-height: 40px !important;
+                                max-height: 80px !important;
+                                overflow: hidden !important;
+                            }
+                            
+                            .company-footer img {
+                                max-width: 80% !important;
+                                max-height: 60px !important;
+                                display: block !important;
+                                margin: 0 auto !important;
+                            }
+                            
                             /* Force cards to stay in one row */
                             .summary-cards-container {
                                 page-break-inside: avoid !important;
@@ -3498,6 +3535,7 @@ class ProjectContractorsReport {
                                 display: flex !important;
                                 flex-wrap: nowrap !important;
                                 width: 100% !important;
+                                margin: 15px 0 !important;
                             }
                             
                             .summary-card-print {
@@ -3527,6 +3565,17 @@ class ProjectContractorsReport {
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
                                 display: table-footer-group !important;
+                                position: relative !important;
+                            }
+                            
+                            /* Prevent totals row from appearing on each page */
+                            .totals-row {
+                                page-break-before: avoid !important;
+                                page-break-after: avoid !important;
+                                break-before: avoid !important;
+                                break-after: avoid !important;
+                                orphans: 3 !important;
+                                widows: 3 !important;
                             }
                             
                             .service-table, .expenses-table, .combined-table {
@@ -3553,7 +3602,7 @@ class ProjectContractorsReport {
                 <body>
                     <!-- Company Header -->
                     <div class="company-header">
-                        <img src="/files/Asset 8.png" alt="Company Header" onerror="this.style.display='none'">
+                        <img src="/files/Asset 8.png" alt="Company Header" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
                     </div>
                     
                     <!-- Report Title and Info -->
@@ -3569,7 +3618,7 @@ class ProjectContractorsReport {
                     
                     <!-- Company Footer -->
                     <div class="company-footer">
-                        <img src="/files/Asset 9.png" alt="Company Footer" onerror="this.style.display='none'">
+                        <img src="/files/Asset 9.png" alt="Company Footer" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
                     </div>
                 </body>
             </html>

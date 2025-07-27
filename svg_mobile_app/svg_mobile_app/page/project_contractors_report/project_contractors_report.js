@@ -2025,30 +2025,181 @@ class ProjectContractorsReport {
     }
 
     print_report() {
-        // Print functionality
-        const printContent = this.wrapper.find('.unified-report').html();
+        // Get the currently active tab
+        const activeTab = this.wrapper.find('.tab-button.active').attr('data-tab');
+        
+        // Get the content of the active tab only
+        let printContent = '';
+        let printTitle = 'Project Contractors Report';
+        
+        // Get report header
+        const reportHeader = this.wrapper.find('.report-header').html();
+        
+        switch(activeTab) {
+            case 'summary':
+                printContent = this.wrapper.find('.summary-content').html();
+                printTitle = 'Project Contractors Report - Summary';
+                break;
+            case 'customerData':
+                printContent = this.wrapper.find('.customer-content').html();
+                printTitle = 'Project Contractors Report - Customer Statement';
+                break;
+            case 'expensesData':
+                printContent = this.wrapper.find('.expenses-content').html();
+                printTitle = 'Project Contractors Report - Project Expenses';
+                break;
+            case 'combinedData':
+                printContent = this.wrapper.find('.combined-content').html();
+                printTitle = 'Project Contractors Report - Combined View';
+                break;
+            default:
+                // Fallback to full report
+                printContent = this.wrapper.find('.unified-report').html();
+                printTitle = 'Project Contractors Report - Complete';
+        }
+        
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Project Contractors Report</title>
+                    <title>${printTitle}</title>
                     <link rel="stylesheet" href="/assets/frappe/css/frappe-web.css">
                     <style>
-                        body { font-family: Arial, sans-serif; }
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 20px;
+                            background: white;
+                        }
+                        .report-header {
+                            text-align: center; 
+                            margin-bottom: 30px; 
+                            padding: 20px; 
+                            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); 
+                            color: white; 
+                            border-radius: 10px; 
+                            position: relative;
+                        }
+                        .orbit-logo img {
+                            height: 40px; 
+                            width: auto;
+                        }
                         .tab-content .tab-pane { display: block !important; }
                         .report-nav { display: none; }
+                        .filter-section { display: none; }
+                        .no-print { display: none; }
+                        
+                        /* Print-specific styles */
                         @media print {
-                            .no-print { display: none; }
+                            body { margin: 0; }
+                            .report-header { 
+                                background: #2c3e50 !important; 
+                                -webkit-print-color-adjust: exact;
+                                color-adjust: exact;
+                            }
+                            .card { break-inside: avoid; }
+                            .table { font-size: 12px; }
+                            .summary-card {
+                                background: #34495e !important;
+                                -webkit-print-color-adjust: exact;
+                                color-adjust: exact;
+                            }
                         }
+                        
+                        /* Table styles for better printing */
+                        .table {
+                            width: 100%;
+                            border-collapse: collapse;
+                        }
+                        .table th, .table td {
+                            border: 1px solid #dee2e6;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        .table th {
+                            background-color: #f8f9fa;
+                            font-weight: bold;
+                        }
+                        .amount-cell {
+                            text-align: right;
+                        }
+                        .text-right {
+                            text-align: right;
+                        }
+                        .text-center {
+                            text-align: center;
+                        }
+                        
+                        /* Card styles */
+                        .card {
+                            border: 1px solid #dee2e6;
+                            border-radius: 8px;
+                            margin-bottom: 20px;
+                        }
+                        .card-header {
+                            background-color: #f8f9fa;
+                            padding: 15px;
+                            border-bottom: 1px solid #dee2e6;
+                            font-weight: bold;
+                        }
+                        .card-body {
+                            padding: 15px;
+                        }
+                        
+                        /* Badge styles */
+                        .badge {
+                            display: inline-block;
+                            padding: 4px 8px;
+                            font-size: 12px;
+                            border-radius: 4px;
+                            color: white;
+                        }
+                        .badge-primary { background-color: #007bff; }
+                        .badge-success { background-color: #28a745; }
+                        .badge-warning { background-color: #ffc107; color: #212529; }
+                        .badge-secondary { background-color: #6c757d; }
+                        
+                        /* Color classes */
+                        .text-primary { color: #007bff; }
+                        .text-success { color: #28a745; }
+                        .text-warning { color: #ffc107; }
+                        .text-danger { color: #dc3545; }
+                        .text-info { color: #17a2b8; }
+                        .text-muted { color: #6c757d; }
+                        
+                        .bg-primary { background-color: #007bff; color: white; }
+                        .bg-success { background-color: #28a745; color: white; }
+                        .bg-warning { background-color: #ffc107; color: #212529; }
+                        .bg-secondary { background-color: #6c757d; color: white; }
+                        .bg-info { background-color: #17a2b8; color: white; }
+                        .bg-light { background-color: #f8f9fa; }
                     </style>
                 </head>
                 <body>
-                    ${printContent}
+                    <div class="report-header">
+                        <div class="orbit-logo">
+                            <img src="/files/orbit_logo.png" alt="Orbit Logo" onerror="this.style.display='none'">
+                        </div>
+                        <h2>Customer Balance & Project Expense Report</h2>
+                        <p>Comprehensive financial analysis and project cost tracking</p>
+                        <p><strong>Report Section:</strong> ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('Data', ' Data')}</p>
+                        <p><strong>Generated on:</strong> ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+                    </div>
+                    <div class="print-content">
+                        ${printContent}
+                    </div>
                 </body>
             </html>
         `);
         printWindow.document.close();
-        printWindow.print();
+        
+        // Give the window time to load before printing
+        setTimeout(() => {
+            printWindow.print();
+            // Close the print window after printing (optional)
+            printWindow.onafterprint = () => {
+                printWindow.close();
+            };
+        }, 500);
     }
 
     show_loading() {

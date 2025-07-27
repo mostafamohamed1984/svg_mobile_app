@@ -2323,7 +2323,7 @@ class ProjectContractorsReport {
         let html = `
             <div class="customer-statement-print">
                 <!-- Summary Cards for Customer Statement -->
-                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
+                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 15px;">
                     <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
                         <div class="card-icon">💰</div>
                         <div class="card-title">Total Invoiced</div>
@@ -2414,8 +2414,6 @@ class ProjectContractorsReport {
             });
 
             html += `
-                            </tbody>
-                            <tfoot>
                                 <tr class="totals-row">
                                     <td colspan="3"><strong>${group.service_name} Totals</strong></td>
                                     <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
@@ -2423,7 +2421,7 @@ class ProjectContractorsReport {
                                     <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
                                     <td></td>
                                 </tr>
-                            </tfoot>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -2464,14 +2462,12 @@ class ProjectContractorsReport {
 
             const totalExpenses = customerExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
             html += `
-                        </tbody>
-                        <tfoot>
                             <tr class="totals-row">
                                 <td colspan="1"><strong>Total Expenses</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
                                 <td colspan="4"></td>
                             </tr>
-                        </tfoot>
+                        </tbody>
                     </table>
                 </div>
             `;
@@ -2608,16 +2604,14 @@ class ProjectContractorsReport {
             });
 
             html += `
-                            </tbody>
-                            <tfoot>
-                                <tr class="totals-row">
-                                    <td colspan="3"><strong>مجموع ${group.service_name}</strong></td>
-                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
-                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
-                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
+                                                        <tr class="totals-row">
+                                <td colspan="3"><strong>مجموع ${group.service_name}</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
+                                <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
                         </table>
                     </div>
                 </div>
@@ -2658,14 +2652,12 @@ class ProjectContractorsReport {
 
             const totalExpenses = customerExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
             html += `
-                        </tbody>
-                        <tfoot>
                             <tr class="totals-row">
                                 <td colspan="1"><strong>إجمالي المصروفات</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
                                 <td colspan="4"></td>
                             </tr>
-                        </tfoot>
+                        </tbody>
                     </table>
                 </div>
             `;
@@ -2787,14 +2779,12 @@ class ProjectContractorsReport {
             });
 
             html += `
-                        </tbody>
-                        <tfoot>
                             <tr class="totals-row">
                                 <td colspan="3"><strong>${projectGroup.project_name} Total</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
                                 <td colspan="2"></td>
                             </tr>
-                        </tfoot>
+                        </tbody>
                     </table>
                 </div>
             `;
@@ -2916,14 +2906,12 @@ class ProjectContractorsReport {
             });
 
             html += `
-                        </tbody>
-                        <tfoot>
                             <tr class="totals-row">
                                 <td colspan="3"><strong>مجموع ${projectGroup.project_name}</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
                                 <td colspan="2"></td>
                             </tr>
-                        </tfoot>
+                        </tbody>
                     </table>
                 </div>
             `;
@@ -3042,8 +3030,6 @@ class ProjectContractorsReport {
         });
 
         html += `
-                    </tbody>
-                    <tfoot>
                         <tr class="totals-row">
                             <td colspan="4"><strong>Combined Totals Summary</strong></td>
                             <td class="amount-cell">
@@ -3053,7 +3039,7 @@ class ProjectContractorsReport {
                             </td>
                             <td><strong>${combinedTransactions.length} Transactions</strong></td>
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
             </div>
         `;
@@ -3170,8 +3156,6 @@ class ProjectContractorsReport {
         });
 
         html += `
-                    </tbody>
-                    <tfoot>
                         <tr class="totals-row">
                             <td colspan="4"><strong>ملخص المجاميع المدمجة</strong></td>
                             <td class="amount-cell">
@@ -3181,7 +3165,7 @@ class ProjectContractorsReport {
                             </td>
                             <td><strong>${combinedTransactions.length} معاملة</strong></td>
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
             </div>
         `;
@@ -3214,7 +3198,7 @@ class ProjectContractorsReport {
                         .company-header {
                             width: 100%;
                             text-align: center;
-                            margin-bottom: 30px;
+                            margin-bottom: 15px;
                         }
                         
                         .company-header img {
@@ -3240,17 +3224,17 @@ class ProjectContractorsReport {
                         
                         .report-title {
                             text-align: center;
-                            font-size: 24px;
+                            font-size: 20px;
                             font-weight: bold;
-                            margin: 20px 0;
+                            margin: 10px 0;
                             color: #2c3e50;
                         }
                         
                         .report-info {
                             text-align: center;
-                            font-size: 14px;
+                            font-size: 12px;
                             color: #666;
-                            margin-bottom: 30px;
+                            margin-bottom: 15px;
                         }
                         
                         /* Summary Cards - Fixed to display properly side by side */
@@ -3378,7 +3362,7 @@ class ProjectContractorsReport {
                         
                         /* Service Groups */
                         .service-group-print, .project-group-print {
-                            margin: 30px 0;
+                            margin: 15px 0;
                             page-break-inside: avoid;
                             break-inside: avoid;
                         }
@@ -3452,8 +3436,8 @@ class ProjectContractorsReport {
                         }
                         
                         .statement-header, .expenses-header, .combined-header {
-                            margin-bottom: 30px;
-                            padding: 20px;
+                            margin-bottom: 15px;
+                            padding: 15px;
                             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                             border-radius: 8px;
                             border-left: 4px solid #007bff;

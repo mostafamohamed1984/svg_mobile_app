@@ -411,9 +411,9 @@ class ProjectContractorsReport {
         Promise.all([
             this.generateCustomerStatementData(),
             this.generateProjectExpensesData()
-        ]).then(async () => {
+        ]).then(() => {
             this.generateCombinedData();
-            await this.displayReport();
+            this.displayReport();
             this.hide_loading();
             this.show_export_buttons();
         }).catch((error) => {
@@ -1005,6 +1005,16 @@ class ProjectContractorsReport {
 
         // Sort by date
         this.data.combinedData.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
+    displayReport() {
+        this.display_summary();
+        this.display_customer_statement();  
+        this.display_project_expenses();
+        this.display_combined_view();
+        
+        // Show the report tabs
+        this.wrapper.find('.report-tabs').show();
     }
 
     display_report() {

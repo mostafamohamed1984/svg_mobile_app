@@ -3268,16 +3268,13 @@ class ProjectContractorsReport {
                                 margin-top: 20px !important;
                             }
                             
-                            /* Print layout with content boundaries */
+                            /* Print layout with fixed header/footer on every page */
                             @page {
                                 size: A4;
-                                margin: 120px 20px 80px 20px; /* Top, Right, Bottom, Left - space for header/footer */
-                                @top-center {
-                                    content: element(header);
-                                }
-                                @bottom-center {
-                                    content: element(footer);
-                                }
+                                margin-top: 100px; /* Space for header */
+                                margin-bottom: 80px; /* Space for footer */
+                                margin-left: 20px;
+                                margin-right: 20px;
                             }
                             
                             body {
@@ -3290,44 +3287,42 @@ class ProjectContractorsReport {
                                 margin: 0 auto !important;
                                 background-color: #fff !important;
                                 padding: 20px !important;
-                                min-height: calc(100vh - 200px) !important; /* Ensure content area between header/footer */
-                                display: flex !important;
-                                flex-direction: column !important;
                             }
                             
                             .header-image {
+                                position: fixed !important;
+                                top: 0 !important;
+                                left: 0 !important;
+                                right: 0 !important;
                                 width: 100% !important;
-                                height: auto !important;
-                                display: block !important;
-                                margin-bottom: 20px !important;
-                                running: header !important; /* Make header repeat on every page */
+                                height: 80px !important; /* Fixed height to prevent overlap */
+                                object-fit: contain !important;
+                                background: white !important;
+                                z-index: 1000 !important;
+                                padding: 10px 20px !important;
+                                box-sizing: border-box !important;
                             }
                             
                             .footer-image {
+                                position: fixed !important;
+                                bottom: 0 !important;
+                                left: 0 !important;
+                                right: 0 !important;
                                 width: 100% !important;
-                                height: auto !important;
-                                display: block !important;
-                                margin-top: 20px !important;
-                                running: footer !important; /* Make footer repeat on every page */
+                                height: 60px !important; /* Fixed height to prevent overlap */
+                                object-fit: contain !important;
+                                background: white !important;
+                                z-index: 1000 !important;
+                                padding: 10px 20px !important;
+                                box-sizing: border-box !important;
                             }
                             
                             .company-header {
-                                width: 100% !important;
-                                text-align: center !important;
-                                margin-bottom: 20px !important;
-                                flex-shrink: 0 !important; /* Don't shrink header */
+                                display: none !important; /* Hide container, only show image */
                             }
                             
                             .company-footer {
-                                width: 100% !important;
-                                text-align: center !important;
-                                margin-top: auto !important; /* Push footer to bottom */
-                                flex-shrink: 0 !important; /* Don't shrink footer */
-                            }
-                            
-                            .print-content {
-                                flex: 1 !important; /* Take remaining space between header/footer */
-                                overflow: visible !important;
+                                display: none !important; /* Hide container, only show image */
                             }
                             
                             /* Force cards to stay in one row */

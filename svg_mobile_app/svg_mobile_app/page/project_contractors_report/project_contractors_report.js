@@ -3271,7 +3271,13 @@ class ProjectContractorsReport {
                             /* Print layout with content boundaries */
                             @page {
                                 size: A4;
-                                margin: 20px;
+                                margin: 120px 20px 80px 20px; /* Top, Right, Bottom, Left - space for header/footer */
+                                @top-center {
+                                    content: element(header);
+                                }
+                                @bottom-center {
+                                    content: element(footer);
+                                }
                             }
                             
                             body {
@@ -3294,6 +3300,7 @@ class ProjectContractorsReport {
                                 height: auto !important;
                                 display: block !important;
                                 margin-bottom: 20px !important;
+                                running: header !important; /* Make header repeat on every page */
                             }
                             
                             .footer-image {
@@ -3301,6 +3308,7 @@ class ProjectContractorsReport {
                                 height: auto !important;
                                 display: block !important;
                                 margin-top: 20px !important;
+                                running: footer !important; /* Make footer repeat on every page */
                             }
                             
                             .company-header {

@@ -3268,7 +3268,12 @@ class ProjectContractorsReport {
                                 margin-top: 20px !important;
                             }
                             
-                            /* Print layout with proper header/footer */
+                            /* Print layout exactly like Project Receipt Voucher */
+                            @page {
+                                size: A4;
+                                margin-bottom: 60px; /* Space for footer */
+                            }
+                            
                             body {
                                 padding: 0 !important;
                                 background: #f4f4f4 !important;
@@ -3281,15 +3286,26 @@ class ProjectContractorsReport {
                                 padding: 20px !important;
                             }
                             
-                            .company-header {
+                            .header-image {
                                 width: 100% !important;
-                                text-align: center !important;
+                                height: auto !important;
                                 margin-bottom: 20px !important;
                             }
                             
-                            .company-header img {
+                            .footer-image {
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                position: fixed !important;
+                                bottom: 0 !important;
+                                left: 0 !important;
+                                right: 0 !important;
                                 width: 100% !important;
-                                height: auto !important;
+                                margin-top: 0 !important;
+                            }
+                            
+                            .company-header {
+                                width: 100% !important;
+                                text-align: center !important;
                                 margin-bottom: 20px !important;
                             }
                             
@@ -3297,21 +3313,6 @@ class ProjectContractorsReport {
                                 width: 100% !important;
                                 text-align: center !important;
                                 margin-top: 40px !important;
-                                page-break-inside: avoid !important;
-                                break-inside: avoid !important;
-                                position: fixed !important;
-                                bottom: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
-                                background: white !important;
-                                padding: 20px !important;
-                                z-index: 1000 !important;
-                            }
-                            
-                            .company-footer img {
-                                width: 100% !important;
-                                height: auto !important;
-                                margin-top: 0px !important;
                             }
                             
                             /* Force cards to stay in one row */
@@ -3420,6 +3421,11 @@ class ProjectContractorsReport {
                 </head>
                 <body>
                     <div class="print-container">
+                        <!-- Company Header -->
+                        <div class="company-header">
+                            <img src="/files/Asset 8.png" alt="Company Header" class="header-image">
+                        </div>
+                        
                         <!-- Report Title and Info -->
                         <div class="report-title">${printTitle}</div>
                         <div class="report-info">
@@ -3429,6 +3435,11 @@ class ProjectContractorsReport {
                         <!-- Print Content -->
                         <div class="print-content">
                             ${printContent}
+                        </div>
+                        
+                        <!-- Company Footer -->
+                        <div class="company-footer">
+                            <img src="/files/Asset 9.png" alt="Company Footer" class="footer-image">
                         </div>
                     </div>
                 </body>

@@ -1215,14 +1215,12 @@ class ProjectContractorsReport {
                                     <th width="12%">Debit</th>
                                     <th width="12%">Credit</th>
                                     <th width="12%">Balance</th>
-                                    <th width="7%">Type</th>
                                 </tr>
                             </thead>
                             <tbody>
             `;
 
             group.transactions.forEach(transaction => {
-                const typeClass = transaction.transaction_type === 'sales_invoice' ? 'badge-primary' : 'badge-success';
                 const typeName = transaction.transaction_type === 'sales_invoice' ? 'Invoice' : 'Payment';
                 const typeIcon = transaction.transaction_type === 'sales_invoice' ? '📄' : '💰';
 
@@ -1256,11 +1254,6 @@ class ProjectContractorsReport {
                         <td class="amount-cell text-right ${transaction.balance >= 0 ? 'text-success' : 'text-danger'}">
                             ${this.formatCurrency(transaction.balance)}
                         </td>
-                        <td>
-                            <span class="badge ${typeClass}" title="${typeName}">
-                                ${typeIcon} ${typeName}
-                            </span>
-                        </td>
                     </tr>
                 `;
             });
@@ -1273,7 +1266,6 @@ class ProjectContractorsReport {
                                     <td class="text-right"><strong>${this.formatCurrency(group.total_value)}</strong></td>
                                     <td class="text-right"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
                                     <td class="text-right"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
-                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -1343,14 +1335,12 @@ class ProjectContractorsReport {
                                     <th width="12%">Tax Due</th>
                                     <th width="12%">Tax Paid</th>
                                     <th width="12%">Tax Balance</th>
-                                    <th width="7%">Type</th>
                                 </tr>
                             </thead>
                             <tbody>
             `;
 
             group.transactions.forEach(transaction => {
-                const typeClass = transaction.transaction_type === 'sales_invoice' ? 'badge-warning' : 'badge-success';
                 const typeName = transaction.transaction_type === 'sales_invoice' ? 'Tax Due' : 'Tax Paid';
                 const typeIcon = transaction.transaction_type === 'sales_invoice' ? '📋' : '💳';
 
@@ -1370,11 +1360,6 @@ class ProjectContractorsReport {
                         <td class="amount-cell text-right ${transaction.balance >= 0 ? 'text-warning' : 'text-success'}">
                             ${this.formatCurrency(transaction.balance)}
                         </td>
-                        <td>
-                            <span class="badge ${typeClass}">
-                                ${typeIcon} ${typeName}
-                            </span>
-                        </td>
                     </tr>
                 `;
             });
@@ -1387,7 +1372,6 @@ class ProjectContractorsReport {
                                     <td class="text-right"><strong>${this.formatCurrency(group.total_value)}</strong></td>
                                     <td class="text-right"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
                                     <td class="text-right"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
-                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -1644,7 +1628,6 @@ class ProjectContractorsReport {
                                     <th width="12%">💰 Amount</th>
                                     <th width="15%">👤 Employee</th>
                                     <th width="12%">📄 Claim No.</th>
-                                    <th width="6%">📊 Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1676,9 +1659,6 @@ class ProjectContractorsReport {
                                 ${expense.expense_claim}
                             </a>
                         </td>
-                        <td>
-                            <span class="badge badge-success" title="Approved">✅</span>
-                        </td>
                     </tr>
                 `;
             });
@@ -1689,7 +1669,7 @@ class ProjectContractorsReport {
                                 <tr>
                                     <td colspan="3"><strong>🏗️ ${projectGroup.project_name} Total</strong></td>
                                     <td class="text-right"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
-                                    <td colspan="3">
+                                    <td colspan="2">
                                         <small class="text-muted">
                                             ${projectGroup.expenses.length} expense entries | 
                                             ${projectGroup.employee_count.size} employees involved
@@ -2304,55 +2284,8 @@ class ProjectContractorsReport {
             expense.customer === this.filters.customer
         );
 
-        // Calculate totals for cards
-        let totalInvoiced = 0;
-        let totalPaid = 0;
-        let totalBalance = 0;
-        let serviceCount = 0;
-
-        const regularServicesForCards = statementData.service_groups.filter(group => !group.is_tax_section);
-        regularServicesForCards.forEach(group => {
-            totalInvoiced += group.total_value || 0;
-            totalPaid += group.total_paid || 0;
-            totalBalance += group.total_balance || 0;
-            serviceCount++;
-        });
-
-        const paymentRate = totalInvoiced > 0 ? ((totalPaid / totalInvoiced) * 100).toFixed(1) : 0;
-
         let html = `
             <div class="customer-statement-print">
-                <!-- Summary Cards for Customer Statement -->
-                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 15px;">
-                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💰</div>
-                        <div class="card-title">Total Invoiced</div>
-                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
-                        <div class="card-subtitle">Total billed</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💵</div>
-                        <div class="card-title">Total Paid</div>
-                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
-                        <div class="card-subtitle">Payments received</div>
-                    </div>
-                    
-                    <div class="summary-card-print ${totalBalance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">${totalBalance > 0 ? '⏳' : '✅'}</div>
-                        <div class="card-title">Outstanding</div>
-                        <div class="card-amount">${this.formatCurrency(totalBalance)}</div>
-                        <div class="card-subtitle">Balance due</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📊</div>
-                        <div class="card-title">Payment Rate</div>
-                        <div class="card-amount">${paymentRate}%</div>
-                        <div class="card-subtitle">Collection rate</div>
-                    </div>
-                </div>
-
                 <div class="statement-header">
                     <h3>Detailed Customer Statement</h3>
                     <div class="customer-info">
@@ -2390,7 +2323,6 @@ class ProjectContractorsReport {
                                     <th>Debit</th>
                                     <th>Credit</th>
                                     <th>Balance</th>
-                                    <th>Type</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2408,7 +2340,6 @@ class ProjectContractorsReport {
                         <td class="amount-cell">${transaction.value > 0 ? this.formatCurrency(transaction.value) : ''}</td>
                         <td class="amount-cell">${transaction.paid > 0 ? this.formatCurrency(transaction.paid) : ''}</td>
                         <td class="amount-cell ${transaction.balance >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(transaction.balance)}</td>
-                        <td class="type-cell">${typeIcon} ${typeName}</td>
                     </tr>
                 `;
             });
@@ -2419,10 +2350,40 @@ class ProjectContractorsReport {
                                     <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
                                     <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
                                     <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
-                                    <td></td>
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Summary Cards after each service group -->
+                    <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
+                        <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💰</div>
+                            <div class="card-title">Total Invoiced</div>
+                            <div class="card-amount">${this.formatCurrency(group.total_value)}</div>
+                            <div class="card-subtitle">Total billed</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💵</div>
+                            <div class="card-title">Total Paid</div>
+                            <div class="card-amount">${this.formatCurrency(group.total_paid)}</div>
+                            <div class="card-subtitle">Payments received</div>
+                        </div>
+                        
+                        <div class="summary-card-print ${group.total_balance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">${group.total_balance > 0 ? '⏳' : '✅'}</div>
+                            <div class="card-title">Outstanding</div>
+                            <div class="card-amount">${this.formatCurrency(group.total_balance)}</div>
+                            <div class="card-subtitle">Balance due</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">📊</div>
+                            <div class="card-title">Payment Rate</div>
+                            <div class="card-amount">${group.total_value > 0 ? ((group.total_paid / group.total_value) * 100).toFixed(1) + '%' : '0%'}</div>
+                            <div class="card-subtitle">Collection rate</div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2436,11 +2397,9 @@ class ProjectContractorsReport {
                     <table class="expenses-table">
                         <thead>
                             <tr>
-                                <th>Status</th>
                                 <th>Amount</th>
                                 <th>Date</th>
                                 <th>Description</th>
-                                <th>Employee</th>
                                 <th>Project</th>
                             </tr>
                         </thead>
@@ -2450,11 +2409,9 @@ class ProjectContractorsReport {
             customerExpenses.forEach(expense => {
                 html += `
                     <tr>
-                        <td><span class="status-badge approved">Approved</span></td>
                         <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
                         <td>${this.formatDisplayDate(expense.expense_date)}</td>
                         <td>${expense.description}</td>
-                        <td>${expense.employee_name}</td>
                         <td>${expense.project_name}</td>
                     </tr>
                 `;
@@ -2463,9 +2420,8 @@ class ProjectContractorsReport {
             const totalExpenses = customerExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
             html += `
                             <tr class="totals-row">
-                                <td colspan="1"><strong>Total Expenses</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
-                                <td colspan="4"></td>
+                                <td colspan="3"><strong>Total Expenses</strong></td>
                             </tr>
                         </tbody>
                     </table>
@@ -2494,55 +2450,8 @@ class ProjectContractorsReport {
             expense.customer === this.filters.customer
         );
 
-        // Calculate totals for cards
-        let totalInvoiced = 0;
-        let totalPaid = 0;
-        let totalBalance = 0;
-        let serviceCount = 0;
-
-        const regularServicesArabic = statementData.service_groups.filter(group => !group.is_tax_section);
-        regularServicesArabic.forEach(group => {
-            totalInvoiced += group.total_value || 0;
-            totalPaid += group.total_paid || 0;
-            totalBalance += group.total_balance || 0;
-            serviceCount++;
-        });
-
-        const paymentRate = totalInvoiced > 0 ? ((totalPaid / totalInvoiced) * 100).toFixed(1) : 0;
-
         let html = `
             <div class="customer-statement-print arabic-content">
-                <!-- Summary Cards for Customer Statement -->
-                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
-                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💰</div>
-                        <div class="card-title">إجمالي الفواتير</div>
-                        <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
-                        <div class="card-subtitle">إجمالي المفوتر</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💵</div>
-                        <div class="card-title">إجمالي المدفوع</div>
-                        <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
-                        <div class="card-subtitle">المدفوعات المستلمة</div>
-                    </div>
-                    
-                    <div class="summary-card-print ${totalBalance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">${totalBalance > 0 ? '⏳' : '✅'}</div>
-                        <div class="card-title">المستحق</div>
-                        <div class="card-amount">${this.formatCurrency(totalBalance)}</div>
-                        <div class="card-subtitle">الرصيد المطلوب</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📊</div>
-                        <div class="card-title">معدل الدفع</div>
-                        <div class="card-amount">${paymentRate}%</div>
-                        <div class="card-subtitle">معدل التحصيل</div>
-                    </div>
-                </div>
-
                 <div class="statement-header">
                     <h3>كشف حساب العميل التفصيلي</h3>
                     <div class="customer-info">
@@ -2580,7 +2489,6 @@ class ProjectContractorsReport {
                                     <th>مدين</th>
                                     <th>دائن</th>
                                     <th>الرصيد</th>
-                                    <th>النوع</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -2598,21 +2506,50 @@ class ProjectContractorsReport {
                         <td class="amount-cell">${transaction.value > 0 ? this.formatCurrency(transaction.value) : ''}</td>
                         <td class="amount-cell">${transaction.paid > 0 ? this.formatCurrency(transaction.paid) : ''}</td>
                         <td class="amount-cell ${transaction.balance >= 0 ? 'positive' : 'negative'}">${this.formatCurrency(transaction.balance)}</td>
-                        <td class="type-cell">${typeIcon} ${typeName}</td>
                     </tr>
                 `;
             });
 
             html += `
-                                                        <tr class="totals-row">
-                                <td colspan="3"><strong>مجموع ${group.service_name}</strong></td>
-                                <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
-                                <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
-                                <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
-                                <td></td>
-                            </tr>
-                        </tbody>
+                                <tr class="totals-row">
+                                    <td colspan="3"><strong>مجموع ${group.service_name}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_value)}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_paid)}</strong></td>
+                                    <td class="amount-cell"><strong>${this.formatCurrency(group.total_balance)}</strong></td>
+                                </tr>
+                            </tbody>
                         </table>
+                    </div>
+                    
+                    <!-- Summary Cards after each service group -->
+                    <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
+                        <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💰</div>
+                            <div class="card-title">إجمالي الفواتير</div>
+                            <div class="card-amount">${this.formatCurrency(group.total_value)}</div>
+                            <div class="card-subtitle">إجمالي المفوتر</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💵</div>
+                            <div class="card-title">إجمالي المدفوع</div>
+                            <div class="card-amount">${this.formatCurrency(group.total_paid)}</div>
+                            <div class="card-subtitle">المدفوعات المستلمة</div>
+                        </div>
+                        
+                        <div class="summary-card-print ${group.total_balance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">${group.total_balance > 0 ? '⏳' : '✅'}</div>
+                            <div class="card-title">المستحق</div>
+                            <div class="card-amount">${this.formatCurrency(group.total_balance)}</div>
+                            <div class="card-subtitle">الرصيد المطلوب</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">📊</div>
+                            <div class="card-title">معدل الدفع</div>
+                            <div class="card-amount">${group.total_value > 0 ? ((group.total_paid / group.total_value) * 100).toFixed(1) + '%' : '0%'}</div>
+                            <div class="card-subtitle">معدل التحصيل</div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2626,11 +2563,9 @@ class ProjectContractorsReport {
                     <table class="expenses-table">
                         <thead>
                             <tr>
-                                <th>الحالة</th>
                                 <th>المبلغ</th>
                                 <th>التاريخ</th>
                                 <th>الوصف</th>
-                                <th>الموظف</th>
                                 <th>المشروع</th>
                             </tr>
                         </thead>
@@ -2640,11 +2575,9 @@ class ProjectContractorsReport {
             customerExpenses.forEach(expense => {
                 html += `
                     <tr>
-                        <td><span class="status-badge approved">معتمد</span></td>
                         <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
                         <td>${this.formatDisplayDate(expense.expense_date)}</td>
                         <td>${expense.description}</td>
-                        <td>${expense.employee_name}</td>
                         <td>${expense.project_name}</td>
                     </tr>
                 `;
@@ -2653,9 +2586,8 @@ class ProjectContractorsReport {
             const totalExpenses = customerExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
             html += `
                             <tr class="totals-row">
-                                <td colspan="1"><strong>إجمالي المصروفات</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(totalExpenses)}</strong></td>
-                                <td colspan="4"></td>
+                                <td colspan="3"><strong>إجمالي المصروفات</strong></td>
                             </tr>
                         </tbody>
                     </table>
@@ -2701,41 +2633,9 @@ class ProjectContractorsReport {
         });
 
         const projectCount = Object.keys(expensesByProject).length;
-        const avgExpensePerProject = projectCount > 0 ? totalExpenses / projectCount : 0;
 
         let html = `
             <div class="expenses-content-print">
-                <!-- Summary Cards for Project Expenses -->
-                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
-                    <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💸</div>
-                        <div class="card-title">Total Expenses</div>
-                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
-                        <div class="card-subtitle">All project costs</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📊</div>
-                        <div class="card-title">Projects</div>
-                        <div class="card-amount">${projectCount}</div>
-                        <div class="card-subtitle">Active projects</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📋</div>
-                        <div class="card-title">Expense Records</div>
-                        <div class="card-amount">${expenseCount}</div>
-                        <div class="card-subtitle">Total transactions</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📈</div>
-                        <div class="card-title">Avg per Project</div>
-                        <div class="card-amount">${this.formatCurrency(avgExpensePerProject)}</div>
-                        <div class="card-subtitle">Average cost</div>
-                    </div>
-                </div>
-
                 <div class="expenses-header">
                     <h3>Project Expenses & Cost Analysis</h3>
                 </div>
@@ -2759,7 +2659,6 @@ class ProjectContractorsReport {
                                 <th>Description</th>
                                 <th>Amount</th>
                                 <th>Employee</th>
-                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2773,7 +2672,6 @@ class ProjectContractorsReport {
                         <td>${expense.description}</td>
                         <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
                         <td>${expense.employee_name}</td>
-                        <td><span class="status-badge approved">Approved</span></td>
                     </tr>
                 `;
             });
@@ -2782,10 +2680,41 @@ class ProjectContractorsReport {
                             <tr class="totals-row">
                                 <td colspan="3"><strong>${projectGroup.project_name} Total</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
-                                <td colspan="2"></td>
+                                <td></td>
                             </tr>
                         </tbody>
                     </table>
+                    
+                    <!-- Summary Cards after each project group -->
+                    <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
+                        <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💸</div>
+                            <div class="card-title">Project Total</div>
+                            <div class="card-amount">${this.formatCurrency(projectGroup.total_amount)}</div>
+                            <div class="card-subtitle">Total project costs</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">📋</div>
+                            <div class="card-title">Expense Records</div>
+                            <div class="card-amount">${projectGroup.expenses.length}</div>
+                            <div class="card-subtitle">Total entries</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">📊</div>
+                            <div class="card-title">Avg per Entry</div>
+                            <div class="card-amount">${this.formatCurrency(projectGroup.total_amount / projectGroup.expenses.length)}</div>
+                            <div class="card-subtitle">Average cost</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">👥</div>
+                            <div class="card-title">Employees</div>
+                            <div class="card-amount">${[...new Set(projectGroup.expenses.map(e => e.employee_name))].length}</div>
+                            <div class="card-subtitle">People involved</div>
+                        </div>
+                    </div>
                 </div>
             `;
         });
@@ -2828,41 +2757,9 @@ class ProjectContractorsReport {
         });
 
         const projectCount = Object.keys(expensesByProject).length;
-        const avgExpensePerProject = projectCount > 0 ? totalExpenses / projectCount : 0;
 
         let html = `
             <div class="expenses-content-print arabic-content">
-                <!-- Summary Cards for Project Expenses -->
-                <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin-bottom: 30px;">
-                    <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💸</div>
-                        <div class="card-title">إجمالي المصروفات</div>
-                        <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
-                        <div class="card-subtitle">جميع تكاليف المشاريع</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📊</div>
-                        <div class="card-title">المشاريع</div>
-                        <div class="card-amount">${projectCount}</div>
-                        <div class="card-subtitle">المشاريع النشطة</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📋</div>
-                        <div class="card-title">سجلات المصروفات</div>
-                        <div class="card-amount">${expenseCount}</div>
-                        <div class="card-subtitle">إجمالي المعاملات</div>
-                    </div>
-                    
-                    <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">📈</div>
-                        <div class="card-title">متوسط لكل مشروع</div>
-                        <div class="card-amount">${this.formatCurrency(avgExpensePerProject)}</div>
-                        <div class="card-subtitle">متوسط التكلفة</div>
-                    </div>
-                </div>
-
                 <div class="expenses-header">
                     <h3>مصروفات المشاريع وتحليل التكاليف</h3>
                 </div>
@@ -2886,7 +2783,6 @@ class ProjectContractorsReport {
                                 <th>الوصف</th>
                                 <th>المبلغ</th>
                                 <th>الموظف</th>
-                                <th>الحالة</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -2900,7 +2796,6 @@ class ProjectContractorsReport {
                         <td>${expense.description}</td>
                         <td class="amount-cell negative">${this.formatCurrency(expense.amount)}</td>
                         <td>${expense.employee_name}</td>
-                        <td><span class="status-badge approved">معتمد</span></td>
                     </tr>
                 `;
             });
@@ -2909,10 +2804,41 @@ class ProjectContractorsReport {
                             <tr class="totals-row">
                                 <td colspan="3"><strong>مجموع ${projectGroup.project_name}</strong></td>
                                 <td class="amount-cell"><strong>${this.formatCurrency(projectGroup.total_amount)}</strong></td>
-                                <td colspan="2"></td>
+                                <td></td>
                             </tr>
                         </tbody>
                     </table>
+                    
+                    <!-- Summary Cards after each project group -->
+                    <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
+                        <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">💸</div>
+                            <div class="card-title">مجموع المشروع</div>
+                            <div class="card-amount">${this.formatCurrency(projectGroup.total_amount)}</div>
+                            <div class="card-subtitle">إجمالي تكاليف المشروع</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">📋</div>
+                            <div class="card-title">سجلات المصروفات</div>
+                            <div class="card-amount">${projectGroup.expenses.length}</div>
+                            <div class="card-subtitle">إجمالي الإدخالات</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">📊</div>
+                            <div class="card-title">متوسط لكل إدخال</div>
+                            <div class="card-amount">${this.formatCurrency(projectGroup.total_amount / projectGroup.expenses.length)}</div>
+                            <div class="card-subtitle">متوسط التكلفة</div>
+                        </div>
+                        
+                        <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
+                            <div class="card-icon">👥</div>
+                            <div class="card-title">الموظفون</div>
+                            <div class="card-amount">${[...new Set(projectGroup.expenses.map(e => e.employee_name))].length}</div>
+                            <div class="card-subtitle">الأشخاص المشاركون</div>
+                        </div>
+                    </div>
                 </div>
             `;
         });
@@ -3198,14 +3124,15 @@ class ProjectContractorsReport {
                         .company-header {
                             width: 100%;
                             text-align: center;
-                            margin-bottom: 15px;
+                            margin: -20px -20px 15px -20px;
+                            padding: 20px;
                             min-height: 60px;
                             max-height: 120px;
                             overflow: hidden;
                         }
                         
                         .company-header img {
-                            max-width: 80%;
+                            max-width: 100%;
                             height: auto;
                             max-height: 100px;
                             object-fit: contain;
@@ -3216,7 +3143,8 @@ class ProjectContractorsReport {
                         .company-footer {
                             width: 100%;
                             text-align: center;
-                            margin-top: 40px;
+                            margin: 40px -20px -20px -20px;
+                            padding: 20px;
                             page-break-inside: avoid;
                             min-height: 40px;
                             max-height: 80px;
@@ -3224,7 +3152,7 @@ class ProjectContractorsReport {
                         }
                         
                         .company-footer img {
-                            max-width: 80%;
+                            max-width: 100%;
                             height: auto;
                             max-height: 60px;
                             object-fit: contain;
@@ -3251,7 +3179,7 @@ class ProjectContractorsReport {
                         .summary-cards-container {
                             display: flex !important;
                             justify-content: space-between !important;
-                            margin: 20px 0 !important;
+                            margin: 10px 0 !important;
                             gap: 10px !important;
                             page-break-inside: avoid !important;
                             width: 100% !important;
@@ -3372,7 +3300,7 @@ class ProjectContractorsReport {
                         
                         /* Service Groups */
                         .service-group-print, .project-group-print {
-                            margin: 15px 0;
+                            margin: 10px 0;
                             page-break-inside: avoid;
                             break-inside: avoid;
                         }
@@ -3446,8 +3374,8 @@ class ProjectContractorsReport {
                         }
                         
                         .statement-header, .expenses-header, .combined-header {
-                            margin-bottom: 15px;
-                            padding: 15px;
+                            margin-bottom: 10px;
+                            padding: 10px;
                             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                             border-radius: 8px;
                             border-left: 4px solid #007bff;
@@ -3504,10 +3432,12 @@ class ProjectContractorsReport {
                                 min-height: 60px !important;
                                 max-height: 120px !important;
                                 overflow: hidden !important;
+                                margin: -15mm -15mm 10px -15mm !important;
+                                padding: 15mm !important;
                             }
                             
                             .company-header img {
-                                max-width: 80% !important;
+                                max-width: 100% !important;
                                 max-height: 100px !important;
                                 display: block !important;
                                 margin: 0 auto !important;
@@ -3517,10 +3447,12 @@ class ProjectContractorsReport {
                                 min-height: 40px !important;
                                 max-height: 80px !important;
                                 overflow: hidden !important;
+                                margin: 10px -15mm -25mm -15mm !important;
+                                padding: 15mm !important;
                             }
                             
                             .company-footer img {
-                                max-width: 80% !important;
+                                max-width: 100% !important;
                                 max-height: 60px !important;
                                 display: block !important;
                                 margin: 0 auto !important;
@@ -3535,7 +3467,7 @@ class ProjectContractorsReport {
                                 display: flex !important;
                                 flex-wrap: nowrap !important;
                                 width: 100% !important;
-                                margin: 10px 0 5px 0 !important;
+                                margin: 5px 0 !important;
                             }
                             
                             .summary-card-print {
@@ -3592,11 +3524,12 @@ class ProjectContractorsReport {
                                 page-break-after: avoid !important;
                                 break-before: avoid !important;
                                 break-after: avoid !important;
-                                margin: 5px 0 !important;
+                                margin: 0 0 5px 0 !important;
+                                padding: 5px !important;
                             }
                             
                             .expenses-header h3, .statement-header h3 {
-                                margin: 5px 0 !important;
+                                margin: 0 !important;
                                 page-break-after: avoid !important;
                             }
                             

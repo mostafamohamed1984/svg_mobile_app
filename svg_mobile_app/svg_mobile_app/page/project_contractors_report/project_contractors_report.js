@@ -3254,81 +3254,77 @@ class ProjectContractorsReport {
                         
                         /* Print specific styles */
                         @media print {
-                            body { 
-                                margin: 0; 
-                                font-size: 11px;
-                            }
-                            
-                            .company-header, .company-footer {
-                                page-break-inside: avoid !important;
-                            }
-                            
-                            .company-footer {
-                                page-break-inside: avoid !important;
-                                margin-top: 20px !important;
-                            }
-                            
-                            /* Print layout with fixed header/footer on every page */
+                            /* Page setup with margins for header/footer */
                             @page {
                                 size: A4;
-                                margin-top: 100px; /* Space for header */
-                                margin-bottom: 80px; /* Space for footer */
-                                margin-left: 20px;
-                                margin-right: 20px;
+                                margin: 80px 20px 60px 20px; /* top, right, bottom, left */
                             }
                             
-                            body {
+                            body { 
+                                margin: 0; 
                                 padding: 0 !important;
-                                background: #f4f4f4 !important;
+                                font-size: 11px;
+                                background: white !important;
                             }
                             
                             .print-container {
                                 max-width: 100% !important;
-                                margin: 0 auto !important;
-                                background-color: #fff !important;
-                                padding: 20px !important;
+                                margin: 0 !important;
+                                background-color: white !important;
+                                padding: 0 !important;
+                            }
+                            
+                            /* Fixed header that appears on every page */
+                            .company-header {
+                                position: fixed !important;
+                                top: -60px !important; /* Position in top margin */
+                                left: 0 !important;
+                                right: 0 !important;
+                                width: 100% !important;
+                                height: 60px !important;
+                                background: white !important;
+                                text-align: center !important;
+                                z-index: 1000 !important;
+                                display: block !important;
+                                padding: 10px 0 !important;
+                                box-sizing: border-box !important;
+                            }
+                            
+                            /* Fixed footer that appears on every page */
+                            .company-footer {
+                                position: fixed !important;
+                                bottom: -40px !important; /* Position in bottom margin */
+                                left: 0 !important;
+                                right: 0 !important;
+                                width: 100% !important;
+                                height: 40px !important;
+                                background: white !important;
+                                text-align: center !important;
+                                z-index: 1000 !important;
+                                display: block !important;
+                                padding: 5px 0 !important;
+                                box-sizing: border-box !important;
                             }
                             
                             .header-image {
-                                position: fixed !important;
-                                top: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
-                                height: 80px !important; /* Fixed height to prevent overlap */
-                                object-fit: contain !important;
-                                background: white !important;
-                                z-index: 1000 !important;
-                                padding: 10px 20px !important;
-                                box-sizing: border-box !important;
+                                max-height: 40px !important;
+                                height: auto !important;
+                                display: block !important;
+                                margin: 0 auto !important;
                             }
                             
                             .footer-image {
-                                position: fixed !important;
-                                bottom: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
-                                height: 60px !important; /* Fixed height to prevent overlap */
-                                object-fit: contain !important;
-                                background: white !important;
-                                z-index: 1000 !important;
-                                padding: 10px 20px !important;
-                                box-sizing: border-box !important;
+                                max-height: 30px !important;
+                                height: auto !important;
+                                display: block !important;
+                                margin: 0 auto !important;
                             }
                             
-                            .company-header {
-                                width: 100% !important;
-                                text-align: center !important;
+                            .print-content {
                                 margin: 0 !important;
-                                padding: 0 !important;
-                            }
-                            
-                            .company-footer {
-                                width: 100% !important;
-                                text-align: center !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
+                                padding: 20px !important;
                             }
                             
                             /* Force cards to stay in one row */

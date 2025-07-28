@@ -45,8 +45,6 @@
   "dining_room",
   "store",
   "status_options_section",
-  "interior",
-  "status",
   "offers_date",
   "column_break_status",
   "offer_material_status",
@@ -276,16 +274,7 @@
    "fieldtype": "Section Break",
    "label": "Status & Options"
   },
-  {
-   "fieldname": "interior",
-   "fieldtype": "Check",
-   "label": "Interior"
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Check",
-   "label": "Status"
-  },
+
   {
    "fieldname": "offers_date",
    "fieldtype": "Date",

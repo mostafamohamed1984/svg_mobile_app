@@ -1477,6 +1477,243 @@ def export_projects_gallery_pdf(filters=None, visible_columns=None, export_limit
         # Simple error handling without database logging to avoid cascading errors
         frappe.throw(f"Error generating PDF: {str(e)}")
 
+
+@frappe.whitelist()
+def export_offers_gallery_pdf(filters=None, visible_columns=None, export_limit=None, current_page=None, page_length=None, sort_field=None, sort_order=None):
+    """Export Offers Gallery data to PDF with current filters and visible columns"""
+    try:
+        import json
+        import os
+        from frappe.utils.pdf import get_pdf
+        from frappe.utils import now_datetime, get_datetime
+
+        # Parse export limit (default to 200 to prevent memory issues)
+        if export_limit:
+            try:
+                export_limit = int(export_limit)
+                # Cap at 1000 to prevent server overload
+                export_limit = min(export_limit, 1000)
+            except:
+                export_limit = 200
+        else:
+            export_limit = 200
+
+        # Parse pagination parameters
+        if current_page:
+            try:
+                current_page = int(current_page)
+            except:
+                current_page = 1
+        else:
+            current_page = 1
+
+        if page_length:
+            try:
+                page_length = int(page_length)
+            except:
+                page_length = 20
+        else:
+            page_length = 20
+
+        # Parse filters
+        if filters:
+            try:
+                if isinstance(filters, str):
+                    filters = json.loads(filters)
+            except:
+                filters = None
+
+        # Parse visible columns
+        if visible_columns:
+            try:
+                if isinstance(visible_columns, str):
+                    visible_columns = json.loads(visible_columns)
+            except:
+                visible_columns = ['offer_code', 'community', 'model', 'year', 'area_ft', 'offer_image']
+        else:
+            visible_columns = ['offer_code', 'community', 'model', 'year', 'area_ft', 'offer_image']
+
+        # Parse sort parameters
+        if not sort_field:
+            sort_field = 'numeric_sort_field'
+        if not sort_order:
+            sort_order = 'desc'
+
+        # Get all fields for the query
+        all_fields = ['name', 'offer_code', 'community', 'model', 'year', 'area_ft', 'area_sm',
+                     'dimensions', 'price_shj', 'price_auh', 'price_dxb', 'bedroom', 'majlis',
+                     'family_living', 'kitchen', 'bathrooms', 'maidroom', 'laundry', 'dining_room',
+                     'store', 'no_of_floors', 'offer_image', 'offers_date', 'offer_material_status']
+
+        # Fetch offers data with proper pagination
+        try:
+            # For current page export (20 items), use pagination
+            if export_limit == 20:
+                limit_start = (current_page - 1) * page_length
+                offers = frappe.get_list(
+                    'Offers Collection',
+                    fields=all_fields,
+                    filters=filters if filters else None,
+                    order_by=f'{sort_field} {sort_order}',
+                    limit_start=limit_start,
+                    limit_page_length=page_length
+                )
+            else:
+                # For larger exports, get from the beginning with export limit
+                offers = frappe.get_list(
+                    'Offers Collection',
+                    fields=all_fields,
+                    filters=filters if filters else None,
+                    order_by=f'{sort_field} {sort_order}',
+                    limit_page_length=export_limit
+                )
+        except Exception as filter_error:
+            # If filters cause issues, try without filters with smaller limit
+            frappe.log_error(f"Filter error: {str(filter_error)}", "PDF Export Filter Error")
+            offers = frappe.get_list(
+                'Offers Collection',
+                fields=all_fields,
+                order_by=f'{sort_field} {sort_order}',
+                limit_page_length=100  # Smaller fallback limit
+            )
+
+        # Column labels mapping for offers
+        column_labels = {
+            'offer_code': 'Offer Code',
+            'community': 'Community',
+            'model': 'Model',
+            'year': 'Year',
+            'area_ft': 'Area (FT)',
+            'area_sm': 'Area (SM)',
+            'dimensions': 'Dimensions',
+            'price_shj': 'Price SHJ',
+            'price_auh': 'Price AUH',
+            'price_dxb': 'Price DXB',
+            'bedroom': 'Bedrooms',
+            'majlis': 'Majlis',
+            'family_living': 'Family Living',
+            'kitchen': 'Kitchen',
+            'bathrooms': 'Bathrooms',
+            'maidroom': 'Maid Room',
+            'laundry': 'Laundry',
+            'dining_room': 'Dining Room',
+            'store': 'Store',
+            'no_of_floors': 'No. of Floors',
+            'offer_image': 'Offer Image',
+            'offers_date': 'Offers Date',
+            'offer_material_status': 'Material Status'
+        }
+
+        # Prepare template context
+        current_time = now_datetime()
+        context = {
+            'offers': offers,
+            'visible_columns': visible_columns,
+            'column_labels': column_labels,
+            'total_offers': len(offers),
+            'export_limit': export_limit,
+            'current_page': current_page,
+            'page_length': page_length,
+            'is_current_page_export': export_limit == 20,
+            'export_date': current_time.strftime('%Y-%m-%d'),
+            'export_time': current_time.strftime('%H:%M:%S'),
+            'user': frappe.session.user
+        }
+
+        # Generate HTML for PDF
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Offers Gallery Export</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; font-size: 12px; line-height: 1.4; }}
+        .header {{ text-align: center; margin-bottom: 30px; border-bottom: 2px solid #3498db; padding-bottom: 15px; }}
+        .header h1 {{ color: #2c3e50; margin: 0; font-size: 24px; }}
+        .export-info {{ display: flex; justify-content: space-between; margin-bottom: 20px; padding: 10px; background: #f8f9fa; border-radius: 5px; }}
+        .export-info div {{ font-size: 11px; color: #495057; }}
+        .offers-table {{ width: 100%; border-collapse: collapse; margin-bottom: 20px; }}
+        .offers-table th {{ background: #f8f9fa; padding: 8px; border: 1px solid #dee2e6; font-weight: bold; font-size: 11px; }}
+        .offers-table td {{ padding: 6px; border: 1px solid #dee2e6; font-size: 10px; }}
+        .offers-table tr:nth-child(even) {{ background: #f8f9fa; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Offers Gallery Export</h1>
+    </div>
+    <div class="export-info">
+        <div><strong>Date:</strong> {context['export_date']} <strong>Time:</strong> {context['export_time']}</div>
+        <div><strong>User:</strong> {context['user']} <strong>Offers:</strong> {context['total_offers']} {'(Page ' + str(context['current_page']) + ')' if context['is_current_page_export'] else '(Limited to ' + str(context['export_limit']) + ')'}</div>
+    </div>
+    <table class="offers-table">
+        <thead>
+            <tr>"""
+
+        # Add column headers
+        for column in visible_columns:
+            label = column_labels.get(column, column)
+            html += f"<th>{label}</th>"
+
+        html += """
+            </tr>
+        </thead>
+        <tbody>"""
+
+        # Add offer rows
+        for offer in offers:
+            html += "<tr>"
+            for column in visible_columns:
+                value = offer.get(column, '') or '-'
+                if column == 'offer_image':
+                    if value and value != '-':
+                        html += f'<td><img src="{value}" style="max-width:60px;max-height:40px;"></td>'
+                    else:
+                        html += '<td>No Image</td>'
+                elif column.startswith('price_'):
+                    if value and value != '-' and value != 0:
+                        html += f"<td>{float(value):,.0f} AED</td>"
+                    else:
+                        html += '<td>-</td>'
+                elif column in ['area_ft', 'area_sm']:
+                    if value and value != '-' and value != 0:
+                        html += f"<td>{float(value):.2f}</td>"
+                    else:
+                        html += '<td>-</td>'
+                else:
+                    html += f"<td>{frappe.utils.escape_html(str(value))}</td>"
+            html += "</tr>"
+
+        html += """
+        </tbody>
+    </table>
+    <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #6c757d;">
+        Generated by SVG Mobile App - Offers Image Gallery
+    </div>
+</body>
+</html>"""
+
+        # Generate PDF with better error handling
+        try:
+            pdf_data = get_pdf(html)
+        except Exception as pdf_error:
+            # If PDF generation fails, return the HTML for debugging
+            frappe.local.response.filename = f"offers_debug_{current_time.strftime('%Y%m%d_%H%M%S')}.html"
+            frappe.local.response.filecontent = html.encode('utf-8')
+            frappe.local.response.type = "download"
+            return
+
+        # Set response for file download
+        filename = f"offers_gallery_export_{current_time.strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        frappe.local.response.filename = filename
+        frappe.local.response.filecontent = pdf_data
+        frappe.local.response.type = "download"
+
+    except Exception as e:
+        # Simple error handling without database logging to avoid cascading errors
+        frappe.throw(f"Error generating PDF: {str(e)}")
+
 @frappe.whitelist(allow_guest=False)
 def overtime_request(employee_id=None, date=None, start_time=None, end_time=None, reason=None):
     try:

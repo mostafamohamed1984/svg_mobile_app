@@ -1,0 +1,9 @@
+{
+  "title": "Offers Image Gallery",
+  "module": "Svg Mobile App",
+  "icon": "octicon octicon-file-media",
+  "order": 2,
+  "single_column": 1,
+  "doctype": "Page",
+  "name": "offers_image_gallery"
+}

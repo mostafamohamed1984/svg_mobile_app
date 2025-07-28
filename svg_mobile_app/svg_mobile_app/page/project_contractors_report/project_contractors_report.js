@@ -3271,6 +3271,7 @@ class ProjectContractorsReport {
                             /* Print layout exactly like Project Receipt Voucher */
                             @page {
                                 size: A4;
+                                margin-top: 80px; /* Space for header */
                                 margin-bottom: 60px; /* Space for footer */
                             }
                             
@@ -3287,6 +3288,12 @@ class ProjectContractorsReport {
                             }
                             
                             .header-image {
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                position: fixed !important;
+                                top: 0 !important;
+                                left: 0 !important;
+                                right: 0 !important;
                                 width: 100% !important;
                                 height: auto !important;
                                 margin-bottom: 20px !important;

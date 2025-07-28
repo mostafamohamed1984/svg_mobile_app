@@ -3318,11 +3318,17 @@ class ProjectContractorsReport {
                             }
                             
                             .company-header {
-                                display: none !important; /* Hide container, only show image */
+                                width: 100% !important;
+                                text-align: center !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
                             }
                             
                             .company-footer {
-                                display: none !important; /* Hide container, only show image */
+                                width: 100% !important;
+                                text-align: center !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
                             }
                             
                             /* Force cards to stay in one row */

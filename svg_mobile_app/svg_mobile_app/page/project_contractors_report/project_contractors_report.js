@@ -3259,13 +3259,11 @@ class ProjectContractorsReport {
                                 font-size: 11px;
                             }
                             
-                            /* Print layout with proper margins for header/footer */
+                            /* Print layout following Project Receipt Voucher approach */
                             @page {
                                 size: A4;
-                                margin-top: 120px; /* Space for header */
-                                margin-bottom: 80px; /* Space for footer */
-                                margin-left: 20px;
-                                margin-right: 20px;
+                                margin: 20px;
+                                margin-bottom: 60px; /* Space for footer */
                             }
                             
                             body {
@@ -3277,19 +3275,14 @@ class ProjectContractorsReport {
                                 max-width: 100% !important;
                                 margin: 0 auto !important;
                                 background-color: #fff !important;
-                                padding: 0 !important;
+                                padding: 20px !important;
                             }
                             
-                            /* Fixed header on every page */
+                            /* Header - normal flow, not fixed */
                             .company-header {
-                                position: fixed !important;
-                                top: -100px !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
                                 text-align: center !important;
-                                background: #fff !important;
-                                z-index: 1000 !important;
+                                margin-bottom: 20px !important;
                                 page-break-inside: avoid !important;
                             }
                             
@@ -3297,35 +3290,29 @@ class ProjectContractorsReport {
                                 width: 100% !important;
                                 height: auto !important;
                                 display: block !important;
-                                margin: 0 !important;
+                                margin-bottom: 20px !important;
                             }
                             
-                            /* Fixed footer on every page */
+                            /* Fixed footer on every page - exactly like Project Receipt Voucher */
                             .company-footer {
-                                position: fixed !important;
-                                bottom: -60px !important;
-                                left: 0 !important;
-                                right: 0 !important;
-                                width: 100% !important;
-                                text-align: center !important;
-                                background: #fff !important;
-                                z-index: 1000 !important;
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
                             }
                             
                             .footer-image {
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                position: fixed !important;
+                                bottom: 0 !important;
+                                left: 0 !important;
+                                right: 0 !important;
                                 width: 100% !important;
-                                height: auto !important;
-                                display: block !important;
-                                margin: 0 !important;
+                                margin-top: 0 !important;
                             }
                             
                             /* Content area with proper spacing */
                             .print-content {
-                                margin-top: 20px !important;
                                 margin-bottom: 20px !important;
-                                padding: 20px !important;
                                 overflow: visible !important;
                             }
                             
@@ -3445,23 +3432,23 @@ class ProjectContractorsReport {
                 </head>
                 <body>
                     <div class="print-container">
-                        <!-- Company Header - Fixed on every page -->
+                        <!-- Company Header -->
                         <div class="company-header">
                             <img src="/files/Asset 8.png" alt="Company Header" class="header-image">
                         </div>
                         
+                        <!-- Report Title and Info -->
+                        <div class="report-title">${printTitle}</div>
+                        <div class="report-info">
+                            <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
+                        </div>
+                        
                         <!-- Print Content -->
                         <div class="print-content">
-                            <!-- Report Title and Info -->
-                            <div class="report-title">${printTitle}</div>
-                            <div class="report-info">
-                                <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
-                            </div>
-                            
                             ${printContent}
                         </div>
                         
-                        <!-- Company Footer - Fixed on every page -->
+                        <!-- Company Footer -->
                         <div class="company-footer">
                             <img src="/files/Asset 9.png" alt="Company Footer" class="footer-image">
                         </div>

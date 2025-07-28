@@ -3090,54 +3090,43 @@ class ProjectContractorsReport {
                         body { 
                             font-family: Arial, sans-serif; 
                             margin: 0;
-                            padding: 20px;
-                            background: white;
+                            padding: 0;
+                            background: #f4f4f4;
                             color: #333;
                             direction: ${direction};
                         }
                         
+                        .print-container {
+                            max-width: 100%;
+                            margin: 0 auto;
+                            background-color: #fff;
+                            padding: 20px;
+                        }
+                        
                         /* Company Header and Footer */
                         .company-header {
-                            width: calc(100% + 40px);
+                            width: 100%;
                             text-align: center;
-                            margin: -20px -20px 15px -20px;
-                            padding: 20px;
-                            min-height: 60px;
-                            max-height: 120px;
-                            overflow: hidden;
-                            background: #f8f9fa;
-                            border-bottom: 1px solid #dee2e6;
+                            margin-bottom: 20px;
                         }
                         
                         .company-header img {
-                            max-width: 90%;
+                            width: 100%;
                             height: auto;
-                            max-height: 100px;
-                            object-fit: contain;
-                            display: block;
-                            margin: 0 auto;
+                            margin-bottom: 20px;
                         }
                         
                         .company-footer {
-                            width: calc(100% + 40px);
+                            width: 100%;
                             text-align: center;
-                            margin: 40px -20px -20px -20px;
-                            padding: 20px;
+                            margin-top: 40px;
                             page-break-inside: avoid;
-                            min-height: 40px;
-                            max-height: 80px;
-                            overflow: hidden;
-                            background: #f8f9fa;
-                            border-top: 1px solid #dee2e6;
                         }
                         
                         .company-footer img {
-                            max-width: 90%;
+                            width: 100%;
                             height: auto;
-                            max-height: 60px;
-                            object-fit: contain;
-                            display: block;
-                            margin: 0 auto;
+                            margin-top: 0px;
                         }
                         
                         .report-title {
@@ -3430,41 +3419,43 @@ class ProjectContractorsReport {
                                 margin-top: 20px !important;
                             }
                             
-                            /* Enhanced print layout for better card display */
-                            .company-header {
-                                min-height: 60px !important;
-                                max-height: 120px !important;
-                                overflow: hidden !important;
-                                width: calc(100% + 40px) !important;
-                                margin: -20px -20px 15px -20px !important;
+                            /* Enhanced print layout matching Project Receipt Voucher */
+                            body {
+                                padding: 0 !important;
+                                background: #f4f4f4 !important;
+                            }
+                            
+                            .print-container {
+                                max-width: 100% !important;
+                                margin: 0 auto !important;
+                                background-color: #fff !important;
                                 padding: 20px !important;
-                                background: #f8f9fa !important;
-                                border-bottom: 1px solid #dee2e6 !important;
+                            }
+                            
+                            .company-header {
+                                width: 100% !important;
+                                text-align: center !important;
+                                margin-bottom: 20px !important;
                             }
                             
                             .company-header img {
-                                max-width: 90% !important;
-                                max-height: 100px !important;
-                                display: block !important;
-                                margin: 0 auto !important;
+                                width: 100% !important;
+                                height: auto !important;
+                                margin-bottom: 20px !important;
                             }
                             
                             .company-footer {
-                                min-height: 40px !important;
-                                max-height: 80px !important;
-                                overflow: hidden !important;
-                                width: calc(100% + 40px) !important;
-                                margin: 40px -20px -20px -20px !important;
-                                padding: 20px !important;
-                                background: #f8f9fa !important;
-                                border-top: 1px solid #dee2e6 !important;
+                                width: 100% !important;
+                                text-align: center !important;
+                                margin-top: 40px !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
                             }
                             
                             .company-footer img {
-                                max-width: 90% !important;
-                                max-height: 60px !important;
-                                display: block !important;
-                                margin: 0 auto !important;
+                                width: 100% !important;
+                                height: auto !important;
+                                margin-top: 0px !important;
                             }
                             
                             /* Force cards to stay in one row */
@@ -3572,25 +3563,27 @@ class ProjectContractorsReport {
                     </style>
                 </head>
                 <body>
-                    <!-- Company Header -->
-                    <div class="company-header">
-                        <img src="/files/Asset 8.png" alt="Company Header" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
-                    </div>
-                    
-                    <!-- Report Title and Info -->
-                    <div class="report-title">${printTitle}</div>
-                    <div class="report-info">
-                        <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
-                    </div>
-                    
-                    <!-- Print Content -->
-                    <div class="print-content">
-                        ${printContent}
-                    </div>
-                    
-                    <!-- Company Footer -->
-                    <div class="company-footer">
-                        <img src="/files/Asset 9.png" alt="Company Footer" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
+                    <div class="print-container">
+                        <!-- Company Header -->
+                        <div class="company-header">
+                            <img src="/files/Asset 8.png" alt="Company Header" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
+                        </div>
+                        
+                        <!-- Report Title and Info -->
+                        <div class="report-title">${printTitle}</div>
+                        <div class="report-info">
+                            <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
+                        </div>
+                        
+                        <!-- Print Content -->
+                        <div class="print-content">
+                            ${printContent}
+                        </div>
+                        
+                        <!-- Company Footer -->
+                        <div class="company-footer">
+                            <img src="/files/Asset 9.png" alt="Company Footer" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
+                        </div>
                     </div>
                 </body>
             </html>

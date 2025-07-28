@@ -3254,77 +3254,89 @@ class ProjectContractorsReport {
                         
                         /* Print specific styles */
                         @media print {
-                            /* Page setup with margins for header/footer */
-                            @page {
-                                size: A4;
-                                margin: 80px 20px 60px 20px; /* top, right, bottom, left */
-                            }
-                            
                             body { 
                                 margin: 0; 
-                                padding: 0 !important;
                                 font-size: 11px;
-                                background: white !important;
+                            }
+                            
+                            /* Print layout with proper margins for header/footer */
+                            @page {
+                                size: A4;
+                                margin-top: 120px; /* Space for header */
+                                margin-bottom: 80px; /* Space for footer */
+                                margin-left: 20px;
+                                margin-right: 20px;
+                            }
+                            
+                            body {
+                                padding: 0 !important;
+                                background: #fff !important;
                             }
                             
                             .print-container {
                                 max-width: 100% !important;
-                                margin: 0 !important;
-                                background-color: white !important;
+                                margin: 0 auto !important;
+                                background-color: #fff !important;
                                 padding: 0 !important;
                             }
                             
-                            /* Fixed header that appears on every page */
+                            /* Fixed header on every page */
                             .company-header {
                                 position: fixed !important;
-                                top: -60px !important; /* Position in top margin */
+                                top: -100px !important;
                                 left: 0 !important;
                                 right: 0 !important;
                                 width: 100% !important;
-                                height: 60px !important;
-                                background: white !important;
                                 text-align: center !important;
+                                background: #fff !important;
                                 z-index: 1000 !important;
-                                display: block !important;
-                                padding: 10px 0 !important;
-                                box-sizing: border-box !important;
-                            }
-                            
-                            /* Fixed footer that appears on every page */
-                            .company-footer {
-                                position: fixed !important;
-                                bottom: -40px !important; /* Position in bottom margin */
-                                left: 0 !important;
-                                right: 0 !important;
-                                width: 100% !important;
-                                height: 40px !important;
-                                background: white !important;
-                                text-align: center !important;
-                                z-index: 1000 !important;
-                                display: block !important;
-                                padding: 5px 0 !important;
-                                box-sizing: border-box !important;
+                                page-break-inside: avoid !important;
                             }
                             
                             .header-image {
                                 width: 100% !important;
-                                max-height: 40px !important;
                                 height: auto !important;
                                 display: block !important;
-                                margin: 0 auto !important;
+                                margin: 0 !important;
+                            }
+                            
+                            /* Fixed footer on every page */
+                            .company-footer {
+                                position: fixed !important;
+                                bottom: -60px !important;
+                                left: 0 !important;
+                                right: 0 !important;
+                                width: 100% !important;
+                                text-align: center !important;
+                                background: #fff !important;
+                                z-index: 1000 !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
                             }
                             
                             .footer-image {
                                 width: 100% !important;
-                                max-height: 30px !important;
                                 height: auto !important;
                                 display: block !important;
-                                margin: 0 auto !important;
+                                margin: 0 !important;
                             }
                             
+                            /* Content area with proper spacing */
                             .print-content {
-                                margin: 0 !important;
+                                margin-top: 20px !important;
+                                margin-bottom: 20px !important;
                                 padding: 20px !important;
+                                overflow: visible !important;
+                            }
+                            
+                            /* Report title and info positioning */
+                            .report-title {
+                                margin-top: 0 !important;
+                                margin-bottom: 10px !important;
+                            }
+                            
+                            .report-info {
+                                margin-bottom: 20px !important;
                             }
                             
                             /* Force cards to stay in one row */
@@ -3433,23 +3445,23 @@ class ProjectContractorsReport {
                 </head>
                 <body>
                     <div class="print-container">
-                        <!-- Company Header -->
+                        <!-- Company Header - Fixed on every page -->
                         <div class="company-header">
                             <img src="/files/Asset 8.png" alt="Company Header" class="header-image">
                         </div>
                         
-                        <!-- Report Title and Info -->
-                        <div class="report-title">${printTitle}</div>
-                        <div class="report-info">
-                            <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
-                        </div>
-                        
                         <!-- Print Content -->
                         <div class="print-content">
+                            <!-- Report Title and Info -->
+                            <div class="report-title">${printTitle}</div>
+                            <div class="report-info">
+                                <strong>${isArabic ? 'تاريخ الإنشاء:' : 'Generated on:'}</strong> ${new Date().toLocaleDateString()} ${isArabic ? 'في' : 'at'} ${new Date().toLocaleTimeString()}
+                            </div>
+                            
                             ${printContent}
                         </div>
                         
-                        <!-- Company Footer -->
+                        <!-- Company Footer - Fixed on every page -->
                         <div class="company-footer">
                             <img src="/files/Asset 9.png" alt="Company Footer" class="footer-image">
                         </div>

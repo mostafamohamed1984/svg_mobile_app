@@ -30,12 +30,20 @@
   "project_status",
   "tender_status",
   "etisalate_status",
+  "civil_defence_status",
+  "arc_status",
+  "municipality_status",
   "column_break_wzoy",
   "design_status",
   "3d_video",
   "running_status",
   "project_image_source",
   "project_image_source_view",
+  "struture_status",
+  "building_perimt_status",
+  "section_break_ymcw",
+  "project_timeline_status",
+  "timeline_notes",
   "section_break_psia",
   "remarks",
   "project_media_images_section",
@@ -594,12 +602,57 @@
    "fieldtype": "Link",
    "label": "Etisalate Status",
    "options": "Etisalate Status"
+  },
+  {
+   "fieldname": "civil_defence_status",
+   "fieldtype": "Link",
+   "label": "Civil Defence Status",
+   "options": "Civil Defense"
+  },
+  {
+   "fieldname": "struture_status",
+   "fieldtype": "Link",
+   "label": "Struture Status",
+   "options": "Structure Status"
+  },
+  {
+   "fieldname": "arc_status",
+   "fieldtype": "Link",
+   "label": "ARC Status",
+   "options": "Arc Status"
+  },
+  {
+   "fieldname": "municipality_status",
+   "fieldtype": "Link",
+   "label": "Municipality Status",
+   "options": "Municipality Status"
+  },
+  {
+   "fieldname": "building_perimt_status",
+   "fieldtype": "Link",
+   "label": "Building Perimt Status",
+   "options": "Building Perimt Status"
+  },
+  {
+   "fieldname": "section_break_ymcw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "project_timeline_status",
+   "fieldtype": "Link",
+   "label": "Project Timeline Status",
+   "options": "Project Timeline Status"
+  },
+  {
+   "fieldname": "timeline_notes",
+   "fieldtype": "Small Text",
+   "label": "Timeline Notes"
   }
  ],
  "image_field": "3d_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-14 13:23:32.333799",
+ "modified": "2025-07-28 13:43:27.541278",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Projects Collection",

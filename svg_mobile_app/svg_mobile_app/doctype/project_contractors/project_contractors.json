@@ -162,10 +162,12 @@
    "options": "Company"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "total_amount",
    "fieldtype": "Data",
    "in_standard_filter": 1,
-   "label": "Total Amount"
+   "label": "Total Amount",
+   "read_only": 1
   },
   {
    "fieldname": "fees_and_deposits_items_section",
@@ -180,16 +182,20 @@
    "options": "Fees and Deposits"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "total_fees",
    "fieldtype": "Currency",
    "in_standard_filter": 1,
-   "label": "Total Fees"
+   "label": "Total Fees",
+   "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "total_project_amount",
    "fieldtype": "Data",
    "in_standard_filter": 1,
-   "label": "Total Project Amount"
+   "label": "Total Project Amount",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_xsme",
@@ -216,7 +222,7 @@
    "link_fieldname": "for_project"
   }
  ],
- "modified": "2025-07-14 11:38:36.212093",
+ "modified": "2025-07-17 12:37:15.390830",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Contractors",

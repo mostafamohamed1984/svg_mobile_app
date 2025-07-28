@@ -2952,12 +2952,11 @@ class ProjectContractorsReport {
                             padding: 20px;
                         }
                         
-                        /* Company Header and Footer - Visible on every page */
+                        /* Company Header and Footer */
                         .company-header {
                             width: 100%;
                             text-align: center;
                             margin-bottom: 20px;
-                            display: none; /* Hide in normal view, show only in print */
                         }
                         
                         .company-header img {
@@ -2971,7 +2970,6 @@ class ProjectContractorsReport {
                             text-align: center;
                             margin-top: 40px;
                             page-break-inside: avoid;
-                            display: none; /* Hide in normal view, show only in print */
                         }
                         
                         .company-footer img {
@@ -3270,12 +3268,7 @@ class ProjectContractorsReport {
                                 margin-top: 20px !important;
                             }
                             
-                            /* Enhanced print layout with header/footer on every page */
-                            @page {
-                                size: A4;
-                                margin: 80px 20px 60px 20px; /* Top, Right, Bottom, Left - space for header/footer */
-                            }
-                            
+                            /* Enhanced print layout matching Project Receipt Voucher */
                             body {
                                 padding: 0 !important;
                                 background: #f4f4f4 !important;
@@ -3288,50 +3281,30 @@ class ProjectContractorsReport {
                                 padding: 20px !important;
                             }
                             
-                            /* Header on every page */
                             .company-header {
-                                display: block !important;
-                                position: fixed !important;
-                                top: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
-                                height: 60px !important;
                                 text-align: center !important;
-                                background: white !important;
-                                z-index: 1000 !important;
-                                padding: 10px 20px !important;
-                                box-sizing: border-box !important;
+                                margin-bottom: 20px !important;
                             }
                             
                             .company-header img {
                                 width: 100% !important;
                                 height: auto !important;
-                                max-height: 40px !important;
-                                object-fit: contain !important;
+                                margin-bottom: 20px !important;
                             }
                             
-                            /* Footer on every page */
                             .company-footer {
-                                display: block !important;
-                                position: fixed !important;
-                                bottom: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
-                                height: 40px !important;
                                 text-align: center !important;
-                                background: white !important;
-                                z-index: 1000 !important;
-                                padding: 5px 20px !important;
-                                box-sizing: border-box !important;
+                                margin-top: 40px !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
                             }
                             
                             .company-footer img {
                                 width: 100% !important;
                                 height: auto !important;
-                                max-height: 30px !important;
-                                object-fit: contain !important;
+                                margin-top: 0px !important;
                             }
                             
                             /* Force cards to stay in one row */

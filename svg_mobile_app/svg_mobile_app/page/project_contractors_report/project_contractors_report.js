@@ -2100,28 +2100,24 @@ class ProjectContractorsReport {
             <div class="summary-content-print">
                                     <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap;">
                         <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💰</div>
                             <div class="card-title">Total Invoiced</div>
                             <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
                             <div class="card-subtitle">Total billed to customers</div>
                         </div>
                         
                         <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💵</div>
                             <div class="card-title">Total Collected</div>
                             <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
                             <div class="card-subtitle">Actual payments received</div>
                         </div>
                         
                         <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💸</div>
                             <div class="card-title">Project Expenses</div>
                             <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
                             <div class="card-subtitle">Total project costs</div>
                         </div>
                         
                         <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
                             <div class="card-title">Net Profit/Loss</div>
                             <div class="card-amount">${this.formatCurrency(netPosition)}</div>
                             <div class="card-subtitle">Collections minus expenses</div>
@@ -2200,28 +2196,24 @@ class ProjectContractorsReport {
             <div class="summary-content-print arabic-content">
                 <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap;">
                     <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💰</div>
                         <div class="card-title">إجمالي الفواتير</div>
                         <div class="card-amount">${this.formatCurrency(totalInvoiced)}</div>
                         <div class="card-subtitle">إجمالي المبالغ المفوترة للعملاء</div>
                     </div>
                     
                     <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💵</div>
                         <div class="card-title">إجمالي المحصل</div>
                         <div class="card-amount">${this.formatCurrency(totalPaid)}</div>
                         <div class="card-subtitle">المدفوعات الفعلية المستلمة</div>
                     </div>
                     
                     <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">💸</div>
                         <div class="card-title">مصروفات المشاريع</div>
                         <div class="card-amount">${this.formatCurrency(totalExpenses)}</div>
                         <div class="card-subtitle">إجمالي تكاليف المشاريع</div>
                     </div>
                     
                     <div class="summary-card-print ${netPosition >= 0 ? 'card-success' : 'card-danger'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                        <div class="card-icon">${netPosition >= 0 ? '📈' : '📉'}</div>
                         <div class="card-title">صافي الربح/الخسارة</div>
                         <div class="card-amount">${this.formatCurrency(netPosition)}</div>
                         <div class="card-subtitle">المحصلات ناقص المصروفات</div>
@@ -2358,28 +2350,24 @@ class ProjectContractorsReport {
                     <!-- Summary Cards after each service group -->
                     <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
                         <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💰</div>
                             <div class="card-title">Total Invoiced</div>
                             <div class="card-amount">${this.formatCurrency(group.total_value)}</div>
                             <div class="card-subtitle">Total billed</div>
                         </div>
                         
                         <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💵</div>
                             <div class="card-title">Total Paid</div>
                             <div class="card-amount">${this.formatCurrency(group.total_paid)}</div>
                             <div class="card-subtitle">Payments received</div>
                         </div>
                         
                         <div class="summary-card-print ${group.total_balance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">${group.total_balance > 0 ? '⏳' : '✅'}</div>
                             <div class="card-title">Outstanding</div>
                             <div class="card-amount">${this.formatCurrency(group.total_balance)}</div>
                             <div class="card-subtitle">Balance due</div>
                         </div>
                         
                         <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">📊</div>
                             <div class="card-title">Payment Rate</div>
                             <div class="card-amount">${group.total_value > 0 ? ((group.total_paid / group.total_value) * 100).toFixed(1) + '%' : '0%'}</div>
                             <div class="card-subtitle">Collection rate</div>
@@ -2524,28 +2512,24 @@ class ProjectContractorsReport {
                     <!-- Summary Cards after each service group -->
                     <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
                         <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💰</div>
                             <div class="card-title">إجمالي الفواتير</div>
                             <div class="card-amount">${this.formatCurrency(group.total_value)}</div>
                             <div class="card-subtitle">إجمالي المفوتر</div>
                         </div>
                         
                         <div class="summary-card-print card-success" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💵</div>
                             <div class="card-title">إجمالي المدفوع</div>
                             <div class="card-amount">${this.formatCurrency(group.total_paid)}</div>
                             <div class="card-subtitle">المدفوعات المستلمة</div>
                         </div>
                         
                         <div class="summary-card-print ${group.total_balance > 0 ? 'card-warning' : 'card-success'}" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">${group.total_balance > 0 ? '⏳' : '✅'}</div>
                             <div class="card-title">المستحق</div>
                             <div class="card-amount">${this.formatCurrency(group.total_balance)}</div>
                             <div class="card-subtitle">الرصيد المطلوب</div>
                         </div>
                         
                         <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">📊</div>
                             <div class="card-title">معدل الدفع</div>
                             <div class="card-amount">${group.total_value > 0 ? ((group.total_paid / group.total_value) * 100).toFixed(1) + '%' : '0%'}</div>
                             <div class="card-subtitle">معدل التحصيل</div>
@@ -2688,28 +2672,24 @@ class ProjectContractorsReport {
                     <!-- Summary Cards after each project group -->
                     <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
                         <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💸</div>
                             <div class="card-title">Project Total</div>
                             <div class="card-amount">${this.formatCurrency(projectGroup.total_amount)}</div>
                             <div class="card-subtitle">Total project costs</div>
                         </div>
                         
                         <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">📋</div>
                             <div class="card-title">Expense Records</div>
                             <div class="card-amount">${projectGroup.expenses.length}</div>
                             <div class="card-subtitle">Total entries</div>
                         </div>
                         
                         <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">📊</div>
                             <div class="card-title">Avg per Entry</div>
                             <div class="card-amount">${this.formatCurrency(projectGroup.total_amount / projectGroup.expenses.length)}</div>
                             <div class="card-subtitle">Average cost</div>
                         </div>
                         
                         <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">👥</div>
                             <div class="card-title">Employees</div>
                             <div class="card-amount">${[...new Set(projectGroup.expenses.map(e => e.employee_name))].length}</div>
                             <div class="card-subtitle">People involved</div>
@@ -2812,28 +2792,24 @@ class ProjectContractorsReport {
                     <!-- Summary Cards after each project group -->
                     <div class="summary-cards-container" style="display: flex; justify-content: space-between; gap: 10px; width: 100%; flex-wrap: nowrap; margin: 15px 0;">
                         <div class="summary-card-print card-danger" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">💸</div>
                             <div class="card-title">مجموع المشروع</div>
                             <div class="card-amount">${this.formatCurrency(projectGroup.total_amount)}</div>
                             <div class="card-subtitle">إجمالي تكاليف المشروع</div>
                         </div>
                         
                         <div class="summary-card-print card-info" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">📋</div>
                             <div class="card-title">سجلات المصروفات</div>
                             <div class="card-amount">${projectGroup.expenses.length}</div>
                             <div class="card-subtitle">إجمالي الإدخالات</div>
                         </div>
                         
                         <div class="summary-card-print card-warning" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">📊</div>
                             <div class="card-title">متوسط لكل إدخال</div>
                             <div class="card-amount">${this.formatCurrency(projectGroup.total_amount / projectGroup.expenses.length)}</div>
                             <div class="card-subtitle">متوسط التكلفة</div>
                         </div>
                         
                         <div class="summary-card-print card-primary" style="flex: 1; min-width: 22%; max-width: 25%; box-sizing: border-box;">
-                            <div class="card-icon">👥</div>
                             <div class="card-title">الموظفون</div>
                             <div class="card-amount">${[...new Set(projectGroup.expenses.map(e => e.employee_name))].length}</div>
                             <div class="card-subtitle">الأشخاص المشاركون</div>
@@ -3122,17 +3098,19 @@ class ProjectContractorsReport {
                         
                         /* Company Header and Footer */
                         .company-header {
-                            width: 100%;
+                            width: calc(100% + 40px);
                             text-align: center;
                             margin: -20px -20px 15px -20px;
                             padding: 20px;
                             min-height: 60px;
                             max-height: 120px;
                             overflow: hidden;
+                            background: #f8f9fa;
+                            border-bottom: 1px solid #dee2e6;
                         }
                         
                         .company-header img {
-                            max-width: 100%;
+                            max-width: 90%;
                             height: auto;
                             max-height: 100px;
                             object-fit: contain;
@@ -3141,7 +3119,7 @@ class ProjectContractorsReport {
                         }
                         
                         .company-footer {
-                            width: 100%;
+                            width: calc(100% + 40px);
                             text-align: center;
                             margin: 40px -20px -20px -20px;
                             padding: 20px;
@@ -3149,10 +3127,12 @@ class ProjectContractorsReport {
                             min-height: 40px;
                             max-height: 80px;
                             overflow: hidden;
+                            background: #f8f9fa;
+                            border-top: 1px solid #dee2e6;
                         }
                         
                         .company-footer img {
-                            max-width: 100%;
+                            max-width: 90%;
                             height: auto;
                             max-height: 60px;
                             object-fit: contain;
@@ -3193,52 +3173,75 @@ class ProjectContractorsReport {
                             text-align: center;
                             padding: 15px 10px;
                             border-radius: 8px;
-                            color: white;
+                            background: white;
+                            border: 1px solid #dee2e6;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                             page-break-inside: avoid;
                             box-sizing: border-box !important;
                         }
                         
                         .summary-card-print.card-primary {
-                            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                            border-color: #007bff;
                         }
                         
                         .summary-card-print.card-success {
-                            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+                            border-color: #28a745;
                         }
                         
                         .summary-card-print.card-warning {
-                            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
-                            color: #212529;
+                            border-color: #ffc107;
                         }
                         
                         .summary-card-print.card-danger {
-                            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+                            border-color: #dc3545;
                         }
                         
                         .summary-card-print.card-info {
-                            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-                        }
-                        
-                        .card-icon {
-                            font-size: 24px;
-                            margin-bottom: 10px;
+                            border-color: #17a2b8;
                         }
                         
                         .card-title {
-                            font-size: 14px;
+                            font-size: 13px;
                             font-weight: 600;
                             margin-bottom: 8px;
+                            color: #495057;
+                        }
+                        
+                        .summary-card-print.card-primary .card-title,
+                        .summary-card-print.card-primary .card-amount {
+                            color: #007bff;
+                        }
+                        
+                        .summary-card-print.card-success .card-title,
+                        .summary-card-print.card-success .card-amount {
+                            color: #28a745;
+                        }
+                        
+                        .summary-card-print.card-warning .card-title,
+                        .summary-card-print.card-warning .card-amount {
+                            color: #ffc107;
+                        }
+                        
+                        .summary-card-print.card-danger .card-title,
+                        .summary-card-print.card-danger .card-amount {
+                            color: #dc3545;
+                        }
+                        
+                        .summary-card-print.card-info .card-title,
+                        .summary-card-print.card-info .card-amount {
+                            color: #17a2b8;
                         }
                         
                         .card-amount {
-                            font-size: 20px;
+                            font-size: 18px;
                             font-weight: bold;
                             margin-bottom: 5px;
                         }
                         
                         .card-subtitle {
-                            font-size: 12px;
-                            opacity: 0.9;
+                            font-size: 11px;
+                            color: #6c757d;
+                            margin: 0;
                         }
                         
                         /* Tables */
@@ -3432,12 +3435,15 @@ class ProjectContractorsReport {
                                 min-height: 60px !important;
                                 max-height: 120px !important;
                                 overflow: hidden !important;
-                                margin: -15mm -15mm 10px -15mm !important;
-                                padding: 15mm !important;
+                                width: calc(100% + 40px) !important;
+                                margin: -20px -20px 15px -20px !important;
+                                padding: 20px !important;
+                                background: #f8f9fa !important;
+                                border-bottom: 1px solid #dee2e6 !important;
                             }
                             
                             .company-header img {
-                                max-width: 100% !important;
+                                max-width: 90% !important;
                                 max-height: 100px !important;
                                 display: block !important;
                                 margin: 0 auto !important;
@@ -3447,12 +3453,15 @@ class ProjectContractorsReport {
                                 min-height: 40px !important;
                                 max-height: 80px !important;
                                 overflow: hidden !important;
-                                margin: 10px -15mm -25mm -15mm !important;
-                                padding: 15mm !important;
+                                width: calc(100% + 40px) !important;
+                                margin: 40px -20px -20px -20px !important;
+                                padding: 20px !important;
+                                background: #f8f9fa !important;
+                                border-top: 1px solid #dee2e6 !important;
                             }
                             
                             .company-footer img {
-                                max-width: 100% !important;
+                                max-width: 90% !important;
                                 max-height: 60px !important;
                                 display: block !important;
                                 margin: 0 auto !important;

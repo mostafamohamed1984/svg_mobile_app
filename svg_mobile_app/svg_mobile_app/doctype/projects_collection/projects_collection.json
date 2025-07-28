@@ -15,6 +15,9 @@
   "type",
   "client_from",
   "start_date",
+  "duration",
+  "end_date",
+  "extended_date_to",
   "add_to_data",
   "column_break_ncuk",
   "commercial_type",
@@ -25,6 +28,11 @@
   "language",
   "project_status_section",
   "column_break_sylw",
+  "mep_status_section",
+  "elec_status",
+  "water_status",
+  "gas_status",
+  "column_break_mep",
   "planning_status",
   "3d_style",
   "project_status",
@@ -128,8 +136,23 @@
   },
   {
    "fieldname": "start_date",
-   "fieldtype": "Data",
+   "fieldtype": "Date",
    "label": "Start Date"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Int",
+   "label": "Duration (Days)"
+  },
+  {
+   "fieldname": "end_date",
+   "fieldtype": "Date",
+   "label": "End Date"
+  },
+  {
+   "fieldname": "extended_date_to",
+   "fieldtype": "Date",
+   "label": "Extended Date To"
   },
   {
    "fieldname": "project_filter_section",
@@ -243,6 +266,33 @@
    "fieldname": "project_status_section",
    "fieldtype": "Section Break",
    "label": "Project Status"
+  },
+  {
+   "fieldname": "mep_status_section",
+   "fieldtype": "Section Break",
+   "label": "MEP Status"
+  },
+  {
+   "fieldname": "elec_status",
+   "fieldtype": "Select",
+   "label": "Electrical Status",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "water_status",
+   "fieldtype": "Select",
+   "label": "Water Status",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "gas_status",
+   "fieldtype": "Select",
+   "label": "Gas Status",
+   "options": "Done\nPending\nIn Progress\nNot Required"
+  },
+  {
+   "fieldname": "column_break_mep",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "project_information_tab",

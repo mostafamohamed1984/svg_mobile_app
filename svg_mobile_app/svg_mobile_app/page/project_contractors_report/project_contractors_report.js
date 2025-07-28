@@ -3268,7 +3268,7 @@ class ProjectContractorsReport {
                                 margin-top: 20px !important;
                             }
                             
-                            /* Enhanced print layout matching Project Receipt Voucher */
+                            /* Print layout with proper header/footer */
                             body {
                                 padding: 0 !important;
                                 background: #f4f4f4 !important;
@@ -3299,6 +3299,13 @@ class ProjectContractorsReport {
                                 margin-top: 40px !important;
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
+                                position: fixed !important;
+                                bottom: 0 !important;
+                                left: 0 !important;
+                                right: 0 !important;
+                                background: white !important;
+                                padding: 20px !important;
+                                z-index: 1000 !important;
                             }
                             
                             .company-footer img {
@@ -3413,11 +3420,6 @@ class ProjectContractorsReport {
                 </head>
                 <body>
                     <div class="print-container">
-                        <!-- Company Header -->
-                        <div class="company-header">
-                            <img src="/files/Asset 8.png" alt="Company Header" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
-                        </div>
-                        
                         <!-- Report Title and Info -->
                         <div class="report-title">${printTitle}</div>
                         <div class="report-info">
@@ -3427,11 +3429,6 @@ class ProjectContractorsReport {
                         <!-- Print Content -->
                         <div class="print-content">
                             ${printContent}
-                        </div>
-                        
-                        <!-- Company Footer -->
-                        <div class="company-footer">
-                            <img src="/files/Asset 9.png" alt="Company Footer" onerror="this.parentElement.style.minHeight='20px'; this.parentElement.style.maxHeight='20px'; this.style.display='none'">
                         </div>
                     </div>
                 </body>

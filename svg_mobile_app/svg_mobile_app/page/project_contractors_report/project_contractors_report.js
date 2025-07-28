@@ -3271,8 +3271,8 @@ class ProjectContractorsReport {
                             /* Print layout exactly like Project Receipt Voucher */
                             @page {
                                 size: A4;
-                                margin-top: 120px; /* Increased space for header */
-                                margin-bottom: 100px; /* Increased space for footer */
+                                margin-top: 160px; /* Much more space for header */
+                                margin-bottom: 140px; /* Much more space for footer */
                             }
                             
                             body {
@@ -3285,8 +3285,8 @@ class ProjectContractorsReport {
                                 margin: 0 auto !important;
                                 background-color: #fff !important;
                                 padding: 20px !important;
-                                padding-top: 140px !important; /* Increased space for fixed header */
-                                padding-bottom: 120px !important; /* Increased space for fixed footer */
+                                padding-top: 180px !important; /* Much more space for fixed header */
+                                padding-bottom: 160px !important; /* Much more space for fixed footer */
                             }
                             
                             .header-image {

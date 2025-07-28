@@ -3285,6 +3285,8 @@ class ProjectContractorsReport {
                                 margin: 0 auto !important;
                                 background-color: #fff !important;
                                 padding: 20px !important;
+                                padding-top: 100px !important; /* Space for fixed header */
+                                padding-bottom: 80px !important; /* Space for fixed footer */
                             }
                             
                             .header-image {
@@ -3296,7 +3298,9 @@ class ProjectContractorsReport {
                                 right: 0 !important;
                                 width: 100% !important;
                                 height: auto !important;
-                                margin-bottom: 20px !important;
+                                background: white !important;
+                                z-index: 1000 !important;
+                                padding: 10px 0 !important;
                             }
                             
                             .footer-image {
@@ -3307,7 +3311,9 @@ class ProjectContractorsReport {
                                 left: 0 !important;
                                 right: 0 !important;
                                 width: 100% !important;
-                                margin-top: 0 !important;
+                                background: white !important;
+                                z-index: 1000 !important;
+                                padding: 10px 0 !important;
                             }
                             
                             .company-header {

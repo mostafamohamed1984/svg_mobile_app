@@ -3268,11 +3268,10 @@ class ProjectContractorsReport {
                                 margin-top: 20px !important;
                             }
                             
-                            /* Print layout exactly like Project Receipt Voucher */
+                            /* Print layout with content boundaries */
                             @page {
                                 size: A4;
-                                margin-top: 160px; /* Much more space for header */
-                                margin-bottom: 140px; /* Much more space for footer */
+                                margin: 20px;
                             }
                             
                             body {
@@ -3285,47 +3284,42 @@ class ProjectContractorsReport {
                                 margin: 0 auto !important;
                                 background-color: #fff !important;
                                 padding: 20px !important;
-                                padding-top: 180px !important; /* Much more space for fixed header */
-                                padding-bottom: 160px !important; /* Much more space for fixed footer */
+                                min-height: calc(100vh - 200px) !important; /* Ensure content area between header/footer */
+                                display: flex !important;
+                                flex-direction: column !important;
                             }
                             
                             .header-image {
-                                page-break-inside: avoid !important;
-                                break-inside: avoid !important;
-                                position: fixed !important;
-                                top: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
                                 height: auto !important;
-                                background: white !important;
-                                z-index: 1000 !important;
-                                padding: 10px 0 !important;
+                                display: block !important;
+                                margin-bottom: 20px !important;
                             }
                             
                             .footer-image {
-                                page-break-inside: avoid !important;
-                                break-inside: avoid !important;
-                                position: fixed !important;
-                                bottom: 0 !important;
-                                left: 0 !important;
-                                right: 0 !important;
                                 width: 100% !important;
-                                background: white !important;
-                                z-index: 1000 !important;
-                                padding: 10px 0 !important;
+                                height: auto !important;
+                                display: block !important;
+                                margin-top: 20px !important;
                             }
                             
                             .company-header {
                                 width: 100% !important;
                                 text-align: center !important;
                                 margin-bottom: 20px !important;
+                                flex-shrink: 0 !important; /* Don't shrink header */
                             }
                             
                             .company-footer {
                                 width: 100% !important;
                                 text-align: center !important;
-                                margin-top: 40px !important;
+                                margin-top: auto !important; /* Push footer to bottom */
+                                flex-shrink: 0 !important; /* Don't shrink footer */
+                            }
+                            
+                            .print-content {
+                                flex: 1 !important; /* Take remaining space between header/footer */
+                                overflow: visible !important;
                             }
                             
                             /* Force cards to stay in one row */

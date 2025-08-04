@@ -1,133 +1,116 @@
 /**
- * Navbar Attendance Button Styling
+ * ERPNext Style Navbar Attendance Button
  */
 
-/* Attendance button styling */
-#navbar-attendance-btn .nav-link {
+/* Main container positioning */
+.navbar-attendance-container {
+    display: inline-block;
+    margin-left: 15px;
+    margin-top: 8px;
+    vertical-align: middle;
+}
+
+/* Button styling to match ERPNext */
+.attendance-main-btn {
     position: relative;
-    padding: 10px 15px;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 12px;
+    padding: 6px 12px;
+    line-height: 1.4;
+    border: 1px solid transparent;
+    transition: all 0.15s ease-in-out;
+    white-space: nowrap;
 }
 
-#navbar-attendance-btn .badge {
-    position: absolute;
-    top: 5px;
-    right: 8px;
-    font-size: 9px;
-    padding: 2px 4px;
-    border-radius: 3px;
+/* Success state (Check In) */
+.attendance-main-btn.btn-success {
+    background-color: #5cb85c;
+    border-color: #4cae4c;
+    color: #fff;
 }
 
-/* Dropdown menu styling */
-#navbar-attendance-btn .dropdown-menu {
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e0e0e0;
+.attendance-main-btn.btn-success:hover {
+    background-color: #449d44;
+    border-color: #398439;
 }
 
-#navbar-attendance-btn .dropdown-header {
-    padding: 8px 16px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
-    margin-bottom: 0;
+/* Warning state (Check Out) */
+.attendance-main-btn.btn-warning {
+    background-color: #f0ad4e;
+    border-color: #eea236;
+    color: #fff;
 }
 
-#navbar-attendance-btn .dropdown-item {
-    padding: 8px 16px;
-    transition: background-color 0.2s ease;
+.attendance-main-btn.btn-warning:hover {
+    background-color: #ec971f;
+    border-color: #d58512;
 }
 
-#navbar-attendance-btn .dropdown-item:hover:not(.disabled) {
-    background-color: #f8f9fa;
-}
-
-#navbar-attendance-btn .dropdown-item.disabled {
-    opacity: 0.6;
+/* Disabled state */
+.attendance-main-btn:disabled {
+    opacity: 0.65;
     cursor: not-allowed;
 }
 
-#navbar-attendance-btn .dropdown-item i {
-    width: 16px;
-    margin-right: 8px;
+/* Badge styling */
+.attendance-status-badge {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 2px;
+    margin-left: 5px;
+    font-weight: 600;
 }
 
-/* Status indicators */
-.attendance-status-in {
-    color: #28a745 !important;
+/* Icon spacing */
+.attendance-main-btn .fa {
+    margin-right: 5px;
 }
 
-.attendance-status-out {
-    color: #6c757d !important;
+/* Text visibility */
+.attendance-btn-text {
+    font-weight: 500;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .navbar-attendance-container {
+        margin-left: 10px;
+        margin-top: 6px;
+    }
+    
+    .attendance-main-btn {
+        padding: 5px 8px;
+        font-size: 11px;
+    }
+    
+    .attendance-status-badge {
+        font-size: 8px;
+        padding: 1px 3px;
+    }
+}
+
+/* Focus states for accessibility */
+.attendance-main-btn:focus {
+    outline: 2px solid #5cb85c;
+    outline-offset: 2px;
 }
 
 /* Loading state */
-.attendance-loading {
-    opacity: 0.7;
-    pointer-events: none;
+.attendance-main-btn .fa-spinner {
+    animation: fa-spin 1s infinite linear;
 }
 
-.attendance-loading .fa-spinner {
-    animation: spin 1s linear infinite;
+/* Integration with ERPNext navbar */
+.navbar-header .navbar-attendance-container {
+    float: left;
 }
 
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-    #navbar-attendance-btn .dropdown-menu {
-        left: auto;
-        right: 0;
-        min-width: 200px;
-    }
-    
-    #navbar-attendance-btn .hidden-xs {
-        display: none !important;
-    }
-}
-
-/* Simple button alternative styling */
-.navbar-attendance-simple {
-    margin: 8px 10px 8px 0;
-    border-radius: 4px;
-    font-size: 12px;
-    padding: 6px 12px;
-    transition: all 0.2s ease;
-}
-
-.navbar-attendance-simple:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Integration with existing navbar styles */
-.navbar-nav > li > .nav-link.attendance-link {
-    color: #333;
-}
-
-.navbar-nav > li > .nav-link.attendance-link:hover {
-    color: #007bff;
-}
-
-/* Dark theme support (if using dark theme) */
-@media (prefers-color-scheme: dark) {
-    #navbar-attendance-btn .dropdown-menu {
-        background-color: #343a40;
-        border-color: #495057;
-    }
-    
-    #navbar-attendance-btn .dropdown-header {
-        background-color: #495057;
-        border-bottom-color: #6c757d;
-        color: #fff;
-    }
-    
-    #navbar-attendance-btn .dropdown-item {
-        color: #fff;
-    }
-    
-    #navbar-attendance-btn .dropdown-item:hover:not(.disabled) {
-        background-color: #495057;
+/* Ensure proper alignment with navbar brand */
+@media (min-width: 768px) {
+    .navbar-attendance-container {
+        margin-top: 8px;
     }
 }

@@ -8,6 +8,7 @@
     margin-left: 15px;
     margin-top: 8px;
     vertical-align: middle;
+    float: left;
 }
 
 /* Button styling to match ERPNext */

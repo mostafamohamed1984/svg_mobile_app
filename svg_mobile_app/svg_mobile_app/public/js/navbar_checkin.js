@@ -29,25 +29,56 @@ function addAttendanceButton() {
     // Create the attendance button HTML with ERPNext styling
     const buttonHtml = createERPNextStyleButton(attendanceData);
     
-    // Find the position next to the App Logo (after the navbar-brand)
-    const navbarBrand = $('.navbar-brand');
-    const targetContainer = navbarBrand.parent(); // Usually the navbar-header
+    // Try multiple positioning strategies based on ERPNext navbar structure
+    let buttonAdded = false;
     
-    if (targetContainer.length > 0) {
-        // Insert after the navbar-brand container
-        navbarBrand.after(buttonHtml);
-        console.log("✅ Button added next to App Logo");
+    // Strategy 1: Next to .navbar-home (ERPNext logo area)
+    const navbarHome = $('.navbar-home');
+    if (navbarHome.length > 0) {
+        navbarHome.after(buttonHtml);
+        console.log("✅ Button added next to .navbar-home");
+        buttonAdded = true;
+    } 
+    // Strategy 2: After .navbar-brand 
+    else {
+        const navbarBrand = $('.navbar-brand');
+        if (navbarBrand.length > 0) {
+            navbarBrand.after(buttonHtml);
+            console.log("✅ Button added next to .navbar-brand");
+            buttonAdded = true;
+        }
+    }
+    
+    // Strategy 3: Fallback to navbar-header
+    if (!buttonAdded) {
+        const navbarHeader = $('.navbar-header');
+        if (navbarHeader.length > 0) {
+            navbarHeader.append(buttonHtml);
+            console.log("✅ Button added to .navbar-header");
+            buttonAdded = true;
+        }
+    }
+    
+    // Strategy 4: Final fallback
+    if (!buttonAdded) {
+        const navbar = $('.navbar');
+        if (navbar.length > 0) {
+            navbar.prepend(buttonHtml);
+            console.log("✅ Button added to .navbar (fallback)");
+            buttonAdded = true;
+        }
+    }
+    
+    if (buttonAdded) {
         setupEventListeners();
     } else {
-        // Fallback: try to find navbar-left or main navbar
-        const fallbackContainer = $('.navbar-nav.navbar-left, .navbar-left, .navbar-header');
-        if (fallbackContainer.length > 0) {
-            fallbackContainer.append(buttonHtml);
-            console.log("✅ Button added to fallback container");
-            setupEventListeners();
-        } else {
-            console.log("❌ Could not find suitable container for button");
-        }
+        console.log("❌ Could not find suitable container for button");
+        console.log("Available navbar elements:", {
+            'navbar-home': $('.navbar-home').length,
+            'navbar-brand': $('.navbar-brand').length, 
+            'navbar-header': $('.navbar-header').length,
+            'navbar': $('.navbar').length
+        });
     }
 }
 

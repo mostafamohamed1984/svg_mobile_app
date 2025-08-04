@@ -831,147 +831,91 @@ def export_utilization_excel(data, options):
     """Export HR Utilization data to Excel format"""
     try:
         import io
-        import xlsxwriter
+        import csv
         from frappe.utils.file_manager import save_file
         
-        # Create Excel file in memory
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        # Parse data if it's a string
+        if isinstance(data, str):
+            data = frappe.parse_json(data)
+        if isinstance(options, str):
+            options = frappe.parse_json(options)
         
-        # Define formats
-        header_format = workbook.add_format({
-            'bold': True,
-            'font_size': 14,
-            'bg_color': '#4472C4',
-            'font_color': 'white',
-            'align': 'center',
-            'valign': 'vcenter',
-            'border': 1
-        })
-        
-        subheader_format = workbook.add_format({
-            'bold': True,
-            'font_size': 12,
-            'bg_color': '#D9E2F3',
-            'align': 'center',
-            'valign': 'vcenter',
-            'border': 1
-        })
-        
-        data_format = workbook.add_format({
-            'align': 'center',
-            'valign': 'vcenter',
-            'border': 1
-        })
-        
-        conflict_format = workbook.add_format({
-            'align': 'center',
-            'valign': 'vcenter',
-            'border': 1,
-            'bg_color': '#FFEBEE',
-            'font_color': '#C62828'
-        })
-        
-        # Create main worksheet
-        worksheet = workbook.add_worksheet('HR Utilization')
+        # Create CSV content in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
         
         # Write header information
-        row = 0
-        worksheet.merge_range(row, 0, row, 10, data['title'], header_format)
-        row += 1
-        worksheet.merge_range(row, 0, row, 10, f"Period: {data['period']}", subheader_format)
-        row += 1
-        worksheet.merge_range(row, 0, row, 10, f"Generated: {data['generated_on']}", subheader_format)
-        row += 1
-        worksheet.merge_range(row, 0, row, 10, f"Filters: {data['filters']}", subheader_format)
-        row += 2
+        writer.writerow([data.get('title', 'HR Utilization Dashboard')])
+        writer.writerow([f"Period: {data.get('period', 'N/A')}"])
+        writer.writerow([f"Generated: {data.get('generated_on', 'N/A')}"])
+        writer.writerow([f"Filters: {data.get('filters', 'N/A')}"])
+        writer.writerow([])  # Empty row
         
         # Write summary if included
         if options.get('include_summary') and data.get('summary'):
-            worksheet.write(row, 0, 'SUMMARY', header_format)
-            row += 1
+            writer.writerow(['SUMMARY'])
+            writer.writerow(['Metric', 'Value'])
             
-            summary_headers = ['Metric', 'Value']
-            for col, header in enumerate(summary_headers):
-                worksheet.write(row, col, header, subheader_format)
-            row += 1
-            
-            for key, value in data['summary'].items():
-                worksheet.write(row, 0, key.replace('_', ' ').title(), data_format)
-                worksheet.write(row, 1, value, data_format)
-                row += 1
-            row += 1
+            for key, value in data.get('summary', {}).items():
+                writer.writerow([key.replace('_', ' ').title(), value])
+            writer.writerow([])  # Empty row
         
         # Write legend if included
         if options.get('include_legend') and data.get('legend'):
-            worksheet.write(row, 0, 'LEGEND', header_format)
-            row += 1
+            writer.writerow(['LEGEND'])
+            writer.writerow(['Indicator', 'Description'])
             
-            legend_headers = ['Indicator', 'Description']
-            for col, header in enumerate(legend_headers):
-                worksheet.write(row, col, header, subheader_format)
-            row += 1
-            
-            for item in data['legend']:
-                worksheet.write(row, 0, item['indicator'], data_format)
-                worksheet.write(row, 1, item['description'], data_format)
-                row += 1
-            row += 1
+            for item in data.get('legend', []):
+                writer.writerow([item.get('indicator', ''), item.get('description', '')])
+            writer.writerow([])  # Empty row
         
         # Write company data
-        for company in data['companies']:
-            worksheet.write(row, 0, f"COMPANY: {company['name']}", header_format)
-            row += 1
+        for company in data.get('companies', []):
+            writer.writerow([f"COMPANY: {company.get('name', 'N/A')}"])
             
             # Create headers for employee calendar
             headers = ['Employee ID', 'Employee Name', 'Department']
             
             # Add date headers (assuming first employee has daily records to get dates)
-            if company['employees'] and company['employees'][0].get('daily_records'):
+            if company.get('employees') and company['employees'][0].get('daily_records'):
                 dates = [record['date'] for record in company['employees'][0]['daily_records']]
                 headers.extend(dates)
             
             # Write headers
-            for col, header in enumerate(headers):
-                worksheet.write(row, col, header, subheader_format)
-            row += 1
+            writer.writerow(headers)
             
             # Write employee data
-            for employee in company['employees']:
-                worksheet.write(row, 0, employee['id'], data_format)
-                worksheet.write(row, 1, employee['name'], data_format)
-                worksheet.write(row, 2, employee['department'], data_format)
+            for employee in company.get('employees', []):
+                row_data = [
+                    employee.get('id', ''),
+                    employee.get('name', ''),
+                    employee.get('department', '')
+                ]
                 
                 # Write daily status
-                for col, record in enumerate(employee.get('daily_records', []), 3):
-                    status_text = ', '.join(record['status_indicators'])
-                    cell_format = conflict_format if record['has_conflict'] else data_format
+                for record in employee.get('daily_records', []):
+                    status_text = ', '.join(record.get('status_indicators', []))
                     
-                    if record['has_conflict']:
+                    if record.get('has_conflict'):
                         conflict_details = []
                         for conflict in record.get('conflicts', []):
-                            conflict_details.append(f"{conflict['priority']}: {conflict['description']}")
+                            conflict_details.append(f"{conflict.get('priority', '')}: {conflict.get('description', '')}")
                         if conflict_details:
                             status_text += f" | Conflicts: {'; '.join(conflict_details)}"
                     
-                    worksheet.write(row, col, status_text, cell_format)
+                    row_data.append(status_text)
                 
-                row += 1
-            row += 2
+                writer.writerow(row_data)
+            
+            writer.writerow([])  # Empty row between companies
         
-        # Auto-adjust column widths
-        worksheet.set_column(0, 0, 15)  # Employee ID
-        worksheet.set_column(1, 1, 25)  # Employee Name
-        worksheet.set_column(2, 2, 20)  # Department
-        worksheet.set_column(3, 50, 12)  # Date columns
-        
-        # Close workbook
-        workbook.close()
-        output.seek(0)
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
         
         # Save file
-        filename = f"{options.get('filename', 'HR_Utilization')}.xlsx"
-        file_doc = save_file(filename, output.read(), "Home", is_private=0)
+        filename = f"{options.get('filename', 'HR_Utilization')}.csv"
+        file_doc = save_file(filename, csv_content.encode('utf-8'), "Home", is_private=0)
         
         return {
             'success': True,
@@ -993,6 +937,12 @@ def export_utilization_pdf(data, options):
         import io
         from frappe.utils.pdf import get_pdf
         from frappe.utils.file_manager import save_file
+        
+        # Parse data if it's a string
+        if isinstance(data, str):
+            data = frappe.parse_json(data)
+        if isinstance(options, str):
+            options = frappe.parse_json(options)
         
         # Generate HTML content for PDF
         html_content = generate_pdf_html(data, options)
@@ -1020,12 +970,18 @@ def export_utilization_pdf(data, options):
 def generate_pdf_html(data, options):
     """Generate HTML content for PDF export"""
     try:
+        # Ensure data is a dictionary
+        if not isinstance(data, dict):
+            data = {}
+        if not isinstance(options, dict):
+            options = {}
+            
         html = f"""
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
-            <title>{data['title']} - {data['period']}</title>
+            <title>{data.get('title', 'HR Utilization Dashboard')} - {data.get('period', 'N/A')}</title>
             <style>
                 body {{
                     font-family: Arial, sans-serif;
@@ -1146,32 +1102,32 @@ def generate_pdf_html(data, options):
         </head>
         <body>
             <div class="header">
-                <div class="title">{data['title']}</div>
-                <div class="subtitle">Period: {data['period']}</div>
-                <div class="info">Generated on: {data['generated_on']}</div>
-                <div class="info">Filters: {data['filters']}</div>
+                <div class="title">{data.get('title', 'HR Utilization Dashboard')}</div>
+                <div class="subtitle">Period: {data.get('period', 'N/A')}</div>
+                <div class="info">Generated on: {data.get('generated_on', 'N/A')}</div>
+                <div class="info">Filters: {data.get('filters', 'N/A')}</div>
             </div>
         """
         
         # Add summary section
         if options.get('include_summary') and data.get('summary'):
             html += '<div class="section"><div class="section-title">Summary</div><div class="summary-grid">'
-            for key, value in data['summary'].items():
+            for key, value in data.get('summary', {}).items():
                 html += f'<div class="summary-card"><h4>{key.replace("_", " ").title()}</h4><div>{value}</div></div>'
             html += '</div></div>'
         
         # Add legend section
         if options.get('include_legend') and data.get('legend'):
             html += '<div class="section"><div class="section-title">Legend</div><div class="legend-items">'
-            for item in data['legend']:
-                html += f'<div class="legend-item"><span class="legend-indicator">{item["indicator"]}</span><span>{item["description"]}</span></div>'
+            for item in data.get('legend', []):
+                html += f'<div class="legend-item"><span class="legend-indicator">{item.get("indicator", "")}</span><span>{item.get("description", "")}</span></div>'
             html += '</div></div>'
         
         # Add company data
-        for company in data['companies']:
-            html += f'<div class="section"><div class="company-title">Company: {company["name"]}</div>'
+        for company in data.get('companies', []):
+            html += f'<div class="section"><div class="company-title">Company: {company.get("name", "N/A")}</div>'
             
-            if company['employees']:
+            if company.get('employees'):
                 # Create calendar table
                 html += '<table class="calendar-table">'
                 
@@ -1179,27 +1135,27 @@ def generate_pdf_html(data, options):
                 html += '<thead><tr><th>Employee ID</th><th>Employee Name</th><th>Department</th>'
                 
                 # Add date headers
-                if company['employees'][0].get('daily_records'):
+                if company.get('employees') and company['employees'][0].get('daily_records'):
                     for record in company['employees'][0]['daily_records']:
-                        html += f'<th>{record["date"]}</th>'
+                        html += f'<th>{record.get("date", "")}</th>'
                 
                 html += '</tr></thead><tbody>'
                 
                 # Employee rows
-                for employee in company['employees']:
-                    html += f'<tr><td class="employee-info">{employee["id"]}</td>'
-                    html += f'<td class="employee-info">{employee["name"]}</td>'
-                    html += f'<td class="employee-info">{employee["department"]}</td>'
+                for employee in company.get('employees', []):
+                    html += f'<tr><td class="employee-info">{employee.get("id", "")}</td>'
+                    html += f'<td class="employee-info">{employee.get("name", "")}</td>'
+                    html += f'<td class="employee-info">{employee.get("department", "")}</td>'
                     
                     # Daily status cells
                     for record in employee.get('daily_records', []):
-                        cell_class = 'conflict-cell' if record['has_conflict'] else ''
-                        status_text = ', '.join(record['status_indicators'])
+                        cell_class = 'conflict-cell' if record.get('has_conflict') else ''
+                        status_text = ', '.join(record.get('status_indicators', []))
                         
-                        if record['has_conflict'] and options.get('include_conflicts'):
+                        if record.get('has_conflict') and options.get('include_conflicts'):
                             conflict_details = []
                             for conflict in record.get('conflicts', []):
-                                conflict_details.append(f"{conflict['priority']}: {conflict['description']}")
+                                conflict_details.append(f"{conflict.get('priority', '')}: {conflict.get('description', '')}")
                             if conflict_details:
                                 status_text += f"<br><small>{'; '.join(conflict_details)}</small>"
                         
@@ -1446,133 +1402,52 @@ def export_conflicts_excel(data):
     try:
         import json
         import io
-        import xlsxwriter
+        import csv
         from frappe.utils.file_manager import save_file
         
         # Parse data if needed
         if isinstance(data, str):
             data = json.loads(data)
         
-        # Create Excel file in memory
-        output = io.BytesIO()
-        workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+        # Create CSV file in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
         
-        # Define formats
-        header_format = workbook.add_format({
-            'bold': True,
-            'font_size': 14,
-            'bg_color': '#dc3545',
-            'font_color': 'white',
-            'align': 'center',
-            'valign': 'vcenter',
-            'border': 1
-        })
-        
-        subheader_format = workbook.add_format({
-            'bold': True,
-            'font_size': 12,
-            'bg_color': '#f8d7da',
-            'align': 'center',
-            'valign': 'vcenter',
-            'border': 1
-        })
-        
-        data_format = workbook.add_format({
-            'align': 'left',
-            'valign': 'vcenter',
-            'border': 1,
-            'text_wrap': True
-        })
-        
-        high_priority_format = workbook.add_format({
-            'align': 'left',
-            'valign': 'vcenter',
-            'border': 1,
-            'bg_color': '#f8d7da',
-            'font_color': '#721c24',
-            'text_wrap': True
-        })
-        
-        medium_priority_format = workbook.add_format({
-            'align': 'left',
-            'valign': 'vcenter',
-            'border': 1,
-            'bg_color': '#fff3cd',
-            'font_color': '#856404',
-            'text_wrap': True
-        })
-        
-        low_priority_format = workbook.add_format({
-            'align': 'left',
-            'valign': 'vcenter',
-            'border': 1,
-            'bg_color': '#d4edda',
-            'font_color': '#155724',
-            'text_wrap': True
-        })
-        
-        # Create main worksheet
-        worksheet = workbook.add_worksheet('HR Conflicts')
-        
-        # Write header information
-        row = 0
-        worksheet.merge_range(row, 0, row, 8, data['title'], header_format)
-        row += 1
-        worksheet.merge_range(row, 0, row, 8, f"Generated: {data['generated_on']}", subheader_format)
-        row += 1
-        worksheet.merge_range(row, 0, row, 8, f"Total Conflicts: {data['total_conflicts']}", subheader_format)
-        row += 2
+        # Write CSV headers
+        writer.writerow(['HR Conflicts Export'])
+        writer.writerow([f'Generated on: {frappe.utils.today()}'])
+        writer.writerow([f'Total Conflicts: {len(data.get("conflicts", []))}'])
+        writer.writerow([])  # Empty row
         
         # Write column headers
         headers = [
             'Company', 'Employee ID', 'Employee Name', 'Department', 
             'Date', 'Priority', 'Conflict Type', 'Description', 'Status'
         ]
-        
-        for col, header in enumerate(headers):
-            worksheet.write(row, col, header, subheader_format)
-        row += 1
+        writer.writerow(headers)
         
         # Write conflict data
-        for conflict in data['conflicts']:
-            # Choose format based on priority
-            if conflict['priority'] == 'high':
-                cell_format = high_priority_format
-            elif conflict['priority'] == 'medium':
-                cell_format = medium_priority_format
-            else:
-                cell_format = low_priority_format
-            
-            worksheet.write(row, 0, conflict['company'], cell_format)
-            worksheet.write(row, 1, conflict['employee_id'], cell_format)
-            worksheet.write(row, 2, conflict['employee_name'], cell_format)
-            worksheet.write(row, 3, conflict['department'], cell_format)
-            worksheet.write(row, 4, conflict['date'], cell_format)
-            worksheet.write(row, 5, conflict['priority'].upper(), cell_format)
-            worksheet.write(row, 6, conflict['conflict_type'].replace('_', ' ').title(), cell_format)
-            worksheet.write(row, 7, conflict['description'], cell_format)
-            worksheet.write(row, 8, conflict.get('status', 'pending').upper(), cell_format)
-            
-            row += 1
+        for conflict in data.get('conflicts', []):
+            row_data = [
+                conflict.get('company', ''),
+                conflict.get('employee_id', ''),
+                conflict.get('employee_name', ''),
+                conflict.get('department', ''),
+                conflict.get('date', ''),
+                conflict.get('priority', '').upper(),
+                conflict.get('conflict_type', '').replace('_', ' ').title(),
+                conflict.get('description', ''),
+                conflict.get('status', 'pending').upper()
+            ]
+            writer.writerow(row_data)
         
-        # Auto-adjust column widths
-        worksheet.set_column(0, 0, 15)  # Company
-        worksheet.set_column(1, 1, 12)  # Employee ID
-        worksheet.set_column(2, 2, 20)  # Employee Name
-        worksheet.set_column(3, 3, 15)  # Department
-        worksheet.set_column(4, 4, 12)  # Date
-        worksheet.set_column(5, 5, 10)  # Priority
-        worksheet.set_column(6, 6, 20)  # Conflict Type
-        worksheet.set_column(7, 7, 40)  # Description
-        worksheet.set_column(8, 8, 10)  # Status
-        
-        # Close workbook
-        workbook.close()
-        output.seek(0)
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
         
         # Save file
-        filename = f"HR_Conflicts_Export_{frappe.utils.today()}.xlsx"
-        file_doc = save_file(filename, output.read(), "Home", is_private=0)
+        filename = f"HR_Conflicts_Export_{frappe.utils.today()}.csv"
+        file_doc = save_file(filename, csv_content.encode('utf-8'), "Home", is_private=0)
         
         return {
             'success': True,

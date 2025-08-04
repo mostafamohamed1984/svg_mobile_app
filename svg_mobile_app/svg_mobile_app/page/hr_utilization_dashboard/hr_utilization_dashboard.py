@@ -651,7 +651,7 @@ def create_daily_record(employee, date_str):
             daily_record['status_indicators'].append('O')
         
         # Detect conflicts
-        conflicts = detect_daily_conflicts(daily_record)
+        conflicts = detect_record_conflicts(daily_record)
         daily_record['conflicts'] = conflicts
         
         return daily_record
@@ -772,7 +772,7 @@ def get_overtime_request_for_date(employee_id, date_str):
         frappe.log_error(f"Error getting overtime request: {str(e)}", "HR Utilization Dashboard")
         return None
 
-def detect_daily_conflicts(daily_record):
+def detect_record_conflicts(daily_record):
     """Detect conflicts in a daily record"""
     try:
         conflicts = []

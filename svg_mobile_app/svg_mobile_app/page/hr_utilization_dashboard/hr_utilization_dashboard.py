@@ -21,10 +21,12 @@ def get_utilization_data(filters=None):
 
     # If year and month are provided, calculate date range
     if year and month and not (from_date and to_date):
-        from_date = f"{year}-{month:02d}-01"
+        year_int = int(year)
+        month_int = int(month)
+        from_date = f"{year_int}-{month_int:02d}-01"
         # Get last day of month
-        last_day = calendar.monthrange(int(year), int(month))[1]
-        to_date = f"{year}-{month:02d}-{last_day}"
+        last_day = calendar.monthrange(year_int, month_int)[1]
+        to_date = f"{year_int}-{month_int:02d}-{last_day}"
 
     # If no dates provided, default to current month
     if not from_date or not to_date:

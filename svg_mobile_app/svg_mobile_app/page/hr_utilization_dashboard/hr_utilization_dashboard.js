@@ -774,16 +774,19 @@ class HRUtilizationDashboard {
                 header_html += '<div class="days-header">';
                 
                 week.forEach((date) => {
-                    var day_name = date.toLocaleDateString('en', { weekday: 'short' });
-                    var day_num = date.getDate();
-                    var is_weekend = date.getDay() === 0 || date.getDay() === 6;
-                    var is_today = this.is_today(date);
+                    // Convert string date to Date object if needed
+                    var date_obj = typeof date === 'string' ? new Date(date) : date;
+                    var day_name = date_obj.toLocaleDateString('en', { weekday: 'short' });
+                    var day_num = date_obj.getDate();
+                    var is_weekend = date_obj.getDay() === 0 || date_obj.getDay() === 6;
+                    var is_today = this.is_today(date_obj);
                     
                     var day_class = 'day-header';
                     if (is_weekend) day_class += ' weekend';
                     if (is_today) day_class += ' today';
                     
-                    header_html += `<div class="${day_class}" data-date="${date.toISOString().split('T')[0]}">
+                    var date_str_for_attr = typeof date === 'string' ? date : date_obj.toISOString().split('T')[0];
+                    header_html += `<div class="${day_class}" data-date="${date_str_for_attr}">
                         <div class="day-name">${day_name}</div>
                         <div class="day-number">${day_num}</div>
                     </div>`;
@@ -822,7 +825,8 @@ class HRUtilizationDashboard {
                 row_html += '<div class="days-row">';
                 
                 week.forEach((date) => {
-                    var date_str = date.toISOString().split('T')[0];
+                    // Convert string date to Date object if needed, but keep original for date_str
+                    var date_str = typeof date === 'string' ? date : date.toISOString().split('T')[0];
                     var daily_record = this.find_daily_record(employee, date_str);
                     var cell_html = this.create_daily_status_cell(daily_record, date, employee);
                     
@@ -937,7 +941,8 @@ class HRUtilizationDashboard {
     is_today(date) {
         try {
             var today = new Date();
-            return date.toDateString() === today.toDateString();
+            var date_obj = typeof date === 'string' ? new Date(date) : date;
+            return date_obj.toDateString() === today.toDateString();
         } catch (e) {
             return false;
         }

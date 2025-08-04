@@ -161,34 +161,34 @@ class HRUtilizationDashboard {
     add_action_buttons() {
         try {
             // Add Load Data button
-            this.page.add_inner_button(__('Load Data'), () => {
+            this.page.add_inner_button('Load Data', () => {
                 this.load_data();
-            }, 'primary');
+            });
 
             // Add Refresh button
-            this.page.add_inner_button(__('Refresh'), () => {
+            this.page.add_inner_button('Refresh', () => {
                 this.refresh();
             });
 
             // Add Export Excel button
-            this.page.add_inner_button(__('Export Excel'), () => {
+            this.page.add_inner_button('Export Excel', () => {
                 this.export_data('excel');
-            }, 'success');
+            });
 
             // Add Export PDF button
-            this.page.add_inner_button(__('Export PDF'), () => {
+            this.page.add_inner_button('Export PDF', () => {
                 this.export_data('pdf');
-            }, 'danger');
+            });
 
             // Add Print button
-            this.page.add_inner_button(__('Print'), () => {
+            this.page.add_inner_button('Print', () => {
                 this.print_dashboard();
             });
 
             // Add Conflict Resolution button
-            this.page.add_inner_button(__('Resolve Conflicts'), () => {
+            this.page.add_inner_button('Resolve Conflicts', () => {
                 this.show_conflict_resolution_panel();
-            }, 'warning');
+            });
 
         } catch (e) {
             console.error('Error adding action buttons:', e);
@@ -298,6 +298,45 @@ class HRUtilizationDashboard {
                         </div>
                     </div>
                 </div>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Overtime Request Status</label>
+                            <select class="form-control filter-overtime-status">
+                                <option value="">All Overtime Statuses</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Shift Request Status</label>
+                            <select class="form-control filter-shift-status">
+                                <option value="">All Shift Statuses</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Rejected">Rejected</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Show Conflicts Only</label>
+                            <select class="form-control filter-conflicts-only">
+                                <option value="">All Records</option>
+                                <option value="true">Conflicts Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button class="btn btn-primary btn-block load-data-btn">Load Data</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="row filter-actions">
                     <div class="col-md-12">
                         <button class="btn btn-secondary btn-sm clear-filters">Clear Filters</button>
@@ -340,6 +379,11 @@ class HRUtilizationDashboard {
             // Clear filters button
             container.find('.clear-filters').on('click', function() {
                 self.clear_filters();
+            });
+
+            // Load Data button
+            container.find('.load-data-btn').on('click', function() {
+                self.load_data();
             });
 
             // Calendar navigation events
@@ -443,7 +487,10 @@ class HRUtilizationDashboard {
                 company: container.find('.filter-company').val(),
                 department: container.find('.filter-department').val(),
                 leave_type: container.find('.filter-leave-type').val(),
-                status: container.find('.filter-status').val()
+                status: container.find('.filter-status').val(),
+                overtime_status: container.find('.filter-overtime-status').val(),
+                shift_status: container.find('.filter-shift-status').val(),
+                conflicts_only: container.find('.filter-conflicts-only').val()
             };
 
             console.log('Current filters updated:', this.current_filters);
@@ -796,9 +843,11 @@ class HRUtilizationDashboard {
 
     create_daily_status_cell(daily_record, date, employee) {
         try {
-            var date_str = date.toISOString().split('T')[0];
-            var is_weekend = date.getDay() === 0 || date.getDay() === 6;
-            var is_today = this.is_today(date);
+            // Convert string date to Date object if needed
+            var date_obj = typeof date === 'string' ? new Date(date) : date;
+            var date_str = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+            var is_weekend = date_obj.getDay() === 0 || date_obj.getDay() === 6;
+            var is_today = this.is_today(date_obj);
             
             var cell_class = 'daily-status-cell';
             if (is_weekend) cell_class += ' weekend';
@@ -844,10 +893,12 @@ class HRUtilizationDashboard {
             var current_week = [];
             
             date_range.forEach((date, index) => {
+                // Convert string date to Date object if needed
+                var date_obj = typeof date === 'string' ? new Date(date) : date;
                 current_week.push(date);
                 
                 // If it's Sunday (end of week) or last date, start new week
-                if (date.getDay() === 0 || index === date_range.length - 1) {
+                if (date_obj.getDay() === 0 || index === date_range.length - 1) {
                     weeks.push([...current_week]);
                     current_week = [];
                 }

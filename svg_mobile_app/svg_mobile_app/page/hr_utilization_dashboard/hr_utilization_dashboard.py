@@ -49,6 +49,9 @@ def get_utilization_data(filters=None):
     department = filters.get('department')
     leave_type = filters.get('leave_type')
     status = filters.get('status')
+    overtime_status = filters.get('overtime_status')
+    shift_status = filters.get('shift_status')
+    conflicts_only = filters.get('conflicts_only')
     employee = filters.get('employee')
 
     try:
@@ -58,8 +61,8 @@ def get_utilization_data(filters=None):
         # Get all HR data for the date range
         attendance_data = get_attendance_data(from_date, to_date, company, department, employee)
         leave_data = get_leave_data(from_date, to_date, company, department, leave_type, status, employee)
-        shift_data = get_shift_request_data(from_date, to_date, company, department, status, employee)
-        overtime_data = get_overtime_request_data(from_date, to_date, company, department, status, employee)
+        shift_data = get_shift_request_data(from_date, to_date, company, department, shift_status, employee)
+        overtime_data = get_overtime_request_data(from_date, to_date, company, department, overtime_status, employee)
         
         # Process data and detect conflicts
         processed_data = process_utilization_data(

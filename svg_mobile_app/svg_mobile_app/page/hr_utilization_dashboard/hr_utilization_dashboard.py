@@ -915,7 +915,7 @@ def export_utilization_excel(data, options):
         
         # Save file
         filename = f"{options.get('filename', 'HR_Utilization')}.csv"
-        file_doc = save_file(filename, csv_content.encode('utf-8'), "File", None, is_private=0)
+        file_doc = save_file(filename, csv_content.encode('utf-8'), dt=None, dn=None, is_private=0)
         
         return {
             'success': True,
@@ -952,7 +952,7 @@ def export_utilization_pdf(data, options):
         
         # Save file
         filename = f"{options.get('filename', 'HR_Utilization')}.pdf"
-        file_doc = save_file(filename, pdf_content, "File", None, is_private=0)
+        file_doc = save_file(filename, pdf_content, dt=None, dn=None, is_private=0)
         
         return {
             'success': True,
@@ -1381,7 +1381,7 @@ def create_escalation_report(data):
         
         # Save file
         filename = f"HR_Conflict_Escalation_{frappe.utils.today()}.pdf"
-        file_doc = save_file(filename, pdf_content, "File", None, is_private=0)
+        file_doc = save_file(filename, pdf_content, dt=None, dn=None, is_private=0)
         
         return {
             'success': True,
@@ -1447,7 +1447,7 @@ def export_conflicts_excel(data):
         
         # Save file
         filename = f"HR_Conflicts_Export_{frappe.utils.today()}.csv"
-        file_doc = save_file(filename, csv_content.encode('utf-8'), "File", None, is_private=0)
+        file_doc = save_file(filename, csv_content.encode('utf-8'), dt=None, dn=None, is_private=0)
         
         return {
             'success': True,

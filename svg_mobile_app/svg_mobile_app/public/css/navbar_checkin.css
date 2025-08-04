@@ -1,0 +1,133 @@
+/**
+ * Navbar Attendance Button Styling
+ */
+
+/* Attendance button styling */
+#navbar-attendance-btn .nav-link {
+    position: relative;
+    padding: 10px 15px;
+}
+
+#navbar-attendance-btn .badge {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    font-size: 9px;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Dropdown menu styling */
+#navbar-attendance-btn .dropdown-menu {
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e0e0e0;
+}
+
+#navbar-attendance-btn .dropdown-header {
+    padding: 8px 16px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 0;
+}
+
+#navbar-attendance-btn .dropdown-item {
+    padding: 8px 16px;
+    transition: background-color 0.2s ease;
+}
+
+#navbar-attendance-btn .dropdown-item:hover:not(.disabled) {
+    background-color: #f8f9fa;
+}
+
+#navbar-attendance-btn .dropdown-item.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#navbar-attendance-btn .dropdown-item i {
+    width: 16px;
+    margin-right: 8px;
+}
+
+/* Status indicators */
+.attendance-status-in {
+    color: #28a745 !important;
+}
+
+.attendance-status-out {
+    color: #6c757d !important;
+}
+
+/* Loading state */
+.attendance-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.attendance-loading .fa-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    #navbar-attendance-btn .dropdown-menu {
+        left: auto;
+        right: 0;
+        min-width: 200px;
+    }
+    
+    #navbar-attendance-btn .hidden-xs {
+        display: none !important;
+    }
+}
+
+/* Simple button alternative styling */
+.navbar-attendance-simple {
+    margin: 8px 10px 8px 0;
+    border-radius: 4px;
+    font-size: 12px;
+    padding: 6px 12px;
+    transition: all 0.2s ease;
+}
+
+.navbar-attendance-simple:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Integration with existing navbar styles */
+.navbar-nav > li > .nav-link.attendance-link {
+    color: #333;
+}
+
+.navbar-nav > li > .nav-link.attendance-link:hover {
+    color: #007bff;
+}
+
+/* Dark theme support (if using dark theme) */
+@media (prefers-color-scheme: dark) {
+    #navbar-attendance-btn .dropdown-menu {
+        background-color: #343a40;
+        border-color: #495057;
+    }
+    
+    #navbar-attendance-btn .dropdown-header {
+        background-color: #495057;
+        border-bottom-color: #6c757d;
+        color: #fff;
+    }
+    
+    #navbar-attendance-btn .dropdown-item {
+        color: #fff;
+    }
+    
+    #navbar-attendance-btn .dropdown-item:hover:not(.disabled) {
+        background-color: #495057;
+    }
+}

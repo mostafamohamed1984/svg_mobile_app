@@ -1,3 +1,16 @@
+# JavaScript Assets
+app_include_js = [
+    "svg_mobile_app/public/js/navbar_checkin.js"
+]
+
+# CSS Assets
+app_include_css = [
+    "svg_mobile_app/public/css/navbar_checkin.css"
+]
+
+# Extend Bootinfo for navbar functionality
+extend_bootinfo = "svg_mobile_app.svg_mobile_app.navbar.get_attendance_info"
+
 # Scheduled Tasks
 scheduler_events = {
     "hourly": [

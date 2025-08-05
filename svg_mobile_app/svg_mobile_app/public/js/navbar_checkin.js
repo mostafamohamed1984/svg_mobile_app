@@ -1,45 +1,48 @@
 /**
- * Navbar Attendance Checkin/Checkout Button - ERPNext Style
+ * Navbar Attendance Checkin/Checkout Button
+ * Adds dynamic attendance functionality to the navbar
  */
 
 $(document).ready(function() {
     console.log("🔧 Navbar Checkin: Script loaded");
-    
+
+    // Wait for navbar and bootinfo to load
     setTimeout(function() {
-        console.log("🔧 Checking bootinfo...");
+        console.log("🔧 Navbar Checkin: Checking bootinfo...");
+        console.log("🔧 frappe.boot exists:", !!frappe.boot);
+        console.log("🔧 attendance_status exists:", !!(frappe.boot && frappe.boot.attendance_status));
+
         if (frappe.boot && frappe.boot.attendance_status) {
-            console.log("✅ Found attendance status, adding button");
+            console.log("🔧 Navbar Checkin: Adding button...");
             addAttendanceButton();
         } else {
-            console.log("❌ No attendance status, trying manual check");
+            console.log("❌ Navbar Checkin: No attendance status found, trying manual check...");
             tryManualStatusCheck();
         }
-    }, 1500);
+    }, 2000);
 });
 
 function addAttendanceButton() {
-    if (!frappe.boot.attendance_status) return;
-    
     const attendanceData = frappe.boot.attendance_status;
     console.log("Attendance data:", attendanceData);
-    
+
     // Remove existing button if present
     $('#navbar-attendance-btn').remove();
-    
+
     // Create the attendance button HTML with ERPNext styling
     const buttonHtml = createERPNextStyleButton(attendanceData);
-    
+
     // Try multiple positioning strategies based on ERPNext navbar structure
     let buttonAdded = false;
-    
+
     // Strategy 1: Next to .navbar-home (ERPNext logo area)
     const navbarHome = $('.navbar-home');
     if (navbarHome.length > 0) {
         navbarHome.after(buttonHtml);
         console.log("✅ Button added next to .navbar-home");
         buttonAdded = true;
-    } 
-    // Strategy 2: After .navbar-brand 
+    }
+    // Strategy 2: After .navbar-brand
     else {
         const navbarBrand = $('.navbar-brand');
         if (navbarBrand.length > 0) {
@@ -48,7 +51,7 @@ function addAttendanceButton() {
             buttonAdded = true;
         }
     }
-    
+
     // Strategy 3: Fallback to navbar-header
     if (!buttonAdded) {
         const navbarHeader = $('.navbar-header');
@@ -58,7 +61,7 @@ function addAttendanceButton() {
             buttonAdded = true;
         }
     }
-    
+
     // Strategy 4: Final fallback
     if (!buttonAdded) {
         const navbar = $('.navbar');
@@ -68,14 +71,14 @@ function addAttendanceButton() {
             buttonAdded = true;
         }
     }
-    
+
     if (buttonAdded) {
         setupEventListeners();
     } else {
         console.log("❌ Could not find suitable container for button");
         console.log("Available navbar elements:", {
             'navbar-home': $('.navbar-home').length,
-            'navbar-brand': $('.navbar-brand').length, 
+            'navbar-brand': $('.navbar-brand').length,
             'navbar-header': $('.navbar-header').length,
             'navbar': $('.navbar').length
         });
@@ -88,10 +91,10 @@ function createERPNextStyleButton(attendanceData) {
     const buttonClass = attendanceData.can_checkin ? 'btn-success' : 'btn-warning';
     const iconClass = attendanceData.can_checkin ? 'fa-sign-in' : 'fa-sign-out';
     const statusText = attendanceData.current_status === 'Not Checked In' ? 'OUT' : attendanceData.current_status;
-    
+
     return `
         <div id="navbar-attendance-btn" class="navbar-attendance-container">
-            <button class="btn ${buttonClass} btn-sm navbar-btn attendance-main-btn" 
+            <button class="btn ${buttonClass} btn-sm navbar-btn attendance-main-btn"
                     data-action="${attendanceData.can_checkin ? 'checkin' : 'checkout'}"
                     title="Current Status: ${statusText}">
                 <i class="fa ${iconClass}"></i>
@@ -105,26 +108,26 @@ function createERPNextStyleButton(attendanceData) {
 function setupEventListeners() {
     // Remove any existing event listeners to prevent duplicates
     $(document).off('click', '.attendance-main-btn');
-    
+
     $(document).on('click', '.attendance-main-btn', function(e) {
         e.preventDefault();
-        
+
         const $btn = $(this);
-        
+
         // Prevent multiple clicks
         if ($btn.prop('disabled') || $btn.hasClass('processing')) {
             console.log("🔧 Button already processing, ignoring click");
             return;
         }
-        
+
         const action = $(this).data('action');
-        
+
         // Add loading state to button
         const originalHtml = $btn.html();
         $btn.prop('disabled', true)
             .addClass('processing')
             .html('<i class="fa fa-spinner fa-spin"></i> Getting Location...');
-        
+
         getLocationAndPerformCheckin(action, function() {
             // Reset button state
             $btn.prop('disabled', false)
@@ -136,7 +139,7 @@ function setupEventListeners() {
 
 function getLocationAndPerformCheckin(action, resetCallback) {
     console.log("🔧 Getting location for action:", action);
-    
+
     if (!navigator.geolocation) {
         console.log("❌ Geolocation not supported");
         frappe.show_alert({
@@ -146,15 +149,15 @@ function getLocationAndPerformCheckin(action, resetCallback) {
         if (resetCallback) resetCallback();
         return;
     }
-    
+
     console.log("🔧 Requesting geolocation...");
-    
+
     // Show loading message with instructions
     frappe.show_alert({
         message: 'Requesting location access... Please allow when prompted by your browser.',
         indicator: 'blue'
     });
-    
+
     // Add a small delay to ensure the alert is visible before the permission popup
     setTimeout(() => {
         navigator.geolocation.getCurrentPosition(
@@ -164,9 +167,9 @@ function getLocationAndPerformCheckin(action, resetCallback) {
         },
         function(error) {
             console.error("❌ Location error:", error);
-            
+
             let errorMessage = 'Unable to get your location. ';
-            
+
             switch(error.code) {
                 case error.PERMISSION_DENIED:
                     errorMessage += 'Location access was denied. Please enable location permissions and try again.';
@@ -181,12 +184,12 @@ function getLocationAndPerformCheckin(action, resetCallback) {
                     errorMessage += 'An unknown error occurred while getting location.';
                     break;
             }
-            
+
             frappe.show_alert({
                 message: errorMessage,
                 indicator: 'red'
             });
-            
+
             if (resetCallback) resetCallback();
         },
         {
@@ -200,16 +203,16 @@ function getLocationAndPerformCheckin(action, resetCallback) {
 
 function performCheckin(action, latitude, longitude, resetCallback) {
     console.log("🔧 performCheckin called with:", action, latitude, longitude);
-    
+
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
-    
+
     if (isNaN(lat) || isNaN(lng)) {
         frappe.show_alert({ message: 'Invalid location coordinates', indicator: 'red' });
         if (resetCallback) resetCallback();
         return;
     }
-    
+
     frappe.call({
         method: 'svg_mobile_app.svg_mobile_app.navbar.perform_attendance_action',
         args: {
@@ -219,22 +222,22 @@ function performCheckin(action, latitude, longitude, resetCallback) {
         },
         callback: function(response) {
             if (resetCallback) resetCallback();
-            
+
             if (response.message && response.message.success) {
                 frappe.show_alert({
                     message: response.message.message,
                     indicator: 'green'
                 });
-                
+
                 // Update button state instead of reloading page
                 setTimeout(() => {
                     refreshAttendanceStatus();
                 }, 1000);
             } else {
-                const errorMsg = response.message ? 
-                    (response.message.message || response.message.error) : 
+                const errorMsg = response.message ?
+                    (response.message.message || response.message.error) :
                     'Failed to perform action';
-                
+
                 frappe.show_alert({
                     message: errorMsg,
                     indicator: 'red'
@@ -253,13 +256,23 @@ function performCheckin(action, latitude, longitude, resetCallback) {
 }
 
 function tryManualStatusCheck() {
+    console.log("🔧 Trying manual status check...");
+
     frappe.call({
         method: 'svg_mobile_app.svg_mobile_app.navbar.get_attendance_status',
         callback: function(response) {
-            if (response.message && !response.message.error) {
+            console.log("🔧 Manual status response:", response);
+
+            if (response.message) {
+                console.log("✅ Manual status success, adding button...");
                 frappe.boot.attendance_status = response.message;
                 addAttendanceButton();
+            } else {
+                console.log("❌ Manual status failed");
             }
+        },
+        error: function(error) {
+            console.log("❌ Manual status error:", error);
         }
     });
 }
@@ -269,7 +282,7 @@ function tryManualStatusCheck() {
  */
 function refreshAttendanceStatus() {
     console.log("🔧 Refreshing attendance status...");
-    
+
     frappe.call({
         method: 'svg_mobile_app.svg_mobile_app.navbar.get_attendance_status',
         callback: function(response) {
@@ -290,17 +303,17 @@ function refreshAttendanceStatus() {
 // Test location permissions specifically
 window.testLocation = function() {
     console.log("🔧 Testing location access...");
-    
+
     if (!navigator.geolocation) {
         console.log("❌ Geolocation not supported");
         return;
     }
-    
+
     frappe.show_alert({
         message: 'Testing location access... Check for browser permission popup.',
         indicator: 'blue'
     });
-    
+
     navigator.geolocation.getCurrentPosition(
         function(position) {
             console.log("✅ Location test success:", position.coords);
@@ -325,18 +338,27 @@ window.testLocation = function() {
 };
 
 window.debugAttendance = function() {
-    console.log("=== Debug Info ===");
-    console.log("attendance_status:", frappe.boot.attendance_status);
+    console.log("=== Attendance Debug Info ===");
+    console.log("frappe.boot exists:", !!frappe.boot);
+    console.log("attendance_status:", frappe.boot?.attendance_status);
     console.log("Button exists:", $('#navbar-attendance-btn').length > 0);
-    console.log("Navbar brand:", $('.navbar-brand').length);
+    console.log("Navbar elements found:", $('.navbar').length);
+    console.log("Current user:", frappe.session.user);
     console.log("Geolocation supported:", !!navigator.geolocation);
-    
+
     // Test location permissions
     if (navigator.permissions) {
         navigator.permissions.query({name: 'geolocation'}).then(function(result) {
             console.log("Location permission state:", result.state);
         });
     }
-    
-    tryManualStatusCheck();
+
+    // Try to add button manually
+    if (frappe.boot?.attendance_status) {
+        addAttendanceButton();
+    } else {
+        tryManualStatusCheck();
+    }
 };
+
+console.log("🔧 Navbar Checkin: Functions defined, debugAttendance() available");

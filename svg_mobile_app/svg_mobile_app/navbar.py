@@ -116,11 +116,25 @@ def perform_attendance_action(action, latitude=None, longitude=None):
         }
 
     except Exception as e:
-        error_msg = f"Attendance action error: {str(e)}"
-        frappe.log_error(error_msg, "Navbar Attendance")
+        # Truncate error message to avoid character limit issues
+        error_str = str(e)
+        if len(error_str) > 100:
+            error_str = error_str[:100] + "..."
+        
+        frappe.log_error(f"Attendance error: {error_str}", "Navbar Attendance")
+        
+        # Handle specific duplicate log error
+        if "already has a log with the same timestamp" in str(e):
+            return {
+                'success': False,
+                'error': 'Duplicate entry detected. Please wait a moment before trying again.',
+                'message': 'You have already checked in/out recently. Please wait before trying again.'
+            }
+        
         return {
             'success': False,
-            'error': str(e)
+            'error': error_str,
+            'message': f'Attendance action failed: {error_str}'
         }
 
 @frappe.whitelist()

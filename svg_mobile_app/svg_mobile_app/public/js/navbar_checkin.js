@@ -103,18 +103,33 @@ function createERPNextStyleButton(attendanceData) {
 }
 
 function setupEventListeners() {
+    // Remove any existing event listeners to prevent duplicates
+    $(document).off('click', '.attendance-main-btn');
+    
     $(document).on('click', '.attendance-main-btn', function(e) {
         e.preventDefault();
+        
+        const $btn = $(this);
+        
+        // Prevent multiple clicks
+        if ($btn.prop('disabled') || $btn.hasClass('processing')) {
+            console.log("🔧 Button already processing, ignoring click");
+            return;
+        }
+        
         const action = $(this).data('action');
         
         // Add loading state to button
-        const $btn = $(this);
         const originalHtml = $btn.html();
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Getting Location...');
+        $btn.prop('disabled', true)
+            .addClass('processing')
+            .html('<i class="fa fa-spinner fa-spin"></i> Getting Location...');
         
         getLocationAndPerformCheckin(action, function() {
             // Reset button state
-            $btn.prop('disabled', false).html(originalHtml);
+            $btn.prop('disabled', false)
+                .removeClass('processing')
+                .html(originalHtml);
         });
     });
 }
@@ -188,10 +203,18 @@ function performCheckin(action, latitude, longitude, resetCallback) {
                     message: response.message.message,
                     indicator: 'green'
                 });
-                setTimeout(() => location.reload(), 1500);
+                
+                // Update button state instead of reloading page
+                setTimeout(() => {
+                    refreshAttendanceStatus();
+                }, 1000);
             } else {
+                const errorMsg = response.message ? 
+                    (response.message.message || response.message.error) : 
+                    'Failed to perform action';
+                
                 frappe.show_alert({
-                    message: response.message ? response.message.error : 'Failed to perform action',
+                    message: errorMsg,
                     indicator: 'red'
                 });
             }
@@ -215,6 +238,29 @@ function tryManualStatusCheck() {
                 frappe.boot.attendance_status = response.message;
                 addAttendanceButton();
             }
+        }
+    });
+}
+
+/**
+ * Refresh attendance status and update button
+ */
+function refreshAttendanceStatus() {
+    console.log("🔧 Refreshing attendance status...");
+    
+    frappe.call({
+        method: 'svg_mobile_app.svg_mobile_app.navbar.get_attendance_status',
+        callback: function(response) {
+            if (response.message) {
+                console.log("✅ Status refreshed:", response.message);
+                frappe.boot.attendance_status = response.message;
+                addAttendanceButton();
+            } else {
+                console.log("❌ Failed to refresh status");
+            }
+        },
+        error: function(error) {
+            console.log("❌ Error refreshing status:", error);
         }
     });
 }

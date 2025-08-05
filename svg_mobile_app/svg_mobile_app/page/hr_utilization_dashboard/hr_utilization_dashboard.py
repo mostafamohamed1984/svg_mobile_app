@@ -376,7 +376,7 @@ def get_status_indicators(attendance, leave):
     return indicators
 
 def detect_leave_conflicts_between_employees(processed_companies, date_list):
-    """Detect leave application conflicts between employees across all companies"""
+    """Detect leave application conflicts between employees in the same department"""
     conflicts = []
     
     # Collect all employees with their leave data across all companies
@@ -391,10 +391,12 @@ def detect_leave_conflicts_between_employees(processed_companies, date_list):
                 'daily_records': employee['daily_records']
             })
     
-    # Check for leave overlaps on each date
+    # Check for leave overlaps on each date, grouped by department
     for date in date_list:
         date_str = date.strftime('%Y-%m-%d')
-        employees_on_leave = []
+        
+        # Group employees on leave by department
+        department_employees_on_leave = {}
         
         # Find all employees on approved leave on this date
         for employee in all_employees:
@@ -402,20 +404,27 @@ def detect_leave_conflicts_between_employees(processed_companies, date_list):
                 if (daily_record['date'] == date_str and 
                     daily_record['leave'] and 
                     daily_record['leave'].status in ['HR Approved', 'Approved']):
-                    employees_on_leave.append({
+                    
+                    department = employee['department'] or 'No Department'
+                    if department not in department_employees_on_leave:
+                        department_employees_on_leave[department] = []
+                    
+                    department_employees_on_leave[department].append({
                         'employee': employee,
                         'leave': daily_record['leave']
                     })
         
-        # If multiple employees are on leave on the same date, it's a conflict
-        if len(employees_on_leave) > 1:
-            conflicts.append({
-                'date': date_str,
-                'type': 'multiple_employees_on_leave',
-                'priority': 'high',
-                'description': f'{len(employees_on_leave)} employees have approved leave on the same date',
-                'employees': employees_on_leave
-            })
+        # Check each department for conflicts (2+ employees on leave same day)
+        for department, employees_on_leave in department_employees_on_leave.items():
+            if len(employees_on_leave) > 1:
+                conflicts.append({
+                    'date': date_str,
+                    'type': 'department_leave_conflict',
+                    'priority': 'high',
+                    'description': f'{len(employees_on_leave)} employees in {department} department have approved leave on the same date',
+                    'department': department,
+                    'employees': employees_on_leave
+                })
     
     return conflicts
 

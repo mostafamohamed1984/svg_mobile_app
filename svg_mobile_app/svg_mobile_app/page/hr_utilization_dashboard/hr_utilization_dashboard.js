@@ -667,7 +667,7 @@ class HRUtilizationDashboard {
                 <div class="unified-section">
                     <div class="unified-header">
                         <h5>
-                            📊 All Companies - Leave Conflicts Overview
+                            📊 All Companies - Department Leave Conflicts Overview
                             <span class="badge badge-secondary">${total_employees} total employees</span>
                             <span class="badge badge-danger">${total_conflicts} total conflicts</span>
                         </h5>
@@ -1384,7 +1384,7 @@ class HRUtilizationDashboard {
                     </div>
                     
                     <div class="conflicts-section">
-                        <h6>Leave Conflicts Found (${daily_record.conflicts.length})</h6>
+                        <h6>Department Leave Conflicts Found (${daily_record.conflicts.length})</h6>
             `;
             
             daily_record.conflicts.forEach((conflict, index) => {
@@ -1745,7 +1745,7 @@ class HRUtilizationDashboard {
                             <select class="form-control conflict-filter-type">
                                 <option value="">All Types</option>
                                 <option value="attendance_leave_conflict">Attendance vs Leave</option>
-                                <option value="multiple_employees_on_leave">Multiple Employees on Leave</option>
+                                <option value="department_leave_conflict">Department Leave Conflicts</option>
                             </select>
                         </div>
                     </div>

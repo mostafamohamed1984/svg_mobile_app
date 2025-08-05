@@ -149,13 +149,15 @@ function getLocationAndPerformCheckin(action, resetCallback) {
     
     console.log("🔧 Requesting geolocation...");
     
-    // Show loading message
+    // Show loading message with instructions
     frappe.show_alert({
-        message: 'Getting your location... Please allow location access.',
+        message: 'Requesting location access... Please allow when prompted by your browser.',
         indicator: 'blue'
     });
     
-    navigator.geolocation.getCurrentPosition(
+    // Add a small delay to ensure the alert is visible before the permission popup
+    setTimeout(() => {
+        navigator.geolocation.getCurrentPosition(
         function(position) {
             console.log("✅ Location success:", position.coords.latitude, position.coords.longitude);
             performCheckin(action, position.coords.latitude, position.coords.longitude, resetCallback);
@@ -192,7 +194,8 @@ function getLocationAndPerformCheckin(action, resetCallback) {
             timeout: 15000,  // Increased timeout
             maximumAge: 300000  // Allow cached location up to 5 minutes
         }
-    );
+        );
+    }, 500); // 500ms delay before requesting location
 }
 
 function performCheckin(action, latitude, longitude, resetCallback) {
@@ -284,10 +287,56 @@ function refreshAttendanceStatus() {
     });
 }
 
+// Test location permissions specifically
+window.testLocation = function() {
+    console.log("🔧 Testing location access...");
+    
+    if (!navigator.geolocation) {
+        console.log("❌ Geolocation not supported");
+        return;
+    }
+    
+    frappe.show_alert({
+        message: 'Testing location access... Check for browser permission popup.',
+        indicator: 'blue'
+    });
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            console.log("✅ Location test success:", position.coords);
+            frappe.show_alert({
+                message: `Location: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`,
+                indicator: 'green'
+            });
+        },
+        function(error) {
+            console.error("❌ Location test error:", error);
+            frappe.show_alert({
+                message: `Location error: ${error.message}`,
+                indicator: 'red'
+            });
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 60000
+        }
+    );
+};
+
 window.debugAttendance = function() {
     console.log("=== Debug Info ===");
     console.log("attendance_status:", frappe.boot.attendance_status);
     console.log("Button exists:", $('#navbar-attendance-btn').length > 0);
     console.log("Navbar brand:", $('.navbar-brand').length);
+    console.log("Geolocation supported:", !!navigator.geolocation);
+    
+    // Test location permissions
+    if (navigator.permissions) {
+        navigator.permissions.query({name: 'geolocation'}).then(function(result) {
+            console.log("Location permission state:", result.state);
+        });
+    }
+    
     tryManualStatusCheck();
 };

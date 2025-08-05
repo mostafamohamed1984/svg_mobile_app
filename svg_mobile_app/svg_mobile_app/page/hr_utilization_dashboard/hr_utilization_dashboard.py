@@ -49,8 +49,6 @@ def get_utilization_data(filters=None):
     department = filters.get('department')
     leave_type = filters.get('leave_type')
     status = filters.get('status')
-    overtime_status = filters.get('overtime_status')
-    shift_status = filters.get('shift_status')
     conflicts_only = filters.get('conflicts_only')
     employee = filters.get('employee')
 
@@ -61,12 +59,10 @@ def get_utilization_data(filters=None):
         # Get all HR data for the date range
         attendance_data = get_attendance_data(from_date, to_date, company, department, employee)
         leave_data = get_leave_data(from_date, to_date, company, department, leave_type, status, employee)
-        shift_data = get_shift_request_data(from_date, to_date, company, department, shift_status, employee)
-        overtime_data = get_overtime_request_data(from_date, to_date, company, department, overtime_status, employee)
         
         # Process data and detect conflicts
         processed_data = process_utilization_data(
-            companies_data, attendance_data, leave_data, shift_data, overtime_data, from_date, to_date
+            companies_data, attendance_data, leave_data, from_date, to_date
         )
         
         return {
@@ -247,111 +243,9 @@ def get_leave_data(from_date, to_date, company=None, department=None, leave_type
 
     return frappe.db.sql(query, tuple(params), as_dict=True)
 
-def get_shift_request_data(from_date, to_date, company=None, department=None, status=None, employee=None):
-    """Get shift request data"""
-    
-    conditions = []
-    params = [from_date, to_date, from_date, to_date, from_date, to_date]
 
-    if company:
-        conditions.append("e.company = %s")
-        params.append(company)
 
-    if department:
-        conditions.append("e.department = %s")
-        params.append(department)
-
-    if status:
-        conditions.append("sr.status = %s")
-        params.append(status)
-
-    if employee:
-        conditions.append("sr.employee = %s")
-        params.append(employee)
-
-    where_clause = " AND ".join(conditions) if conditions else ""
-    if where_clause:
-        where_clause = " AND " + where_clause
-
-    query = f"""
-        SELECT
-            sr.name as shift_request_id,
-            sr.employee,
-            sr.employee_name,
-            sr.from_date,
-            sr.to_date,
-            sr.shift_type,
-            sr.status,
-            sr.custom_manager_approved_by,
-            sr.custom_manager_approved_on,
-            e.company,
-            e.department
-        FROM `tabShift Request` sr
-        LEFT JOIN `tabEmployee` e ON sr.employee = e.name
-        WHERE sr.docstatus != 2
-        AND (
-            (sr.from_date BETWEEN %s AND %s) OR
-            (sr.to_date BETWEEN %s AND %s) OR
-            (sr.from_date <= %s AND sr.to_date >= %s)
-        )
-        AND e.status = 'Active'
-        {where_clause}
-        ORDER BY sr.from_date, sr.employee
-    """
-
-    return frappe.db.sql(query, tuple(params), as_dict=True)
-
-def get_overtime_request_data(from_date, to_date, company=None, department=None, status=None, employee=None):
-    """Get overtime request data"""
-    
-    conditions = []
-    params = [from_date, to_date]
-
-    if company:
-        conditions.append("e.company = %s")
-        params.append(company)
-
-    if department:
-        conditions.append("e.department = %s")
-        params.append(department)
-
-    if status:
-        conditions.append("ot.status = %s")
-        params.append(status)
-
-    if employee:
-        conditions.append("ot.employee = %s")
-        params.append(employee)
-
-    where_clause = " AND ".join(conditions) if conditions else ""
-    if where_clause:
-        where_clause = " AND " + where_clause
-
-    query = f"""
-        SELECT
-            ot.name as overtime_request_id,
-            ot.employee,
-            ot.employee_name,
-            ot.day_of_overtime,
-            ot.time_from,
-            ot.time_to,
-            ot.duration,
-            ot.status,
-            ot.reason,
-            e.company,
-            e.department
-        FROM `tabOvertime Request` ot
-        LEFT JOIN `tabEmployee` e ON ot.employee = e.name
-        WHERE ot.docstatus != 2
-        AND ot.day_of_overtime BETWEEN %s AND %s
-        AND e.status = 'Active'
-        {where_clause}
-        ORDER BY ot.day_of_overtime, ot.employee
-    """
-
-    return frappe.db.sql(query, tuple(params), as_dict=True)
-
-def process_utilization_data(companies_data, attendance_data, leave_data, shift_data, overtime_data, from_date, to_date):
+def process_utilization_data(companies_data, attendance_data, leave_data, from_date, to_date):
     """Process and format data for frontend consumption"""
     
     # Convert data to dictionaries for faster lookup
@@ -367,17 +261,7 @@ def process_utilization_data(companies_data, attendance_data, leave_data, shift_
             leave_dict[emp_id] = []
         leave_dict[emp_id].append(leave)
 
-    shift_dict = {}
-    for shift in shift_data:
-        emp_id = shift.employee
-        if emp_id not in shift_dict:
-            shift_dict[emp_id] = []
-        shift_dict[emp_id].append(shift)
 
-    overtime_dict = {}
-    for overtime in overtime_data:
-        key = f"{overtime.employee}_{overtime.day_of_overtime}"
-        overtime_dict[key] = overtime
 
     # Generate date range
     start_date = getdate(from_date)
@@ -409,7 +293,7 @@ def process_utilization_data(companies_data, attendance_data, leave_data, shift_
             for date in date_list:
                 date_str = date.strftime('%Y-%m-%d')
                 daily_record = process_daily_record(
-                    emp_id, date, date_str, attendance_dict, leave_dict, shift_dict, overtime_dict
+                    emp_id, date, date_str, attendance_dict, leave_dict
                 )
                 employee_data['daily_records'].append(daily_record)
                 
@@ -427,13 +311,17 @@ def process_utilization_data(companies_data, attendance_data, leave_data, shift_
             'employees': processed_employees
         })
     
+    # Detect leave conflicts between employees across all companies
+    leave_conflicts = detect_leave_conflicts_between_employees(processed_companies, date_list)
+    
     return {
         'companies': processed_companies,
         'date_range': date_list,
-        'summary': calculate_summary(processed_companies)
+        'summary': calculate_summary(processed_companies),
+        'leave_conflicts': leave_conflicts
     }
 
-def process_daily_record(emp_id, date, date_str, attendance_dict, leave_dict, shift_dict, overtime_dict):
+def process_daily_record(emp_id, date, date_str, attendance_dict, leave_dict):
     """Process a single day record for an employee"""
     
     # Get attendance for this date
@@ -448,36 +336,23 @@ def process_daily_record(emp_id, date, date_str, attendance_dict, leave_dict, sh
                 leave_on_date = leave
                 break
     
-    # Check for shift request on this date
-    shift_on_date = None
-    if emp_id in shift_dict:
-        for shift in shift_dict[emp_id]:
-            if shift.from_date <= date <= shift.to_date:
-                shift_on_date = shift
-                break
-    
-    # Check for overtime request on this date
-    ot_key = f"{emp_id}_{date_str}"
-    overtime_on_date = overtime_dict.get(ot_key)
-    
     # Detect conflicts
-    conflicts = detect_daily_conflicts(attendance, leave_on_date, shift_on_date, overtime_on_date, date_str)
+    conflicts = detect_daily_conflicts(attendance, leave_on_date, date_str)
     
     return {
         'date': date_str,
         'attendance': attendance,
         'leave': leave_on_date,
-        'shift_request': shift_on_date,
-        'overtime_request': overtime_on_date,
         'conflicts': conflicts,
-        'status_indicators': get_status_indicators(attendance, leave_on_date, shift_on_date, overtime_on_date)
+        'status_indicators': get_status_indicators(attendance, leave_on_date)
     }
 
-def detect_daily_conflicts(attendance, leave, shift_request, overtime, date_str):
+def detect_daily_conflicts(attendance, leave, date_str):
     """Detect conflicts for a single day"""
     conflicts = []
     
-    # High Priority Conflicts
+    # Only focus on leave-related conflicts now
+    # Attendance vs approved leave conflict
     if attendance and leave and leave.status in ['HR Approved', 'Approved']:
         conflicts.append({
             'type': 'attendance_vs_approved_leave',
@@ -486,43 +361,9 @@ def detect_daily_conflicts(attendance, leave, shift_request, overtime, date_str)
             'date': date_str
         })
     
-    if leave and overtime and leave.status in ['HR Approved', 'Approved'] and overtime.status in ['Approved']:
-        conflicts.append({
-            'type': 'leave_vs_overtime',
-            'priority': 'high',
-            'description': f'Employee has approved leave and approved overtime on same date',
-            'date': date_str
-        })
-    
-    # Medium Priority Conflicts
-    if not attendance and not leave and not shift_request:
-        conflicts.append({
-            'type': 'unexplained_absence',
-            'priority': 'medium',
-            'description': 'Employee absent with no leave or shift request',
-            'date': date_str
-        })
-    
-    if leave and leave.status == 'Rejected' and not attendance:
-        conflicts.append({
-            'type': 'rejected_leave_but_absent',
-            'priority': 'medium',
-            'description': 'Employee absent despite rejected leave request',
-            'date': date_str
-        })
-    
-    # Low Priority Conflicts
-    if shift_request and shift_request.status == 'Requested' and attendance:
-        conflicts.append({
-            'type': 'pending_shift_uncertainty',
-            'priority': 'low',
-            'description': 'Employee attended with pending shift request',
-            'date': date_str
-        })
-    
     return conflicts
 
-def get_status_indicators(attendance, leave, shift_request, overtime):
+def get_status_indicators(attendance, leave):
     """Get visual status indicators for the day"""
     indicators = []
     
@@ -532,13 +373,51 @@ def get_status_indicators(attendance, leave, shift_request, overtime):
     if leave and leave.status in ['HR Approved', 'Approved']:
         indicators.append('L')  # On Leave
     
-    if shift_request and shift_request.status in ['Approved']:
-        indicators.append('S')  # Shift Request
-    
-    if overtime and overtime.status in ['Approved']:
-        indicators.append('O')  # Overtime
-    
     return indicators
+
+def detect_leave_conflicts_between_employees(processed_companies, date_list):
+    """Detect leave application conflicts between employees across all companies"""
+    conflicts = []
+    
+    # Collect all employees with their leave data across all companies
+    all_employees = []
+    for company in processed_companies:
+        for employee in company['employees']:
+            all_employees.append({
+                'employee_id': employee['employee_id'],
+                'employee_name': employee['employee_name'],
+                'company': company['company_name'],
+                'department': employee['department'],
+                'daily_records': employee['daily_records']
+            })
+    
+    # Check for leave overlaps on each date
+    for date in date_list:
+        date_str = date.strftime('%Y-%m-%d')
+        employees_on_leave = []
+        
+        # Find all employees on approved leave on this date
+        for employee in all_employees:
+            for daily_record in employee['daily_records']:
+                if (daily_record['date'] == date_str and 
+                    daily_record['leave'] and 
+                    daily_record['leave'].status in ['HR Approved', 'Approved']):
+                    employees_on_leave.append({
+                        'employee': employee,
+                        'leave': daily_record['leave']
+                    })
+        
+        # If multiple employees are on leave on the same date, it's a conflict
+        if len(employees_on_leave) > 1:
+            conflicts.append({
+                'date': date_str,
+                'type': 'multiple_employees_on_leave',
+                'priority': 'high',
+                'description': f'{len(employees_on_leave)} employees have approved leave on the same date',
+                'employees': employees_on_leave
+            })
+    
+    return conflicts
 
 def calculate_summary(companies_data):
     """Calculate summary statistics"""
@@ -595,17 +474,13 @@ def get_conflict_details(employee, date):
         
         attendance_data = get_attendance_data(date, date, employee=employee)
         leave_data = get_leave_data(date, date, employee=employee)
-        shift_data = get_shift_request_data(date, date, employee=employee)
-        overtime_data = get_overtime_request_data(date, date, employee=employee)
         
         return {
             'success': True,
             'employee': employee,
             'date': date,
             'attendance': attendance_data,
-            'leave': leave_data,
-            'shift_requests': shift_data,
-            'overtime_requests': overtime_data
+            'leave': leave_data
         }
         
     except Exception as e:
@@ -624,9 +499,7 @@ def create_daily_record(employee, date_str):
             'status_indicators': [],
             'conflicts': [],
             'attendance': None,
-            'leave': None,
-            'shift_request': None,
-            'overtime_request': None
+            'leave': None
         }
         
         # Check attendance
@@ -641,17 +514,7 @@ def create_daily_record(employee, date_str):
             daily_record['leave'] = leave
             daily_record['status_indicators'].append('L')
         
-        # Check shift requests
-        shift_request = get_shift_request_for_date(employee.get('employee_id'), date_str)
-        if shift_request:
-            daily_record['shift_request'] = shift_request
-            daily_record['status_indicators'].append('S')
-        
-        # Check overtime requests
-        overtime_request = get_overtime_request_for_date(employee.get('employee_id'), date_str)
-        if overtime_request:
-            daily_record['overtime_request'] = overtime_request
-            daily_record['status_indicators'].append('O')
+
         
         # Detect conflicts
         conflicts = detect_record_conflicts(daily_record)
@@ -667,9 +530,7 @@ def create_daily_record(employee, date_str):
             'status_indicators': [],
             'conflicts': [],
             'attendance': None,
-            'leave': None,
-            'shift_request': None,
-            'overtime_request': None
+            'leave': None
         }
 
 def get_attendance_for_date(employee_id, date_str):
@@ -722,58 +583,7 @@ def get_leave_for_date(employee_id, date_str):
         frappe.log_error(f"Error getting leave data: {str(e)}", "HR Utilization Dashboard")
         return None
 
-def get_shift_request_for_date(employee_id, date_str):
-    """Get shift request data for a specific employee and date"""
-    try:
-        shift_data = frappe.db.sql("""
-            SELECT 
-                name,
-                shift_type,
-                from_date,
-                to_date,
-                status
-            FROM `tabShift Request`
-            WHERE employee = %s 
-            AND %s BETWEEN from_date AND to_date
-            AND status IN ('Approved', 'Open')
-            ORDER BY creation DESC
-            LIMIT 1
-        """, (employee_id, date_str), as_dict=True)
-        
-        if shift_data:
-            return shift_data[0]
-        return None
-        
-    except Exception as e:
-        frappe.log_error(f"Error getting shift request: {str(e)}", "HR Utilization Dashboard")
-        return None
 
-def get_overtime_request_for_date(employee_id, date_str):
-    """Get overtime request data for a specific employee and date"""
-    try:
-        overtime_data = frappe.db.sql("""
-            SELECT 
-                name,
-                duration,
-                time_from,
-                time_to,
-                status,
-                reason
-            FROM `tabOvertime Request`
-            WHERE employee = %s 
-            AND DATE(date) = %s
-            AND status IN ('Approved', 'Open')
-            ORDER BY creation DESC
-            LIMIT 1
-        """, (employee_id, date_str), as_dict=True)
-        
-        if overtime_data:
-            return overtime_data[0]
-        return None
-        
-    except Exception as e:
-        frappe.log_error(f"Error getting overtime request: {str(e)}", "HR Utilization Dashboard")
-        return None
 
 def detect_record_conflicts(daily_record):
     """Detect conflicts in a daily record"""
@@ -795,29 +605,7 @@ def detect_record_conflicts(daily_record):
                     'description': f"Employee attended work with pending {daily_record['leave']['leave_type']} leave request"
                 })
         
-        # Conflict 2: Leave + Overtime (Medium Priority)
-        if daily_record['leave'] and daily_record['overtime_request']:
-            conflicts.append({
-                'type': 'leave_overtime_conflict',
-                'priority': 'medium',
-                'description': f"Overtime request during {daily_record['leave']['leave_type']} leave period"
-            })
-        
-        # Conflict 3: Multiple Shift Requests (Low Priority)
-        if daily_record['shift_request'] and daily_record['overtime_request']:
-            conflicts.append({
-                'type': 'shift_overtime_conflict',
-                'priority': 'low',
-                'description': f"Overtime request with active shift request ({daily_record['shift_request']['shift_type']})"
-            })
-        
-        # Conflict 4: No Attendance but Overtime (Medium Priority)
-        if daily_record['overtime_request'] and not daily_record['attendance'] and not daily_record['leave']:
-            conflicts.append({
-                'type': 'overtime_no_attendance',
-                'priority': 'medium',
-                'description': f"Overtime request ({daily_record['overtime_request']['duration']} hours) without attendance record"
-            })
+
         
         return conflicts
         

@@ -140,14 +140,20 @@ function getLocationAndPerformCheckin(action, resetCallback) {
     if (!navigator.geolocation) {
         console.log("❌ Geolocation not supported");
         frappe.show_alert({
-            message: 'Using default location (Geolocation not supported)',
-            indicator: 'orange'
+            message: 'Geolocation is not supported by this browser. Cannot proceed with attendance.',
+            indicator: 'red'
         });
-        performCheckin(action, 25.276987, 55.296249, resetCallback);
+        if (resetCallback) resetCallback();
         return;
     }
     
     console.log("🔧 Requesting geolocation...");
+    
+    // Show loading message
+    frappe.show_alert({
+        message: 'Getting your location... Please allow location access.',
+        indicator: 'blue'
+    });
     
     navigator.geolocation.getCurrentPosition(
         function(position) {
@@ -157,21 +163,34 @@ function getLocationAndPerformCheckin(action, resetCallback) {
         function(error) {
             console.error("❌ Location error:", error);
             
-            frappe.confirm(
-                'Unable to get your location. Would you like to proceed with default location?',
-                function() {
-                    performCheckin(action, 25.276987, 55.296249, resetCallback);
-                },
-                function() {
-                    frappe.show_alert({ message: 'Checkin cancelled', indicator: 'red' });
-                    if (resetCallback) resetCallback();
-                }
-            );
+            let errorMessage = 'Unable to get your location. ';
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage += 'Location access was denied. Please enable location permissions and try again.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage += 'Location information is unavailable. Please check your GPS/location settings.';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage += 'Location request timed out. Please try again.';
+                    break;
+                default:
+                    errorMessage += 'An unknown error occurred while getting location.';
+                    break;
+            }
+            
+            frappe.show_alert({
+                message: errorMessage,
+                indicator: 'red'
+            });
+            
+            if (resetCallback) resetCallback();
         },
         {
             enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000
+            timeout: 15000,  // Increased timeout
+            maximumAge: 300000  // Allow cached location up to 5 minutes
         }
     );
 }

@@ -93,16 +93,33 @@ def perform_attendance_action(action, latitude=None, longitude=None):
             'device_id': 'Navbar Button'
         })
 
-        # Add GPS coordinates if valid
-        if lat_float is not None and lng_float is not None:
-            checkin_doc.latitude = lat_float
-            checkin_doc.longitude = lng_float
-            frappe.log_error(f"Setting coordinates - lat: {lat_float}, lng: {lng_float}", "Navbar Debug")
-        else:
-            # Set default coordinates if none provided (you may want to change these)
-            checkin_doc.latitude = 0.0
-            checkin_doc.longitude = 0.0
-            frappe.log_error("Using default coordinates 0,0", "Navbar Debug")
+        # Validate and set geolocation - make it mandatory
+        if lat_float is None or lng_float is None:
+            return {
+                'success': False,
+                'error': 'Location coordinates are required for attendance.',
+                'message': 'Please enable location access and try again.'
+            }
+        
+        # Basic validation - ensure coordinates are reasonable
+        if lat_float == 0.0 and lng_float == 0.0:
+            return {
+                'success': False,
+                'error': 'Invalid location coordinates.',
+                'message': 'Please ensure location services are enabled and try again.'
+            }
+        
+        # Validate latitude and longitude ranges
+        if not (-90 <= lat_float <= 90) or not (-180 <= lng_float <= 180):
+            return {
+                'success': False,
+                'error': 'Invalid location coordinates.',
+                'message': 'Location coordinates are out of valid range.'
+            }
+        
+        checkin_doc.latitude = lat_float
+        checkin_doc.longitude = lng_float
+        frappe.log_error(f"Setting valid coordinates - lat: {lat_float}, lng: {lng_float}", "Navbar Debug")
 
         # Try to save the document
         checkin_doc.insert()

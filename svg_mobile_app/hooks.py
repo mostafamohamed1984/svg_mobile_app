@@ -25,8 +25,13 @@ app_license = "mit"
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/svg_mobile_app/css/team_tasks_kanban.css"
-# app_include_js = "/assets/svg_mobile_app/js/svg_mobile_app.js"
+app_include_css = [
+    "/assets/svg_mobile_app/css/team_tasks_kanban.css",
+    "/assets/svg_mobile_app/css/navbar_checkin.css"
+]
+app_include_js = [
+    "/assets/svg_mobile_app/js/navbar_checkin.js"
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/svg_mobile_app/css/svg_mobile_app.css"
@@ -117,6 +122,10 @@ doctype_kanban_js = {
 # See frappe.core.notifications.get_notification_config
 
 # notification_config = "svg_mobile_app.notifications.get_notification_config"
+
+# Extend Bootinfo for navbar functionality
+# ----------------------------------------
+extend_bootinfo = "svg_mobile_app.svg_mobile_app.navbar.get_attendance_info"
 
 # Permissions
 # -----------

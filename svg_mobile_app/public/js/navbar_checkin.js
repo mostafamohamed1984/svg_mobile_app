@@ -1,246 +1,243 @@
 /**
- * Navbar Attendance Checkin/Checkout Button with GPS Location
+ * Navbar Attendance Checkin/Checkout Button
+ * Adds dynamic attendance functionality to the navbar
  */
 
 $(document).ready(function() {
     console.log("🔧 Navbar Checkin: Script loaded");
-    
+
+    // Wait for navbar and bootinfo to load
     setTimeout(function() {
-        console.log("🔧 Checking bootinfo...");
+        console.log("🔧 Navbar Checkin: Checking bootinfo...");
+        console.log("🔧 frappe.boot exists:", !!frappe.boot);
+        console.log("🔧 attendance_status exists:", !!(frappe.boot && frappe.boot.attendance_status));
+
         if (frappe.boot && frappe.boot.attendance_status) {
-            console.log("✅ Found attendance status, adding button");
+            console.log("🔧 Navbar Checkin: Adding button...");
             addAttendanceButton();
         } else {
-            console.log("❌ No attendance status, trying manual check");
+            console.log("❌ Navbar Checkin: No attendance status found, trying manual check...");
             tryManualStatusCheck();
         }
-    }, 1500);
+    }, 2000);
 });
 
+/**
+ * Add attendance button to navbar
+ */
 function addAttendanceButton() {
-    if (!frappe.boot.attendance_status) return;
-    
+    if ($('#navbar-attendance-btn').length > 0) {
+        console.log("🔧 Button already exists, updating...");
+        $('#navbar-attendance-btn').remove();
+    }
+
     const attendanceData = frappe.boot.attendance_status;
     console.log("Attendance data:", attendanceData);
+
+    // Create ERPNext-style button
+    const buttonHtml = createERPNextStyleButton(attendanceData);
     
-    $('#navbar-attendance-btn').remove();
-    
-    const buttonHtml = createAttendanceButtonHTML(attendanceData);
-    const navbar = $('.navbar-nav.navbar-right, .navbar-nav:last-child');
-    
-    if (navbar.length > 0) {
-        navbar.prepend(buttonHtml);
-        console.log("✅ Button added successfully");
-        setupEventListeners();
-    } else {
-        console.log("❌ Could not find navbar");
+    // Try multiple positioning strategies to find the navbar
+    const navbarSelectors = ['.navbar-home', '.navbar-brand', '.navbar-header', '.navbar'];
+    let buttonAdded = false;
+
+    for (const selector of navbarSelectors) {
+        const $navbar = $(selector).first();
+        if ($navbar.length > 0) {
+            $navbar.after(`<div class="navbar-attendance-container">${buttonHtml}</div>`);
+            buttonAdded = true;
+            console.log(`✅ Navbar Checkin: Button added successfully using ${selector}`);
+            break;
+        }
     }
-}
 
-function createAttendanceButtonHTML(attendanceData) {
-    const statusClass = attendanceData.can_checkin ? 'success' : 'warning';
-    const statusText = attendanceData.can_checkin ? 'Check In' : 'Check Out';
-    const statusIcon = attendanceData.can_checkin ? 'fa-sign-in' : 'fa-sign-out';
-    
-    return `
-        <li class="dropdown" id="navbar-attendance-btn">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                <i class="fa ${statusIcon}"></i>
-                <span class="hidden-xs">${statusText}</span>
-                <span class="badge badge-${statusClass}">${attendanceData.current_status}</span>
-            </a>
-            <ul class="dropdown-menu">
-                <li class="dropdown-header">Attendance Status</li>
-                <li><a href="#" class="attendance-action" data-action="checkin" ${!attendanceData.can_checkin ? 'style="display:none"' : ''}>
-                    <i class="fa fa-sign-in"></i> Check In
-                </a></li>
-                <li><a href="#" class="attendance-action" data-action="checkout" ${!attendanceData.can_checkout ? 'style="display:none"' : ''}>
-                    <i class="fa fa-sign-out"></i> Check Out
-                </a></li>
-                <li class="divider"></li>
-                <li><a href="/app/employee-checkin"><i class="fa fa-list"></i> View History</a></li>
-            </ul>
-        </li>
-    `;
-}
+    if (!buttonAdded) {
+        console.log("❌ Could not find suitable navbar element");
+        return;
+    }
 
-function setupEventListeners() {
-    $(document).on('click', '.attendance-action', function(e) {
+    // Add click event listener
+    $(document).on('click', '.attendance-main-btn', function(e) {
         e.preventDefault();
         const action = $(this).data('action');
+        console.log("🔧 Performing attendance action:", action);
         
-        // Show loading immediately
-        frappe.show_alert({
-            message: 'Getting your location...',
-            indicator: 'blue'
-        });
-        
-        getLocationAndPerformCheckin(action);
+        if (action === 'checkin') {
+            performCheckinWithLocation();
+        } else if (action === 'checkout') {
+            performAttendanceAction('checkout');
+        }
     });
 }
 
-function getLocationAndPerformCheckin(action) {
-    console.log("🔧 Getting location for action:", action);
+/**
+ * Create ERPNext-style button HTML
+ */
+function createERPNextStyleButton(attendanceData) {
+    const canCheckin = attendanceData.can_checkin;
+    const canCheckout = attendanceData.can_checkout;
+    const currentStatus = attendanceData.current_status || 'Unknown';
     
-    // Check if geolocation is supported
-    if (!navigator.geolocation) {
-        console.log("❌ Geolocation not supported");
-        frappe.show_alert({
-            message: 'Geolocation is not supported by this browser. Using default location.',
-            indicator: 'orange'
-        });
-        // Use default coordinates
-        performCheckin(action, 25.276987, 55.296249); // Dubai coordinates as default
-        return;
+    let buttonClass, buttonText, buttonIcon, statusBadge, action;
+    
+    if (canCheckin) {
+        buttonClass = 'btn-success';
+        buttonText = 'Check In';
+        buttonIcon = 'fa-sign-in';
+        statusBadge = currentStatus;
+        action = 'checkin';
+    } else if (canCheckout) {
+        buttonClass = 'btn-warning';
+        buttonText = 'Check Out';
+        buttonIcon = 'fa-sign-out';
+        statusBadge = currentStatus;
+        action = 'checkout';
+    } else {
+        buttonClass = 'btn-secondary';
+        buttonText = 'Attendance';
+        buttonIcon = 'fa-clock-o';
+        statusBadge = currentStatus;
+        action = 'view';
     }
-    
-    console.log("🔧 Requesting geolocation...");
-    
-    // Get current position with detailed options
-    navigator.geolocation.getCurrentPosition(
-        function(position) {
-            console.log("✅ Location success:", position);
-            console.log("✅ Coordinates:", position.coords.latitude, position.coords.longitude);
-            
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            
-            console.log("🔧 Calling performCheckin with:", lat, lng);
-            performCheckin(action, lat, lng);
-        },
-        function(error) {
-            console.error("❌ Location error:", error);
-            console.log("Error code:", error.code);
-            console.log("Error message:", error.message);
-            
-            let errorMessage = 'Location error: ';
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    errorMessage += "Permission denied. Please allow location access and try again.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    errorMessage += "Position unavailable.";
-                    break;
-                case error.TIMEOUT:
-                    errorMessage += "Request timeout.";
-                    break;
-                default:
-                    errorMessage += "Unknown error occurred.";
-                    break;
-            }
-            
-            frappe.confirm(
-                errorMessage + ' Would you like to proceed with default location?',
-                function() {
-                    // Use default coordinates (Dubai)
-                    console.log("🔧 Using default coordinates");
-                    performCheckin(action, 25.276987, 55.296249);
-                },
-                function() {
-                    frappe.show_alert({
-                        message: 'Checkin cancelled',
-                        indicator: 'red'
-                    });
-                }
-            );
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 60000
-        }
-    );
+
+    return `
+        <button class="btn ${buttonClass} btn-sm attendance-main-btn navbar-btn" 
+                data-action="${action}" 
+                title="Current Status: ${currentStatus}">
+            <i class="fa ${buttonIcon}"></i>
+            <span class="hidden-xs">${buttonText}</span>
+            <span class="attendance-status-badge badge badge-light">${statusBadge}</span>
+        </button>
+    `;
 }
 
-function performCheckin(action, latitude, longitude) {
-    console.log("🔧 performCheckin called with:");
-    console.log("  action:", action);
-    console.log("  latitude:", latitude);
-    console.log("  longitude:", longitude);
-    console.log("  latitude type:", typeof latitude);
-    console.log("  longitude type:", typeof longitude);
+/**
+ * Perform checkin with geolocation
+ */
+function performCheckinWithLocation() {
+    const $button = $('.attendance-main-btn');
+    $button.addClass('attendance-loading').prop('disabled', true);
     
-    // Ensure coordinates are numbers
-    const lat = parseFloat(latitude);
-    const lng = parseFloat(longitude);
-    
-    console.log("🔧 Converted coordinates:");
-    console.log("  lat:", lat);
-    console.log("  lng:", lng);
-    
-    if (isNaN(lat) || isNaN(lng)) {
-        console.error("❌ Invalid coordinates:", lat, lng);
+    if (navigator.geolocation) {
+        console.log("🔧 Requesting geolocation...");
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                console.log("🔧 Geolocation success:", position.coords);
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                performAttendanceAction('checkin', latitude, longitude);
+            },
+            function(error) {
+                console.log("❌ Geolocation error:", error);
+                frappe.show_alert({
+                    message: 'Location access denied. Using default location.',
+                    indicator: 'orange'
+                });
+                // Use default coordinates (Dubai)
+                performAttendanceAction('checkin', 25.2048, 55.2708);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
+            }
+        );
+    } else {
+        console.log("❌ Geolocation not supported");
         frappe.show_alert({
-            message: 'Invalid location coordinates',
-            indicator: 'red'
+            message: 'Geolocation not supported. Using default location.',
+            indicator: 'orange'
         });
-        return;
+        // Use default coordinates (Dubai)
+        performAttendanceAction('checkin', 25.2048, 55.2708);
     }
+}
+
+/**
+ * Perform attendance action (checkin/checkout)
+ */
+function performAttendanceAction(action, latitude, longitude) {
+    const $button = $('.attendance-main-btn');
+    $button.addClass('attendance-loading').prop('disabled', true);
     
     frappe.call({
         method: 'svg_mobile_app.svg_mobile_app.navbar.perform_attendance_action',
         args: {
             action: action,
-            latitude: lat,
-            longitude: lng
+            latitude: latitude,
+            longitude: longitude
         },
         callback: function(response) {
-            console.log("✅ API Response:", response);
+            $button.removeClass('attendance-loading').prop('disabled', false);
+            
             if (response.message && response.message.success) {
                 frappe.show_alert({
-                    message: response.message.message,
+                    message: response.message.message || `${action} successful!`,
                     indicator: 'green'
                 });
-                setTimeout(() => location.reload(), 1500);
+                
+                // Refresh attendance status and update button
+                setTimeout(function() {
+                    tryManualStatusCheck();
+                }, 1000);
             } else {
                 frappe.show_alert({
-                    message: response.message ? response.message.error : 'Failed to perform action',
+                    message: response.message?.message || `${action} failed!`,
                     indicator: 'red'
                 });
             }
         },
         error: function(error) {
-            console.error("❌ API Error:", error);
+            $button.removeClass('attendance-loading').prop('disabled', false);
+            console.log("Attendance action error:", error);
             frappe.show_alert({
-                message: 'Error performing checkin: ' + (error.message || 'Unknown error'),
+                message: `${action} failed! Please try again.`,
                 indicator: 'red'
             });
         }
     });
 }
 
+/**
+ * Try manual status check if bootinfo doesn't have attendance status
+ */
 function tryManualStatusCheck() {
-    console.log("🔧 Trying manual status check");
+    console.log("🔧 Trying manual status check...");
+    
     frappe.call({
         method: 'svg_mobile_app.svg_mobile_app.navbar.get_attendance_status',
         callback: function(response) {
-            console.log("Manual status response:", response);
-            if (response.message && !response.message.error) {
+            console.log("🔧 Manual status response:", response);
+            
+            if (response.message) {
+                console.log("✅ Manual status success, adding button...");
                 frappe.boot.attendance_status = response.message;
                 addAttendanceButton();
+            } else {
+                console.log("❌ Manual status failed");
             }
+        },
+        error: function(error) {
+            console.log("❌ Manual status error:", error);
         }
     });
 }
 
+// Debug function for troubleshooting
 window.debugAttendance = function() {
-    console.log("=== Debug Info ===");
-    console.log("attendance_status:", frappe.boot.attendance_status);
+    console.log("=== Attendance Debug Info ===");
+    console.log("frappe.boot exists:", !!frappe.boot);
+    console.log("attendance_status:", frappe.boot?.attendance_status);
     console.log("Button exists:", $('#navbar-attendance-btn').length > 0);
-    console.log("Geolocation supported:", !!navigator.geolocation);
+    console.log("Navbar elements found:", $('.navbar').length);
+    console.log("Current user:", frappe.session.user);
     
-    // Test location
-    if (navigator.geolocation) {
-        console.log("Testing location...");
-        navigator.geolocation.getCurrentPosition(
-            function(pos) {
-                console.log("Test location success:", pos.coords.latitude, pos.coords.longitude);
-            },
-            function(err) {
-                console.log("Test location error:", err);
-            }
-        );
+    // Try to add button manually
+    if (frappe.boot?.attendance_status) {
+        addAttendanceButton();
+    } else {
+        tryManualStatusCheck();
     }
-    
-    tryManualStatusCheck();
 };
+
+console.log("🔧 Navbar Checkin: Functions defined, debugAttendance() available");

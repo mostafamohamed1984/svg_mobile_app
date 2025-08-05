@@ -1,117 +1,98 @@
 /**
- * Navbar Attendance Button Styling
+ * ERPNext-style Navbar Attendance Button Styling
  */
 
-/* Attendance button styling */
-#navbar-attendance-btn .nav-link {
+/* Main container for the attendance button */
+.navbar-attendance-container {
+    float: left;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+/* Main attendance button styling to match ERPNext buttons */
+.attendance-main-btn {
     position: relative;
-    padding: 10px 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+    white-space: nowrap;
 }
 
-#navbar-attendance-btn .badge {
-    position: absolute;
-    top: 5px;
-    right: 8px;
-    font-size: 9px;
-    padding: 2px 4px;
-    border-radius: 3px;
-}
-
-/* Dropdown menu styling */
-#navbar-attendance-btn .dropdown-menu {
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e0e0e0;
-}
-
-#navbar-attendance-btn .dropdown-header {
-    padding: 8px 16px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e0e0e0;
-    margin-bottom: 0;
-}
-
-#navbar-attendance-btn .dropdown-item {
-    padding: 8px 16px;
-    transition: background-color 0.2s ease;
-}
-
-#navbar-attendance-btn .dropdown-item:hover:not(.disabled) {
-    background-color: #f8f9fa;
-}
-
-#navbar-attendance-btn .dropdown-item.disabled {
-    color: #6c757d;
-    pointer-events: none;
-    background-color: transparent;
-}
-
-/* Status indicators */
-.badge-success {
+/* Success state (Check In) */
+.attendance-main-btn.btn-success {
     background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
 }
 
-.badge-warning {
+.attendance-main-btn.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    color: #fff;
+}
+
+/* Warning state (Check Out) */
+.attendance-main-btn.btn-warning {
     background-color: #ffc107;
+    border-color: #ffc107;
     color: #212529;
 }
 
-.badge-danger {
-    background-color: #dc3545;
+.attendance-main-btn.btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #212529;
 }
 
-/* Mobile responsiveness */
-@media (max-width: 768px) {
-    #navbar-attendance-btn .dropdown-menu {
-        right: 0;
-        left: auto;
-        min-width: 200px;
-    }
+/* Secondary state (Disabled/View) */
+.attendance-main-btn.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: #fff;
 }
 
-/* Animation for button state changes */
-#navbar-attendance-btn .badge {
-    transition: all 0.3s ease;
+.attendance-main-btn.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+    color: #fff;
 }
 
-#navbar-attendance-btn:hover .badge {
-    transform: scale(1.1);
-}
-
-/* Conflict indicator styling */
-.attendance-conflict {
-    background-color: #dc3545 !important;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
-    }
+/* Status badge styling */
+.attendance-status-badge {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: inherit;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+    margin-left: 4px;
 }
 
 /* Loading state */
-.attendance-loading {
-    opacity: 0.6;
+.attendance-main-btn.attendance-loading {
+    opacity: 0.7;
     pointer-events: none;
+    position: relative;
 }
 
-.attendance-loading::after {
+.attendance-main-btn.attendance-loading::after {
     content: "";
     position: absolute;
     top: 50%;
-    left: 50%;
-    width: 16px;
-    height: 16px;
-    margin: -8px 0 0 -8px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #007bff;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid rgba(255, 255, 255, 0.8);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -119,4 +100,51 @@
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Icon styling */
+.attendance-main-btn i {
+    font-size: 12px;
+    margin-right: 2px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .navbar-attendance-container {
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+    
+    .attendance-main-btn {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+    
+    .attendance-main-btn .hidden-xs {
+        display: none !important;
+    }
+    
+    .attendance-status-badge {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+}
+
+/* Ensure proper positioning in navbar */
+.navbar .navbar-attendance-container {
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+
+/* Focus states for accessibility */
+.attendance-main-btn:focus {
+    outline: 2px solid rgba(0, 123, 255, 0.5);
+    outline-offset: 2px;
+}
+
+/* Disabled state */
+.attendance-main-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }

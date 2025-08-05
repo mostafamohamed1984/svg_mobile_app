@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2024-12-19 22:14:10.856657",
  "doctype": "DocType",
@@ -93,7 +94,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-07-10 00:03:13.620238",
+ "modified": "2025-07-29 14:18:54.476021",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Overtime Request",

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:{subject}-{request_date}-{###}",
  "creation": "2025-02-05 00:49:18.340436",
@@ -196,11 +197,12 @@
    "label": "applicable for user"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
  "links": [],
- "modified": "2025-02-26 17:10:17.456289",
+ "modified": "2025-07-29 14:19:18.789952",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Workday tasks",
@@ -246,6 +248,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:name1",
  "creation": "2025-07-28 13:34:27.288660",
@@ -20,7 +21,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-28 13:34:27.288660",
+ "modified": "2025-07-29 14:18:47.479633",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Municipality Status",

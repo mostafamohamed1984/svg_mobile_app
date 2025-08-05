@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "creation": "2025-01-25 12:00:00.000000",
+ "creation": "2025-01-25 12:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -31,6 +31,7 @@
    "default": "constr.sv@gmail.com",
    "fieldname": "gmail_forwarding_account",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Gmail Forwarding Account",
    "reqd": 1
   },
@@ -89,6 +90,7 @@
    "depends_on": "enable_role_based_forwarding",
    "fieldname": "main_email_account",
    "fieldtype": "Link",
+   "in_list_view": 1,
    "label": "Main Email Account",
    "options": "Email Account",
    "reqd": 1
@@ -112,7 +114,7 @@
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-01-25 12:00:00.000000",
+ "modified": "2025-07-29 14:18:59.534461",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "BCC Processing Settings",
@@ -129,8 +131,9 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],
  "track_changes": 1
-} 
+}

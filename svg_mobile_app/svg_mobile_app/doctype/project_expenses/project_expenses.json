@@ -1,0 +1,174 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-08-02 13:25:39.924992",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "project_agreement",
+  "employee",
+  "project_balance",
+  "column_break_wl5r",
+  "customer",
+  "customer_name",
+  "customer_advance_account",
+  "company",
+  "section_break_6hvk",
+  "advances",
+  "expenses_items",
+  "pending_items",
+  "section_break_mbz6",
+  "total_expenses",
+  "total_pending",
+  "column_break_mi10",
+  "total_advances",
+  "total_unclaimed_amount",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Project Expenses",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fetch_from": "project_agreement.customer",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Link",
+   "label": "Employee",
+   "options": "Employee"
+  },
+  {
+   "fieldname": "project_agreement",
+   "fieldtype": "Link",
+   "label": "Project Agreement",
+   "options": "Project Agreement"
+  },
+  {
+   "fieldname": "advances",
+   "fieldtype": "Table",
+   "label": "Advances",
+   "options": "Expense Claim Advance"
+  },
+  {
+   "fieldname": "expenses_items",
+   "fieldtype": "Table",
+   "label": "Expenses Items",
+   "options": "Expenses Items"
+  },
+  {
+   "fieldname": "pending_items",
+   "fieldtype": "Table",
+   "label": "Pending Items",
+   "options": "Pending Items"
+  },
+  {
+   "fieldname": "total_expenses",
+   "fieldtype": "Currency",
+   "label": "Total Expenses"
+  },
+  {
+   "fieldname": "total_pending",
+   "fieldtype": "Currency",
+   "label": "Total Pending"
+  },
+  {
+   "fieldname": "total_advances",
+   "fieldtype": "Currency",
+   "label": "Total Advances"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "total_unclaimed_amount",
+   "fieldtype": "Currency",
+   "label": "Total Unclaimed Amount"
+  },
+  {
+   "fetch_from": "project_agreement.advance_balance",
+   "fieldname": "project_balance",
+   "fieldtype": "Currency",
+   "label": "Project Balance"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Serial",
+   "options": "PRJ-EXP-"
+  },
+  {
+   "fieldname": "column_break_wl5r",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name"
+  },
+  {
+   "fieldname": "customer_advance_account",
+   "fieldtype": "Link",
+   "label": "Customer advance Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "section_break_6hvk",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "section_break_mbz6",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_mi10",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-08-03 12:46:20.385683",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Project Expenses",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

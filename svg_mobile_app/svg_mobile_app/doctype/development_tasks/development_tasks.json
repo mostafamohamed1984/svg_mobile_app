@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:subject",
  "creation": "2025-07-04 01:43:18.550243",
@@ -93,7 +94,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-04 02:39:14.536431",
+ "modified": "2025-07-29 14:18:58.067379",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Development Tasks",

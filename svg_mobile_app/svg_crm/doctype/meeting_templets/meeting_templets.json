@@ -39,6 +39,7 @@
   {
    "fieldname": "department",
    "fieldtype": "Table MultiSelect",
+   "ignore_user_permissions": 1,
    "label": "Department",
    "options": "Departments"
   },
@@ -89,7 +90,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-13 10:25:45.637567",
+ "modified": "2025-07-29 14:28:26.853328",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Meeting Templets",
@@ -122,6 +123,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_name_in_global_search": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

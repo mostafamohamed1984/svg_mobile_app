@@ -31,15 +31,17 @@
    "label": "Due Date"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-28 22:11:21.134706",
+ "modified": "2025-07-29 14:19:05.935638",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Objectives",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

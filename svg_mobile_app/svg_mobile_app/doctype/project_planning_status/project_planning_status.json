@@ -17,9 +17,10 @@
    "unique": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-03-03 02:14:07.191997",
+ "modified": "2025-07-29 14:19:17.075887",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Planning Status",
@@ -40,6 +41,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

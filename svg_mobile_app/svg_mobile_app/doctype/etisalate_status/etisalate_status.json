@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2025-07-14 13:20:21.949601",
  "doctype": "DocType",
@@ -22,7 +23,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-14 13:20:54.121064",
+ "modified": "2025-07-29 14:18:55.853111",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Etisalate Status",

@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:name1",
  "creation": "2025-04-01 22:59:55.994408",
@@ -45,9 +46,10 @@
    "label": "About"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-01 23:04:19.403111",
+ "modified": "2025-07-29 14:19:17.897705",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Consultant",
@@ -67,6 +69,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

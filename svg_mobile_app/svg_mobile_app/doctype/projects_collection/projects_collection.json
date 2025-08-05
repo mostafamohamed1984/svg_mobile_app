@@ -16,8 +16,6 @@
   "client_from",
   "start_date",
   "duration",
-  "end_date",
-  "extended_date_to",
   "add_to_data",
   "column_break_ncuk",
   "commercial_type",
@@ -26,19 +24,21 @@
   "region",
   "district",
   "language",
-  "project_status_section",
-  "column_break_sylw",
+  "end_date",
+  "extended_date_to",
   "mep_status_section",
   "elec_status",
   "water_status",
   "gas_status",
+  "etisalate_status",
+  "civil_defence_status",
+  "struture_status",
+  "building_perimt_status",
   "column_break_mep",
   "planning_status",
   "3d_style",
   "project_status",
   "tender_status",
-  "etisalate_status",
-  "civil_defence_status",
   "arc_status",
   "municipality_status",
   "column_break_wzoy",
@@ -47,8 +47,6 @@
   "running_status",
   "project_image_source",
   "project_image_source_view",
-  "struture_status",
-  "building_perimt_status",
   "section_break_ymcw",
   "project_timeline_status",
   "timeline_notes",
@@ -181,10 +179,6 @@
    "label": "Main Data"
   },
   {
-   "fieldname": "column_break_sylw",
-   "fieldtype": "Column Break"
-  },
-  {
    "fieldname": "column_break_wzoy",
    "fieldtype": "Column Break"
   },
@@ -284,32 +278,27 @@
    "label": "Site Image"
   },
   {
-   "fieldname": "project_status_section",
-   "fieldtype": "Section Break",
-   "label": "Project Status"
-  },
-  {
    "fieldname": "mep_status_section",
    "fieldtype": "Section Break",
    "label": "MEP Status"
   },
   {
    "fieldname": "elec_status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Electrical Status",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "Electrical Status"
   },
   {
    "fieldname": "water_status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Water Status",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "Water Status"
   },
   {
    "fieldname": "gas_status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Gas Status",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "Gas Status"
   },
   {
    "fieldname": "column_break_mep",
@@ -662,7 +651,7 @@
   {
    "fieldname": "struture_status",
    "fieldtype": "Link",
-   "label": "Struture Status",
+   "label": "Structure Status",
    "options": "Structure Status"
   },
   {
@@ -702,7 +691,7 @@
  "image_field": "3d_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-28 13:43:27.541278",
+ "modified": "2025-08-04 11:18:29.133041",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Projects Collection",

@@ -3,7 +3,7 @@
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:offer_code",
- "creation": "2025-01-20 10:00:00.000000",
+ "creation": "2025-01-20 10:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
@@ -112,6 +112,7 @@
   {
    "fieldname": "model",
    "fieldtype": "Data",
+   "in_standard_filter": 1,
    "label": "Model"
   },
   {
@@ -274,7 +275,6 @@
    "fieldtype": "Section Break",
    "label": "Status & Options"
   },
-
   {
    "fieldname": "offers_date",
    "fieldtype": "Date",
@@ -304,25 +304,25 @@
    "fieldname": "social_2d",
    "fieldtype": "Select",
    "label": "2D",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "social_3d_plan",
    "fieldtype": "Select",
    "label": "3D Plan",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "social_3d_elevation",
    "fieldtype": "Select",
    "label": "3D Elevation",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "social_interior",
    "fieldtype": "Select",
    "label": "Interior",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "column_break_social",
@@ -332,25 +332,25 @@
    "fieldname": "social_offers",
    "fieldtype": "Select",
    "label": "Offers",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "social_post",
    "fieldtype": "Select",
    "label": "Post",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "social_story",
    "fieldtype": "Select",
    "label": "Story",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "social_video",
    "fieldtype": "Select",
    "label": "Video",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "\nDONE\nRE-done\nRE vising\nREQ\nreq\nrevised\nEDiting"
   },
   {
    "fieldname": "catalogue_section",
@@ -434,7 +434,7 @@
  "image_field": "offer_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-01-20 10:00:00.000000",
+ "modified": "2025-08-04 11:27:20.866911",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Offers Collection",
@@ -455,6 +455,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "numeric_sort_field",
  "sort_order": "DESC",
  "states": []

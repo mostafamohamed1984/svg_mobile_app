@@ -1,0 +1,321 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-07-30 12:41:41.722543",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "project_date",
+  "project_name",
+  "customer",
+  "customer_name",
+  "project_consultant",
+  "subcontractor",
+  "company",
+  "column_break_tkkx",
+  "project_amount",
+  "profit_ratio",
+  "profit_value",
+  "add_tender_fees",
+  "section_break_5xmt",
+  "project_services",
+  "section_break_xpij",
+  "government_fees",
+  "section_break_mtv5",
+  "total_services_amount",
+  "total_government_fees",
+  "column_break_lerx",
+  "total_project_amount",
+  "section_break_odd8",
+  "created_by",
+  "amended_from",
+  "currency",
+  "payment_log_tab",
+  "payment_log",
+  "total_received",
+  "received_tax",
+  "unclaimed_amount",
+  "expenses_info_tab",
+  "expenses_log",
+  "pending_expenses",
+  "advance_balance",
+  "pending_amount",
+  "expense_amount",
+  "summary_tab",
+  "summary_view"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_mtv5",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Project Agreement",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Serial",
+   "options": "PROJ-"
+  },
+  {
+   "default": "Today",
+   "fieldname": "project_date",
+   "fieldtype": "Date",
+   "label": "Project Date"
+  },
+  {
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project Name"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_consultant",
+   "fieldtype": "Link",
+   "label": "Project Consultant",
+   "options": "Project Consultant"
+  },
+  {
+   "default": "0",
+   "fieldname": "subcontractor",
+   "fieldtype": "Check",
+   "label": "Subcontractor"
+  },
+  {
+   "fieldname": "column_break_tkkx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project_amount",
+   "fieldtype": "Currency",
+   "label": "Project Amount"
+  },
+  {
+   "fieldname": "profit_ratio",
+   "fieldtype": "Currency",
+   "label": "Profit Ratio"
+  },
+  {
+   "fieldname": "profit_value",
+   "fieldtype": "Currency",
+   "label": "Profit Value"
+  },
+  {
+   "fieldname": "add_tender_fees",
+   "fieldtype": "Button",
+   "label": "Add Tender fees"
+  },
+  {
+   "fieldname": "section_break_5xmt",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "project_services",
+   "fieldtype": "Table",
+   "label": "Project Services",
+   "options": "Project Services"
+  },
+  {
+   "fieldname": "section_break_xpij",
+   "fieldtype": "Section Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "government_fees",
+   "fieldtype": "Table",
+   "label": "Government Fees",
+   "options": "Government Fees",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_services_amount",
+   "fieldtype": "Currency",
+   "label": "Total Services Amount",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_government_fees",
+   "fieldtype": "Currency",
+   "label": "Total Government Fees",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_lerx",
+   "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_project_amount",
+   "fieldtype": "Currency",
+   "label": "Total Project Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_odd8",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "__user",
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "customer.default_currency",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "expenses_info_tab",
+   "fieldtype": "Tab Break",
+   "label": "Expenses Log"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "advance_balance",
+   "fieldtype": "Currency",
+   "label": "Advance Balance",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "pending_amount",
+   "fieldtype": "Currency",
+   "label": "Pending Amount",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "expense_amount",
+   "fieldtype": "Currency",
+   "label": "Expense Amount",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "expenses_log",
+   "fieldtype": "Table",
+   "label": "Expenses Log",
+   "options": "Expenses Log",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "pending_expenses",
+   "fieldtype": "Table",
+   "label": "Pending Expenses",
+   "options": "Pending Expenses",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_log_tab",
+   "fieldtype": "Tab Break",
+   "label": "Payment Log"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "payment_log",
+   "fieldtype": "Table",
+   "label": "Payment Log",
+   "options": "Payment Log",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_received",
+   "fieldtype": "Currency",
+   "label": "Total Received",
+   "read_only": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "unclaimed_amount",
+   "fieldtype": "Currency",
+   "label": "Unclaimed Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "summary_tab",
+   "fieldtype": "Tab Break",
+   "label": "Summary"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "summary_view",
+   "fieldtype": "HTML",
+   "label": "Summary view"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "received_tax",
+   "fieldtype": "Currency",
+   "label": "Received Tax",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-08-03 23:34:08.667805",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Project Agreement",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

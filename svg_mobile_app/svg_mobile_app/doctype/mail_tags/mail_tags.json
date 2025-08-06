@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:tag_name",
  "creation": "2025-06-01 16:14:10.757928",
@@ -24,9 +25,10 @@
    "label": "Color"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-02 15:25:07.971635",
+ "modified": "2025-07-29 14:19:11.128550",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Mail Tags",
@@ -47,6 +49,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

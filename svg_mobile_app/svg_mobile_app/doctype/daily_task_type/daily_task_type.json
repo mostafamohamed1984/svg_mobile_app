@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "field:type_name",
  "creation": "2025-02-05 01:09:06.235569",
@@ -27,9 +28,10 @@
    "label": "Description"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-02-05 01:10:14.751988",
+ "modified": "2025-07-29 14:19:23.187794",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Daily Task Type",
@@ -49,6 +51,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

@@ -26,15 +26,17 @@
    "reqd": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-01-28 22:11:22.779359",
+ "modified": "2025-07-29 14:19:08.229107",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Attachments",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

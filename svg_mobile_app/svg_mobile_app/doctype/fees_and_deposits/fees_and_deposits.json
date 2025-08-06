@@ -34,15 +34,17 @@
    "read_only": 1
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-06-11 12:46:47.132987",
+ "modified": "2025-07-29 14:19:09.357987",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Fees and Deposits",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

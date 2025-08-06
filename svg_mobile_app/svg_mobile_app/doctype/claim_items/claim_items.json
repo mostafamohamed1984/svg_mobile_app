@@ -20,6 +20,7 @@
  ],
  "fields": [
   {
+   "allow_on_submit": 1,
    "fieldname": "item",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -27,6 +28,7 @@
    "options": "Item"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "amount",
    "fieldtype": "Float",
    "in_list_view": 1,
@@ -46,16 +48,16 @@
    "read_only": 1
   },
   {
+   "default": "0",
    "fieldname": "tax_rate",
    "fieldtype": "Percent",
-   "label": "Tax Rate",
-   "default": 0
+   "label": "Tax Rate"
   },
   {
+   "default": "0",
    "fieldname": "tax_amount",
    "fieldtype": "Currency",
-   "label": "Tax Amount",
-   "default": 0
+   "label": "Tax Amount"
   },
   {
    "fieldname": "tax_account",
@@ -98,12 +100,13 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-16 00:31:37.552377",
+ "modified": "2025-07-29 14:18:53.986721",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Claim Items",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

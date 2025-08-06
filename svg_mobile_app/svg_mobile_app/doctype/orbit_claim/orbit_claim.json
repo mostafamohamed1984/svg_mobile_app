@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "naming_series:",
  "creation": "2025-03-26 00:44:13.346065",
@@ -113,6 +114,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "claim_amount",
    "fieldtype": "Currency",
    "in_standard_filter": 1,
@@ -136,10 +138,10 @@
    "fieldtype": "Column Break"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "outstanding_amount",
    "fieldtype": "Currency",
-   "label": "Outstanding Amount",
-   "read_only": 1
+   "label": "Outstanding Amount"
   },
   {
    "fieldname": "for_project",
@@ -236,6 +238,7 @@
    "label": "Invoiced items"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "claim_items",
    "fieldtype": "Table",
    "label": "Claim Items",
@@ -245,7 +248,7 @@
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-05-19 00:50:21.701496",
+ "modified": "2025-07-29 14:18:52.572759",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Orbit Claim",

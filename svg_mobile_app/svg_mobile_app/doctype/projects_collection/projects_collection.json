@@ -16,8 +16,6 @@
   "client_from",
   "start_date",
   "duration",
-  "end_date",
-  "extended_date_to",
   "add_to_data",
   "column_break_ncuk",
   "commercial_type",
@@ -26,32 +24,49 @@
   "region",
   "district",
   "language",
-  "project_status_section",
-  "column_break_sylw",
+  "end_date",
+  "extended_date_to",
   "mep_status_section",
   "elec_status",
   "water_status",
   "gas_status",
+  "etisalate_status",
+  "civil_defence_status",
+  "struture_status",
+  "building_perimt_status",
   "column_break_mep",
   "planning_status",
   "3d_style",
   "project_status",
   "tender_status",
+  "arc_status",
+  "municipality_status",
   "column_break_wzoy",
   "design_status",
   "3d_video",
   "running_status",
   "project_image_source",
-  "project_media_section",
+  "project_image_source_view",
+  "section_break_ymcw",
+  "project_timeline_status",
+  "timeline_notes",
+  "section_break_psia",
+  "remarks",
+  "project_media_images_section",
   "3d_score",
   "site_image_score",
+  "column_break_qplu",
+  "3d_image",
+  "site_image",
+  "column_break_trly",
+  "3d_image_view",
+  "site_image_view",
+  "project_media_section",
   "offers_model",
   "videos_drone",
   "location",
   "graphics_team_score",
   "column_break_guxl",
-  "3d_image",
-  "site_image",
   "videos_filming_site_engineers",
   "required_drone",
   "2_d_plan_link",
@@ -61,10 +76,14 @@
   "last_update",
   "percentage_of_completion",
   "construction_permit_date",
+  "building_permit",
+  "building_permit_view",
   "column_break_cszq",
   "last_update_date",
   "date_of_receipt_of_completion_certificate",
   "revision_date",
+  "project_completion_certificate",
+  "project_completion_certificate_view",
   "engineers_section",
   "supervising_engineer",
   "engineering_data_section",
@@ -158,10 +177,6 @@
    "fieldname": "project_filter_section",
    "fieldtype": "Section Break",
    "label": "Main Data"
-  },
-  {
-   "fieldname": "column_break_sylw",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "column_break_wzoy",
@@ -263,32 +278,27 @@
    "label": "Site Image"
   },
   {
-   "fieldname": "project_status_section",
-   "fieldtype": "Section Break",
-   "label": "Project Status"
-  },
-  {
    "fieldname": "mep_status_section",
    "fieldtype": "Section Break",
    "label": "MEP Status"
   },
   {
    "fieldname": "elec_status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Electrical Status",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "Electrical Status"
   },
   {
    "fieldname": "water_status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Water Status",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "Water Status"
   },
   {
    "fieldname": "gas_status",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Gas Status",
-   "options": "Done\nPending\nIn Progress\nNot Required"
+   "options": "Gas Status"
   },
   {
    "fieldname": "column_break_mep",
@@ -561,12 +571,127 @@
    "fieldname": "no_of_studio",
    "fieldtype": "Data",
    "label": "no. of studio"
+  },
+  {
+   "fieldname": "building_permit",
+   "fieldtype": "Attach Image",
+   "label": "Building Permit"
+  },
+  {
+   "fieldname": "project_completion_certificate",
+   "fieldtype": "Attach Image",
+   "label": "Project Completion Certificate"
+  },
+  {
+   "fieldname": "project_image_source_view",
+   "fieldtype": "Image",
+   "label": "Project Image Source View",
+   "options": "project_image_source",
+   "read_only": 1
+  },
+  {
+   "fieldname": "project_media_images_section",
+   "fieldtype": "Section Break",
+   "label": "Project Media images"
+  },
+  {
+   "fieldname": "column_break_qplu",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_trly",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "3d_image_view",
+   "fieldtype": "Image",
+   "label": "3d image view",
+   "options": "3d_image"
+  },
+  {
+   "fieldname": "site_image_view",
+   "fieldtype": "Image",
+   "label": "site image view",
+   "options": "site_image"
+  },
+  {
+   "fieldname": "building_permit_view",
+   "fieldtype": "Image",
+   "label": "building permit view",
+   "options": "building_permit"
+  },
+  {
+   "fieldname": "project_completion_certificate_view",
+   "fieldtype": "Image",
+   "label": "project completion certificate view",
+   "options": "project_completion_certificate"
+  },
+  {
+   "fieldname": "section_break_psia",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Table",
+   "label": "Remarks",
+   "options": "Remarks"
+  },
+  {
+   "fieldname": "etisalate_status",
+   "fieldtype": "Link",
+   "label": "Etisalate Status",
+   "options": "Etisalate Status"
+  },
+  {
+   "fieldname": "civil_defence_status",
+   "fieldtype": "Link",
+   "label": "Civil Defence Status",
+   "options": "Civil Defense"
+  },
+  {
+   "fieldname": "struture_status",
+   "fieldtype": "Link",
+   "label": "Structure Status",
+   "options": "Structure Status"
+  },
+  {
+   "fieldname": "arc_status",
+   "fieldtype": "Link",
+   "label": "ARC Status",
+   "options": "Arc Status"
+  },
+  {
+   "fieldname": "municipality_status",
+   "fieldtype": "Link",
+   "label": "Municipality Status",
+   "options": "Municipality Status"
+  },
+  {
+   "fieldname": "building_perimt_status",
+   "fieldtype": "Link",
+   "label": "Building Perimt Status",
+   "options": "Building Perimt Status"
+  },
+  {
+   "fieldname": "section_break_ymcw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "project_timeline_status",
+   "fieldtype": "Link",
+   "label": "Project Timeline Status",
+   "options": "Project Timeline Status"
+  },
+  {
+   "fieldname": "timeline_notes",
+   "fieldtype": "Small Text",
+   "label": "Timeline Notes"
   }
  ],
  "image_field": "3d_image",
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-05-07 14:08:48.316768",
+ "modified": "2025-08-04 11:18:29.133041",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Projects Collection",
@@ -587,6 +712,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "numeric_sort_field",
  "sort_order": "DESC",
  "states": []

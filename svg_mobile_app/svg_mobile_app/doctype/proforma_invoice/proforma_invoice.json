@@ -1,0 +1,248 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-07-19 17:10:44.630115",
+ "default_view": "List",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "section_break_ntae",
+  "naming_series",
+  "customer",
+  "customer_name",
+  "column_break_udiq",
+  "date",
+  "for_project",
+  "project_name",
+  "invoiced_items_section",
+  "proforma_items",
+  "payment_details_section",
+  "currency",
+  "total_items",
+  "grand_total",
+  "column_break_mwar",
+  "tax_ratio",
+  "tax_amount",
+  "section_break_lvpq",
+  "being",
+  "signatures_section",
+  "receiver",
+  "column_break_q3a8",
+  "accountant",
+  "column_break_okon",
+  "manager",
+  "section_break_sgju",
+  "created_by",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_ntae",
+   "fieldtype": "Section Break",
+   "label": "Main Details"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Serial",
+   "options": "PF-INV-.YYYY.-"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "in_standard_filter": 1,
+   "label": "Customer Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_udiq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "fieldname": "date",
+   "fieldtype": "Date",
+   "label": "Date"
+  },
+  {
+   "fieldname": "for_project",
+   "fieldtype": "Link",
+   "label": "For Project",
+   "options": "Project Contractors"
+  },
+  {
+   "fetch_from": "for_project.project_name",
+   "fieldname": "project_name",
+   "fieldtype": "Data",
+   "label": "Project Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_details_section",
+   "fieldtype": "Section Break",
+   "label": "Payment Details"
+  },
+  {
+   "default": "AED",
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "tax_ratio",
+   "fieldtype": "Percent",
+   "label": "Tax Ratio"
+  },
+  {
+   "fieldname": "tax_amount",
+   "fieldtype": "Currency",
+   "label": "Tax Amount"
+  },
+  {
+   "fieldname": "invoiced_items_section",
+   "fieldtype": "Section Break",
+   "label": "Invoiced items"
+  },
+  {
+   "fieldname": "section_break_lvpq",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "being",
+   "fieldtype": "Small Text",
+   "label": "Being"
+  },
+  {
+   "fieldname": "signatures_section",
+   "fieldtype": "Section Break",
+   "label": "Signatures"
+  },
+  {
+   "fieldname": "receiver",
+   "fieldtype": "Link",
+   "label": "Receiver",
+   "options": "visual Identity",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_q3a8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "accountant",
+   "fieldtype": "Link",
+   "label": "Accountant",
+   "options": "visual Identity"
+  },
+  {
+   "fieldname": "column_break_okon",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "manager",
+   "fieldtype": "Link",
+   "label": "Manager",
+   "options": "visual Identity"
+  },
+  {
+   "fieldname": "section_break_sgju",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "__user",
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "in_standard_filter": 1,
+   "label": "Created By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Proforma Invoice",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Proforma Invoice",
+   "print_hide": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "proforma_items",
+   "fieldtype": "Table",
+   "label": "Proforma Items",
+   "options": "Proforma Items"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "total_items",
+   "fieldtype": "Currency",
+   "in_standard_filter": 1,
+   "label": "Total Items",
+   "reqd": 1
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Grand Total"
+  },
+  {
+   "fieldname": "column_break_mwar",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2025-07-20 00:21:21.538173",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Proforma Invoice",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "select": 1,
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

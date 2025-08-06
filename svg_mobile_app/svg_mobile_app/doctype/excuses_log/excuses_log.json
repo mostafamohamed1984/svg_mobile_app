@@ -74,15 +74,17 @@
    "label": "Difference"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-03-12 02:29:41.127908",
+ "modified": "2025-07-29 14:19:12.572754",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Excuses Log",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

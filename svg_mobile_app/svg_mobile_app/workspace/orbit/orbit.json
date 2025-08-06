@@ -1,8 +1,18 @@
 {
- "charts": [],
- "content": "[{\"id\":\"BD3YV1LUgX\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Orbit</span>\",\"col\":12}},{\"id\":\"UEz-NczP4G\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Masters\",\"col\":4}},{\"id\":\"SRTM_EGfAX\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Transactions\",\"col\":4}},{\"id\":\"9mxaPUuvbV\",\"type\":\"card\",\"data\":{\"card_name\":\"Relations\",\"col\":4}},{\"id\":\"Xos9PSEK5s\",\"type\":\"card\",\"data\":{\"card_name\":\"Advances and Claims\",\"col\":4}},{\"id\":\"ggtffs26q0\",\"type\":\"card\",\"data\":{\"card_name\":\"Items Management\",\"col\":4}},{\"id\":\"DQPW7uwq3Z\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "charts": [
+  {
+   "chart_name": "Outstanding",
+   "label": "Monthly Outstanding Amount"
+  }
+ ],
+ "content": "[{\"id\":\"BD3YV1LUgX\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Orbit</span>\",\"col\":12}},{\"id\":\"5jQu3GkyNN\",\"type\":\"chart\",\"data\":{\"chart_name\":\"Monthly Outstanding Amount\",\"col\":12}},{\"id\":\"8T_IdYBXZo\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Orbit Shortcuts\",\"col\":12}},{\"id\":\"UEz-NczP4G\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Masters\",\"col\":4}},{\"id\":\"SRTM_EGfAX\",\"type\":\"card\",\"data\":{\"card_name\":\"Accounting Transactions\",\"col\":4}},{\"id\":\"9mxaPUuvbV\",\"type\":\"card\",\"data\":{\"card_name\":\"Relations\",\"col\":4}},{\"id\":\"Xos9PSEK5s\",\"type\":\"card\",\"data\":{\"card_name\":\"Advances and Claims\",\"col\":4}},{\"id\":\"ggtffs26q0\",\"type\":\"card\",\"data\":{\"card_name\":\"Items Management\",\"col\":4}},{\"id\":\"DQPW7uwq3Z\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "creation": "2025-03-17 23:14:46.506492",
- "custom_blocks": [],
+ "custom_blocks": [
+  {
+   "custom_block_name": "Orbit Shortcuts",
+   "label": "Orbit Shortcuts"
+  }
+ ],
  "docstatus": 0,
  "doctype": "Workspace",
  "for_user": "",
@@ -39,114 +49,6 @@
    "link_count": 0,
    "link_to": "Price List",
    "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Accounting Transactions",
-   "link_count": 5,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Project Contractors ",
-   "link_count": 0,
-   "link_to": "Project Contractors",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Contracts",
-   "link_count": 0,
-   "link_to": "Sales Invoice",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "State of Payment",
-   "link_count": 0,
-   "link_to": "Orbit Claim",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Payment",
-   "link_count": 0,
-   "link_to": "Project Claim",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Journal Entry",
-   "link_count": 0,
-   "link_to": "Journal Entry",
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Reports",
-   "link_count": 4,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Trial Balance",
-   "link_count": 0,
-   "link_to": "Trial Balance",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Customer Statement",
-   "link_count": 0,
-   "link_to": "Trial Balance for Party",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "General Ledger",
-   "link_count": 0,
-   "link_to": "General Ledger",
-   "link_type": "Report",
-   "onboard": 0,
-   "type": "Link"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 1,
-   "label": "Balance Sheet",
-   "link_count": 0,
-   "link_to": "Balance Sheet",
-   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   },
@@ -350,15 +252,183 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Projects Image Gallery",
+   "label": "Accounting Transactions",
+   "link_count": 6,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Project Contractors ",
    "link_count": 0,
-   "link_to": "projects_image_gallery",
+   "link_to": "Project Contractors",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Contracts",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "State of Payment",
+   "link_count": 0,
+   "link_to": "Orbit Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment",
+   "link_count": 0,
+   "link_to": "Project Claim",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Journal Entry",
+   "link_count": 0,
+   "link_to": "Journal Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Proforma Invoice",
+   "link_count": 0,
+   "link_to": "Proforma Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 10,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Trial Balance",
+   "link_count": 0,
+   "link_to": "Trial Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Customer Statement Summary",
+   "link_count": 0,
+   "link_to": "Trial Balance for Party",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "General Ledger",
+   "link_count": 0,
+   "link_to": "General Ledger",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Balance Sheet",
+   "link_count": 0,
+   "link_to": "Balance Sheet",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Project Claim Statement",
+   "link_count": 0,
+   "link_to": "Project Claim Statement",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Detailed Project Claim",
+   "link_count": 0,
+   "link_to": "Detailed Project Claim",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Account Statement",
+   "link_count": 0,
+   "link_to": "Account Statement",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Trial Balance Arabic",
+   "link_count": 0,
+   "link_to": "Trial Balance Arabic",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Customer Statement Page",
+   "link_count": 0,
+   "link_to": "project-contractors-report",
    "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Project Expenses Report",
+   "link_count": 0,
+   "link_to": "Project Expenses Report",
+   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-06-23 15:14:38.983469",
+ "modified": "2025-07-28 13:20:49.005123",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Orbit",

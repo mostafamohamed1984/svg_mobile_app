@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "creation": "2025-06-25 11:01:16.106752",
  "default_view": "List",
@@ -91,16 +92,16 @@
    "label": "Usage Tracking"
   },
   {
+   "description": "When the remote session started",
    "fieldname": "connection_start_time",
    "fieldtype": "Datetime",
-   "label": "Connection Start Time",
-   "description": "When the remote session started"
+   "label": "Connection Start Time"
   },
   {
+   "description": "When the remote session ended",
    "fieldname": "connection_end_time",
    "fieldtype": "Datetime",
-   "label": "Connection End Time",
-   "description": "When the remote session ended"
+   "label": "Connection End Time"
   },
   {
    "fieldname": "connection_duration",
@@ -119,16 +120,17 @@
    "options": "\nTechnical Support\nMaintenance\nTraining\nTroubleshooting\nSoftware Installation\nData Transfer\nOther"
   },
   {
+   "description": "Brief description of work performed",
    "fieldname": "connection_notes",
    "fieldtype": "Small Text",
-   "label": "Connection Notes",
-   "description": "Brief description of work performed"
+   "label": "Connection Notes"
   },
   {
+   "default": "0",
+   "description": "Verified by IT administrator",
    "fieldname": "connection_verified",
    "fieldtype": "Check",
-   "label": "Connection Verified",
-   "description": "Verified by IT administrator"
+   "label": "Connection Verified"
   },
   {
    "fieldname": "section_break_reporting",
@@ -147,38 +149,38 @@
    "label": "Usage Report Date"
   },
   {
+   "description": "User reported start time",
    "fieldname": "manual_check_in",
    "fieldtype": "Datetime",
-   "label": "Manual Check-in",
-   "description": "User reported start time"
+   "label": "Manual Check-in"
   },
   {
    "fieldname": "column_break_reporting",
    "fieldtype": "Column Break"
   },
   {
+   "description": "User reported end time",
    "fieldname": "manual_check_out",
    "fieldtype": "Datetime",
-   "label": "Manual Check-out",
-   "description": "User reported end time"
+   "label": "Manual Check-out"
   },
   {
+   "description": "User experience rating (1-5 stars)",
    "fieldname": "session_rating",
    "fieldtype": "Rating",
-   "label": "Session Rating",
-   "description": "User experience rating (1-5 stars)"
+   "label": "Session Rating"
   },
   {
+   "description": "Any problems during the session",
    "fieldname": "issues_encountered",
    "fieldtype": "Small Text",
-   "label": "Issues Encountered",
-   "description": "Any problems during the session"
+   "label": "Issues Encountered"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-29 01:12:07.908214",
+ "modified": "2025-07-29 14:18:59.959547",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Remote Access Log",

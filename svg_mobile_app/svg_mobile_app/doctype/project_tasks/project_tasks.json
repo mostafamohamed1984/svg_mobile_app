@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_import": 1,
  "allow_rename": 1,
  "autoname": "format:{subject}-{request_date}-{###}",
  "creation": "2025-02-26 23:27:07.027256",
@@ -176,6 +177,7 @@
    "options": "Project Tasks"
   }
  ],
+ "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_calendar_and_gantt": 1,
  "is_tree": 1,
@@ -185,7 +187,7 @@
    "link_fieldname": "from_project_task"
   }
  ],
- "modified": "2025-03-09 04:00:43.996653",
+ "modified": "2025-07-29 14:18:56.912454",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Tasks",
@@ -219,6 +221,7 @@
   }
  ],
  "quick_entry": 1,
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

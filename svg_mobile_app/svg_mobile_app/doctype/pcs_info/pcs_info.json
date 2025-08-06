@@ -1,0 +1,158 @@
+{
+ "actions": [],
+ "allow_import": 1,
+ "allow_rename": 1,
+ "autoname": "naming_series:",
+ "creation": "2025-07-30 14:17:07.882256",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "assign_to",
+  "employee_name",
+  "column_break_rlq2",
+  "type",
+  "use_for",
+  "specs_section",
+  "cpu",
+  "mother_board",
+  "ram",
+  "gpu",
+  "column_break_o11c",
+  "hard_desk",
+  "case",
+  "psu",
+  "auto_desk_info_section",
+  "auto_desk_email",
+  "password",
+  "ex_date"
+ ],
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Serial",
+   "options": "PCs-"
+  },
+  {
+   "fieldname": "assign_to",
+   "fieldtype": "Link",
+   "ignore_user_permissions": 1,
+   "label": "Assign To",
+   "options": "Employee"
+  },
+  {
+   "fetch_from": "assign_to.employee_name",
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name"
+  },
+  {
+   "fieldname": "column_break_rlq2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "\nLaptop\nPC"
+  },
+  {
+   "fieldname": "use_for",
+   "fieldtype": "Select",
+   "label": "Use For",
+   "options": "\nGraphic\nRender\nAdmin\nMEP"
+  },
+  {
+   "fieldname": "specs_section",
+   "fieldtype": "Section Break",
+   "label": "Specs"
+  },
+  {
+   "fieldname": "cpu",
+   "fieldtype": "Data",
+   "label": "CPU"
+  },
+  {
+   "fieldname": "mother_board",
+   "fieldtype": "Data",
+   "label": "Mother Board"
+  },
+  {
+   "fieldname": "ram",
+   "fieldtype": "Data",
+   "label": "Ram"
+  },
+  {
+   "fieldname": "gpu",
+   "fieldtype": "Data",
+   "label": "GPU"
+  },
+  {
+   "fieldname": "column_break_o11c",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hard_desk",
+   "fieldtype": "Data",
+   "label": "Hard Desk"
+  },
+  {
+   "fieldname": "case",
+   "fieldtype": "Data",
+   "label": "Case"
+  },
+  {
+   "fieldname": "psu",
+   "fieldtype": "Data",
+   "label": "PSU"
+  },
+  {
+   "fieldname": "auto_desk_info_section",
+   "fieldtype": "Section Break",
+   "label": "Auto Desk Info"
+  },
+  {
+   "fieldname": "auto_desk_email",
+   "fieldtype": "Data",
+   "label": "Auto Desk Email"
+  },
+  {
+   "fieldname": "password",
+   "fieldtype": "Data",
+   "label": "Password"
+  },
+  {
+   "fieldname": "ex_date",
+   "fieldtype": "Date",
+   "label": "EX. Date"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-30 14:33:45.283793",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "PCs info",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

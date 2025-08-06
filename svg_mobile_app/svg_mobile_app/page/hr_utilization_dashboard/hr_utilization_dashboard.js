@@ -129,8 +129,6 @@ class HRUtilizationDashboard {
                                 <div class="legend-items">
                                     <span class="legend-item"><span class="legend-indicator attended">A</span> Attended</span>
                                     <span class="legend-item"><span class="legend-indicator leave">L</span> On Leave</span>
-                                    <span class="legend-item"><span class="legend-indicator overtime">O</span> Overtime</span>
-                                    <span class="legend-item"><span class="legend-indicator shift">S</span> Shift Request</span>
                                     <span class="legend-item"><span class="legend-indicator conflict">🔴</span> Conflict</span>
                                 </div>
                             </div>
@@ -299,28 +297,7 @@ class HRUtilizationDashboard {
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label>Overtime Request Status</label>
-                            <select class="form-control filter-overtime-status">
-                                <option value="">All Overtime Statuses</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label>Shift Request Status</label>
-                            <select class="form-control filter-shift-status">
-                                <option value="">All Shift Statuses</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Approved">Approved</option>
-                                <option value="Rejected">Rejected</option>
-                            </select>
-                        </div>
-                    </div>
+
                     <div class="col-md-3">
                         <div class="form-group">
                             <label>Show Conflicts Only</label>
@@ -488,8 +465,6 @@ class HRUtilizationDashboard {
                 department: container.find('.filter-department').val(),
                 leave_type: container.find('.filter-leave-type').val(),
                 status: container.find('.filter-status').val(),
-                overtime_status: container.find('.filter-overtime-status').val(),
-                shift_status: container.find('.filter-shift-status').val(),
                 conflicts_only: container.find('.filter-conflicts-only').val()
             };
 
@@ -682,56 +657,75 @@ class HRUtilizationDashboard {
     render_companies(companies, date_range) {
         try {
             var container = this.page.main.find('.companies-container');
-            var companies_html = '';
-
-            companies.forEach(function(company) {
-                companies_html += `
-                    <div class="company-section" data-company="${company.company_name}">
-                        <div class="company-header">
-                            <h5>
-                                📊 ${company.company_name} 
-                                <span class="badge badge-secondary">${company.employee_count} employees</span>
-                                <span class="badge badge-danger">${company.conflict_count} conflicts</span>
-                            </h5>
-                        </div>
-                        <div class="company-content">
-                            <div class="calendar-grid">
-                                <!-- Calendar grid will be populated here -->
-                            </div>
+            
+            // Calculate unified statistics
+            var total_employees = companies.reduce((sum, company) => sum + company.employee_count, 0);
+            var total_conflicts = companies.reduce((sum, company) => sum + company.conflict_count, 0);
+            
+            // Create unified header
+            var unified_html = `
+                <div class="unified-section">
+                    <div class="unified-header">
+                        <h5>
+                            📊 All Companies - Department Leave Conflicts Overview
+                            <span class="badge badge-secondary">${total_employees} total employees</span>
+                            <span class="badge badge-danger">${total_conflicts} total conflicts</span>
+                        </h5>
+                    </div>
+                    <div class="unified-content">
+                        <div class="calendar-grid unified-calendar">
+                            <!-- Unified calendar grid will be populated here -->
                         </div>
                     </div>
-                `;
-            });
+                </div>
+            `;
 
-            container.html(companies_html);
+            container.html(unified_html);
 
-            // Render each company's calendar grid
-            var self = this;
-            companies.forEach(function(company) {
-                self.render_company_calendar(company, date_range);
-            });
+            // Render unified calendar grid with all employees
+            this.render_unified_calendar(companies, date_range);
 
         } catch (e) {
-            console.error('Error rendering companies:', e);
+            console.error('Error rendering unified companies:', e);
+        }
+    }
+
+    render_unified_calendar(companies, date_range) {
+        try {
+            console.log('Rendering unified calendar for all companies');
+            
+            var unified_section = this.page.main.find('.unified-section');
+            var calendar_grid = unified_section.find('.calendar-grid');
+            
+            // Combine all employees from all companies
+            var all_employees = [];
+            companies.forEach(company => {
+                company.employees.forEach(employee => {
+                    // Add company information to each employee
+                    employee.company_name = company.company_name;
+                    all_employees.push(employee);
+                });
+            });
+            
+            // Create unified calendar grid with all employees
+            var calendar_html = this.create_unified_calendar_grid(all_employees, date_range);
+            calendar_grid.html(calendar_html);
+            
+            // Add event handlers for interactive features
+            this.setup_unified_calendar_interactions(unified_section, all_employees);
+
+        } catch (e) {
+            console.error('Error rendering unified calendar:', e);
         }
     }
 
     render_company_calendar(company, date_range) {
+        // This function is now deprecated in favor of render_unified_calendar
+        // Keeping for backward compatibility if needed
         try {
-            console.log('Rendering 4-week calendar for company:', company.company_name);
-            
-            var company_section = this.page.main.find(`.company-section[data-company="${company.company_name}"]`);
-            var calendar_grid = company_section.find('.calendar-grid');
-            
-            // Create 4-week calendar grid
-            var calendar_html = this.create_4_week_calendar_grid(company, date_range);
-            calendar_grid.html(calendar_html);
-            
-            // Add event handlers for interactive features
-            this.setup_calendar_interactions(company_section, company);
-
+            console.log('render_company_calendar is deprecated, using unified calendar instead');
         } catch (e) {
-            console.error('Error rendering company calendar:', e);
+            console.error('Error in deprecated render_company_calendar:', e);
         }
     }
 
@@ -755,6 +749,78 @@ class HRUtilizationDashboard {
         } catch (e) {
             console.error('Error creating 4-week calendar grid:', e);
             return '<div class="error-message">Error creating calendar grid</div>';
+        }
+    }
+
+    create_unified_calendar_grid(all_employees, date_range) {
+        try {
+            // Create unified calendar structure for all employees across companies
+            var calendar_html = '<div class="unified-calendar-container">';
+            
+            // Create header with week dates
+            calendar_html += this.create_calendar_header(date_range);
+            
+            // Create employee rows for all employees (sorted by company then name)
+            all_employees.sort((a, b) => {
+                if (a.company_name !== b.company_name) {
+                    return a.company_name.localeCompare(b.company_name);
+                }
+                return a.employee_name.localeCompare(b.employee_name);
+            });
+            
+            all_employees.forEach((employee) => {
+                calendar_html += this.create_unified_employee_row(employee, date_range);
+            });
+            
+            calendar_html += '</div>';
+            
+            return calendar_html;
+            
+        } catch (e) {
+            console.error('Error creating unified calendar grid:', e);
+            return '<div class="error-message">Error creating unified calendar grid</div>';
+        }
+    }
+
+    create_unified_employee_row(employee, date_range) {
+        try {
+            var conflict_class = employee.conflicts.length > 0 ? 'employee-with-conflicts' : '';
+            var row_html = `<div class="employee-calendar-row unified-employee-row ${conflict_class}" data-employee="${employee.employee_id}">`;
+            
+            // Employee info column with company information
+            row_html += `<div class="employee-info-cell unified-employee-info">
+                <div class="employee-name">${employee.employee_name}</div>
+                <div class="employee-company">${employee.company_name}</div>
+                <div class="employee-dept">${employee.department || ''}</div>
+                ${employee.conflicts.length > 0 ? 
+                    `<div class="conflict-badge">${employee.conflicts.length} conflicts</div>` : ''}
+            </div>`;
+            
+            // Week columns
+            var weeks = this.group_dates_by_week(date_range);
+            
+            weeks.forEach((week) => {
+                row_html += '<div class="week-group">';
+                row_html += '<div class="days-row">';
+                
+                week.forEach((date) => {
+                    // Convert string date to Date object if needed, but keep original for date_str
+                    var date_str = typeof date === 'string' ? date : date.toISOString().split('T')[0];
+                    var daily_record = this.find_daily_record(employee, date_str);
+                    var cell_html = this.create_daily_status_cell(daily_record, date, employee);
+                    
+                    row_html += cell_html;
+                });
+                
+                row_html += '</div></div>';
+            });
+            
+            row_html += '</div>';
+            return row_html;
+            
+        } catch (e) {
+            console.error('Error creating unified employee row:', e);
+            return '<div class="error-message">Error creating unified employee row</div>';
         }
     }
 
@@ -948,6 +1014,38 @@ class HRUtilizationDashboard {
         }
     }
 
+    setup_unified_calendar_interactions(unified_section, all_employees) {
+        try {
+            var self = this;
+            
+            // Click handler for daily status cells in unified view
+            unified_section.find('.daily-status-cell').on('click', function() {
+                var employee_id = $(this).data('employee');
+                var date = $(this).data('date');
+                
+                // Find the employee in the unified list
+                var employee = all_employees.find(emp => emp.employee_id === employee_id);
+                if (!employee) return;
+                
+                if ($(this).hasClass('has-conflict')) {
+                    self.show_unified_conflict_details(employee_id, date, employee);
+                } else {
+                    self.show_unified_day_details(employee_id, date, employee);
+                }
+            });
+            
+            // Hover handler for conflict tooltips in unified view
+            unified_section.find('.daily-status-cell.has-conflict').on('mouseenter', function(e) {
+                self.show_conflict_tooltip($(this), e);
+            }).on('mouseleave', function() {
+                self.hide_conflict_tooltip();
+            });
+            
+        } catch (e) {
+            console.error('Error setting up unified calendar interactions:', e);
+        }
+    }
+
     setup_calendar_interactions(company_section, company) {
         try {
             var self = this;
@@ -1128,6 +1226,78 @@ class HRUtilizationDashboard {
         }
     }
 
+    show_unified_conflict_details(employee_id, date, employee) {
+        try {
+            var daily_record = this.find_daily_record(employee, date);
+            
+            if (!employee || !daily_record) {
+                frappe.msgprint('No data found for selected date');
+                return;
+            }
+            
+            // Create detailed modal with company info
+            var modal_content = this.create_unified_conflict_details_modal(employee, daily_record, date);
+            
+            // Show modal
+            var modal = new frappe.ui.Dialog({
+                title: `Conflict Details - ${employee.employee_name} (${employee.company_name})`,
+                fields: [
+                    {
+                        fieldtype: 'HTML',
+                        fieldname: 'conflict_details',
+                        options: modal_content
+                    }
+                ],
+                primary_action_label: 'Close',
+                primary_action: function() {
+                    modal.hide();
+                }
+            });
+            
+            modal.show();
+            
+        } catch (e) {
+            console.error('Error showing unified conflict details:', e);
+            frappe.msgprint('Error loading conflict details');
+        }
+    }
+
+    show_unified_day_details(employee_id, date, employee) {
+        try {
+            var daily_record = this.find_daily_record(employee, date);
+            
+            if (!employee) {
+                frappe.msgprint('Employee not found');
+                return;
+            }
+            
+            // Create detailed modal with company info
+            var modal_content = this.create_unified_day_details_modal(employee, daily_record, date);
+            
+            // Show modal
+            var modal = new frappe.ui.Dialog({
+                title: `Day Details - ${employee.employee_name} (${employee.company_name})`,
+                fields: [
+                    {
+                        fieldtype: 'HTML',
+                        fieldname: 'day_details',
+                        options: modal_content
+                    }
+                ],
+                primary_action_label: 'Close',
+                primary_action: function() {
+                    modal.hide();
+                }
+            });
+            
+            modal.show();
+            
+        } catch (e) {
+            console.error('Error showing unified day details:', e);
+            frappe.msgprint('Error loading day details');
+        }
+    }
+
     show_conflict_details(employee_id, date, company) {
         try {
             var employee = this.find_employee_by_id(employee_id);
@@ -1202,6 +1372,112 @@ class HRUtilizationDashboard {
         }
     }
 
+    create_unified_conflict_details_modal(employee, daily_record, date) {
+        try {
+            var content = `
+                <div class="conflict-details-modal unified-modal">
+                    <div class="employee-info-section">
+                        <h5>${employee.employee_name}</h5>
+                        <p><strong>Company:</strong> ${employee.company_name}</p>
+                        <p><strong>Department:</strong> ${employee.department}</p>
+                        <p><strong>Date:</strong> ${date}</p>
+                    </div>
+                    
+                    <div class="conflicts-section">
+                        <h6>Department Leave Conflicts Found (${daily_record.conflicts.length})</h6>
+            `;
+            
+            daily_record.conflicts.forEach((conflict, index) => {
+                var priority_color = {
+                    'high': '#dc3545',
+                    'medium': '#ffc107',
+                    'low': '#28a745'
+                };
+                
+                content += `
+                    <div class="conflict-item" style="border-left: 4px solid ${priority_color[conflict.priority] || '#6c757d'};">
+                        <div class="conflict-header">
+                            <strong>Conflict ${index + 1}</strong>
+                            <span class="badge badge-${conflict.priority === 'high' ? 'danger' : conflict.priority === 'medium' ? 'warning' : 'success'}">${conflict.priority}</span>
+                        </div>
+                        <div class="conflict-description">${conflict.description}</div>
+                    </div>
+                `;
+            });
+            
+            // Show leave information if available
+            if (daily_record.leave) {
+                content += `
+                    <div class="status-section">
+                        <h6>Leave Application</h6>
+                        <p><strong>Type:</strong> ${daily_record.leave.leave_type}</p>
+                        <p><strong>Status:</strong> ${daily_record.leave.status}</p>
+                        <p><strong>Period:</strong> ${daily_record.leave.from_date} to ${daily_record.leave.to_date}</p>
+                    </div>
+                `;
+            }
+            
+            content += '</div></div>';
+            
+            return content;
+            
+        } catch (e) {
+            console.error('Error creating unified conflict details modal:', e);
+            return '<div class="error-message">Error creating conflict details</div>';
+        }
+    }
+
+    create_unified_day_details_modal(employee, daily_record, date) {
+        try {
+            var content = `
+                <div class="day-details-modal unified-modal">
+                    <div class="employee-info-section">
+                        <h5>${employee.employee_name}</h5>
+                        <p><strong>Company:</strong> ${employee.company_name}</p>
+                        <p><strong>Department:</strong> ${employee.department}</p>
+                        <p><strong>Date:</strong> ${date}</p>
+                    </div>
+            `;
+            
+            // Show status indicators
+            if (daily_record && daily_record.status_indicators && daily_record.status_indicators.length > 0) {
+                content += '<div class="status-section">';
+                content += '<h6>Status</h6>';
+                
+                if (daily_record.attendance) {
+                    content += `
+                        <div class="status-item attendance">
+                            <h6>✅ Attendance</h6>
+                            <p><strong>First Check-in:</strong> ${daily_record.attendance.first_checkin || 'N/A'}</p>
+                            <p><strong>Last Checkout:</strong> ${daily_record.attendance.last_checkout || 'N/A'}</p>
+                        </div>
+                    `;
+                }
+                
+                if (daily_record.leave) {
+                    content += `
+                        <div class="status-item leave">
+                            <h6>🏖️ Leave Application</h6>
+                            <p><strong>Type:</strong> ${daily_record.leave.leave_type}</p>
+                            <p><strong>Status:</strong> ${daily_record.leave.status}</p>
+                            <p><strong>Period:</strong> ${daily_record.leave.from_date} to ${daily_record.leave.to_date}</p>
+                        </div>
+                    `;
+                }
+                
+                content += '</div>';
+            }
+            
+            content += '</div>';
+            
+            return content;
+            
+        } catch (e) {
+            console.error('Error creating unified day details modal:', e);
+            return '<div class="error-message">Error creating day details</div>';
+        }
+    }
+
     create_conflict_details_modal(employee, daily_record, date) {
         try {
             var content = `
@@ -1251,15 +1527,7 @@ class HRUtilizationDashboard {
                     daily_record.leave.leave_type + ' (' + daily_record.leave.status + ')</p>';
             }
             
-            if (daily_record.shift_request) {
-                content += '<p><strong>⏰ Shift Request:</strong> ' + 
-                    daily_record.shift_request.shift_type + ' (' + daily_record.shift_request.status + ')</p>';
-            }
-            
-            if (daily_record.overtime_request) {
-                content += '<p><strong>⏱️ Overtime:</strong> ' + 
-                    daily_record.overtime_request.duration + ' hours (' + daily_record.overtime_request.status + ')</p>';
-            }
+
             
             content += '</div></div>';
             
@@ -1310,28 +1578,7 @@ class HRUtilizationDashboard {
                     `;
                 }
                 
-                if (daily_record.shift_request) {
-                    content += `
-                        <div class="status-item shift">
-                            <h6>⏰ Shift Request</h6>
-                            <p><strong>Shift Type:</strong> ${daily_record.shift_request.shift_type}</p>
-                            <p><strong>Status:</strong> ${daily_record.shift_request.status}</p>
-                            <p><strong>Duration:</strong> ${daily_record.shift_request.from_date} to ${daily_record.shift_request.to_date}</p>
-                        </div>
-                    `;
-                }
-                
-                if (daily_record.overtime_request) {
-                    content += `
-                        <div class="status-item overtime">
-                            <h6>⏱️ Overtime Request</h6>
-                            <p><strong>Duration:</strong> ${daily_record.overtime_request.duration} hours</p>
-                            <p><strong>Time:</strong> ${daily_record.overtime_request.time_from} - ${daily_record.overtime_request.time_to}</p>
-                            <p><strong>Status:</strong> ${daily_record.overtime_request.status}</p>
-                            ${daily_record.overtime_request.reason ? `<p><strong>Reason:</strong> ${daily_record.overtime_request.reason}</p>` : ''}
-                        </div>
-                    `;
-                }
+
                 
                 content += '</div>';
             }
@@ -1498,9 +1745,7 @@ class HRUtilizationDashboard {
                             <select class="form-control conflict-filter-type">
                                 <option value="">All Types</option>
                                 <option value="attendance_leave_conflict">Attendance vs Leave</option>
-                                <option value="shift_overtime_conflict">Shift vs Overtime</option>
-                                <option value="overtime_no_attendance">Overtime without Attendance</option>
-                                <option value="multiple_requests">Multiple Requests</option>
+                                <option value="department_leave_conflict">Department Leave Conflicts</option>
                             </select>
                         </div>
                     </div>
@@ -1832,19 +2077,7 @@ class HRUtilizationDashboard {
                                     <p>Duration: ${conflict.daily_record.leave.from_date} to ${conflict.daily_record.leave.to_date}</p>
                                 ` : ''}
                                 
-                                ${conflict.daily_record.overtime_request ? `
-                                    <h6>Overtime Request</h6>
-                                    <p>Duration: ${conflict.daily_record.overtime_request.duration || 'N/A'} hours</p>
-                                    <p>Status: ${conflict.daily_record.overtime_request.status || 'N/A'}</p>
-                                    <p>Time: ${conflict.daily_record.overtime_request.time_from || 'N/A'} - ${conflict.daily_record.overtime_request.time_to || 'N/A'}</p>
-                                ` : ''}
-                                
-                                ${conflict.daily_record.shift_request ? `
-                                    <h6>Shift Request</h6>
-                                    <p>Shift Type: ${conflict.daily_record.shift_request.shift_type || 'N/A'}</p>
-                                    <p>Status: ${conflict.daily_record.shift_request.status || 'N/A'}</p>
-                                    <p>Duration: ${conflict.daily_record.shift_request.from_date} to ${conflict.daily_record.shift_request.to_date}</p>
-                                ` : ''}
+
                             </div>
                         `
                     }
@@ -2202,8 +2435,6 @@ class HRUtilizationDashboard {
                 data.legend = [
                     { indicator: 'A', description: 'Attended' },
                     { indicator: 'L', description: 'On Leave' },
-                    { indicator: 'O', description: 'Overtime' },
-                    { indicator: 'S', description: 'Shift Request' },
                     { indicator: '🔴', description: 'Conflict' }
                 ];
             }

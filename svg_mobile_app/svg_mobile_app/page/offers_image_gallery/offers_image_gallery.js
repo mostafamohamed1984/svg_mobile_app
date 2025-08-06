@@ -801,12 +801,22 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             }
         }
 
-        // For simple search, use a very simple approach first to test
+        // For simple search, use proper OR structure that works
         if (!query) return [];
 
-        // Start with just one field to test the basic structure
+        // Use multiple fields with proper OR structure
         return [
-            ['offer_code', 'like', `%${query}%`]
+            ['offer_code', 'like', `%${query}%`],
+            'or',
+            ['community', 'like', `%${query}%`],
+            'or',
+            ['model', 'like', `%${query}%`],
+            'or',
+            ['year', 'like', `%${query}%`],
+            'or',
+            ['dimensions', 'like', `%${query}%`],
+            'or',
+            ['offer_material_status', 'like', `%${query}%`]
         ];
     }
 

@@ -793,10 +793,10 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
 
                 let or_filters = [];
                 for (let i = 0; i < advanced_criteria.length; i++) {
-                    or_filters.push(advanced_criteria[i]);
-                    if (i < advanced_criteria.length - 1) {
+                    if (i > 0) {
                         or_filters.push('or');
                     }
+                    or_filters.push(advanced_criteria[i]);
                 }
                 return [or_filters]; // Wrap in array for proper structure
             }
@@ -814,11 +814,11 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         ];
 
         let filters = [];
-        search_fields.forEach(field => {
-            filters.push([field, 'like', `%${query}%`]);
-            if (filters.length > 1 && filters[filters.length - 2] !== 'or') {
-                filters.splice(-1, 0, 'or'); // Insert 'or' before the last element
+        search_fields.forEach((field, index) => {
+            if (index > 0) {
+                filters.push('or');
             }
+            filters.push([field, 'like', `%${query}%`]);
         });
 
         return filters.length > 0 ? [filters] : []; // OR condition for all fields

@@ -801,26 +801,13 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             }
         }
 
-        // For simple search, use the exact same format as projects gallery
+        // For simple search, use a very simple approach first to test
         if (!query) return [];
 
-        // Search across multiple fields including all offer fields
-        let search_fields = [
-            'offer_code', 'community', 'model', 'year', 'dimensions',
-            'offer_material_status', 'area_ft', 'area_sm', 'price_shj', 'price_auh', 'price_dxb',
-            'bedroom', 'majlis', 'family_living', 'kitchen', 'bathrooms', 'maidroom', 
-            'laundry', 'dining_room', 'store', 'no_of_floors', 'offers_date'
+        // Start with just one field to test the basic structure
+        return [
+            ['offer_code', 'like', `%${query}%`]
         ];
-
-        let filters = [];
-        search_fields.forEach(field => {
-            filters.push([field, 'like', `%${query}%`]);
-            if (filters.length > 1 && filters[filters.length - 2] !== 'or') {
-                filters.splice(-1, 0, 'or'); // Insert 'or' before the last element
-            }
-        });
-
-        return filters.length > 0 ? filters : []; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {

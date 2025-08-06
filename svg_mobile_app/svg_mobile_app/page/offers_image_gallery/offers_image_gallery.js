@@ -804,9 +804,9 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         // Fallback to simple search if no advanced criteria or if query is provided
         if (!query) return [];
 
-        // Search across multiple fields - only Data fields, no Link fields
+        // Test with single field that we know works
         let search_fields = [
-            'offer_code', 'model', 'dimensions'
+            'offer_code'
         ];
 
         let filters = [];
@@ -817,7 +817,7 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             }
         });
 
-        return filters.length > 0 ? [filters] : []; // OR condition for all fields
+        return filters; // Return filters directly without extra wrapping
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {

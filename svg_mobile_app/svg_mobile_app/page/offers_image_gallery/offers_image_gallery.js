@@ -801,23 +801,26 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             }
         }
 
-        // For simple search, use a simpler approach that works with our Python backend
-        if (!query) return null;
+        // For simple search, use the exact same format as projects gallery
+        if (!query) return [];
 
-        // Use a single OR filter structure that's compatible with the Python backend
-        return [
-            ['offer_code', 'like', `%${query}%`],
-            'or',
-            ['community', 'like', `%${query}%`],
-            'or', 
-            ['model', 'like', `%${query}%`],
-            'or',
-            ['year', 'like', `%${query}%`],
-            'or',
-            ['dimensions', 'like', `%${query}%`],
-            'or',
-            ['offer_material_status', 'like', `%${query}%`]
+        // Search across multiple fields including all offer fields
+        let search_fields = [
+            'offer_code', 'community', 'model', 'year', 'dimensions',
+            'offer_material_status', 'area_ft', 'area_sm', 'price_shj', 'price_auh', 'price_dxb',
+            'bedroom', 'majlis', 'family_living', 'kitchen', 'bathrooms', 'maidroom', 
+            'laundry', 'dining_room', 'store', 'no_of_floors', 'offers_date'
         ];
+
+        let filters = [];
+        search_fields.forEach(field => {
+            filters.push([field, 'like', `%${query}%`]);
+            if (filters.length > 1 && filters[filters.length - 2] !== 'or') {
+                filters.splice(-1, 0, 'or'); // Insert 'or' before the last element
+            }
+        });
+
+        return filters.length > 0 ? [filters] : []; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {
@@ -825,26 +828,23 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         $('#offers-table').hide();
 
         frappe.call({
-            method: 'svg_mobile_app.svg_mobile_app.page.offers_image_gallery.offers_image_gallery.get_offers_data',
+            method: 'frappe.client.get_list',
             args: {
-                filters: build_search_filters(query),
+                doctype: 'Offers Collection',
                 fields: ['name', 'offer_code', 'community', 'model', 'year', 'area_ft', 'area_sm',
                         'dimensions', 'price_shj', 'price_auh', 'price_dxb', 'bedroom', 'majlis',
                         'family_living', 'kitchen', 'bathrooms', 'maidroom', 'laundry', 'dining_room',
                         'store', 'no_of_floors', 'offer_image', 'offers_date', 'offer_material_status'],
                 limit_start: (page_num - 1) * page_length,
                 limit_page_length: page_length,
-                order_by: `${sort_field_param} ${order}`
+                order_by: `${sort_field_param} ${order}`,
+                filters: build_search_filters(query)
             },
             callback: function(r) {
                 $('#loading').hide();
                 $('#offers-table').show();
-                if (r.message && r.message.status === 'success') {
-                    render_table(r.message.data, query, page_num, sort_field_param, order);
-                    fetch_total_count(query, page_num, sort_field_param, order);
-                } else {
-                    $('#offers-table').html('<div class="text-center p-4">Error loading offers. Please try again.</div>');
-                }
+                render_table(r.message, query, page_num, sort_field_param, order);
+                fetch_total_count(query, page_num, sort_field_param, order);
             },
             error: function() {
                 $('#loading').hide();
@@ -959,16 +959,13 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
 
     function fetch_total_count(query, page_num, sort_field_param, order) {
         frappe.call({
-            method: 'svg_mobile_app.svg_mobile_app.page.offers_image_gallery.offers_image_gallery.get_offers_count',
+            method: 'frappe.client.get_count',
             args: {
+                doctype: 'Offers Collection',
                 filters: build_search_filters(query)
             },
             callback: function(r) {
-                if (r.message && r.message.status === 'success') {
-                    render_pagination(r.message.count, page_num, query, sort_field_param, order);
-                } else {
-                    render_pagination(0, page_num, query, sort_field_param, order);
-                }
+                render_pagination(r.message, page_num, query, sort_field_param, order);
             }
         });
     }

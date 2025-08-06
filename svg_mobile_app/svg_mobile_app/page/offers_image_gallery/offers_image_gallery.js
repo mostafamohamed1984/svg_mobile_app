@@ -797,7 +797,7 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                     }
                     or_filters.push(advanced_criteria[i]);
                 }
-                return [or_filters]; // Wrap in array for OR structure
+                return or_filters; // Return OR filters directly
             }
         }
 
@@ -820,7 +820,7 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             }
         });
 
-        return filters.length > 0 ? [filters] : []; // OR condition for all fields
+        return filters.length > 0 ? filters : []; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {

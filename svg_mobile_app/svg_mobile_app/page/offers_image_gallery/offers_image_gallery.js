@@ -786,7 +786,6 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                 return advanced_criteria; // Each criteria as separate filter (AND)
             } else {
                 // For OR mode, we need to structure it differently
-                // Frappe expects OR filters as: [['field1', 'op', 'val'], 'or', ['field2', 'op', 'val']]
                 if (advanced_criteria.length === 1) {
                     return advanced_criteria; // Single criteria, no OR needed
                 }
@@ -798,30 +797,27 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                     }
                     or_filters.push(advanced_criteria[i]);
                 }
-                return or_filters; // Return filters directly
+                return [or_filters]; // Wrap in array for OR structure
             }
         }
 
-        // Fallback to simple search if no advanced criteria or if query is provided
-        if (!query) return [];
+        // For simple search, use a simpler approach that works with our Python backend
+        if (!query) return null;
 
-        // Search across multiple fields including all offer fields
-        let search_fields = [
-            'offer_code', 'community', 'model', 'year', 'dimensions',
-            'offer_material_status', 'area_ft', 'area_sm', 'price_shj', 'price_auh', 'price_dxb',
-            'bedroom', 'majlis', 'family_living', 'kitchen', 'bathrooms', 'maidroom', 
-            'laundry', 'dining_room', 'store', 'no_of_floors', 'offers_date'
+        // Use a single OR filter structure that's compatible with the Python backend
+        return [
+            ['offer_code', 'like', `%${query}%`],
+            'or',
+            ['community', 'like', `%${query}%`],
+            'or', 
+            ['model', 'like', `%${query}%`],
+            'or',
+            ['year', 'like', `%${query}%`],
+            'or',
+            ['dimensions', 'like', `%${query}%`],
+            'or',
+            ['offer_material_status', 'like', `%${query}%`]
         ];
-
-        let filters = [];
-        search_fields.forEach((field, index) => {
-            if (index > 0) {
-                filters.push('or');
-            }
-            filters.push([field, 'like', `%${query}%`]);
-        });
-
-        return filters; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {

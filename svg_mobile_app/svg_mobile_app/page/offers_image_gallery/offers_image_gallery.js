@@ -282,6 +282,123 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                 from { opacity: 0; }
                 to { opacity: 1; }
             }
+            .advanced-search {
+                background: white;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                display: none;
+            }
+            .search-criteria {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+                padding: 12px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                position: relative;
+            }
+            .search-criteria select {
+                padding: 8px 12px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                background: white;
+                min-width: 150px;
+            }
+            .search-criteria input {
+                flex: 1;
+                padding: 8px 12px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                min-width: 200px;
+            }
+            .range-inputs {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex: 1;
+            }
+            .range-inputs input {
+                flex: 1;
+                min-width: 80px;
+            }
+            .range-separator {
+                color: #7f8c8d;
+                font-weight: 500;
+                white-space: nowrap;
+            }
+            .multiple-values-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            .multiple-values-container .value-input {
+                margin-bottom: 4px;
+            }
+            .help-text {
+                font-size: 11px;
+                color: #666;
+                margin-top: 4px;
+                font-style: italic;
+            }
+            .remove-criteria {
+                background: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .remove-criteria:hover {
+                background: #c0392b;
+            }
+            .add-criteria {
+                background: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                cursor: pointer;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .add-criteria:hover {
+                background: #229954;
+            }
+            .search-mode-toggle {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+            .mode-btn {
+                padding: 6px 12px;
+                border: 1px solid #dee2e6;
+                background: white;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.3s ease;
+            }
+            .mode-btn.active {
+                background: #3498db;
+                color: white;
+                border-color: #3498db;
+            }
+            .search-actions {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-top: 16px;
+            }
         </style>
     `;
 
@@ -297,8 +414,25 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                     <input id="offer-search" type="text" class="search-input" placeholder="Search offers by code, model, community, year...">
                     <button id="search-btn" class="btn-modern btn-primary-modern">Search</button>
                     <button id="clear-search" class="btn-modern btn-secondary-modern">Clear</button>
+                    <button id="advanced-search-toggle" class="btn-modern btn-secondary-modern">+ Advanced</button>
                     <button id="toggle-columns" class="btn-modern btn-secondary-modern">Columns</button>
-                    <button id="export-pdf" class="btn-modern btn-primary-modern">📄 Export PDF</button>
+                    <button id="export-pdf" class="btn-modern btn-primary-modern">📄 Export PDF (Limited)</button>
+                </div>
+            </div>
+
+            <div id="advanced-search" class="advanced-search">
+                <h5>Advanced Search</h5>
+                <div class="search-mode-toggle">
+                    <button class="mode-btn active" data-mode="AND">Match ALL criteria (AND)</button>
+                    <button class="mode-btn" data-mode="OR">Match ANY criteria (OR)</button>
+                </div>
+                <div id="search-criteria-container"></div>
+                <div class="search-actions">
+                    <button id="add-search-criteria" class="add-criteria">
+                        <span>+</span> Add Search Criteria
+                    </button>
+                    <button id="apply-advanced-search" class="btn-modern btn-primary-modern">Apply Search</button>
+                    <button id="clear-advanced-search" class="btn-modern btn-secondary-modern">Clear All</button>
                 </div>
             </div>
 
@@ -331,6 +465,8 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
     let last_query = '';
     let sort_field = 'numeric_sort_field';  // Default to numeric sorting for Offer Code
     let sort_order = 'desc';
+    let advanced_search_criteria = [];
+    let search_mode = 'AND'; // AND or OR
 
     // Column configuration for Offers Collection
     let columns = {
@@ -369,9 +505,8 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
     // Initialize column toggles with organized sections
     function init_column_toggles() {
         let main_columns = ['offer_code', 'community', 'model', 'year', 'area_ft', 'area_sm', 'dimensions', 'offer_image'];
-        let pricing_columns = ['price_shj', 'price_auh', 'price_dxb'];
+        let secondary_columns = ['price_shj', 'price_auh', 'price_dxb', 'offers_date', 'offer_material_status'];
         let room_columns = ['bedroom', 'majlis', 'family_living', 'kitchen', 'bathrooms', 'maidroom', 'laundry', 'dining_room', 'store', 'no_of_floors'];
-        let status_columns = ['offers_date', 'offer_material_status'];
 
         let toggles_html = `
             <div class="column-section">
@@ -395,11 +530,11 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                 </div>
             </div>
             <div class="column-section">
-                <h6>Pricing Columns</h6>
+                <h6>Secondary Columns</h6>
                 <div class="column-toggles">
         `;
 
-        pricing_columns.forEach(key => {
+        secondary_columns.forEach(key => {
             if (columns[key]) {
                 let column = columns[key];
                 toggles_html += `
@@ -420,26 +555,6 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         `;
 
         room_columns.forEach(key => {
-            if (columns[key]) {
-                let column = columns[key];
-                toggles_html += `
-                    <label class="column-toggle">
-                        <input type="checkbox" data-column="${key}" ${column.visible ? 'checked' : ''}>
-                        <span>${column.label}</span>
-                    </label>
-                `;
-            }
-        });
-
-        toggles_html += `
-                </div>
-            </div>
-            <div class="column-section">
-                <h6>Status & Date</h6>
-                <div class="column-toggles">
-        `;
-
-        status_columns.forEach(key => {
             if (columns[key]) {
                 let column = columns[key];
                 toggles_html += `
@@ -502,14 +617,200 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         $('#image-modal').fadeOut(300);
     }
 
+    // Advanced search functions
+    function get_searchable_fields() {
+        return {
+            'offer_code': 'Offer Code',
+            'community': 'Community',
+            'model': 'Model',
+            'year': 'Year',
+            'area_ft': 'Area (FT)',
+            'area_sm': 'Area (SM)',
+            'dimensions': 'Dimensions',
+            'price_shj': 'Price SHJ',
+            'price_auh': 'Price AUH',
+            'price_dxb': 'Price DXB',
+            'bedroom': 'Bedrooms',
+            'majlis': 'Majlis',
+            'family_living': 'Family Living',
+            'kitchen': 'Kitchen',
+            'bathrooms': 'Bathrooms',
+            'maidroom': 'Maid Room',
+            'laundry': 'Laundry',
+            'dining_room': 'Dining Room',
+            'store': 'Store',
+            'no_of_floors': 'No. of Floors',
+            'offers_date': 'Offers Date',
+            'offer_material_status': 'Material Status'
+        };
+    }
+
+    function add_search_criteria() {
+        let criteria_id = 'criteria_' + Date.now();
+        let searchable_fields = get_searchable_fields();
+
+        let options_html = '';
+        Object.keys(searchable_fields).forEach(key => {
+            options_html += `<option value="${key}">${searchable_fields[key]}</option>`;
+        });
+
+        let criteria_html = `
+            <div class="search-criteria" data-id="${criteria_id}">
+                <select class="field-select">
+                    ${options_html}
+                </select>
+                <select class="operator-select">
+                    <option value="like">Contains</option>
+                    <option value="=">Equals</option>
+                    <option value="!=">Not Equals</option>
+                    <option value=">">Greater Than</option>
+                    <option value="<">Less Than</option>
+                    <option value="between">Between</option>
+                    <option value="in">Multiple Values (OR)</option>
+                </select>
+                <div class="value-container">
+                    <input type="text" class="value-input" placeholder="Enter search value...">
+                </div>
+                <button class="remove-criteria" data-criteria-id="${criteria_id}">×</button>
+            </div>
+        `;
+
+        $('#search-criteria-container').append(criteria_html);
+
+        // Add event listener for operator change
+        $(`[data-id="${criteria_id}"] .operator-select`).change(function() {
+            update_value_inputs(criteria_id, $(this).val());
+        });
+    }
+
+    function update_value_inputs(criteria_id, operator) {
+        let container = $(`[data-id="${criteria_id}"] .value-container`);
+
+        if (operator === 'between') {
+            container.html(`
+                <div class="range-inputs">
+                    <input type="number" class="value-input-min" placeholder="Min value">
+                    <span class="range-separator">to</span>
+                    <input type="number" class="value-input-max" placeholder="Max value">
+                </div>
+            `);
+        } else if (operator === 'in') {
+            container.html(`
+                <div class="multiple-values-container">
+                    <input type="text" class="value-input" placeholder="Enter values separated by commas (e.g., Active, Pending, Completed)">
+                    <div class="help-text" style="font-size: 11px; color: #666; margin-top: 4px;">
+                        💡 Tip: Enter multiple values separated by commas to search for ANY of these values
+                    </div>
+                </div>
+            `);
+        } else {
+            let inputType = 'text';
+            let placeholder = 'Enter search value...';
+
+            // Use number input for numerical operators
+            if (operator === '>' || operator === '<' || operator === '=' || operator === '!=') {
+                let field = $(`[data-id="${criteria_id}"] .field-select`).val();
+                if (field && (field.includes('area') || field.includes('price') || field.includes('no_of') || field === 'year' || field === 'bedroom' || field === 'bathrooms')) {
+                    inputType = 'number';
+                    placeholder = 'Enter number...';
+                }
+            }
+
+            container.html(`<input type="${inputType}" class="value-input" placeholder="${placeholder}">`);
+        }
+    }
+
+    function remove_search_criteria(criteria_id) {
+        $(`[data-id="${criteria_id}"]`).remove();
+    }
+
+    function build_advanced_search_filters() {
+        let criteria = [];
+
+        $('.search-criteria').each(function() {
+            let field = $(this).find('.field-select').val();
+            let operator = $(this).find('.operator-select').val();
+
+            if (field) {
+                if (operator === 'between') {
+                    let minValue = $(this).find('.value-input-min').val().trim();
+                    let maxValue = $(this).find('.value-input-max').val().trim();
+
+                    if (minValue && maxValue) {
+                        // Add both min and max conditions for between
+                        criteria.push([field, '>=', minValue]);
+                        criteria.push([field, '<=', maxValue]);
+                    } else if (minValue) {
+                        // Only min value provided
+                        criteria.push([field, '>=', minValue]);
+                    } else if (maxValue) {
+                        // Only max value provided
+                        criteria.push([field, '<=', maxValue]);
+                    }
+                } else if (operator === 'in') {
+                    let value = $(this).find('.value-input').val().trim();
+                    
+                    if (value) {
+                        // Split by comma and clean up values
+                        let values = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
+                        
+                        if (values.length > 0) {
+                            // Use 'in' operator for multiple values
+                            criteria.push([field, 'in', values]);
+                        }
+                    }
+                } else {
+                    let value = $(this).find('.value-input').val().trim();
+
+                    if (value) {
+                        if (operator === 'like') {
+                            criteria.push([field, 'like', `%${value}%`]);
+                        } else {
+                            criteria.push([field, operator, value]);
+                        }
+                    }
+                }
+            }
+        });
+
+        return criteria;
+    }
+
     function build_search_filters(query) {
-        // Fallback to simple search if no query
+        // Check if we have advanced search criteria
+        let advanced_criteria = build_advanced_search_filters();
+
+        if (advanced_criteria.length > 0) {
+            // Use advanced search criteria
+            if (search_mode === 'AND') {
+                return advanced_criteria; // Each criteria as separate filter (AND)
+            } else {
+                // For OR mode, we need to structure it differently
+                // Frappe expects OR filters as: [['field1', 'op', 'val'], 'or', ['field2', 'op', 'val']]
+                if (advanced_criteria.length === 1) {
+                    return advanced_criteria; // Single criteria, no OR needed
+                }
+
+                let or_filters = [];
+                for (let i = 0; i < advanced_criteria.length; i++) {
+                    or_filters.push(advanced_criteria[i]);
+                    if (i < advanced_criteria.length - 1) {
+                        or_filters.push('or');
+                    }
+                }
+                return [or_filters]; // Wrap in array for proper structure
+            }
+        }
+
+        // Fallback to simple search if no advanced criteria or if query is provided
         if (!query) return [];
 
-        // Search across multiple fields for offers
+        // Search across multiple fields including all offer fields
         let search_fields = [
             'offer_code', 'community', 'model', 'year', 'dimensions',
-            'offer_material_status', 'project_number'
+            'offer_material_status', 'area_ft', 'area_sm', 'price_shj', 'price_auh', 'price_dxb',
+            'bedroom', 'majlis', 'family_living', 'kitchen', 'bathrooms', 'maidroom', 
+            'laundry', 'dining_room', 'store', 'no_of_floors', 'offers_date'
         ];
 
         let filters = [];
@@ -750,6 +1051,43 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         export_to_pdf();
     });
 
+    $('#advanced-search-toggle').click(function() {
+        $('#advanced-search').toggle();
+        if ($('#advanced-search').is(':visible') && $('#search-criteria-container').children().length === 0) {
+            add_search_criteria(); // Add first criteria when opening
+        }
+    });
+
+    $('#add-search-criteria').click(function() {
+        add_search_criteria();
+    });
+
+    $('#apply-advanced-search').click(function() {
+        current_page = 1;
+        last_query = ''; // Clear simple search when using advanced
+        $('#offer-search').val('');
+        fetch_and_render('', current_page, sort_field, sort_order);
+    });
+
+    $('#clear-advanced-search').click(function() {
+        $('#search-criteria-container').empty();
+        current_page = 1;
+        fetch_and_render('', current_page, sort_field, sort_order);
+    });
+
+    // Search mode toggle
+    $('.mode-btn').click(function() {
+        $('.mode-btn').removeClass('active');
+        $(this).addClass('active');
+        search_mode = $(this).data('mode');
+    });
+
+    // Event delegation for remove criteria buttons
+    $(document).on('click', '.remove-criteria', function() {
+        let criteria_id = $(this).data('criteria-id');
+        remove_search_criteria(criteria_id);
+    });
+
     function export_to_pdf() {
         // Show export options dialog
         let export_dialog = new frappe.ui.Dialog({
@@ -770,15 +1108,18 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                     reqd: 1
                 },
                 {
-                    fieldname: 'note',
+                    fieldname: 'warning_html',
                     fieldtype: 'HTML',
-                    options: '<p style="color: #666; font-size: 12px; margin-top: 10px;"><strong>Note:</strong> Large exports may take longer to generate. Only visible columns will be included in the PDF.</p>'
+                    options: `<div style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                        <strong>⚠️ Important:</strong> Large exports may take longer to generate. 
+                        The system will export the most recent offers matching your current search filters.
+                    </div>`
                 }
             ],
             primary_action_label: 'Export PDF',
             primary_action(values) {
                 export_dialog.hide();
-
+                
                 // Show loading message
                 frappe.show_alert({
                     message: `Generating PDF export (${values.export_limit} offers)...`,
@@ -824,7 +1165,7 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                 }, 1000);
             }
         });
-
+        
         export_dialog.show();
     }
 

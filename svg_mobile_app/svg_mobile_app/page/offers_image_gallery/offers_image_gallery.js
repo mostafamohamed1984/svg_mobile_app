@@ -798,7 +798,7 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
                     }
                     or_filters.push(advanced_criteria[i]);
                 }
-                return [or_filters]; // Wrap in array for proper structure
+                return or_filters; // Return filters directly
             }
         }
 
@@ -821,7 +821,7 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             filters.push([field, 'like', `%${query}%`]);
         });
 
-        return filters.length > 0 ? [filters] : []; // OR condition for all fields
+        return filters; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {
@@ -829,23 +829,26 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
         $('#offers-table').hide();
 
         frappe.call({
-            method: 'frappe.client.get_list',
+            method: 'svg_mobile_app.svg_mobile_app.page.offers_image_gallery.offers_image_gallery.get_offers_data',
             args: {
-                doctype: 'Offers Collection',
+                filters: build_search_filters(query),
                 fields: ['name', 'offer_code', 'community', 'model', 'year', 'area_ft', 'area_sm',
                         'dimensions', 'price_shj', 'price_auh', 'price_dxb', 'bedroom', 'majlis',
                         'family_living', 'kitchen', 'bathrooms', 'maidroom', 'laundry', 'dining_room',
                         'store', 'no_of_floors', 'offer_image', 'offers_date', 'offer_material_status'],
                 limit_start: (page_num - 1) * page_length,
                 limit_page_length: page_length,
-                order_by: `${sort_field_param} ${order}`,
-                filters: build_search_filters(query)
+                order_by: `${sort_field_param} ${order}`
             },
             callback: function(r) {
                 $('#loading').hide();
                 $('#offers-table').show();
-                render_table(r.message, query, page_num, sort_field_param, order);
-                fetch_total_count(query, page_num, sort_field_param, order);
+                if (r.message && r.message.status === 'success') {
+                    render_table(r.message.data, query, page_num, sort_field_param, order);
+                    fetch_total_count(query, page_num, sort_field_param, order);
+                } else {
+                    $('#offers-table').html('<div class="text-center p-4">Error loading offers. Please try again.</div>');
+                }
             },
             error: function() {
                 $('#loading').hide();
@@ -960,13 +963,16 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
 
     function fetch_total_count(query, page_num, sort_field_param, order) {
         frappe.call({
-            method: 'frappe.client.get_count',
+            method: 'svg_mobile_app.svg_mobile_app.page.offers_image_gallery.offers_image_gallery.get_offers_count',
             args: {
-                doctype: 'Offers Collection',
                 filters: build_search_filters(query)
             },
             callback: function(r) {
-                render_pagination(r.message, page_num, query, sort_field_param, order);
+                if (r.message && r.message.status === 'success') {
+                    render_pagination(r.message.count, page_num, query, sort_field_param, order);
+                } else {
+                    render_pagination(0, page_num, query, sort_field_param, order);
+                }
             }
         });
     }

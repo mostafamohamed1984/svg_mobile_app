@@ -801,15 +801,23 @@ frappe.pages['offers_image_gallery'].on_page_load = function(wrapper) {
             }
         }
 
-        // For simple search, test with 2 Data fields only
+        // Fallback to simple search if no advanced criteria or if query is provided
         if (!query) return [];
 
-        // Test with 2 simple Data fields (not Link fields)
-        return [
-            ['offer_code', 'like', `%${query}%`],
-            'or',
-            ['model', 'like', `%${query}%`]
+        // Search across multiple fields - only Data fields, no Link fields
+        let search_fields = [
+            'offer_code', 'model', 'dimensions'
         ];
+
+        let filters = [];
+        search_fields.forEach(field => {
+            filters.push([field, 'like', `%${query}%`]);
+            if (filters.length > 1 && filters[filters.length - 2] !== 'or') {
+                filters.splice(-1, 0, 'or'); // Insert 'or' before the last element
+            }
+        });
+
+        return filters.length > 0 ? [filters] : []; // OR condition for all fields
     }
 
     function fetch_and_render(query = '', page_num = 1, sort_field_param = sort_field, order = sort_order) {

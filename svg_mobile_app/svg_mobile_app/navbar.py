@@ -1,5 +1,38 @@
 import frappe
 from datetime import datetime, date
+def _is_navbar_checkin_enabled_for_current_user() -> bool:
+    """Evaluate settings, company scope, and role gating for current session user."""
+    try:
+        settings = frappe.get_single("BCC Processing Settings")
+        if not getattr(settings, "enable_navbar_checkin", 0):
+            return False
+
+        # Company scope
+        scope = (getattr(settings, "navbar_checkin_company_scope", "All Companies") or "All Companies").strip()
+        companies_raw = getattr(settings, "navbar_checkin_companies", "") or ""
+        companies = [c.strip() for c in companies_raw.split(',') if c and c.strip()]
+        company_allowed = True
+        user_default_company = frappe.defaults.get_user_default("company")
+        if scope != "All Companies" and user_default_company:
+            if scope == "Only Selected":
+                company_allowed = user_default_company in companies if companies else False
+            elif scope == "Exclude Selected":
+                company_allowed = user_default_company not in companies if companies else True
+
+        if not company_allowed:
+            return False
+
+        # Role gating
+        roles_raw = getattr(settings, "navbar_checkin_allowed_roles", "") or ""
+        allowed_roles = [r.strip() for r in roles_raw.split(',') if r and r.strip()]
+        if allowed_roles:
+            user_roles = frappe.get_roles(frappe.session.user)
+            if not any(r in user_roles for r in allowed_roles):
+                return False
+
+        return True
+    except Exception:
+        return False
 import json
 
 def get_attendance_info(bootinfo):
@@ -40,7 +73,43 @@ def get_attendance_info(bootinfo):
                 can_checkout = False
                 current_status = "Checked Out"
 
-        # Add to bootinfo
+        # Read toggle and scoping from settings
+        try:
+            settings = frappe.get_single("BCC Processing Settings")
+            enabled = bool(getattr(settings, "enable_navbar_checkin", 0))
+            scope = (getattr(settings, "navbar_checkin_company_scope", "All Companies") or "All Companies").strip()
+            companies_raw = getattr(settings, "navbar_checkin_companies", "") or ""
+            companies = [c.strip() for c in companies_raw.split(',') if c and c.strip()]
+            roles_raw = getattr(settings, "navbar_checkin_allowed_roles", "") or ""
+            allowed_roles = [r.strip() for r in roles_raw.split(',') if r and r.strip()]
+        except Exception:
+            enabled = False
+            scope = "All Companies"
+            companies = []
+            allowed_roles = []
+
+        # Determine company scope allowance using session default company if present
+        company_allowed = True
+        try:
+            user_default_company = frappe.defaults.get_user_default("company")
+            if enabled and scope != "All Companies" and user_default_company:
+                if scope == "Only Selected":
+                    company_allowed = user_default_company in companies if companies else False
+                elif scope == "Exclude Selected":
+                    company_allowed = user_default_company not in companies if companies else True
+        except Exception:
+            pass
+
+        # Determine role allowance
+        role_allowed = True
+        try:
+            if enabled and allowed_roles:
+                user_roles = frappe.get_roles(frappe.session.user)
+                role_allowed = any(r in user_roles for r in allowed_roles)
+        except Exception:
+            pass
+
+        # Add to bootinfo - include both status and feature toggle with scope
         bootinfo.attendance_status = {
             'employee': employee,
             'can_checkin': can_checkin,
@@ -50,6 +119,13 @@ def get_attendance_info(bootinfo):
             'last_time': str(last_checkin[1]) if last_checkin else None
         }
 
+        bootinfo.svg_navbar_checkin = {
+            'enabled': bool(_is_navbar_checkin_enabled_for_current_user()),
+            'company_scope': scope,
+            'companies': companies,
+            'allowed_roles': allowed_roles
+        }
+
     except Exception as e:
         frappe.log_error(f"Error getting attendance info: {str(e)}", "Navbar Attendance")
 
@@ -57,6 +133,14 @@ def get_attendance_info(bootinfo):
 def perform_attendance_action(action, latitude=None, longitude=None):
     """Perform checkin or checkout action with GPS coordinates"""
     try:
+        # Enforce feature toggle on server-side as well
+        if not _is_navbar_checkin_enabled_for_current_user():
+            return {
+                'success': False,
+                'error': 'Navbar checkin is disabled for your account or company.',
+                'message': 'This feature is currently disabled. Please contact your administrator.'
+            }
+
         # Debug logging
         frappe.log_error(f"Received parameters - action: {action}, latitude: {latitude}, longitude: {longitude}", "Navbar Debug")
         

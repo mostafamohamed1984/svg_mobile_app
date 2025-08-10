@@ -5,6 +5,10 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "enable_navbar_checkin",
+  "navbar_checkin_company_scope",
+  "navbar_checkin_companies",
+  "navbar_checkin_allowed_roles",
   "enable_bcc_processing",
   "gmail_forwarding_account",
   "processing_method",
@@ -21,6 +25,33 @@
   "forwarding_subject_prefix_role"
  ],
  "fields": [
+  {
+   "default": "0",
+   "fieldname": "enable_navbar_checkin",
+   "fieldtype": "Check",
+   "label": "Enable Navbar Checkin"
+  },
+  {
+   "default": "All Companies",
+   "fieldname": "navbar_checkin_company_scope",
+   "fieldtype": "Select",
+   "label": "Navbar Checkin Company Scope",
+   "options": "All Companies\nOnly Selected\nExclude Selected"
+  },
+  {
+   "fieldname": "navbar_checkin_companies",
+   "fieldtype": "MultiSelect",
+   "label": "Companies",
+   "options": "Company",
+   "description": "Select companies where the navbar checkin is enabled/disabled based on scope"
+  },
+  {
+   "fieldname": "navbar_checkin_allowed_roles",
+   "fieldtype": "MultiSelect",
+   "label": "Allowed Roles",
+   "options": "Role",
+   "description": "If set, only users with at least one of these roles will see the navbar checkin"
+  },
   {
    "default": "1",
    "fieldname": "enable_bcc_processing",

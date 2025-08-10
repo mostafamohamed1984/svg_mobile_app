@@ -716,6 +716,120 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
 
     // Advanced search functions
+    // Field meta cache for dynamic input rendering
+    let doctype_name = 'Projects Collection';
+    let field_meta_map = {};
+
+    function init_field_meta(callback) {
+        if (Object.keys(field_meta_map).length > 0) {
+            if (callback) callback();
+            return;
+        }
+        frappe.model.with_doctype(doctype_name, function() {
+            let meta = frappe.get_meta(doctype_name);
+            if (meta && Array.isArray(meta.fields)) {
+                meta.fields.forEach(f => {
+                    if (f && f.fieldname) {
+                        field_meta_map[f.fieldname] = {
+                            fieldtype: f.fieldtype,
+                            options: f.options || ''
+                        };
+                    }
+                });
+            }
+            if (callback) callback();
+        });
+    }
+
+    function get_fieldtype(fieldname) {
+        return (field_meta_map[fieldname] && field_meta_map[fieldname].fieldtype) || null;
+    }
+
+    function is_numeric_field(fieldname) {
+        const numeric_types = ['Int', 'Float', 'Currency', 'Percent'];
+        return numeric_types.includes(get_fieldtype(fieldname));
+    }
+
+    function is_date_field(fieldname) {
+        const date_types = ['Date', 'Datetime'];
+        return date_types.includes(get_fieldtype(fieldname));
+    }
+
+    function is_select_field(fieldname) {
+        return get_fieldtype(fieldname) === 'Select';
+    }
+
+    function is_link_field(fieldname) {
+        return get_fieldtype(fieldname) === 'Link';
+    }
+
+    function get_allowed_operators_for_field(fieldname) {
+        if (is_numeric_field(fieldname) || is_date_field(fieldname)) {
+            return [
+                { value: 'like', label: 'Contains' },
+                { value: '=', label: 'Equals' },
+                { value: '!=', label: 'Not Equals' },
+                { value: '>', label: 'Greater Than' },
+                { value: '<', label: 'Less Than' },
+                { value: 'between', label: 'Between' },
+                { value: 'in', label: 'Multiple Values (OR)' }
+            ];
+        }
+        if (is_select_field(fieldname) || is_link_field(fieldname)) {
+            return [
+                { value: 'like', label: 'Contains' },
+                { value: '=', label: 'Equals' },
+                { value: '!=', label: 'Not Equals' },
+                { value: 'in', label: 'Multiple Values (OR)' }
+            ];
+        }
+        // Default for text-like fields
+        return [
+            { value: 'like', label: 'Contains' },
+            { value: '=', label: 'Equals' },
+            { value: '!=', label: 'Not Equals' },
+            { value: '>', label: 'Greater Than' },
+            { value: '<', label: 'Less Than' },
+            { value: 'between', label: 'Between' },
+            { value: 'in', label: 'Multiple Values (OR)' }
+        ];
+    }
+
+    function render_operator_options(criteria_id) {
+        let field = $(`[data-id="${criteria_id}"] .field-select`).val();
+        let allowed = get_allowed_operators_for_field(field);
+        let html = allowed.map(op => `<option value="${op.value}">${op.label}</option>`).join('');
+        $(`[data-id="${criteria_id}"] .operator-select`).html(html);
+    }
+
+    function fetch_select_or_link_options(fieldname) {
+        return new Promise(resolve => {
+            // Select options from meta
+            if (is_select_field(fieldname)) {
+                let raw = (field_meta_map[fieldname] && field_meta_map[fieldname].options) || '';
+                // Ignore static "\n" and blank lines
+                let opts = raw.split('\n').map(v => v.trim()).filter(v => v);
+                resolve(opts);
+                return;
+            }
+            // Link options via list of linked doctype
+            if (is_link_field(fieldname)) {
+                let link_to = field_meta_map[fieldname] && field_meta_map[fieldname].options;
+                if (!link_to) { resolve([]); return; }
+                frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: { doctype: link_to, fields: ['name'], limit_page_length: 1000, order_by: 'modified desc' },
+                    callback: function(r) {
+                        let rows = Array.isArray(r.message) ? r.message : [];
+                        resolve(rows.map(x => x.name));
+                    },
+                    error: function() { resolve([]); }
+                });
+                return;
+            }
+            resolve([]);
+        });
+    }
     function get_searchable_fields() {
         return {
             'project_name': 'Project ID',
@@ -786,7 +900,19 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
         $('#search-criteria-container').append(criteria_html);
 
-        // Add event listener for operator change
+        // Initialize field meta then set operators/inputs
+        init_field_meta(function() {
+            render_operator_options(criteria_id);
+            update_value_inputs(criteria_id, $(`[data-id="${criteria_id}"] .operator-select`).val());
+        });
+
+        // Field change should update operators and inputs
+        $(`[data-id="${criteria_id}"] .field-select`).change(function() {
+            render_operator_options(criteria_id);
+            update_value_inputs(criteria_id, $(`[data-id="${criteria_id}"] .operator-select`).val());
+        });
+
+        // Operator change updates inputs
         $(`[data-id="${criteria_id}"] .operator-select`).change(function() {
             update_value_inputs(criteria_id, $(this).val());
         });
@@ -794,37 +920,63 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
 
     function update_value_inputs(criteria_id, operator) {
         let container = $(`[data-id="${criteria_id}"] .value-container`);
+        let field = $(`[data-id="${criteria_id}"] .field-select`).val();
 
         if (operator === 'between') {
-            container.html(`
-                <div class="range-inputs">
-                    <input type="number" class="value-input-min" placeholder="Min value">
-                    <span class="range-separator">to</span>
-                    <input type="number" class="value-input-max" placeholder="Max value">
-                </div>
-            `);
-        } else if (operator === 'in') {
-            container.html(`
-                <div class="multiple-values-container">
-                    <input type="text" class="value-input" placeholder="Enter values separated by commas (e.g., Active, Pending, Completed)">
-                    <div class="help-text" style="font-size: 11px; color: #666; margin-top: 4px;">
-                        💡 Tip: Enter multiple values separated by commas to search for ANY of these values
+            // Numeric or date ranges
+            if (is_date_field(field)) {
+                container.html(`
+                    <div class="range-inputs">
+                        <input type="date" class="value-input-min" placeholder="Start date">
+                        <span class="range-separator">to</span>
+                        <input type="date" class="value-input-max" placeholder="End date">
                     </div>
-                </div>
-            `);
+                `);
+            } else {
+                container.html(`
+                    <div class="range-inputs">
+                        <input type="number" class="value-input-min" placeholder="Min value">
+                        <span class="range-separator">to</span>
+                        <input type="number" class="value-input-max" placeholder="Max value">
+                    </div>
+                `);
+            }
+            return;
+        }
+
+        if (operator === 'in') {
+            if (is_select_field(field) || is_link_field(field)) {
+                container.html(`<div class="multiple-values-container"><select class="value-select" multiple style="min-width:260px"></select></div>`);
+                let selectEl = $(`[data-id="${criteria_id}"] .value-select`);
+                // Load options
+                fetch_select_or_link_options(field).then(options => {
+                    selectEl.html(options.map(o => `<option value="${frappe.utils.escape_html(o)}">${frappe.utils.escape_html(o)}</option>`).join(''));
+                });
+            } else {
+                container.html(`
+                    <div class="multiple-values-container">
+                        <input type="text" class="value-input" placeholder="Enter values separated by commas (e.g., 10, 20, 30)">
+                        <div class="help-text" style="font-size: 11px; color: #666; margin-top: 4px;">
+                            💡 Tip: Enter multiple values separated by commas to search for ANY of these values
+                        </div>
+                    </div>
+                `);
+            }
+            return;
+        }
+
+        // Default single value input
+        if (is_select_field(field) || is_link_field(field)) {
+            container.html(`<select class="value-select" style="min-width:260px"></select>`);
+            let selectEl = $(`[data-id="${criteria_id}"] .value-select`);
+            fetch_select_or_link_options(field).then(options => {
+                selectEl.html(`<option value="">Select...</option>` + options.map(o => `<option value="${frappe.utils.escape_html(o)}">${frappe.utils.escape_html(o)}</option>`).join(''));
+            });
         } else {
             let inputType = 'text';
             let placeholder = 'Enter search value...';
-
-            // Use number input for numerical operators
-            if (operator === '>' || operator === '<' || operator === '=' || operator === '!=') {
-                let field = $(`[data-id="${criteria_id}"] .field-select`).val();
-                if (field && (field.includes('area') || field.includes('cost') || field.includes('no_of'))) {
-                    inputType = 'number';
-                    placeholder = 'Enter number...';
-                }
-            }
-
+            if (is_numeric_field(field)) { inputType = 'number'; placeholder = 'Enter number...'; }
+            if (is_date_field(field)) { inputType = 'date'; placeholder = 'Select date...'; }
             container.html(`<input type="${inputType}" class="value-input" placeholder="${placeholder}">`);
         }
     }
@@ -857,19 +1009,21 @@ frappe.pages['projects_image_gallery'].on_page_load = function(wrapper) {
                         criteria.push([field, '<=', maxValue]);
                     }
                 } else if (operator === 'in') {
-                    let value = $(this).find('.value-input').val().trim();
-                    
-                    if (value) {
-                        // Split by comma and clean up values
-                        let values = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
-                        
-                        if (values.length > 0) {
-                            // Use 'in' operator for multiple values
-                            criteria.push([field, 'in', values]);
+                    // Support both multi-select and comma-separated input
+                    let selected = $(this).find('.value-select').val();
+                    if (Array.isArray(selected) && selected.length > 0) {
+                        criteria.push([field, 'in', selected]);
+                    } else {
+                        let value = $(this).find('.value-input').val();
+                        if (value) {
+                            let values = value.split(',').map(v => v.trim()).filter(v => v.length > 0);
+                            if (values.length > 0) criteria.push([field, 'in', values]);
                         }
                     }
                 } else {
-                    let value = $(this).find('.value-input').val().trim();
+                    // Single value from either select or input
+                    let selectVal = $(this).find('.value-select').val();
+                    let value = (selectVal !== undefined && selectVal !== null) ? String(selectVal).trim() : ($(this).find('.value-input').val() || '').trim();
 
                     if (value) {
                         if (operator === 'like') {

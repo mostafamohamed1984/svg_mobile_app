@@ -9,8 +9,13 @@ def _is_navbar_checkin_enabled_for_current_user() -> bool:
 
         # Company scope
         scope = (getattr(settings, "navbar_checkin_company_scope", "All Companies") or "All Companies").strip()
-        companies_raw = getattr(settings, "navbar_checkin_companies", "") or ""
-        companies = [c.strip() for c in companies_raw.split(',') if c and c.strip()]
+        companies = []
+        try:
+            for row in (settings.navbar_checkin_companies or []):
+                if getattr(row, 'company', None):
+                    companies.append(row.company)
+        except Exception:
+            pass
         company_allowed = True
         user_default_company = frappe.defaults.get_user_default("company")
         if scope != "All Companies" and user_default_company:
@@ -23,8 +28,13 @@ def _is_navbar_checkin_enabled_for_current_user() -> bool:
             return False
 
         # Role gating
-        roles_raw = getattr(settings, "navbar_checkin_allowed_roles", "") or ""
-        allowed_roles = [r.strip() for r in roles_raw.split(',') if r and r.strip()]
+        allowed_roles = []
+        try:
+            for row in (settings.navbar_checkin_allowed_roles or []):
+                if getattr(row, 'role', None):
+                    allowed_roles.append(row.role)
+        except Exception:
+            pass
         if allowed_roles:
             user_roles = frappe.get_roles(frappe.session.user)
             if not any(r in user_roles for r in allowed_roles):
@@ -78,10 +88,20 @@ def get_attendance_info(bootinfo):
             settings = frappe.get_single("BCC Processing Settings")
             enabled = bool(getattr(settings, "enable_navbar_checkin", 0))
             scope = (getattr(settings, "navbar_checkin_company_scope", "All Companies") or "All Companies").strip()
-            companies_raw = getattr(settings, "navbar_checkin_companies", "") or ""
-            companies = [c.strip() for c in companies_raw.split(',') if c and c.strip()]
-            roles_raw = getattr(settings, "navbar_checkin_allowed_roles", "") or ""
-            allowed_roles = [r.strip() for r in roles_raw.split(',') if r and r.strip()]
+            companies = []
+            try:
+                for row in (settings.navbar_checkin_companies or []):
+                    if getattr(row, 'company', None):
+                        companies.append(row.company)
+            except Exception:
+                pass
+            allowed_roles = []
+            try:
+                for row in (settings.navbar_checkin_allowed_roles or []):
+                    if getattr(row, 'role', None):
+                        allowed_roles.append(row.role)
+            except Exception:
+                pass
         except Exception:
             enabled = False
             scope = "All Companies"

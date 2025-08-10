@@ -1,0 +1,18 @@
+{
+  "doctype": "DocType",
+  "name": "Navbar Checkin Company",
+  "module": "Svg Mobile App",
+  "istable": 1,
+  "editable_grid": 1,
+  "custom": 0,
+  "fields": [
+    {
+      "fieldname": "company",
+      "label": "Company",
+      "fieldtype": "Link",
+      "options": "Company",
+      "in_list_view": 1,
+      "reqd": 1
+    }
+  ]
+}

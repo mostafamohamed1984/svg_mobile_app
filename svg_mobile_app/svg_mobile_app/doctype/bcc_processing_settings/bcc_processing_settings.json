@@ -40,16 +40,16 @@
   },
   {
    "fieldname": "navbar_checkin_companies",
-   "fieldtype": "MultiSelect",
+   "fieldtype": "Table MultiSelect",
    "label": "Companies",
-   "options": "Company",
+   "options": "Navbar Checkin Company",
    "description": "Select companies where the navbar checkin is enabled/disabled based on scope"
   },
   {
    "fieldname": "navbar_checkin_allowed_roles",
-   "fieldtype": "MultiSelect",
+   "fieldtype": "Table MultiSelect",
    "label": "Allowed Roles",
-   "options": "Role",
+   "options": "Navbar Checkin Role",
    "description": "If set, only users with at least one of these roles will see the navbar checkin"
   },
   {

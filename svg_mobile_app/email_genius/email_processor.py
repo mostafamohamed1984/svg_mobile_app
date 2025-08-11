@@ -170,13 +170,21 @@ def forward_email_copy(email_copy, email_account, recipient):
     Forwards the modified email copy to Gmail processing account
     """
     try:
-        # Get Gmail forwarding account from settings
+        # Get forwarding destination from settings (provider agnostic)
         try:
             from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
             settings = get_bcc_settings()
             gmail_account = settings.get('gmail_forwarding_account') if settings else "constr.sv@gmail.com"
+            processing_server = settings.get('processing_server') if settings else None
+            processing_port = settings.get('processing_port') if settings else None
+            use_ssl = settings.get('use_ssl') if settings else 0
+            use_tls = settings.get('use_tls') if settings else 1
         except Exception:
             gmail_account = "constr.sv@gmail.com"  # Fallback
+            processing_server = None
+            processing_port = None
+            use_ssl = 0
+            use_tls = 1
 
         if not gmail_account:
             frappe.logger().warning("Email Genius: No Gmail forwarding account configured")
@@ -224,11 +232,23 @@ Original Details:
 """
         
         # Send the forwarded email with error handling
-        frappe.sendmail(
-            recipients=[gmail_account],
-            subject=forward_subject,
-            message=forward_body
-        )
+        if processing_server:
+            # Use SMTP config override if provided
+            try:
+                from frappe.email.smtp import SMTPServer
+                smtp_args = {
+                    'server': processing_server,
+                    'port': processing_port or (465 if use_ssl else 587),
+                    'use_ssl': bool(use_ssl),
+                    'use_tls': bool(use_tls)
+                }
+                smtp = SMTPServer(login=None, password=None, email_account=None, **smtp_args)
+                smtp.sess.sendmail(from_addr='no-reply@localhost', to_addrs=[gmail_account], msg=f"Subject: {forward_subject}\n\n{forward_body}")
+            except Exception as smtp_err:
+                frappe.logger().error(f"Email Genius: SMTP override send failed: {str(smtp_err)}; falling back to frappe.sendmail")
+                frappe.sendmail(recipients=[gmail_account], subject=forward_subject, message=forward_body)
+        else:
+            frappe.sendmail(recipients=[gmail_account], subject=forward_subject, message=forward_body)
         
         frappe.logger().info(f"Email Genius: Successfully forwarded email to {gmail_account} for recipient {recipient}")
         return True
@@ -287,76 +307,78 @@ def is_role_based_forwarding_enabled():
 
 def should_forward_email_by_role(comm):
     """
-    Check if email should be forwarded based on recipient's role
+    Decide whether to forward based on Forward Emails Control mappings or fallback engineer role.
+    Returns a tuple (should_forward: bool, target_account: str|None, subject_prefix: str|None)
     """
     try:
-        # Get settings
-        settings = frappe.get_single('BCC Processing Settings')
-        engineer_role = settings.get('engineer_role_name', 'Site Engineer')
+        target_account = None
+        subject_prefix = None
 
         # Get recipients email(s)
         recipients = comm.get('recipients', '')
         if not recipients:
-            return False
+            return False, None, None
 
-        # Recipients can be comma-separated, so split and check each
-        # Also handle email format like "Name" <email@domain.com>
+        # Normalize recipient emails (comma-separated, quoted formats)
         recipient_emails = []
-        for email in recipients.split(','):
-            email = email.strip()
-            # Extract email from format like "Name" <email@domain.com> or Name <email@domain.com>
-            if '<' in email and '>' in email:
-                # Extract email between < and >
-                email = email.split('<')[1].split('>')[0].strip()
-            elif '"' in email:
-                # Remove quotes if present
-                email = email.replace('"', '').strip()
-            recipient_emails.append(email)
+        for email_addr in recipients.split(','):
+            e = email_addr.strip()
+            if '<' in e and '>' in e:
+                e = e.split('<')[1].split('>')[0].strip()
+            elif '"' in e:
+                e = e.replace('"', '').strip()
+            recipient_emails.append(e)
 
+        # Load any mappings from Forward Emails Control
+        mappings = frappe.get_all('Forward Emails Control', filters={'enabled': 1}, fields=['target_role', 'target_email_account', 'subject_prefix'])
+
+        # Build role->account map
+        role_to_target = {}
+        for m in mappings:
+            if m.get('target_role') and m.get('target_email_account'):
+                role_to_target[m['target_role']] = (m['target_email_account'], m.get('subject_prefix'))
+
+        # Iterate recipients, find user, check roles
         for recipient_email in recipient_emails:
             if not recipient_email:
                 continue
-
-            # Find user by email - check both User.email and User Email associations
-            user = frappe.db.get_value('User', {'email': recipient_email}, 'name')
-
-            # If not found in User.email, check User Email associations
+            user = frappe.db.get_value('User', {'email': recipient_email}, 'name') or frappe.db.get_value('User Email', {'email_id': recipient_email}, 'parent')
             if not user:
-                user_email_record = frappe.db.get_value('User Email', {'email_id': recipient_email}, 'parent')
-                if user_email_record:
-                    user = user_email_record
-                    frappe.logger().info(f"Email Genius: Found user {user} via User Email association for {recipient_email}")
-                else:
-                    frappe.logger().info(f"Email Genius: No user found for email {recipient_email} in User.email or User Email")
+                continue
+            user_roles = set(frappe.get_roles(user) or [])
+            # Check mapping roles
+            for role, (acct, pref) in role_to_target.items():
+                if role in user_roles:
+                    frappe.logger().info(f"Email Genius: Forwarding due to mapping role '{role}' -> {acct}")
+                    return True, acct, pref
+
+        # Fallback to engineer role from settings
+        settings = frappe.get_single('BCC Processing Settings')
+        engineer_role = settings.get('engineer_role_name', 'Site Engineer')
+        main_account = settings.get('main_email_account')
+        if engineer_role and main_account:
+            for recipient_email in recipient_emails:
+                user = frappe.db.get_value('User', {'email': recipient_email}, 'name') or frappe.db.get_value('User Email', {'email_id': recipient_email}, 'parent')
+                if not user:
                     continue
+                if engineer_role in set(frappe.get_roles(user) or []):
+                    return True, main_account, settings.get('forwarding_subject_prefix_role')
 
-            # Check if user has the engineer role
-            user_roles = frappe.get_roles(user)
-            has_engineer_role = engineer_role in user_roles
-
-            if has_engineer_role:
-                frappe.logger().info(f"Email Genius: Recipient {user} ({recipient_email}) has engineer role '{engineer_role}': forwarding email")
-                return True
-            else:
-                frappe.logger().info(f"Email Genius: Recipient {user} ({recipient_email}) does not have engineer role '{engineer_role}'")
-
-        # No recipients with engineer role found
-        frappe.logger().info(f"Email Genius: No recipients with engineer role found in: {recipients}")
-        return False
-
+        return False, None, None
     except Exception as e:
-        frappe.logger().error(f"Email Genius: Error checking role for forwarding: {str(e)}")
-        return False
+        frappe.logger().error(f"Email Genius: Error checking mapping for forwarding: {str(e)}")
+        return False, None, None
 
-def forward_email_to_main_account(comm):
+def forward_email_to_main_account(comm, account_override=None, subject_prefix_override=None):
     """
     Forward email to the main account configured in settings
     """
     try:
         # Get settings
         settings = frappe.get_single('BCC Processing Settings')
-        main_email_account = settings.get('main_email_account')
-        subject_prefix = settings.get('forwarding_subject_prefix_role', '[ENGINEER-FORWARDED]')
+        # Allow overrides from mapping
+        main_email_account = account_override or settings.get('main_email_account')
+        subject_prefix = subject_prefix_override or settings.get('forwarding_subject_prefix_role', '[ENGINEER-FORWARDED]')
 
         if not main_email_account:
             frappe.logger().error("Email Genius: No main email account configured for role forwarding")
@@ -683,6 +705,32 @@ def create_bcc_communication_record(original_doc, recipient_email, recipient_typ
         unique_id = hashlib.md5(f"{original_doc.message_id}{recipient_email}{recipient_index}".encode()).hexdigest()[:8]
         new_comm.message_id = f"<{unique_id}.{recipient_type.lower()}.{recipient_index}@bcc.processed>"
 
+        # Preserve raw email content if available
+        try:
+            if hasattr(original_doc, 'raw_email') and original_doc.raw_email:
+                new_comm.raw_email = original_doc.raw_email
+        except Exception:
+            pass
+
+        # Optionally append timestamp to subject based on settings
+        try:
+            from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
+            settings = get_bcc_settings()
+            if settings and settings.get('enable_subject_timestamping'):
+                ts_format = settings.get('subject_timestamp_format') or '[%Y-%m-%d %H:%M:%S]'
+                try:
+                    import time
+                    timestamp_str = time.strftime(ts_format)
+                except Exception:
+                    # Fallback format
+                    import time
+                    timestamp_str = time.strftime('[%Y-%m-%d %H:%M:%S]')
+                subj = getattr(new_comm, 'subject', '') or ''
+                new_comm.subject = f"{subj} {timestamp_str}".strip()
+        except Exception:
+            # Non-fatal; continue
+            pass
+
         # Clear CC/BCC fields for individual recipient records
         if hasattr(new_comm, 'cc'):
             new_comm.cc = None
@@ -692,6 +740,30 @@ def create_bcc_communication_record(original_doc, recipient_email, recipient_typ
         # Insert the new Communication record
         new_comm.insert()
         frappe.logger().info(f"Email Genius: Created Communication {new_comm.name} for {recipient_type} recipient {recipient_email}")
+
+        # Clone attachments from original communication to new one
+        try:
+            files = frappe.get_all(
+                'File',
+                filters={
+                    'attached_to_doctype': 'Communication',
+                    'attached_to_name': original_doc.name
+                },
+                fields=['name', 'file_name', 'file_url', 'is_private']
+            )
+            for f in files:
+                # Create a new File record linking to the same content
+                file_doc = frappe.get_doc({
+                    'doctype': 'File',
+                    'file_name': f.get('file_name'),
+                    'file_url': f.get('file_url'),
+                    'is_private': f.get('is_private', 0),
+                    'attached_to_doctype': 'Communication',
+                    'attached_to_name': new_comm.name
+                })
+                file_doc.insert(ignore_permissions=True)
+        except Exception as attach_err:
+            frappe.logger().error(f"Email Genius: Failed to clone attachments for {new_comm.name}: {str(attach_err)}")
 
         # Forward to Gmail if configured
         try:
@@ -753,8 +825,9 @@ def process_role_based_forwarding(doc, method=None):
         }
 
         # Check if this email should be forwarded
-        if should_forward_email_by_role(comm_dict):
-            if forward_email_to_main_account(comm_dict):
+        should_fwd, account_override, prefix_override = should_forward_email_by_role(comm_dict)
+        if should_fwd:
+            if forward_email_to_main_account(comm_dict, account_override=account_override, subject_prefix_override=prefix_override):
                 # Mark as processed
                 frappe.db.set_value("Communication", doc.name, "custom_role_forwarded", 1)
                 frappe.db.commit()

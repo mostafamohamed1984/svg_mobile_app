@@ -1,0 +1,2 @@
+# Email Monitoring DocType package
+

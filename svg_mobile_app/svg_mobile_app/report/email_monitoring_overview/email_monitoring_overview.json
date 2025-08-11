@@ -1,0 +1,29 @@
+{
+ "add_total_row": 0,
+ "columns": [],
+ "creation": "2025-08-11 00:00:00",
+ "disable_prepared_report": 1,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "json": "{}",
+ "letter_head": "",
+ "modified": "2025-08-11 00:00:00",
+ "modified_by": "Administrator",
+ "module": "Svg Mobile App",
+ "name": "Email Monitoring Overview",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "ref_doctype": "Email Monitoring",
+ "report_name": "Email Monitoring Overview",
+ "report_script": "",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}
+

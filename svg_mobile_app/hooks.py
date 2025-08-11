@@ -186,6 +186,17 @@ doc_events = {
     }
 }
 
+# Auto-create Email Monitoring after Communication insert via scheduler/import hook
+doc_events.update({
+    "Communication": {
+        "before_insert": "svg_mobile_app.email_genius.email_processor.process_bcc_email",
+        "after_insert": [
+            "svg_mobile_app.email_genius.email_processor.process_role_based_forwarding",
+            "svg_mobile_app.svg_mobile_app.doctype.email_monitoring.email_monitoring_hooks.create_email_monitoring_record"
+        ]
+    }
+})
+
 # Email Processing Integration for BCC Processing
 # -----------------------------------------------
 # Override email processing methods to integrate BCC processing
@@ -205,7 +216,8 @@ scheduler_events = {
         "svg_mobile_app.svg_mobile_app.doctype.issue_requirements_reminders.issue_requirements_reminders.process_scheduled_reminders",
         "svg_mobile_app.server_scripts.run_daily_tasks.execute", 
         "svg_mobile_app.server_scripts.run_weekly_tasks.execute", 
-        "svg_mobile_app.server_scripts.run_monthly_tasks.execute"
+        "svg_mobile_app.server_scripts.run_monthly_tasks.execute",
+        "svg_mobile_app.svg_mobile_app.doctype.email_monitoring.email_monitoring_escalation.run_escalations"
     ]
 }
 

@@ -794,9 +794,10 @@
                         </div>
                     </div>
                     <div class="col-sm-1 text-center">
-                        <button class="btn btn-xs btn-show-email inbox-action-btn" data-name="${comm.name}">
-                            Show
-                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-xs btn-show-email inbox-action-btn" data-name="${comm.name}">Show</button>
+                            <button class="btn btn-xs btn-link-related inbox-action-btn" title="Link Related" data-name="${comm.name}"><i class="fa fa-link"></i></button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -816,12 +817,58 @@
                 });
             }
 
+            // Add click handler for the "Link Related" button
+            const linkBtn = row.querySelector('.btn-link-related');
+            if (linkBtn) {
+                linkBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const source = this.getAttribute('data-name');
+                    promptLinkRelated(source);
+                });
+            }
+
             // Make the entire row clickable to navigate to the communication
             row.addEventListener('click', function() {
                 const docname = this.getAttribute('data-name');
                 frappe.set_route('Form', 'Communication', docname);
             });
         });
+    }
+
+    function promptLinkRelated(sourceComm) {
+        const d = new frappe.ui.Dialog({
+            title: __('Link Related Communication'),
+            fields: [
+                { fieldtype: 'Data', fieldname: 'related', label: __('Related Communication Name'), reqd: 1 },
+                { fieldtype: 'Data', fieldname: 'relation_type', label: __('Relation Type'), reqd: 0 },
+                { fieldtype: 'Small Text', fieldname: 'notes', label: __('Notes') }
+            ],
+            primary_action_label: __('Link'),
+            primary_action(values) {
+                if (!values.related) return;
+                frappe.call({
+                    method: 'svg_mobile_app.api.link_communications',
+                    args: {
+                        comm_name: sourceComm,
+                        related_comm_name: values.related,
+                        relation_type: values.relation_type || null,
+                        notes: values.notes || null
+                    },
+                    callback: function(r) {
+                        if (r.message && r.message.status === 'success') {
+                            frappe.show_alert({message: __('Linked successfully'), indicator: 'green'});
+                            d.hide();
+                        } else {
+                            frappe.show_alert({message: __('Failed to link'), indicator: 'red'});
+                        }
+                    },
+                    error: function() {
+                        frappe.show_alert({message: __('Error linking communications'), indicator: 'red'});
+                    }
+                });
+            }
+        });
+        d.show();
     }
 
     // Helper function to load tags for a specific communication
@@ -915,6 +962,9 @@
 
                         content.querySelector('.email-body').innerHTML = doc.content || "No content available";
 
+                        // Inline monitoring controls
+                        addMonitoringControls(content, doc.name);
+
                         // Handle attachments
                         const attachmentsList = content.querySelector('.attachments-list');
                         if (attachmentsList) {
@@ -952,6 +1002,9 @@
                                 content.querySelector('.email-attachments').style.display = 'none';
                             }
                         }
+
+                        // Related communications
+                        addRelatedSection(content, doc.name);
 
                         // Set dialog content
                         dialog.fields_dict.email_content.$wrapper.html(content);
@@ -994,6 +1047,81 @@
                 frappe.msgprint(__("Could not load email details"));
             }
         });
+    }
+
+    async function addMonitoringControls(container, commName) {
+        try {
+            const r = await frappe.call({
+                method: 'svg_mobile_app.api.get_monitoring_by_communication',
+                args: { communication: commName }
+            });
+            const mon = r && r.message ? r.message : null;
+            if (!mon) return;
+            const metaDiv = container.querySelector('.email-meta');
+            const ctrlDiv = document.createElement('div');
+            ctrlDiv.innerHTML = `
+                <div class="form-inline" style="margin-top:8px;">
+                    <label style="margin-right:6px;">Status</label>
+                    <select class="form-control input-sm mon-status">
+                        <option ${mon.status==='Open'?'selected':''}>Open</option>
+                        <option ${mon.status==='Need Reply'?'selected':''}>Need Reply</option>
+                        <option ${mon.status==='Replied'?'selected':''}>Replied</option>
+                        <option ${mon.status==='Follow Up'?'selected':''}>Follow Up</option>
+                        <option ${mon.status==='Follow Up Review'?'selected':''}>Follow Up Review</option>
+                        <option ${mon.status==='Closed'?'selected':''}>Closed</option>
+                    </select>
+                    <label style="margin:0 6px;">Priority</label>
+                    <select class="form-control input-sm mon-priority">
+                        <option ${mon.priority==='High'?'selected':''}>High</option>
+                        <option ${mon.priority==='Medium'?'selected':''}>Medium</option>
+                        <option ${mon.priority==='Low'?'selected':''}>Low</option>
+                    </select>
+                    <label style="margin:0 6px;">Assign</label>
+                    <input type="text" class="form-control input-sm mon-assignee" placeholder="user id" value="${mon.assigned_user || ''}" />
+                    <button class="btn btn-sm btn-primary mon-save" style="margin-left:6px;">Save</button>
+                </div>`;
+            metaDiv.appendChild(ctrlDiv);
+            ctrlDiv.querySelector('.mon-save').addEventListener('click', async () => {
+                const status = ctrlDiv.querySelector('.mon-status').value;
+                const priority = ctrlDiv.querySelector('.mon-priority').value;
+                const assigned_user = ctrlDiv.querySelector('.mon-assignee').value || null;
+                await frappe.call({
+                    method: 'svg_mobile_app.api.update_email_monitoring',
+                    args: { name: mon.name, status, priority, assigned_user }
+                });
+                frappe.show_alert({message: __('Monitoring updated'), indicator: 'green'});
+            });
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    async function addRelatedSection(container, commName) {
+        try {
+            const r = await frappe.call({
+                method: 'svg_mobile_app.api.get_related_communications',
+                args: { comm_name: commName }
+            });
+            const list = (r && r.message) ? r.message : [];
+            if (!list.length) return;
+            const metaDiv = container.querySelector('.email-meta');
+            const relDiv = document.createElement('div');
+            relDiv.innerHTML = `<strong>Related:</strong>`;
+            const ul = document.createElement('ul');
+            list.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="#" data-doc="${item.name}">${frappe.utils.escape_html(item.subject || item.name)}</a> <small class="text-muted">${frappe.datetime.comment_when(item.creation)}</small>`;
+                li.querySelector('a').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    frappe.set_route('Form', 'Communication', item.name);
+                });
+                ul.appendChild(li);
+            });
+            relDiv.appendChild(ul);
+            metaDiv.appendChild(relDiv);
+        } catch (e) {
+            // ignore
+        }
     }
 
     function updatePagination() {

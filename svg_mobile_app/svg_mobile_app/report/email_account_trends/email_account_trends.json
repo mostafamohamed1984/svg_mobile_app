@@ -1,0 +1,18 @@
+{
+  "add_total_row": 0,
+  "columns": [],
+  "disable_prepared_report": 0,
+  "disabled": 0,
+  "filters": [
+    { "fieldname": "email_account", "fieldtype": "Link", "label": "Email Account", "options": "Email Account" }
+  ],
+  "is_standard": "Yes",
+  "module": "Svg Mobile App",
+  "name": "Email Account Trends",
+  "prepared_report": 0,
+  "ref_doctype": "Email Monitoring",
+  "report_name": "Email Account Trends",
+  "report_type": "Script Report",
+  "roles": [ { "role": "System Manager" } ]
+}
+

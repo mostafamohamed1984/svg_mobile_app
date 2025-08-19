@@ -1,0 +1,9 @@
+{
+    "label": "Email Monitoring",
+    "module": "SVG Mobile App",
+    "type": "Link",
+    "link": "List/Email Monitoring/List",
+    "icon": "octicon octicon-mail",
+    "hidden": 0
+}
+

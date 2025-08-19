@@ -197,6 +197,11 @@ doc_events.update({
     }
 })
 
+# Email receive pre-insert hook (recipient-aware customization)
+before_inbound_communication_insert = [
+    "svg_mobile_app.email_genius.email_processor.before_inbound_communication_insert"
+]
+
 # Email Processing Integration for BCC Processing
 # -----------------------------------------------
 # Override email processing methods to integrate BCC processing
@@ -289,6 +294,39 @@ ignore_links_on_delete = ["Project Claim", "Project Contractors", "Sales Invoice
 # auth_hooks = [
 # 	"svg_mobile_app.auth.validate"
 # ]
+
+# Email System Hooks
+# ------------------
+
+# Document Events
+doc_events = {
+    "Communication": {
+        "before_insert": [
+            "svg_mobile_app.email_genius.email_processor.process_bcc_email"
+        ],
+        "after_insert": [
+            "svg_mobile_app.email_genius.email_processor.process_role_based_forwarding",
+            "svg_mobile_app.svg_mobile_app.doctype.email_monitoring.email_monitoring_hooks.create_email_monitoring_record"
+        ]
+    }
+}
+
+# Scheduler Events
+scheduler_events = {
+    "daily": [
+        "svg_mobile_app.svg_mobile_app.doctype.email_monitoring.email_monitoring_escalation.run_escalations",
+        "svg_mobile_app.email_genius.email_retry.process_dead_letter_queue",
+        "svg_mobile_app.email_genius.health_monitor.run_auto_recovery"
+    ],
+    "hourly": [
+        "svg_mobile_app.email_genius.performance_optimization.optimize_email_queries"
+    ]
+}
+
+# Before Inbound Communication Insert
+before_inbound_communication_insert = [
+    "svg_mobile_app.email_genius.email_processor.intercept_incoming_email"
+]
 
 # Fixtures
 # --------

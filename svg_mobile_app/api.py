@@ -2988,6 +2988,9 @@ def update_email_monitoring(name, status=None, assigned_user=None, priority=None
     try:
         doc = frappe.get_doc('Email Monitoring', name)
         changed = False
+        old_status = doc.status
+        old_assignee = doc.assigned_user
+        old_priority = doc.priority
         if status and status != doc.status:
             doc.status = status
             changed = True
@@ -2999,6 +3002,46 @@ def update_email_monitoring(name, status=None, assigned_user=None, priority=None
             changed = True
         if changed:
             doc.save(ignore_permissions=True)
+            # Notify assignee on assignment or status change
+            try:
+                recipients = []
+                subject = None
+                if assigned_user and assigned_user != old_assignee:
+                    if frappe.db.exists('User', assigned_user):
+                        ae = frappe.db.get_value('User', assigned_user, 'email')
+                        if ae:
+                            recipients.append(ae)
+                    subject = f"Email Monitoring assigned: {doc.communication}"
+                if status and status != old_status:
+                    if doc.assigned_user and frappe.db.exists('User', doc.assigned_user):
+                        ue = frappe.db.get_value('User', doc.assigned_user, 'email')
+                        if ue and ue not in recipients:
+                            recipients.append(ue)
+                    subject = subject or f"Email Monitoring status changed to {doc.status}: {doc.communication}"
+                # extra notify users if provided on doc
+                extra = getattr(doc, 'notify_users', None)
+                if extra:
+                    for part in str(extra).split(','):
+                        em = part.strip()
+                        if em and em not in recipients:
+                            recipients.append(em)
+                if recipients:
+                    # render template if available
+                    template = frappe.get_all('Email Monitoring Notification Template', filters={'enabled': 1, 'event': 'status_change' if status and status != old_status else 'assignment'}, fields=['subject_template', 'body_template'], limit=1)
+                    if template:
+                        t = template[0]
+                        subj = (t.get('subject_template') or '').format(event='status_change' if status and status != old_status else 'assignment', communication=doc.communication)
+                        body = (t.get('body_template') or '').format(communication=doc.communication, status=doc.status, priority=doc.priority, email_account=doc.email_account)
+                    else:
+                        subj = subject or 'Email Monitoring Updated'
+                        body = f"Communication: {doc.communication}<br>Status: {doc.status}<br>Priority: {doc.priority}"
+                    frappe.sendmail(
+                        recipients=recipients,
+                        subject=subj,
+                        message=body,
+                    )
+            except Exception:
+                frappe.log_error('Failed to send Email Monitoring notification', 'Email Monitoring')
         return {"status": "success", "changed": changed}
     except Exception as e:
         frappe.log_error(f"update_email_monitoring error: {str(e)}", "Email Monitoring API Error")
@@ -3064,6 +3107,60 @@ def add_work_email_access(user, email_account, access_type="Read Only", descript
             "status": "error",
             "message": str(e)
         }
+
+# Inbox helper: optional recipient-threading filtered fetch
+@frappe.whitelist(allow_guest=False)
+def get_inbox_communications(email_account, recipient_threading: int | None = None, limit_start=0, limit_page_length=50):
+    """Fetch inbox communications similarly to core Inbox view, with optional recipient-threading flag.
+
+    recipient_threading: when truthy, no special server-side grouping is applied yet, but this endpoint
+    is a stable place to add server logic in the future (e.g., custom ordering/grouping). Currently returns
+    standard rows including message_id for client-side handling.
+    """
+    try:
+        limit_start = int(limit_start) if limit_start else 0
+        limit_page_length = int(limit_page_length) if limit_page_length else 50
+
+        filters = {
+            'communication_type': 'Communication',
+            'communication_medium': 'Email',
+            'email_status': ['not in', ['Spam', 'Trash']],
+        }
+
+        if email_account == 'Sent':
+            filters.update({'sent_or_received': 'Sent'})
+            accounts = None
+        elif email_account in ('Spam', 'Trash'):
+            filters.pop('email_status', None)
+            filters.update({'email_status': email_account})
+            accounts = frappe.get_all('Email Account', pluck='name')
+            filters.update({'email_account': ['in', accounts]})
+        else:
+            filters.update({'sent_or_received': 'Received', 'status': 'Open'})
+            if email_account == 'All Accounts':
+                accounts = frappe.get_all('Email Account', pluck='name')
+                filters.update({'email_account': ['in', accounts]})
+            else:
+                filters.update({'email_account': email_account})
+
+        order_by = 'communication_date desc'
+        if recipient_threading:
+            # placeholder for future server-level grouping tweaks
+            order_by = 'message_id desc, communication_date desc'
+
+        rows = frappe.get_list(
+            'Communication',
+            fields=['name', 'subject', 'sender', 'recipients', 'communication_date', 'email_account', 'status', 'has_attachment', 'message_id', 'reference_doctype', 'reference_name', 'seen', '_seen'],
+            filters=filters,
+            order_by=order_by,
+            limit_start=limit_start,
+            limit_page_length=limit_page_length
+        )
+        total = frappe.db.count('Communication', filters)
+        return {'data': rows, 'total_count': total}
+    except Exception:
+        frappe.log_error('get_inbox_communications failed', 'Inbox API')
+        return {'data': [], 'total_count': 0}
 
 # Custom fields for multi-level approval are now created directly in:
 # - svg_mobile_app/svg_mobile_app/custom/leave_application.json  

@@ -13,17 +13,30 @@ from email.mime.text import MIMEText
 from email.utils import parseaddr, formataddr
 import logging
 
+# Import enhanced logging and retry mechanisms
+from .email_logger import EmailLogger, performance_monitor, log_email_operation
+from .email_retry import with_retry, RetryConfig
+
 # Configure logging
 logger = logging.getLogger(__name__)
+email_logger = EmailLogger("email_processor")
 
 @frappe.whitelist()
+@performance_monitor("intercept_incoming_email")
+@with_retry(config=RetryConfig(max_attempts=2, base_delay=1.0), operation_name="email_interception")
 def intercept_incoming_email(email_account, msg):
     """
     Intercepts incoming emails and processes CC/BCC recipients
     """
     try:
+        email_logger.log_operation("email_interception_start", {
+            "email_account": email_account,
+            "message_size": len(msg) if msg else 0
+        })
+        
         # Check if BCC processing is enabled
         if not is_bcc_processing_enabled():
+            email_logger.log_operation("bcc_processing_disabled", {"email_account": email_account})
             return msg
         
         # Parse the email message
@@ -41,8 +54,22 @@ def intercept_incoming_email(email_account, msg):
         
         if len(all_recipients) > 1:
             # Multiple recipients detected - create unique copies
+            email_logger.log_email_processing(
+                email_obj.get('Message-ID', 'unknown'),
+                "create_unique_copies",
+                "processing",
+                recipient_count=len(all_recipients)
+            )
+            
             processed_emails = create_unique_email_copies(email_obj, all_recipients, email_account)
-            frappe.logger().info(f"Email Genius: Created {len(processed_emails)} unique email copies")
+            
+            email_logger.log_email_processing(
+                email_obj.get('Message-ID', 'unknown'),
+                "create_unique_copies",
+                "success",
+                recipient_count=len(processed_emails)
+            )
+            
             # Return the first processed email's string format for Frappe processing
             if processed_emails and len(processed_emails) > 0:
                 return processed_emails[0].get('email', msg)
@@ -232,6 +259,53 @@ Original Details:
 """
         
         # Send the forwarded email with error handling
+        # Try OAuth2 providers first if configured
+        try:
+            oauth_providers = frappe.get_all("Email OAuth Settings", 
+                                           filters={"enabled": 1}, 
+                                           fields=["name", "provider"])
+            
+            for provider in oauth_providers:
+                try:
+                    from svg_mobile_app.oauth_handlers import send_email_via_oauth
+                    success = send_email_via_oauth(
+                        provider.name, 
+                        gmail_account, 
+                        forward_subject, 
+                        forward_body
+                    )
+                    if success:
+                        frappe.logger().info(f"Email Genius: Sent via OAuth2 ({provider.provider})")
+                        return True
+                except Exception as oauth_err:
+                    frappe.logger().error(f"Email Genius: OAuth2 send failed for {provider.provider}: {str(oauth_err)}")
+                    continue
+        except Exception:
+            pass
+
+        # Fallback to OAuth2-capable Email Account when configured in settings
+        try:
+            from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
+            oauth_cfg = get_bcc_settings() or {}
+            use_oauth2 = bool(oauth_cfg.get('use_oauth2'))
+            oauth_send_account = oauth_cfg.get('main_email_account')
+        except Exception:
+            use_oauth2 = False
+            oauth_send_account = None
+
+        if use_oauth2 and oauth_send_account:
+            try:
+                frappe.sendmail(
+                    recipients=[gmail_account],
+                    subject=forward_subject,
+                    message=forward_body,
+                    email_account=oauth_send_account,
+                )
+                frappe.logger().info("Email Genius: Sent via OAuth2-capable Email Account")
+                return True
+            except Exception as oauth_err:
+                frappe.logger().error(f"Email Genius: OAuth2 send failed: {str(oauth_err)}; falling back")
+
         if processing_server:
             # Use SMTP config override if provided
             try:
@@ -248,7 +322,7 @@ Original Details:
                 frappe.logger().error(f"Email Genius: SMTP override send failed: {str(smtp_err)}; falling back to frappe.sendmail")
                 frappe.sendmail(recipients=[gmail_account], subject=forward_subject, message=forward_body)
         else:
-            frappe.sendmail(recipients=[gmail_account], subject=forward_subject, message=forward_body)
+            frappe.sendmail(recipients=[gmail_account], subject=forward_subject, message=forward_body, email_account=oauth_send_account)
         
         frappe.logger().info(f"Email Genius: Successfully forwarded email to {gmail_account} for recipient {recipient}")
         return True
@@ -842,6 +916,53 @@ def process_role_based_forwarding(doc, method=None):
     except Exception as e:
         frappe.log_error(f"Email Genius: Error in process_role_based_forwarding: {str(e)}", "Email Genius Role Forwarding")
         frappe.logger().error(f"Email Genius: Error in process_role_based_forwarding: {str(e)}")
+
+
+def before_inbound_communication_insert(data: dict, inbound_mail) -> dict | None:
+    """Hook to adjust inbound communication before insert.
+
+    - Ensure our custom headers are mapped into fields if present
+    - Optionally append timestamp to subject if configured
+    - Clear cc/bcc for per-recipient records when X-Frappe-BCC-Processed is true
+    """
+    try:
+        # Map custom headers
+        try:
+            orig_id = inbound_mail.mail.get('X-Frappe-Original-Message-ID') or ''
+            recip_type = inbound_mail.mail.get('X-Frappe-Recipient-Type') or ''
+            recip_idx = inbound_mail.mail.get('X-Frappe-Recipient-Index') or ''
+            if orig_id:
+                data['custom_original_message_id'] = orig_id.strip('<>')
+            if recip_type:
+                data['custom_recipient_type'] = recip_type
+            if recip_idx:
+                data['custom_recipient_index'] = int(recip_idx) if str(recip_idx).isdigit() else recip_idx
+        except Exception:
+            pass
+
+        # Subject timestamping
+        try:
+            from svg_mobile_app.svg_mobile_app.doctype.bcc_processing_settings.bcc_processing_settings import get_bcc_settings
+            settings = get_bcc_settings()
+            if settings and settings.get('enable_subject_timestamping') and data.get('subject'):
+                import time
+                ts_format = settings.get('subject_timestamp_format') or '[%Y-%m-%d %H:%M:%S]'
+                timestamp_str = time.strftime(ts_format)
+                data['subject'] = f"{data['subject']} {timestamp_str}".strip()
+        except Exception:
+            pass
+
+        # If already BCC processed, clear cc/bcc fields to keep record per recipient clean
+        try:
+            if inbound_mail.mail.get('X-Frappe-BCC-Processed'):
+                data['cc'] = ''
+                data['bcc'] = ''
+        except Exception:
+            pass
+
+        return data
+    except Exception:
+        return None
 
 @frappe.whitelist()
 def process_incoming_email(email_account):

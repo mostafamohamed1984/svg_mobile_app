@@ -27,6 +27,14 @@ class BCCProcessingSettings(Document):
             # Validate that the role exists
             if not frappe.db.exists("Role", self.engineer_role_name):
                 frappe.throw(f"Role '{self.engineer_role_name}' does not exist")
+
+        # Validate optional OAuth2 / SMTP override fields coherently
+        if getattr(self, 'use_oauth2', 0):
+            if not getattr(self, 'oauth_provider', None):
+                frappe.throw("OAuth Provider is required when OAuth2 is enabled")
+        if getattr(self, 'processing_server', None):
+            if not getattr(self, 'processing_port', None):
+                frappe.throw("Processing Port is required when Processing Server is set")
     
     def on_update(self):
         """Called when settings are updated"""
@@ -39,6 +47,9 @@ class BCCProcessingSettings(Document):
             frappe.logger().info(f"Role-Based Email Forwarding enabled for role: {self.engineer_role_name}")
         else:
             frappe.logger().info("Role-Based Email Forwarding has been disabled")
+
+        if getattr(self, 'use_oauth2', 0):
+            frappe.logger().info(f"OAuth2 enabled for provider: {getattr(self, 'oauth_provider', '')}")
 
 @frappe.whitelist()
 def get_bcc_settings():

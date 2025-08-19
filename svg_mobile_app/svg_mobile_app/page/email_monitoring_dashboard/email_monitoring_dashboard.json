@@ -1,0 +1,9 @@
+{
+    "title": "Email Monitoring Dashboard",
+    "route": "email-monitoring-dashboard",
+    "doctype": "Page",
+    "name": "email-monitoring-dashboard",
+    "module": "SVG Mobile App",
+    "system_page": 0
+}
+

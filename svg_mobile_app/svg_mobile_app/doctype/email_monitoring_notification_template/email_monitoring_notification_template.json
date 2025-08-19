@@ -1,0 +1,63 @@
+{
+  "doctype": "DocType",
+  "name": "Email Monitoring Notification Template",
+  "module": "Svg Mobile App",
+  "issingle": 0,
+  "editable_grid": 0,
+  "track_changes": 1,
+  "field_order": [
+    "title",
+    "enabled",
+    "event",
+    "subject_template",
+    "body_template"
+  ],
+  "fields": [
+    {
+      "fieldname": "title",
+      "fieldtype": "Data",
+      "label": "Title",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "enabled",
+      "fieldtype": "Check",
+      "label": "Enabled",
+      "default": "1",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "event",
+      "fieldtype": "Select",
+      "label": "Event",
+      "options": "assignment\nstatus_change\nescalation",
+      "reqd": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "subject_template",
+      "fieldtype": "Data",
+      "label": "Subject Template",
+      "reqd": 1,
+      "default": "Email Monitoring {event}: {communication}"
+    },
+    {
+      "fieldname": "body_template",
+      "fieldtype": "Small Text",
+      "label": "Body Template",
+      "reqd": 1,
+      "default": "Communication: {communication}\nStatus: {status}\nPriority: {priority}\nAccount: {email_account}"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    }
+  ]
+}
+

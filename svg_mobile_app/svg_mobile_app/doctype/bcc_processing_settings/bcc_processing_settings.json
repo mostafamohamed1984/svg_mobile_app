@@ -4,7 +4,7 @@
  "creation": "2025-01-25 12:00:00",
  "doctype": "DocType",
  "engine": "InnoDB",
- "field_order": [
+  "field_order": [
   "enable_navbar_checkin",
   "navbar_checkin_company_scope",
   "navbar_checkin_companies",
@@ -23,7 +23,13 @@
   "forwarding_subject_prefix",
   "enable_subject_timestamping",
   "subject_timestamp_format",
-  "custom_message_id_domain",
+   "custom_message_id_domain",
+   "section_break_oauth",
+   "use_oauth2",
+   "oauth_provider",
+   "oauth_client_id",
+   "oauth_client_secret",
+   "oauth_tenant",
   "section_break_email_forwarding",
   "enable_role_based_forwarding",
   "main_email_account",
@@ -148,6 +154,42 @@
    "fieldname": "custom_message_id_domain",
    "fieldtype": "Data",
    "label": "Custom Message ID Domain"
+  },
+  {
+    "fieldname": "section_break_oauth",
+    "fieldtype": "Section Break",
+    "label": "Provider OAuth2"
+  },
+  {
+    "default": "0",
+    "fieldname": "use_oauth2",
+    "fieldtype": "Check",
+    "label": "Use OAuth2"
+  },
+  {
+    "depends_on": "use_oauth2",
+    "fieldname": "oauth_provider",
+    "fieldtype": "Select",
+    "label": "OAuth Provider",
+    "options": "Microsoft 365\nGmail"
+  },
+  {
+    "depends_on": "use_oauth2",
+    "fieldname": "oauth_client_id",
+    "fieldtype": "Password",
+    "label": "OAuth Client ID"
+  },
+  {
+    "depends_on": "use_oauth2",
+    "fieldname": "oauth_client_secret",
+    "fieldtype": "Password",
+    "label": "OAuth Client Secret"
+  },
+  {
+    "depends_on": "eval:doc.oauth_provider=='Microsoft 365'",
+    "fieldname": "oauth_tenant",
+    "fieldtype": "Data",
+    "label": "Tenant / Directory ID"
   },
   {
    "fieldname": "section_break_email_forwarding",

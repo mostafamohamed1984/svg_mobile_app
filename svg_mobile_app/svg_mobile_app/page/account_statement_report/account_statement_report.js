@@ -738,15 +738,45 @@ class AccountStatementReport {
             console.log('Container innerHTML length:', container[0].innerHTML.length); // Debug log
             console.log('Container first 200 chars:', container[0].innerHTML.substring(0, 200)); // Debug log
             
-            // Force some basic CSS to ensure visibility
-            container.css({
-                'display': 'block !important',
-                'visibility': 'visible !important',
-                'opacity': '1 !important',
-                'height': 'auto !important',
-                'width': 'auto !important'
+            // Force proper dimensions and layout
+            tabContentArea.css({
+                'display': 'block',
+                'visibility': 'visible',
+                'opacity': '1',
+                'height': 'auto',
+                'width': '100%',
+                'min-height': '200px',
+                'position': 'relative'
             });
-            console.log('Applied force CSS to container'); // Debug log
+            
+            tabPane.css({
+                'display': 'block',
+                'visibility': 'visible',
+                'opacity': '1',
+                'height': 'auto',
+                'width': '100%',
+                'min-height': '200px',
+                'position': 'relative'
+            });
+            
+            container.css({
+                'display': 'block',
+                'visibility': 'visible',
+                'opacity': '1',
+                'height': 'auto',
+                'width': '100%',
+                'min-height': '200px',
+                'position': 'relative',
+                'overflow': 'visible'
+            });
+            
+            console.log('Applied force CSS with proper dimensions'); // Debug log
+            
+            // Check dimensions after CSS fix
+            console.log('AFTER CSS FIX:');
+            console.log('Tab content height:', tabContentArea.height());
+            console.log('Tab pane height:', tabPane.height());
+            console.log('Container height:', container.height());
             
         } else {
             console.log('ERROR: Container not found:', containerId); // Debug log

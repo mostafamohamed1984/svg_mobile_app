@@ -625,7 +625,8 @@ class AccountStatementReport {
                 if (response.message && response.message.service_groups && response.message.service_groups.length > 0) {
                     console.log('Found service groups, rendering statement'); // Debug log
                     this.render_statement(response.message);
-                    this.wrapper.find('.statement-data').show();
+                    // Show the tab content area
+                    this.wrapper.find('.tab-content').show();
                 } else {
                     console.log('No service groups found, showing no-data message'); // Debug log
                     console.log('response.message:', response.message); // Debug log
@@ -665,11 +666,47 @@ class AccountStatementReport {
     }
 
     render_statement(data) {
+        console.log('render_statement called with data:', data); // Debug log
+        
+        // Determine the correct container based on report type
+        let containerId;
+        switch(this.filters.reportType) {
+            case 'customer':
+                containerId = '#servicesPaymentsContent';
+                break;
+            case 'contractor':
+                containerId = '#contractorServicesPaymentsContent';
+                break;
+            case 'engineer':
+                containerId = '#engineerServicesPaymentsContent';
+                break;
+            default:
+                containerId = '#servicesPaymentsContent';
+        }
+        
+        console.log('Using container:', containerId); // Debug log
+        
         let html = this.build_statement_header(data);
         html += this.build_statement_content(data);
         html += this.build_statement_summary(data);
 
-        this.wrapper.find('.statement-data').html(html);
+        console.log('Generated HTML length:', html.length); // Debug log
+        
+        const container = this.wrapper.find(containerId);
+        console.log('Found container:', container.length); // Debug log
+        
+        if (container.length > 0) {
+            container.html(html);
+            console.log('HTML inserted into container'); // Debug log
+            
+            // Show the appropriate tab content
+            this.wrapper.find('.tab-pane').hide();
+            this.wrapper.find(containerId).closest('.tab-pane').show();
+            
+        } else {
+            console.log('ERROR: Container not found:', containerId); // Debug log
+        }
+        
         this.current_statement_data = data;
     }
 
@@ -1071,14 +1108,14 @@ class AccountStatementReport {
         // Hide dynamic elements
         this.wrapper.find('#dynamicFilters').hide();
         this.wrapper.find('#actionButtons').hide();
-        this.wrapper.find('.statement-data').hide();
+        this.wrapper.find('.tab-content').hide();
         this.wrapper.find('.no-data-message').show();
 
         frappe.show_alert(__('Filters cleared successfully'));
     }
 
     show_loading() {
-        this.wrapper.find('.statement-data, .no-data-message').hide();
+        this.wrapper.find('.tab-content, .no-data-message').hide();
         this.wrapper.find('.loading-message').show();
     }
 

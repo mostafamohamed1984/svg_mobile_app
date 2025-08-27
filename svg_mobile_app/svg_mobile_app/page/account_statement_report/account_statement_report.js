@@ -1026,12 +1026,12 @@ class AccountStatementReport {
                         </tbody>
                         <tfoot style="background: #e9ecef;">
                             <tr>
-                                <td colspan="${is_tax_section || group.project_name ? '3' : '2'}" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
-                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_value || 0)}</td>
-                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_paid || 0)}</td>
+                                <td colspan="2" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
+                                <td style="text-align: right; font-weight: bold; color: #dc3545;">${this.format_currency(group.total_value || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; color: #28a745;">${this.format_currency(group.total_paid || 0)}</td>
                                 <td style="text-align: right; font-weight: bold; ${(group.total_balance || 0) > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
-                                <td></td>
-                                ${is_tax_section || group.project_name ? '<td></td>' : ''}
+                                <td style="text-align: center; font-weight: bold; color: #666; font-size: 11px;">${__('Description')}</td>
+                                ${is_tax_section || group.project_name ? `<td style="text-align: center; font-weight: bold; color: #666; font-size: 11px;">${__('Project')}</td>` : ''}
                             </tr>
                         </tfoot>
                     </table>
@@ -1073,10 +1073,10 @@ class AccountStatementReport {
                         <tfoot style="background: #e9ecef;">
                             <tr>
                                 <td colspan="2" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
-                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_value || 0)}</td>
-                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_paid || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; color: #dc3545;">${this.format_currency(group.total_value || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; color: #28a745;">${this.format_currency(group.total_paid || 0)}</td>
                                 <td style="text-align: right; font-weight: bold; ${group.total_balance > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
-                                <td></td>
+                                <td style="text-align: center; font-weight: bold; color: #666; font-size: 11px;">${__('Description')}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1119,10 +1119,10 @@ class AccountStatementReport {
                         <tfoot style="background: #e9ecef;">
                             <tr>
                                 <td colspan="2" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
-                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_value || 0)}</td>
-                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_paid || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; color: #dc3545;">${this.format_currency(group.total_value || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; color: #28a745;">${this.format_currency(group.total_paid || 0)}</td>
                                 <td style="text-align: right; font-weight: bold; ${group.total_balance > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
-                                <td></td>
+                                <td style="text-align: center; font-weight: bold; color: #666; font-size: 11px;">${__('Description')}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -1247,8 +1247,12 @@ class AccountStatementReport {
                 <title>${__('Account Statement Report')} - ${entity_info.name}</title>
                 <style>
                     @page {
-                        margin: 2cm 1.5cm;
+                        margin: 1.5cm 1.5cm 2cm 1.5cm;
                         size: A4;
+                    }
+
+                    @page :first {
+                        margin-top: 2.5cm;
                     }
 
                     body {
@@ -1276,6 +1280,15 @@ class AccountStatementReport {
                         padding-bottom: 20px;
                         page-break-after: avoid;
                         page-break-inside: avoid;
+                        position: relative;
+                        z-index: 1;
+                    }
+
+                    .print-header::after {
+                        content: "";
+                        display: block;
+                        height: 0;
+                        page-break-after: avoid;
                     }
 
                     .company-info h1 {
@@ -1301,6 +1314,9 @@ class AccountStatementReport {
                         border-radius: 8px;
                         margin-bottom: 30px;
                         border: 1px solid #dee2e6;
+                        clear: both;
+                        position: relative;
+                        z-index: 0;
                     }
 
                     .service-group {
@@ -1391,24 +1407,68 @@ class AccountStatementReport {
                         body {
                             margin: 0;
                             padding: 0;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
                         
                         .print-container {
-                            padding: 15px;
+                            padding: 10px;
                         }
                         
                         .print-header {
                             position: static;
+                            margin-bottom: 20px;
+                            page-break-after: auto;
+                            break-after: auto;
+                        }
+                        
+                        .entity-details {
+                            page-break-after: avoid;
+                            break-after: avoid;
                             margin-bottom: 20px;
                         }
                         
                         .service-group {
                             page-break-inside: avoid;
                             break-inside: avoid;
+                            margin-top: 0;
+                            margin-bottom: 20px;
+                        }
+                        
+                        .service-group:first-of-type {
+                            margin-top: 0;
+                        }
+                        
+                        .service-table {
+                            page-break-inside: auto;
+                            break-inside: auto;
                         }
                         
                         .service-table thead {
                             display: table-header-group;
+                        }
+                        
+                        .service-table tbody {
+                            display: table-row-group;
+                        }
+                        
+                        .service-table tfoot {
+                            display: table-footer-group;
+                        }
+                        
+                        .service-table tr {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                        }
+                        
+                        /* Ensure no floating or absolute positioning interferes */
+                        * {
+                            position: static !important;
+                            float: none !important;
+                        }
+                        
+                        .print-header {
+                            position: static !important;
                         }
                     }
                 </style>
@@ -1425,6 +1485,8 @@ class AccountStatementReport {
                     </div>
                 </div>
 
+                <div class="content-separator" style="clear: both; height: 20px; page-break-after: avoid;"></div>
+                
                 <div class="entity-details">
                     <h4 style="text-align: center; margin-bottom: 15px;">${report_type_label} - ${entity_info.name}</h4>
                     <table style="width: 100%; border: none;">

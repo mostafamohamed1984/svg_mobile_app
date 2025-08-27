@@ -33,10 +33,10 @@ class AccountStatementReport {
             customer: '',
             contractor: '',
             engineer: '',
-            projectAgreement: '',
+            project_agreement: '',
             item: '',
-            fromDate: '',
-            toDate: ''
+            from_date: '',
+            to_date: ''
         };
 
         this.controls = {};
@@ -1025,10 +1025,10 @@ class AccountStatementReport {
             customer: '',
             contractor: '',
             engineer: '',
-            projectAgreement: '',
+            project_agreement: '',
             item: '',
-            fromDate: '',
-            toDate: ''
+            from_date: '',
+            to_date: ''
         };
 
         // Clear report type control

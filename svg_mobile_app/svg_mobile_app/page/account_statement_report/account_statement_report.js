@@ -1247,48 +1247,35 @@ class AccountStatementReport {
                 <title>${__('Account Statement Report')} - ${entity_info.name}</title>
                 <style>
                     @page {
-                        margin: 1.5cm 1.5cm 2cm 1.5cm;
                         size: A4;
+                        margin: 15mm;
+                        margin-bottom: 25mm;
                     }
 
-                    @page :first {
-                        margin-top: 2.5cm;
-                    }
-
-                    body {
-                        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                    body { 
+                        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
                         margin: 0;
                         padding: 0;
-                        background-color: #ffffff;
+                        background: #f4f4f4;
+                        color: #333;
                         direction: rtl;
                         text-align: right;
                         line-height: 1.4;
                     }
-
+                    
                     .print-container {
-                        width: 100%;
-                        max-width: none;
-                        margin: 0;
+                        max-width: 100%;
+                        margin: 0 auto;
+                        background-color: #fff;
                         padding: 20px;
-                        box-sizing: border-box;
                     }
 
                     .print-header {
+                        width: 100%;
                         text-align: center;
-                        margin-bottom: 30px;
+                        margin-bottom: 20px;
                         border-bottom: 3px solid #007bff;
                         padding-bottom: 20px;
-                        page-break-after: avoid;
-                        page-break-inside: avoid;
-                        position: relative;
-                        z-index: 1;
-                    }
-
-                    .print-header::after {
-                        content: "";
-                        display: block;
-                        height: 0;
-                        page-break-after: avoid;
                     }
 
                     .company-info h1 {
@@ -1314,9 +1301,6 @@ class AccountStatementReport {
                         border-radius: 8px;
                         margin-bottom: 30px;
                         border: 1px solid #dee2e6;
-                        clear: both;
-                        position: relative;
-                        z-index: 0;
                     }
 
                     .service-group {
@@ -1405,8 +1389,8 @@ class AccountStatementReport {
 
                     @media print {
                         body {
-                            margin: 0;
-                            padding: 0;
+                            margin: 0 !important;
+                            padding: 0 !important;
                             -webkit-print-color-adjust: exact;
                             print-color-adjust: exact;
                         }
@@ -1416,59 +1400,26 @@ class AccountStatementReport {
                         }
                         
                         .print-header {
-                            position: static;
-                            margin-bottom: 20px;
-                            page-break-after: auto;
-                            break-after: auto;
-                        }
-                        
-                        .entity-details {
-                            page-break-after: avoid;
-                            break-after: avoid;
-                            margin-bottom: 20px;
-                        }
-                        
-                        .service-group {
-                            page-break-inside: avoid;
-                            break-inside: avoid;
-                            margin-top: 0;
-                            margin-bottom: 20px;
-                        }
-                        
-                        .service-group:first-of-type {
-                            margin-top: 0;
+                            margin: 0 !important;
+                            page-break-after: avoid !important;
                         }
                         
                         .service-table {
+                            font-size: 10px;
                             page-break-inside: auto;
-                            break-inside: auto;
+                            margin: 5px 0 !important;
                         }
                         
-                        .service-table thead {
-                            display: table-header-group;
+                        /* Ensure first table starts on same page */
+                        .service-table:first-of-type {
+                            page-break-before: avoid !important;
+                            break-before: avoid !important;
                         }
                         
-                        .service-table tbody {
-                            display: table-row-group;
-                        }
-                        
-                        .service-table tfoot {
-                            display: table-footer-group;
-                        }
-                        
-                        .service-table tr {
+                        /* Keep table rows together when possible */
+                        .service-table tbody tr {
                             page-break-inside: avoid;
                             break-inside: avoid;
-                        }
-                        
-                        /* Ensure no floating or absolute positioning interferes */
-                        * {
-                            position: static !important;
-                            float: none !important;
-                        }
-                        
-                        .print-header {
-                            position: static !important;
                         }
                     }
                 </style>
@@ -1485,8 +1436,6 @@ class AccountStatementReport {
                     </div>
                 </div>
 
-                <div class="content-separator" style="clear: both; height: 20px; page-break-after: avoid;"></div>
-                
                 <div class="entity-details">
                     <h4 style="text-align: center; margin-bottom: 15px;">${report_type_label} - ${entity_info.name}</h4>
                     <table style="width: 100%; border: none;">

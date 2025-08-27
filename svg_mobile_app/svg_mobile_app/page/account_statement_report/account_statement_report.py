@@ -247,6 +247,11 @@ def process_customer_data(project_agreements, item_filter, from_date, to_date):
     """Process customer data similar to existing customer statement"""
     service_groups = {}
     combined_tax_details = []
+    combined_government_fees = []
+    combined_expenses = []
+    combined_trust_fees = []
+    combined_trust_fees_log = []
+    combined_pending_expenses = []
 
     for project in project_agreements:
         full_project = frappe.get_doc('Project Agreement', project.name)
@@ -284,12 +289,35 @@ def process_customer_data(project_agreements, item_filter, from_date, to_date):
             service_groups[group_key]['total_paid'] += item_data.get('total_credit', 0)
             service_groups[group_key]['total_balance'] = item_data.get('final_balance', 0)  # Use final balance, not sum
 
-        # Process tax details
+        # Process tax details with project context
         tax_details = process_project_taxes(full_project)
+        # Add project context to each tax transaction
+        for tax in tax_details:
+            tax['project_name'] = project.project_name
+            tax['project_agreement'] = project.name
         combined_tax_details.extend(tax_details)
+
+        # Process government fees and expenses (exactly like original)
+        government_fees = getattr(full_project, 'government_fees', []) or []
+        expenses_log = getattr(full_project, 'expenses_log', []) or []
+        trust_fees = getattr(full_project, 'trust_fees', []) or []
+        trust_fees_log = getattr(full_project, 'trust_fees_log', []) or []
+        pending_expenses = getattr(full_project, 'pending_expenses', []) or []
+
+        # Combine all data for summary calculations
+        combined_government_fees.extend(government_fees)
+        combined_expenses.extend(expenses_log)
+        combined_trust_fees.extend(trust_fees)
+        combined_trust_fees_log.extend(trust_fees_log)
+        combined_pending_expenses.extend(pending_expenses)
 
     # Create VAT section if there are tax transactions (matching original format)
     if combined_tax_details:
+        # Calculate proper totals for VAT section
+        total_due = sum(t.get('debit', 0) for t in combined_tax_details)
+        total_paid = sum(t.get('credit', 0) for t in combined_tax_details)
+        final_balance = total_due - total_paid  # Correct balance calculation
+        
         vat_key = "vat_5_percent"
         service_groups[vat_key] = {
             'service_name': 'ضريبة القيمة المضافة 5%',
@@ -297,13 +325,105 @@ def process_customer_data(project_agreements, item_filter, from_date, to_date):
             'tax_rate': 5,
             'is_tax_section': True,
             'transactions': combined_tax_details,
-            'total_value': sum(t.get('debit', 0) for t in combined_tax_details),
-            'total_paid': sum(t.get('credit', 0) for t in combined_tax_details),
-            'total_balance': combined_tax_details[-1]['balance'] if combined_tax_details else 0
+            'total_value': total_due,
+            'total_paid': total_paid,
+            'total_balance': final_balance
         }
+
+    # Process Government Fees section
+    government_fees_transactions = []
+    if combined_government_fees or combined_expenses:
+        # Process government fees
+        for fee in combined_government_fees:
+            government_fees_transactions.append({
+                'date': getattr(fee, 'date', ''),
+                'type': 'Government Fee',
+                'due': flt(getattr(fee, 'amount', 0)),
+                'paid': 0,
+                'balance': 0,
+                'remark': getattr(fee, 'remark', '') or getattr(fee, 'description', '')
+            })
+
+        # Process expenses as payments
+        for expense in combined_expenses:
+            government_fees_transactions.append({
+                'date': getattr(expense, 'date', ''),
+                'type': 'Expense Payment',
+                'due': 0,
+                'paid': flt(getattr(expense, 'amount', 0)),
+                'balance': 0,
+                'remark': getattr(expense, 'remark', '') or getattr(expense, 'description', '')
+            })
+
+        # Calculate running balance for government fees
+        government_fees_transactions.sort(key=lambda x: x['date'] or '')
+        balance = 0
+        for transaction in government_fees_transactions:
+            balance += (transaction['due'] or 0) - (transaction['paid'] or 0)
+            transaction['balance'] = balance
+
+        if government_fees_transactions:
+            service_groups['government_fees'] = {
+                'service_name': 'Government Fees & Expenses',
+                'service_name_ar': 'الرسوم الحكومية والمصروفات',
+                'is_government_fees_section': True,
+                'transactions': government_fees_transactions,
+                'total_value': sum(t.get('due', 0) for t in government_fees_transactions),
+                'total_paid': sum(t.get('paid', 0) for t in government_fees_transactions),
+                'total_balance': government_fees_transactions[-1]['balance'] if government_fees_transactions else 0,
+                'pending_expenses': combined_pending_expenses
+            }
+
+    # Process Trust Fees section
+    trust_fees_transactions = []
+    if combined_trust_fees or combined_trust_fees_log:
+        # Process trust fees
+        for fee in combined_trust_fees:
+            trust_fees_transactions.append({
+                'date': getattr(fee, 'date', ''),
+                'type': 'Trust Fee',
+                'due': flt(getattr(fee, 'amount', 0)),
+                'paid': 0,
+                'balance': 0,
+                'remark': getattr(fee, 'remark', '') or getattr(fee, 'description', '')
+            })
+
+        # Process trust fees log as payments
+        for payment in combined_trust_fees_log:
+            trust_fees_transactions.append({
+                'date': getattr(payment, 'date', ''),
+                'type': 'Trust Fee Payment',
+                'due': 0,
+                'paid': flt(getattr(payment, 'amount', 0)),
+                'balance': 0,
+                'remark': getattr(payment, 'remark', '') or getattr(payment, 'description', '')
+            })
+
+        # Calculate running balance for trust fees
+        trust_fees_transactions.sort(key=lambda x: x['date'] or '')
+        balance = 0
+        for transaction in trust_fees_transactions:
+            balance += (transaction['due'] or 0) - (transaction['paid'] or 0)
+            transaction['balance'] = balance
+
+        if trust_fees_transactions:
+            service_groups['trust_fees'] = {
+                'service_name': 'Trust Fees',
+                'service_name_ar': 'رسوم الأمانة',
+                'is_trust_fees_section': True,
+                'transactions': trust_fees_transactions,
+                'total_value': sum(t.get('due', 0) for t in trust_fees_transactions),
+                'total_paid': sum(t.get('paid', 0) for t in trust_fees_transactions),
+                'total_balance': trust_fees_transactions[-1]['balance'] if trust_fees_transactions else 0
+            }
 
     return {
         'service_groups': list(service_groups.values()),
+        'government_fees': combined_government_fees,
+        'expenses': combined_expenses,
+        'pending_expenses': combined_pending_expenses,
+        'trust_fees': combined_trust_fees,
+        'trust_fees_log': combined_trust_fees_log,
         'summary': {
             'total_projects': len(project_agreements),
             'total_services': len(service_groups),

@@ -148,19 +148,19 @@ class AccountStatementReport {
                                     <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">TO DATE</label>
                                     <input type="date" id="toDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 500;">
                                 </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Action Buttons -->
-                    <div class="row" id="actionButtons" style="display: none;">
-                        <div class="col-md-12">
+                        <!-- Action Buttons -->
+                        <div class="row" id="actionButtons" style="display: none;">
+                            <div class="col-md-12">
                             <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; margin-right: 10px;">
-                                Load Report Data
-                            </button>
+                                    Load Report Data
+                                </button>
                             <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); color: white; margin-right: 10px;">
-                                Clear Filters
-                            </button>
+                                    Clear Filters
+                                </button>
                             <select id="printLanguage" class="form-control" style="display: none; width: 150px; margin-right: 10px; border: 2px solid #e9ecef; border-radius: 8px; padding: 8px 12px; font-size: 14px; background-color: #fff; float: left;">
                                 <option value="en">English</option>
                                 <option value="ar">العربية</option>
@@ -168,9 +168,9 @@ class AccountStatementReport {
                             <button id="printReport" class="btn btn-info" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; display: none;">
                                 Print
                             </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
                 <!-- Loading Spinner -->
                 <div id="loadingSpinner" style="display: none; text-align: center; padding: 60px 40px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; margin: 20px 0;">
@@ -190,12 +190,12 @@ class AccountStatementReport {
                             <button class="tab-button active" data-tab="servicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
                             <button class="tab-button" data-tab="governmentFeesExpenses" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Government Fees & Expenses</button>
                             <button class="tab-button" data-tab="trustFees" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Trust Fees</button>
-                        </div>
+                    </div>
 
                         <!-- Contractor Report Tabs -->
                         <div id="contractorTabs" style="display: none;">
                             <button class="tab-button active" data-tab="contractorServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
-                        </div>
+                    </div>
 
                         <!-- Engineer Report Tabs -->
                         <div id="engineerTabs" style="display: none;">
@@ -267,7 +267,7 @@ class AccountStatementReport {
             this.wrapper.on('change', '#reportType', (e) => {
                 const value = $(e.target).val();
                 this.filters.reportType = this.map_report_type_value(value);
-                this.handle_report_type_change();
+                        this.handle_report_type_change();
             });
         } catch (error) {
             console.error('Error initializing report type field:', error);
@@ -446,7 +446,7 @@ class AccountStatementReport {
                         this.filters.customer = this.controls.customer.get_value();
                         // Update project agreement filter but don't clear it immediately
                         setTimeout(() => {
-                            this.update_project_agreement_filter();
+                        this.update_project_agreement_filter();
                         }, 100);
                     }
                 },
@@ -646,8 +646,8 @@ class AccountStatementReport {
             
             // If the selected project agreement doesn't belong to the current customer, clear it
             if (project_data && project_data.customer !== this.filters.customer) {
-                this.controls.project_agreement.set_value('');
-                this.filters.project_agreement = '';
+            this.controls.project_agreement.set_value('');
+            this.filters.project_agreement = '';
                 frappe.show_alert({
                     message: __('Project Agreement cleared as it does not belong to the selected customer'),
                     indicator: 'orange'
@@ -885,8 +885,8 @@ class AccountStatementReport {
             </div>`;
         } else {
             customer_services.forEach(group => {
-                html += this.build_service_group_html(group);
-            });
+            html += this.build_service_group_html(group);
+        });
         }
 
         html += '</div>';
@@ -898,7 +898,7 @@ class AccountStatementReport {
 
         // Filter service groups to show only government fees
         const government_fees = data.service_groups.filter(group =>
-            group.service_type === 'government_fees'
+            group.is_government_fees_section === true
         );
 
         if (government_fees.length === 0) {
@@ -908,7 +908,7 @@ class AccountStatementReport {
             </div>`;
         } else {
             government_fees.forEach(group => {
-                html += this.build_service_group_html(group);
+                html += this.build_government_fees_group_html(group);
             });
         }
 
@@ -921,7 +921,7 @@ class AccountStatementReport {
 
         // Filter service groups to show only trust fees
         const trust_fees = data.service_groups.filter(group =>
-            group.service_type === 'trust_fees'
+            group.is_trust_fees_section === true
         );
 
         if (trust_fees.length === 0) {
@@ -931,7 +931,7 @@ class AccountStatementReport {
             </div>`;
         } else {
             trust_fees.forEach(group => {
-                html += this.build_service_group_html(group);
+                html += this.build_trust_fees_group_html(group);
             });
         }
 
@@ -987,12 +987,16 @@ class AccountStatementReport {
 
     build_service_group_html(group) {
         const is_tax_section = group.is_tax_section || false;
-        const service_title = is_tax_section ? `${group.service_name} - ${__('VAT')} ${group.tax_rate}%` : group.service_name;
+        const service_title = is_tax_section ? `${group.service_name}` : group.service_name;
+        
+        // Add project context if available
+        const project_context = group.project_name ? ` - ${group.project_name}` : '';
+        const full_title = service_title + project_context;
 
         return `
             <div class="service-group" style="margin-bottom: 30px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
                 <div class="service-header" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 15px; font-weight: 600;">
-                    <h4 style="margin: 0;">${service_title}</h4>
+                    <h4 style="margin: 0;">${full_title}</h4>
                 </div>
                 <div class="service-table-container" style="padding: 20px;">
                     <table class="table table-bordered service-table">
@@ -1000,8 +1004,56 @@ class AccountStatementReport {
                             <tr style="background: #f8f9fa;">
                                 <th style="text-align: center;">${__('Date')} - ${__('التاريخ')}</th>
                                 <th style="text-align: center;">${__('Type')} - ${__('النوع')}</th>
-                                <th style="text-align: center;">${__('Debit')} - ${__('المدين')}</th>
-                                <th style="text-align: center;">${__('Credit')} - ${__('الدائن')}</th>
+                                <th style="text-align: center;">${__('Due')} - ${__('المستحق')}</th>
+                                <th style="text-align: center;">${__('Paid')} - ${__('المدفوع')}</th>
+                                <th style="text-align: center;">${__('Balance')} - ${__('الرصيد')}</th>
+                                <th style="text-align: center;">${__('Description')} - ${__('البيان')}</th>
+                                ${is_tax_section || group.project_name ? `<th style="text-align: center;">${__('Project')} - ${__('المشروع')}</th>` : ''}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.transactions.map(transaction => `
+                                <tr>
+                                    <td style="text-align: center;">${frappe.datetime.str_to_user(transaction.date)}</td>
+                                    <td style="text-align: center;">${transaction.type}</td>
+                                    <td style="text-align: right; font-weight: bold;">${(transaction.debit || 0) > 0 ? this.format_currency(transaction.debit || 0) : '—'}</td>
+                                    <td style="text-align: right; font-weight: bold; color: #28a745;">${(transaction.credit || 0) > 0 ? this.format_currency(transaction.credit || 0) : '—'}</td>
+                                    <td style="text-align: right; font-weight: bold; ${(transaction.balance || 0) > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(transaction.balance || 0)}</td>
+                                    <td>${transaction.remark || transaction.description || ''}</td>
+                                    ${is_tax_section ? `<td style="text-align: center; font-size: 12px;">${transaction.project_name || 'N/A'}</td>` : (group.project_name ? `<td style="text-align: center; font-size: 12px;">${group.project_name}</td>` : '')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot style="background: #e9ecef;">
+                            <tr>
+                                <td colspan="${is_tax_section || group.project_name ? '3' : '2'}" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
+                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_value || 0)}</td>
+                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_paid || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; ${(group.total_balance || 0) > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
+                                <td></td>
+                                ${is_tax_section || group.project_name ? '<td></td>' : ''}
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    build_government_fees_group_html(group) {
+        return `
+            <div class="service-group" style="margin-bottom: 30px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <div class="service-header" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; padding: 15px; font-weight: 600;">
+                    <h4 style="margin: 0;">${group.service_name}</h4>
+                </div>
+                <div class="service-table-container" style="padding: 20px;">
+                    <table class="table table-bordered service-table">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="text-align: center;">${__('Date')} - ${__('التاريخ')}</th>
+                                <th style="text-align: center;">${__('Type')} - ${__('النوع')}</th>
+                                <th style="text-align: center;">${__('Due')} - ${__('المستحق')}</th>
+                                <th style="text-align: center;">${__('Paid')} - ${__('المدفوع')}</th>
                                 <th style="text-align: center;">${__('Balance')} - ${__('الرصيد')}</th>
                                 <th style="text-align: center;">${__('Description')} - ${__('البيان')}</th>
                             </tr>
@@ -1011,10 +1063,10 @@ class AccountStatementReport {
                                 <tr>
                                     <td style="text-align: center;">${frappe.datetime.str_to_user(transaction.date)}</td>
                                     <td style="text-align: center;">${transaction.type}</td>
-                                    <td style="text-align: right; font-weight: bold;">${this.format_currency(transaction.debit || 0)}</td>
-                                    <td style="text-align: right; font-weight: bold;">${this.format_currency(transaction.credit || 0)}</td>
-                                    <td style="text-align: right; font-weight: bold; ${transaction.balance < 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(transaction.balance || 0)}</td>
-                                    <td>${transaction.description || ''}</td>
+                                    <td style="text-align: right; font-weight: bold;">${transaction.due > 0 ? this.format_currency(transaction.due) : '—'}</td>
+                                    <td style="text-align: right; font-weight: bold; color: #28a745;">${transaction.paid > 0 ? this.format_currency(transaction.paid) : '—'}</td>
+                                    <td style="text-align: right; font-weight: bold; ${transaction.balance > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(transaction.balance || 0)}</td>
+                                    <td>${transaction.remark || ''}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1023,12 +1075,84 @@ class AccountStatementReport {
                                 <td colspan="2" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
                                 <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_value || 0)}</td>
                                 <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_paid || 0)}</td>
-                                <td style="text-align: right; font-weight: bold; ${group.total_balance < 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; ${group.total_balance > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    ${group.pending_expenses && group.pending_expenses.length > 0 ? this.build_pending_expenses_html(group.pending_expenses) : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    build_trust_fees_group_html(group) {
+        return `
+            <div class="service-group" style="margin-bottom: 30px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
+                <div class="service-header" style="background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%); color: white; padding: 15px; font-weight: 600;">
+                    <h4 style="margin: 0;">${group.service_name}</h4>
+                </div>
+                <div class="service-table-container" style="padding: 20px;">
+                    <table class="table table-bordered service-table">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="text-align: center;">${__('Date')} - ${__('التاريخ')}</th>
+                                <th style="text-align: center;">${__('Type')} - ${__('النوع')}</th>
+                                <th style="text-align: center;">${__('Due')} - ${__('المستحق')}</th>
+                                <th style="text-align: center;">${__('Paid')} - ${__('المدفوع')}</th>
+                                <th style="text-align: center;">${__('Balance')} - ${__('الرصيد')}</th>
+                                <th style="text-align: center;">${__('Description')} - ${__('البيان')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${group.transactions.map(transaction => `
+                                <tr>
+                                    <td style="text-align: center;">${frappe.datetime.str_to_user(transaction.date)}</td>
+                                    <td style="text-align: center;">${transaction.type}</td>
+                                    <td style="text-align: right; font-weight: bold;">${transaction.due > 0 ? this.format_currency(transaction.due) : '—'}</td>
+                                    <td style="text-align: right; font-weight: bold; color: #28a745;">${transaction.paid > 0 ? this.format_currency(transaction.paid) : '—'}</td>
+                                    <td style="text-align: right; font-weight: bold; ${transaction.balance > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(transaction.balance || 0)}</td>
+                                    <td>${transaction.remark || ''}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                        <tfoot style="background: #e9ecef;">
+                            <tr>
+                                <td colspan="2" style="text-align: center; font-weight: bold;">${__('Total')} - ${__('المجموع')}</td>
+                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_value || 0)}</td>
+                                <td style="text-align: right; font-weight: bold;">${this.format_currency(group.total_paid || 0)}</td>
+                                <td style="text-align: right; font-weight: bold; ${group.total_balance > 0 ? 'color: #dc3545;' : 'color: #28a745;'}">${this.format_currency(group.total_balance || 0)}</td>
                                 <td></td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
+            </div>
+        `;
+    }
+
+    build_pending_expenses_html(pending_expenses) {
+        return `
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffeaa7;">
+                <h5 style="color: #856404; margin-bottom: 15px;">${__('Pending Expenses')} - ${__('المصروفات المعلقة')}</h5>
+                <table class="table table-bordered" style="margin-bottom: 0;">
+                    <thead>
+                        <tr style="background: #f8f9fa;">
+                            <th style="text-align: center;">${__('Amount')} - ${__('المبلغ')}</th>
+                            <th style="text-align: center;">${__('Paid')} - ${__('مدفوع')}</th>
+                            <th style="text-align: center;">${__('Collected Amount')} - ${__('المبلغ المحصل')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pending_expenses.map(expense => `
+                            <tr>
+                                <td style="text-align: right; font-weight: bold;">${this.format_currency(expense.amount || 0)}</td>
+                                <td style="text-align: center;">${expense.paid ? '✓' : '✗'}</td>
+                                <td style="text-align: right; font-weight: bold;">${this.format_currency(expense.collected_amount || 0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
     }
@@ -1122,13 +1246,27 @@ class AccountStatementReport {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>${__('Account Statement Report')} - ${entity_info.name}</title>
                 <style>
+                    @page {
+                        margin: 2cm 1.5cm;
+                        size: A4;
+                    }
+
                     body {
                         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
                         margin: 0;
-                        padding: 20px;
+                        padding: 0;
                         background-color: #ffffff;
                         direction: rtl;
                         text-align: right;
+                        line-height: 1.4;
+                    }
+
+                    .print-container {
+                        width: 100%;
+                        max-width: none;
+                        margin: 0;
+                        padding: 20px;
+                        box-sizing: border-box;
                     }
 
                     .print-header {
@@ -1136,6 +1274,8 @@ class AccountStatementReport {
                         margin-bottom: 30px;
                         border-bottom: 3px solid #007bff;
                         padding-bottom: 20px;
+                        page-break-after: avoid;
+                        page-break-inside: avoid;
                     }
 
                     .company-info h1 {
@@ -1166,6 +1306,12 @@ class AccountStatementReport {
                     .service-group {
                         margin-bottom: 40px;
                         page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+
+                    .service-group:not(:first-child) {
+                        page-break-before: auto;
+                        margin-top: 20px;
                     }
 
                     .service-title {
@@ -1184,6 +1330,20 @@ class AccountStatementReport {
                         border-collapse: collapse;
                         margin: 0;
                         font-size: 12px;
+                        page-break-inside: auto;
+                    }
+
+                    .service-table thead {
+                        display: table-header-group;
+                    }
+
+                    .service-table tbody {
+                        display: table-row-group;
+                    }
+
+                    .service-table tr {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
                     }
 
                     .service-table th {
@@ -1230,13 +1390,32 @@ class AccountStatementReport {
                     @media print {
                         body {
                             margin: 0;
+                            padding: 0;
+                        }
+                        
+                        .print-container {
                             padding: 15px;
+                        }
+                        
+                        .print-header {
+                            position: static;
+                            margin-bottom: 20px;
+                        }
+                        
+                        .service-group {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                        }
+                        
+                        .service-table thead {
+                            display: table-header-group;
                         }
                     }
                 </style>
             </head>
             <body>
-                <div class="print-header">
+                <div class="print-container">
+                    <div class="print-header">
                     <div class="company-info">
                         <h1>${data.company.company_name_ar || data.company.company_name}</h1>
                         <h1>${data.company.company_name}</h1>
@@ -1328,6 +1507,7 @@ class AccountStatementReport {
                 <div class="print-footer">
                     <p>${__('Generated by')} ${data.company.company_name_ar || data.company.company_name} ${__('System')} - ${frappe.datetime.now_datetime()}</p>
                 </div>
+                </div> <!-- Close print-container -->
             </body>
             </html>
         `;

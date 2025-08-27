@@ -268,9 +268,9 @@ def process_customer_data(project_agreements, item_filter, from_date, to_date):
 
             # Add transactions
             service_groups[item_key]['transactions'].extend(item_data['transactions'])
-            service_groups[item_key]['total_value'] += item_data['total_value']
-            service_groups[item_key]['total_paid'] += item_data['total_paid']
-            service_groups[item_key]['total_balance'] += item_data['final_balance']
+            service_groups[item_key]['total_value'] += item_data.get('total_debit', 0)  # Use total_debit as total_value
+            service_groups[item_key]['total_paid'] += item_data.get('total_credit', 0)  # Use total_credit as total_paid
+            service_groups[item_key]['total_balance'] += item_data.get('final_balance', 0)
 
         # Process tax details
         tax_details = process_project_taxes(full_project)
@@ -319,23 +319,24 @@ def process_contractor_data(project_agreements, contractor_filter, item_filter, 
         # Filter contractor services
         contractor_services = full_project.contractors_services or []
         if contractor_filter:
-            contractor_services = [s for s in contractor_services if s.contractor == contractor_filter]
+            contractor_services = [s for s in contractor_services if getattr(s, 'contractor', '') == contractor_filter]
 
         # Filter contractor payments
         contractor_payments = full_project.contractors_payment_log or []
         if contractor_filter:
-            contractor_payments = [p for p in contractor_payments if p.contractor == contractor_filter]
+            contractor_payments = [p for p in contractor_payments if getattr(p, 'contractor', '') == contractor_filter]
 
         # Group by item
         grouped_services = {}
         for service in contractor_services:
-            if item_filter and service.item != item_filter:
+            service_item = getattr(service, 'item', '')
+            if item_filter and service_item != item_filter:
                 continue
 
-            item_key = service.item
+            item_key = service_item
             if item_key not in grouped_services:
                 grouped_services[item_key] = {
-                    'item': service.item,
+                    'item': service_item,
                     'transactions': [],
                     'total_debit': 0,
                     'total_credit': 0
@@ -343,40 +344,39 @@ def process_contractor_data(project_agreements, contractor_filter, item_filter, 
 
             # Add service transaction
             grouped_services[item_key]['transactions'].append({
-                'date': service.date,
+                'date': getattr(service, 'invoice_date', ''),  # ContractorsServices uses invoice_date
                 'type': 'Service',
-                'debit': flt(service.amount),
+                'debit': flt(getattr(service, 'amount', 0)),
                 'credit': 0,
                 'balance': 0,
-                'remark': service.remark or ''
+                'remark': getattr(service, 'remark', '') or ''
             })
-            grouped_services[item_key]['total_debit'] += flt(service.amount)
+            grouped_services[item_key]['total_debit'] += flt(getattr(service, 'amount', 0))
 
         # Add payment transactions
         for payment in contractor_payments:
-            if item_filter and payment.item != item_filter:
+            payment_item = getattr(payment, 'item', '')
+            if item_filter and payment_item != item_filter:
                 continue
 
-            item_key = payment.item
+            item_key = payment_item
             if item_key not in grouped_services:
                 grouped_services[item_key] = {
-                    'item': payment.item,
+                    'item': payment_item,
                     'transactions': [],
                     'total_debit': 0,
                     'total_credit': 0
                 }
 
-            credit_amount = 0
-            if payment.transaction_type in ['Payment', 'Discount', 'Cancel Due', 'Return']:
-                credit_amount = flt(payment.payment_amount)
+            credit_amount = flt(getattr(payment, 'payment_amount', 0))
 
             grouped_services[item_key]['transactions'].append({
-                'date': payment.date,
-                'type': payment.transaction_type or 'Payment',
+                'date': getattr(payment, 'date', ''),
+                'type': 'Payment',
                 'debit': 0,
                 'credit': credit_amount,
                 'balance': 0,
-                'remark': payment.remark or ''
+                'remark': getattr(payment, 'remark', '') or ''
             })
             grouped_services[item_key]['total_credit'] += credit_amount
 
@@ -401,9 +401,9 @@ def process_contractor_data(project_agreements, contractor_filter, item_filter, 
                 }
 
             service_groups[item_key]['transactions'].extend(item_data['transactions'])
-            service_groups[item_key]['total_value'] += item_data['total_debit']
-            service_groups[item_key]['total_paid'] += item_data['total_credit']
-            service_groups[item_key]['total_balance'] += item_data['final_balance']
+            service_groups[item_key]['total_value'] += item_data.get('total_debit', 0)
+            service_groups[item_key]['total_paid'] += item_data.get('total_credit', 0)
+            service_groups[item_key]['total_balance'] += item_data.get('final_balance', 0)
 
     return {
         'service_groups': list(service_groups.values()),
@@ -426,23 +426,24 @@ def process_engineer_data(project_agreements, engineer_filter, item_filter, from
         # Filter outsource services
         outsource_services = full_project.outsource_services or []
         if engineer_filter:
-            outsource_services = [s for s in outsource_services if s.service_provider == engineer_filter]
+            outsource_services = [s for s in outsource_services if getattr(s, 'service_provider', '') == engineer_filter]
 
         # Filter outsource payments
         outsource_payments = full_project.outsource_payment_log or []
         if engineer_filter:
-            outsource_payments = [p for p in outsource_payments if p.engineer == engineer_filter]
+            outsource_payments = [p for p in outsource_payments if getattr(p, 'engineer', '') == engineer_filter]
 
         # Group by service
         grouped_services = {}
         for service in outsource_services:
-            if item_filter and service.service != item_filter:
+            service_name = getattr(service, 'service', '')
+            if item_filter and service_name != item_filter:
                 continue
 
-            service_key = service.service
+            service_key = service_name
             if service_key not in grouped_services:
                 grouped_services[service_key] = {
-                    'service': service.service,
+                    'service': service_name,
                     'transactions': [],
                     'total_debit': 0,
                     'total_credit': 0
@@ -450,40 +451,39 @@ def process_engineer_data(project_agreements, engineer_filter, item_filter, from
 
             # Add service transaction
             grouped_services[service_key]['transactions'].append({
-                'date': service.date,
+                'date': getattr(service, 'date', ''),
                 'type': 'Service',
-                'debit': flt(service.amount),
+                'debit': flt(getattr(service, 'amount', 0)),
                 'credit': 0,
                 'balance': 0,
-                'remark': service.remark or ''
+                'remark': getattr(service, 'remark', '') or ''
             })
-            grouped_services[service_key]['total_debit'] += flt(service.amount)
+            grouped_services[service_key]['total_debit'] += flt(getattr(service, 'amount', 0))
 
         # Add payment transactions
         for payment in outsource_payments:
-            if item_filter and payment.service != item_filter:
+            payment_item = getattr(payment, 'item', '')  # OutsourcePaymentLog uses 'item' not 'service'
+            if item_filter and payment_item != item_filter:
                 continue
 
-            service_key = payment.service
+            service_key = payment_item
             if service_key not in grouped_services:
                 grouped_services[service_key] = {
-                    'service': payment.service,
+                    'service': payment_item,
                     'transactions': [],
                     'total_debit': 0,
                     'total_credit': 0
                 }
 
-            credit_amount = 0
-            if payment.transaction_type in ['Payment', 'Discount', 'Cancel Due', 'Return']:
-                credit_amount = flt(payment.payment_amount)
+            credit_amount = flt(getattr(payment, 'payment_amount', 0))
 
             grouped_services[service_key]['transactions'].append({
-                'date': payment.date,
-                'type': payment.transaction_type or 'Payment',
+                'date': getattr(payment, 'date', ''),
+                'type': 'Payment',
                 'debit': 0,
                 'credit': credit_amount,
                 'balance': 0,
-                'remark': payment.remark or ''
+                'remark': getattr(payment, 'remark', '') or ''
             })
             grouped_services[service_key]['total_credit'] += credit_amount
 
@@ -508,9 +508,9 @@ def process_engineer_data(project_agreements, engineer_filter, item_filter, from
                 }
 
             service_groups[service_key]['transactions'].extend(service_data['transactions'])
-            service_groups[service_key]['total_value'] += service_data['total_debit']
-            service_groups[service_key]['total_paid'] += service_data['total_credit']
-            service_groups[service_key]['total_balance'] += service_data['final_balance']
+            service_groups[service_key]['total_value'] += service_data.get('total_debit', 0)
+            service_groups[service_key]['total_paid'] += service_data.get('total_credit', 0)
+            service_groups[service_key]['total_balance'] += service_data.get('final_balance', 0)
 
     return {
         'service_groups': list(service_groups.values()),

@@ -235,13 +235,14 @@ class AccountStatementReport {
         // Initialize report type field
         this.initialize_report_type_field();
 
-        // Generate report button
-        this.wrapper.find('#generateReport').on('click', () => {
+        // Generate report button - use event delegation for initially hidden elements
+        this.wrapper.on('click', '#generateReport', () => {
+            console.log('Generate report button clicked'); // Debug log
             this.generate_report();
         });
 
-        // Clear filters button
-        this.wrapper.find('#clearFilters').on('click', () => {
+        // Clear filters button - use event delegation for initially hidden elements
+        this.wrapper.on('click', '#clearFilters', () => {
             this.clear_filters();
         });
 
@@ -581,10 +582,15 @@ class AccountStatementReport {
     }
 
     generate_report() {
+        console.log('generate_report() called'); // Debug log
+        console.log('Current filters:', this.filters); // Debug log
+        
         if (!this.validate_filters()) {
+            console.log('Filter validation failed'); // Debug log
             return;
         }
 
+        console.log('Filter validation passed, showing loading...'); // Debug log
         this.show_loading();
 
         // Fetch data based on report type
@@ -619,16 +625,24 @@ class AccountStatementReport {
     }
 
     validate_filters() {
+        console.log('Validating filters...'); // Debug log
+        console.log('reportType:', this.filters.reportType); // Debug log
+        console.log('from_date:', this.filters.from_date); // Debug log
+        console.log('to_date:', this.filters.to_date); // Debug log
+        
         if (!this.filters.reportType) {
+            console.log('Report type validation failed'); // Debug log
             frappe.msgprint(__('Please select a report type'));
             return false;
         }
 
         if (!this.filters.from_date || !this.filters.to_date) {
+            console.log('Date validation failed'); // Debug log
             frappe.msgprint(__('Please select both From Date and To Date'));
             return false;
         }
 
+        console.log('All validations passed'); // Debug log
         return true;
     }
 

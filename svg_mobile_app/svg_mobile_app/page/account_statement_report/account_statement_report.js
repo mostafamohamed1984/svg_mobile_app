@@ -62,12 +62,7 @@ class AccountStatementReport {
                         <div class="col-md-12">
                             <div class="filter-group" style="margin-bottom: 20px;">
                                 <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">REPORT TYPE - نوع التقرير</label>
-                                <select id="reportType" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 600;">
-                                    <option value="">Select Report Type</option>
-                                    <option value="customer">Customer (عميل)</option>
-                                    <option value="contractor">Contractor (مقاول)</option>
-                                    <option value="engineer">Engineer (مهندس)</option>
-                                </select>
+                                <div id="report-type-field"></div>
                             </div>
                         </div>
                     </div>
@@ -162,11 +157,8 @@ class AccountStatementReport {
     }
 
     setup_filters() {
-        // Report type change event
-        this.wrapper.find('#reportType').on('change', (e) => {
-            this.filters.reportType = e.target.value;
-            this.handle_report_type_change();
-        });
+        // Initialize report type field
+        this.initialize_report_type_field();
 
         // Generate report button
         this.wrapper.find('#generateReport').on('click', () => {
@@ -184,6 +176,28 @@ class AccountStatementReport {
         });
     }
 
+    initialize_report_type_field() {
+        try {
+            this.controls.report_type = frappe.ui.form.make_control({
+                parent: this.wrapper.find('#report-type-field'),
+                df: {
+                    fieldtype: 'Select',
+                    fieldname: 'report_type',
+                    options: '\nCustomer (عميل)\nContractor (مقاول)\nEngineer (مهندس)',
+                    placeholder: __('Select Report Type'),
+                    onchange: () => {
+                        this.filters.reportType = this.controls.report_type.get_value();
+                        this.handle_report_type_change();
+                    }
+                },
+                render_input: true
+            });
+            this.controls.report_type.refresh();
+        } catch (error) {
+            console.error('Error initializing report type field:', error);
+        }
+    }
+
     setup_actions() {
         // Actions are set up in setup_filters
     }
@@ -199,7 +213,20 @@ class AccountStatementReport {
     }
 
     handle_report_type_change() {
-        const report_type = this.filters.reportType;
+        const display_value = this.filters.reportType;
+        
+        // Map display values to internal values
+        const value_map = {
+            'Customer (عميل)': 'customer',
+            'Contractor (مقاول)': 'contractor', 
+            'Engineer (مهندس)': 'engineer'
+        };
+        
+        const report_type = value_map[display_value] || display_value;
+        this.filters.reportType = report_type; // Update with internal value
+
+        // Clean up existing controls first
+        this.cleanup_dynamic_controls();
 
         // Hide all filter groups
         this.hide_all_filter_groups();
@@ -242,6 +269,41 @@ class AccountStatementReport {
         this.initialize_date_fields();
     }
 
+    cleanup_dynamic_controls() {
+        // List of dynamic controls that need cleanup
+        const dynamic_controls = ['customer', 'contractor', 'engineer', 'project_agreement', 'item', 'from_date', 'to_date'];
+        
+        dynamic_controls.forEach(control_name => {
+            if (this.controls[control_name]) {
+                // Clear the container
+                const container_map = {
+                    'customer': '#customer-field',
+                    'contractor': '#contractor-field', 
+                    'engineer': '#engineer-field',
+                    'project_agreement': '#project-agreement-field',
+                    'item': '#item-field',
+                    'from_date': '#from-date-field',
+                    'to_date': '#to-date-field'
+                };
+                
+                const container = this.wrapper.find(container_map[control_name]);
+                if (container.length) {
+                    container.empty();
+                }
+                
+                // Remove reference to the control
+                delete this.controls[control_name];
+            }
+        });
+        
+        // Reset filter values for dynamic fields
+        this.filters.customer = '';
+        this.filters.contractor = '';
+        this.filters.engineer = '';
+        this.filters.project_agreement = '';
+        this.filters.item = '';
+    }
+
     hide_all_filter_groups() {
         const groups = ['customerFilterGroup', 'contractorFilterGroup', 'engineerFilterGroup'];
         groups.forEach(group => {
@@ -263,6 +325,8 @@ class AccountStatementReport {
     }
 
     initialize_customer_field() {
+        if (this.controls.customer) return; // Prevent duplicate initialization
+        
         try {
             this.controls.customer = frappe.ui.form.make_control({
                 parent: this.wrapper.find('#customer-field'),
@@ -285,6 +349,8 @@ class AccountStatementReport {
     }
 
     initialize_contractor_field() {
+        if (this.controls.contractor) return; // Prevent duplicate initialization
+        
         try {
             this.controls.contractor = frappe.ui.form.make_control({
                 parent: this.wrapper.find('#contractor-field'),
@@ -307,6 +373,8 @@ class AccountStatementReport {
     }
 
     initialize_engineer_field() {
+        if (this.controls.engineer) return; // Prevent duplicate initialization
+        
         try {
             this.controls.engineer = frappe.ui.form.make_control({
                 parent: this.wrapper.find('#engineer-field'),
@@ -329,6 +397,8 @@ class AccountStatementReport {
     }
 
     initialize_project_agreement_field() {
+        if (this.controls.project_agreement) return; // Prevent duplicate initialization
+        
         try {
             this.controls.project_agreement = frappe.ui.form.make_control({
                 parent: this.wrapper.find('#project-agreement-field'),
@@ -353,6 +423,8 @@ class AccountStatementReport {
     }
 
     initialize_item_field() {
+        if (this.controls.item) return; // Prevent duplicate initialization
+        
         try {
             this.controls.item = frappe.ui.form.make_control({
                 parent: this.wrapper.find('#item-field'),
@@ -374,36 +446,42 @@ class AccountStatementReport {
     }
 
     initialize_date_fields() {
+        if (this.controls.from_date && this.controls.to_date) return; // Prevent duplicate initialization
+        
         try {
-            this.controls.from_date = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#from-date-field'),
-                df: {
-                    fieldtype: 'Date',
-                    fieldname: 'from_date',
-                    default: this.default_from_date,
-                    onchange: () => {
-                        this.filters.from_date = this.controls.from_date.get_value();
-                    }
-                },
-                render_input: true
-            });
+            if (!this.controls.from_date) {
+                this.controls.from_date = frappe.ui.form.make_control({
+                    parent: this.wrapper.find('#from-date-field'),
+                    df: {
+                        fieldtype: 'Date',
+                        fieldname: 'from_date',
+                        default: this.default_from_date,
+                        onchange: () => {
+                            this.filters.from_date = this.controls.from_date.get_value();
+                        }
+                    },
+                    render_input: true
+                });
+            }
 
-            this.controls.to_date = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#to-date-field'),
-                df: {
-                    fieldtype: 'Date',
-                    fieldname: 'to_date',
-                    default: this.default_to_date,
-                    onchange: () => {
-                        this.filters.to_date = this.controls.to_date.get_value();
-                    }
-                },
-                render_input: true
-            });
+            if (!this.controls.to_date) {
+                this.controls.to_date = frappe.ui.form.make_control({
+                    parent: this.wrapper.find('#to-date-field'),
+                    df: {
+                        fieldtype: 'Date',
+                        fieldname: 'to_date',
+                        default: this.default_to_date,
+                        onchange: () => {
+                            this.filters.to_date = this.controls.to_date.get_value();
+                        }
+                    },
+                    render_input: true
+                });
+            }
 
-            // Set initial values
-            this.filters.from_date = this.default_from_date;
-            this.filters.to_date = this.default_to_date;
+            // Set initial values if not already set
+            if (!this.filters.from_date) this.filters.from_date = this.default_from_date;
+            if (!this.filters.to_date) this.filters.to_date = this.default_to_date;
 
         } catch (error) {
             console.error('Error initializing date fields:', error);
@@ -863,6 +941,10 @@ class AccountStatementReport {
     }
 
     clear_filters() {
+        // Clean up dynamic controls
+        this.cleanup_dynamic_controls();
+
+        // Reset all filters
         this.filters = {
             reportType: '',
             customer: '',
@@ -874,22 +956,9 @@ class AccountStatementReport {
             toDate: ''
         };
 
-        // Clear form controls
-        this.wrapper.find('#reportType').val('');
-        Object.values(this.controls).forEach(control => {
-            if (control && typeof control.set_value === 'function') {
-                control.set_value('');
-            }
-        });
-
-        // Reset dates to default
-        if (this.controls.from_date) {
-            this.controls.from_date.set_value(this.default_from_date);
-            this.filters.from_date = this.default_from_date;
-        }
-        if (this.controls.to_date) {
-            this.controls.to_date.set_value(this.default_to_date);
-            this.filters.to_date = this.default_to_date;
+        // Clear report type control
+        if (this.controls.report_type) {
+            this.controls.report_type.set_value('');
         }
 
         // Hide dynamic elements

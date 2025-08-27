@@ -532,53 +532,60 @@ def process_project_services(project, item_filter):
 
     # Group services by item
     for service in services:
-        if item_filter and service.item != item_filter:
+        if item_filter and hasattr(service, 'item') and service.item != item_filter:
             continue
 
-        item_key = f"{service.item}_{service.item_code or ''}"
+        # Safely get item name
+        item_name = getattr(service, 'item', 'Unknown Item')
+        item_key = item_name  # Use only item name since item_code doesn't exist
+        
         if item_key not in grouped_services:
             grouped_services[item_key] = {
-                'item': service.item,
+                'item': item_name,
                 'transactions': [],
                 'total_debit': 0,
                 'total_credit': 0
             }
 
         grouped_services[item_key]['transactions'].append({
-            'date': service.invoice_date,
+            'date': getattr(service, 'invoice_date', ''),
             'type': 'Service',
-            'debit': flt(service.amount),
+            'debit': flt(getattr(service, 'amount', 0)),
             'credit': 0,
             'balance': 0,
-            'remark': service.remark or ''
+            'remark': getattr(service, 'remark', '') or ''
         })
-        grouped_services[item_key]['total_debit'] += flt(service.amount)
+        grouped_services[item_key]['total_debit'] += flt(getattr(service, 'amount', 0))
 
     # Add payments
     for payment in payments:
-        if item_filter and payment.item != item_filter:
+        if item_filter and hasattr(payment, 'item') and payment.item != item_filter:
             continue
 
-        item_key = f"{payment.item}_{payment.item_code or ''}"
+        # Safely get item name
+        item_name = getattr(payment, 'item', 'Unknown Item')
+        item_key = item_name  # Use only item name since item_code doesn't exist
+        
         if item_key not in grouped_services:
             grouped_services[item_key] = {
-                'item': payment.item,
+                'item': item_name,
                 'transactions': [],
                 'total_debit': 0,
                 'total_credit': 0
             }
 
         credit_amount = 0
-        if payment.transaction_type in ['Payment', 'Discount', 'Cancel Due', 'Return']:
-            credit_amount = flt(payment.payment_amount)
+        transaction_type = getattr(payment, 'transaction_type', 'Payment')
+        if transaction_type in ['Payment', 'Discount', 'Cancel Due', 'Return']:
+            credit_amount = flt(getattr(payment, 'payment_amount', 0))
 
         grouped_services[item_key]['transactions'].append({
-            'date': payment.date,
-            'type': payment.transaction_type or 'Payment',
+            'date': getattr(payment, 'date', ''),
+            'type': transaction_type,
             'debit': 0,
             'credit': credit_amount,
             'balance': 0,
-            'remark': payment.remark or ''
+            'remark': getattr(payment, 'remark', '') or ''
         })
         grouped_services[item_key]['total_credit'] += credit_amount
 

@@ -626,7 +626,9 @@ class AccountStatementReport {
                     console.log('Found service groups, rendering statement'); // Debug log
                     this.render_statement(response.message);
                     // Show the tab content area
+                    console.log('Ensuring tab content is visible after rendering...'); // Debug log
                     this.wrapper.find('.tab-content').show();
+                    console.log('Tab content show() called'); // Debug log
                 } else {
                     console.log('No service groups found, showing no-data message'); // Debug log
                     console.log('response.message:', response.message); // Debug log
@@ -700,8 +702,26 @@ class AccountStatementReport {
             console.log('HTML inserted into container'); // Debug log
             
             // Show the appropriate tab content
+            console.log('Hiding all tab panes...'); // Debug log
             this.wrapper.find('.tab-pane').hide();
-            this.wrapper.find(containerId).closest('.tab-pane').show();
+            
+            const tabPane = this.wrapper.find(containerId).closest('.tab-pane');
+            console.log('Found tab pane for container:', tabPane.length); // Debug log
+            console.log('Tab pane ID:', tabPane.attr('id')); // Debug log
+            
+            tabPane.show();
+            console.log('Tab pane should now be visible'); // Debug log
+            
+            // Also ensure the tab content area is visible
+            this.wrapper.find('.tab-content').show();
+            console.log('Tab content area shown'); // Debug log
+            
+            // Debug CSS properties
+            const tabContentArea = this.wrapper.find('.tab-content');
+            console.log('Tab content display:', tabContentArea.css('display')); // Debug log
+            console.log('Tab content visibility:', tabContentArea.css('visibility')); // Debug log
+            console.log('Tab pane display:', tabPane.css('display')); // Debug log
+            console.log('Tab pane visibility:', tabPane.css('visibility')); // Debug log
             
         } else {
             console.log('ERROR: Container not found:', containerId); // Debug log

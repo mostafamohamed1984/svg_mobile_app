@@ -594,6 +594,17 @@ class AccountStatementReport {
         this.show_loading();
 
         // Fetch data based on report type
+        console.log('Making API call with args:', {
+            report_type: this.filters.reportType,
+            customer: this.filters.customer,
+            contractor: this.filters.contractor,
+            engineer: this.filters.engineer,
+            project_agreement: this.filters.project_agreement,
+            item: this.filters.item,
+            from_date: this.filters.from_date,
+            to_date: this.filters.to_date
+        }); // Debug log
+        
         frappe.call({
             method: 'svg_mobile_app.svg_mobile_app.page.account_statement_report.account_statement_report.get_account_statement_data',
             args: {
@@ -607,16 +618,23 @@ class AccountStatementReport {
                 to_date: this.filters.to_date
             },
             callback: (response) => {
+                console.log('API response received:', response); // Debug log
+                console.log('Response message:', response.message); // Debug log
                 this.hide_loading();
 
                 if (response.message && response.message.service_groups && response.message.service_groups.length > 0) {
+                    console.log('Found service groups, rendering statement'); // Debug log
                     this.render_statement(response.message);
                     this.wrapper.find('.statement-data').show();
                 } else {
+                    console.log('No service groups found, showing no-data message'); // Debug log
+                    console.log('response.message:', response.message); // Debug log
+                    console.log('service_groups:', response.message?.service_groups); // Debug log
                     this.wrapper.find('.no-data-message').show();
                 }
             },
             error: (error) => {
+                console.log('API error occurred:', error); // Debug log
                 this.hide_loading();
                 this.wrapper.find('.no-data-message').show();
                 frappe.msgprint(__('Error loading report: {0}', [error.message]));

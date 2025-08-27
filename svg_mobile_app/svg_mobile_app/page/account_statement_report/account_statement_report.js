@@ -1400,13 +1400,28 @@ class AccountStatementReport {
                 ${this.get_print_styles()}
             </head>
             <body>
-                <div class="print-header-image"><img src="/files/Asset 8.png" onerror="this.style.display='none'"></div>
-                <div class="print-footer-image"><img src="/files/Asset 9.png" onerror="this.style.display='none'"></div>
-                
-                <div class="print-container">
-                    ${this.generate_print_header(data, labels)}
-                    ${this.generate_print_services_payments(data, labels)}
-                </div>
+                <table class="page-frame">
+                    <thead class="page-header">
+                        <tr>
+                            <td><img src="/files/Asset 8.png" alt="header" onerror="this.style.display='none'"></td>
+                        </tr>
+                    </thead>
+                    <tfoot class="page-footer">
+                        <tr>
+                            <td><img src="/files/Asset 9.png" alt="footer" onerror="this.style.display='none'"></td>
+                        </tr>
+                    </tfoot>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <div class="print-container">
+                                    ${this.generate_print_header(data, labels)}
+                                    ${this.generate_print_services_payments(data, labels)}
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </body>
             </html>
         `;
@@ -1529,7 +1544,7 @@ class AccountStatementReport {
 
                 @page {
                     size: A4;
-                    margin: 110px 15mm 90px 15mm;
+                    margin: 15mm;
                 }
 
                 html, body {
@@ -1546,50 +1561,35 @@ class AccountStatementReport {
                     height: 100%;
                 }
 
-                .print-header-image {
-                    position: fixed;
-                    top: -110px; /* place inside top page margin */
-                    left: 0;
-                    right: 0;
+                /* Page frame table forces repeated header/footer on each page */
+                table.page-frame {
                     width: 100%;
-                    height: 90px;
-                    margin: 0;
-                    padding: 0;
-                    z-index: 9999;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
+                    border-collapse: collapse;
                 }
 
-                .print-footer-image {
-                    position: fixed;
-                    bottom: -90px; /* place inside bottom page margin */
-                    left: 0;
-                    right: 0;
-                    width: 100%;
-                    height: 70px;
-                    margin: 0;
+                thead.page-header { display: table-header-group; }
+                tfoot.page-footer { display: table-footer-group; }
+
+                thead.page-header td,
+                tfoot.page-footer td {
                     padding: 0;
-                    z-index: 9999;
-                    -webkit-print-color-adjust: exact;
-                    print-color-adjust: exact;
                 }
 
-                .print-header-image img,
-                .print-footer-image img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                    display: block;
-                    pointer-events: none;
+                thead.page-header img {
+                    width: 100%; height: 90px; display: block; object-fit: cover;
+                }
+
+                tfoot.page-footer img {
+                    width: 100%; height: 70px; display: block; object-fit: cover;
                 }
 
                 .print-container {
                     margin: 0;
-                    padding: 0 15mm; /* page margins reserve header/footer space */
+                    padding: 0; /* content sits between header/footer automatically */
                     background: white;
                     z-index: 1;
                     position: relative;
-                    min-height: 100vh;
+                    min-height: auto;
                     box-sizing: border-box;
                 }
 

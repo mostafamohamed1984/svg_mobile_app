@@ -1457,12 +1457,322 @@ class AccountStatementReport {
             return '0.00';
         }
 
-        const currency = this.current_statement_data?.currency || 'AED';
-        return new Intl.NumberFormat('ar-EG', {
-            style: 'currency',
-            currency: currency,
-            minimumFractionDigits: 2
-        }).format(amount);
+        const formattedAmount = new Intl.NumberFormat('en-AE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount || 0);
+        return `${formattedAmount} د.إ`;
+    }
+
+    build_print_html(data, language = 'en') {
+        const isArabic = language === 'ar';
+        const labels = this.get_print_labels(isArabic);
+        
+        let printContent = `
+            <!DOCTYPE html>
+            <html dir="${isArabic ? 'rtl' : 'ltr'}">
+            <head>
+                <meta charset="utf-8">
+                <title>Account Statement Report</title>
+                ${this.get_print_styles()}
+            </head>
+            <body>
+                <div class="print-header-image"></div>
+                <div class="print-footer-image"></div>
+                
+                <div class="print-container">
+                    ${this.generate_print_header(data, labels)}
+                    ${this.generate_print_services_payments(data, labels)}
+                </div>
+            </body>
+            </html>
+        `;
+        
+        return printContent;
+    }
+
+    get_print_labels(isArabic) {
+        if (isArabic) {
+            return {
+                date: 'التاريخ',
+                type: 'النوع',
+                debit: 'المدين',
+                credit: 'الدائن',
+                balance: 'الرصيد',
+                description: 'البيان',
+                totals: 'المجموع',
+                reportTitle: 'كشف حساب',
+                customer: 'العميل',
+                contractor: 'المقاول',
+                engineer: 'المهندس',
+                period: 'الفترة',
+                to: 'إلى'
+            };
+        } else {
+            return {
+                date: 'DATE',
+                type: 'TYPE',
+                debit: 'DEBIT',
+                credit: 'CREDIT', 
+                balance: 'BALANCE',
+                description: 'DESCRIPTION',
+                totals: 'Total',
+                reportTitle: 'Account Statement',
+                customer: 'Customer',
+                contractor: 'Contractor',
+                engineer: 'Engineer',
+                period: 'Period',
+                to: 'to'
+            };
+        }
+    }
+
+    generate_print_header(data, labels) {
+        const entityName = data.customer?.customer_name || data.contractor?.contractor_name || data.engineer?.engineer_name || 'Unknown';
+        const entityType = data.customer ? labels.customer : data.contractor ? labels.contractor : labels.engineer;
+        
+        return `
+            <div class="print-header">
+                <h2>${labels.reportTitle}</h2>
+                <div class="print-info">
+                    <div><strong>${entityType}:</strong> ${entityName}</div>
+                    <div><strong>${labels.period}:</strong> ${data.date_range.from_date_formatted} ${labels.to} ${data.date_range.to_date_formatted}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    generate_print_services_payments(data, labels) {
+        if (!data.service_groups || data.service_groups.length === 0) {
+            return '<p>No data available</p>';
+        }
+
+        let content = '';
+        
+        data.service_groups.forEach(group => {
+            content += `
+                <div class="print-project-section">
+                    <div class="item-section">
+                        <div class="item-title">${group.service_name}</div>
+                        <table class="print-table">
+                            <thead>
+                                <tr>
+                                    <th>${labels.date}</th>
+                                    <th>${labels.type}</th>
+                                    <th>${labels.debit}</th>
+                                    <th>${labels.credit}</th>
+                                    <th>${labels.balance}</th>
+                                    <th>${labels.description}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${group.transactions.map(transaction => `
+                                    <tr>
+                                        <td>${transaction.date || ''}</td>
+                                        <td>${transaction.type || ''}</td>
+                                        <td class="amount">${transaction.debit > 0 ? this.format_currency_for_print(transaction.debit) : '—'}</td>
+                                        <td class="amount">${transaction.credit > 0 ? this.format_currency_for_print(transaction.credit) : '—'}</td>
+                                        <td class="amount">${this.format_currency_for_print(transaction.balance)}</td>
+                                        <td>${transaction.remark || transaction.description || ''}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2"><strong>${labels.totals}</strong></td>
+                                    <td class="amount"><strong>${this.format_currency_for_print(group.total_value)}</strong></td>
+                                    <td class="amount"><strong>${this.format_currency_for_print(group.total_paid)}</strong></td>
+                                    <td class="amount"><strong>${this.format_currency_for_print(group.total_balance)}</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        });
+
+        return content;
+    }
+
+    get_print_styles() {
+        return `
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+
+                @page {
+                    margin: 0;
+                    size: A4;
+                }
+
+                html, body {
+                    font-family: Arial, sans-serif;
+                    font-size: 11px;
+                    line-height: 1.3;
+                    color: #333;
+                    background: white;
+                    margin: 0;
+                    padding: 0;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .print-header-image {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    width: 100vw;
+                    height: 90px;
+                    background: url('/files/Asset 8.png') no-repeat center top;
+                    background-size: cover;
+                    margin: 0;
+                    padding: 0;
+                    z-index: 9999;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+
+                .print-footer-image {
+                    position: fixed;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    width: 100vw;
+                    height: 70px;
+                    background: url('/files/Asset 9.png') no-repeat center bottom;
+                    background-size: cover;
+                    margin: 0;
+                    padding: 0;
+                    z-index: 9999;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+
+                .print-container {
+                    margin: 0;
+                    padding: 110px 15mm 90px 15mm;
+                    background: white;
+                    z-index: 1;
+                    position: relative;
+                    min-height: 100vh;
+                    box-sizing: border-box;
+                }
+
+                .print-header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                    color: white;
+                    border-radius: 10px;
+                }
+
+                .print-header h2 {
+                    font-size: 24px;
+                    margin-bottom: 15px;
+                    font-weight: 700;
+                }
+
+                .print-info {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 14px;
+                }
+
+                .print-info div {
+                    flex: 1;
+                }
+
+                .print-project-section {
+                    margin-bottom: 20px;
+                    margin-top: 30px;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    page-break-before: auto;
+                    padding-top: 20px;
+                }
+
+                .item-section {
+                    margin-bottom: 15px;
+                    margin-top: 10px;
+                    margin-left: 10px;
+                    margin-right: 10px;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                    page-break-before: auto;
+                }
+
+                .item-title {
+                    background-color: #e74c3c;
+                    color: white;
+                    border: 1px solid #000000;
+                    padding: 8px;
+                    text-align: center;
+                    font-size: 12px;
+                    font-weight: bold;
+                    margin-bottom: 0;
+                    border-radius: 3px 3px 0 0;
+                    page-break-after: avoid;
+                }
+
+                .print-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 15px;
+                    margin-top: 10px;
+                    font-size: 9px;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+
+                .print-table th {
+                    background-color: #34495e;
+                    color: white;
+                    padding: 3px 4px;
+                    text-align: center;
+                    border: 1px solid #333;
+                    font-weight: bold;
+                    page-break-after: avoid;
+                }
+
+                .print-table td {
+                    padding: 2px 3px;
+                    border: 1px solid #ddd;
+                    text-align: center;
+                    color: #000;
+                    line-height: 1.2;
+                }
+
+                .print-table tbody tr {
+                    page-break-inside: avoid;
+                }
+
+                .print-table .amount {
+                    text-align: right;
+                    font-family: 'Courier New', monospace;
+                    color: #000000;
+                    font-weight: 600;
+                }
+
+                .print-table tfoot {
+                    page-break-inside: avoid;
+                }
+
+                .print-table tfoot td {
+                    background-color: #ecf0f1;
+                    font-weight: bold;
+                    border-top: 2px solid #333;
+                }
+            </style>
+        `;
     }
 
     add_custom_css() {

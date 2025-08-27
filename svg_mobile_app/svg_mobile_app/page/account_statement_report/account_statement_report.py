@@ -276,27 +276,19 @@ def process_customer_data(project_agreements, item_filter, from_date, to_date):
         tax_details = process_project_taxes(full_project)
         combined_tax_details.extend(tax_details)
 
-    # Create VAT section if there are tax transactions
+    # Create VAT section if there are tax transactions (matching original format)
     if combined_tax_details:
-        vat_groups = {}
-        for tax in combined_tax_details:
-            tax_rate = tax.get('tax_rate', 5)
-            if tax_rate not in vat_groups:
-                vat_groups[tax_rate] = []
-            vat_groups[tax_rate].append(tax)
-
-        for tax_rate, transactions in vat_groups.items():
-            vat_key = f"vat_{tax_rate}"
-            service_groups[vat_key] = {
-                'service_name': f'ضريبة القيمة المضافة {tax_rate}%',
-                'service_name_ar': f'ضريبة القيمة المضافة {tax_rate}%',
-                'tax_rate': tax_rate,
-                'is_tax_section': True,
-                'transactions': transactions,
-                'total_value': sum(t['value'] for t in transactions),
-                'total_paid': sum(t['paid'] for t in transactions),
-                'total_balance': sum(t['balance'] for t in transactions)
-            }
+        vat_key = "vat_5_percent"
+        service_groups[vat_key] = {
+            'service_name': 'ضريبة القيمة المضافة 5%',
+            'service_name_ar': 'ضريبة القيمة المضافة 5%',
+            'tax_rate': 5,
+            'is_tax_section': True,
+            'transactions': combined_tax_details,
+            'total_value': sum(t.get('debit', 0) for t in combined_tax_details),
+            'total_paid': sum(t.get('credit', 0) for t in combined_tax_details),
+            'total_balance': combined_tax_details[-1]['balance'] if combined_tax_details else 0
+        }
 
     return {
         'service_groups': list(service_groups.values()),
@@ -601,39 +593,65 @@ def process_project_services(project, item_filter):
     return grouped_services
 
 def process_project_taxes(project):
-    """Process project tax details"""
-    tax_details = []
+    """Process project tax details - matching original customer statement edits logic"""
+    tax_transactions = []
     services = project.project_services or []
     payments = project.payment_log or []
 
+    # Add tax from services (exactly like original)
     for service in services:
         if flt(getattr(service, 'tax_amount', 0)) > 0:
-            tax_details.append({
+            tax_transactions.append({
                 'date': getattr(service, 'invoice_date', ''),
-                'document_number': f"{project.name}-SVC",
-                'description': f"Tax for {getattr(service, 'item', 'Unknown')}",
-                'value': flt(getattr(service, 'tax_amount', 0)),
-                'paid': 0,
-                'balance': flt(getattr(service, 'tax_amount', 0)),
-                'tax_rate': 5,  # Fixed rate since tax_rate field doesn't exist
-                'transaction_type': 'service_tax'
+                'type': 'Service Tax',
+                'debit': flt(getattr(service, 'tax_amount', 0)),
+                'credit': 0,
+                'balance': 0,
+                'remark': getattr(service, 'remark', '') or f"Tax for {getattr(service, 'item', 'Unknown')}"
             })
 
-    # Add tax payments
+    # Add tax payments - handle different transaction types (exactly like original)
     for payment in payments:
         if flt(getattr(payment, 'payment_tax', 0)) > 0:  # Original uses payment_tax not tax_amount
-            tax_details.append({
+            debit_amount = 0
+            credit_amount = 0
+            transaction_type_label = 'Tax Payment'
+            
+            transaction_type = getattr(payment, 'transaction_type', 'Payment')
+            if transaction_type == 'Payment':
+                credit_amount = flt(getattr(payment, 'payment_tax', 0))
+                transaction_type_label = 'Tax Payment'
+            elif transaction_type == 'Discount':
+                credit_amount = flt(getattr(payment, 'payment_tax', 0))
+                transaction_type_label = 'Tax Discount'
+            elif transaction_type == 'Cancel Due':
+                credit_amount = flt(getattr(payment, 'payment_tax', 0))
+                transaction_type_label = 'Tax Cancel Due'
+            elif transaction_type == 'Return':
+                credit_amount = flt(getattr(payment, 'payment_tax', 0))
+                transaction_type_label = 'Tax Return'
+            else:
+                credit_amount = flt(getattr(payment, 'payment_tax', 0))
+                transaction_type_label = 'Tax Payment'
+            
+            tax_transactions.append({
                 'date': getattr(payment, 'date', ''),
-                'document_number': f"{project.name}-PAY",
-                'description': f"Tax Payment for {getattr(payment, 'item', 'Unknown')}",
-                'value': 0,
-                'paid': flt(getattr(payment, 'payment_tax', 0)),
-                'balance': -flt(getattr(payment, 'payment_tax', 0)),
-                'tax_rate': 5,  # Fixed rate since tax_rate field doesn't exist
-                'transaction_type': 'tax_payment'
+                'type': transaction_type_label,
+                'debit': debit_amount,
+                'credit': credit_amount,
+                'balance': 0,
+                'remark': getattr(payment, 'remark', '') or f"Tax Payment for {getattr(payment, 'item', 'Unknown')}"
             })
 
-    return tax_details
+    # Calculate running balance (exactly like original)
+    tax_transactions.sort(key=lambda x: x['date'] or '')
+    
+    balance = 0
+    for transaction in tax_transactions:
+        balance += (transaction['debit'] or 0) - (transaction['credit'] or 0)
+        transaction['balance'] = balance
+
+    return tax_transactions
 
 def get_customer_info(customer):
     """Get customer information"""

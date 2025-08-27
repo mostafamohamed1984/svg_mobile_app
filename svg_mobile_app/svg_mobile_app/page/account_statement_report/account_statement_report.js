@@ -716,12 +716,37 @@ class AccountStatementReport {
             this.wrapper.find('.tab-content').show();
             console.log('Tab content area shown'); // Debug log
             
-            // Debug CSS properties
+            // Debug CSS properties and dimensions
             const tabContentArea = this.wrapper.find('.tab-content');
             console.log('Tab content display:', tabContentArea.css('display')); // Debug log
             console.log('Tab content visibility:', tabContentArea.css('visibility')); // Debug log
+            console.log('Tab content height:', tabContentArea.height()); // Debug log
+            console.log('Tab content width:', tabContentArea.width()); // Debug log
             console.log('Tab pane display:', tabPane.css('display')); // Debug log
             console.log('Tab pane visibility:', tabPane.css('visibility')); // Debug log
+            console.log('Tab pane height:', tabPane.height()); // Debug log
+            console.log('Tab pane width:', tabPane.width()); // Debug log
+            console.log('Container height:', container.height()); // Debug log
+            console.log('Container width:', container.width()); // Debug log
+            
+            // Check for overflow hidden or other CSS issues
+            console.log('Tab content overflow:', tabContentArea.css('overflow')); // Debug log
+            console.log('Tab pane overflow:', tabPane.css('overflow')); // Debug log
+            console.log('Container overflow:', container.css('overflow')); // Debug log
+            
+            // Test if content is actually there by checking innerHTML length
+            console.log('Container innerHTML length:', container[0].innerHTML.length); // Debug log
+            console.log('Container first 200 chars:', container[0].innerHTML.substring(0, 200)); // Debug log
+            
+            // Force some basic CSS to ensure visibility
+            container.css({
+                'display': 'block !important',
+                'visibility': 'visible !important',
+                'opacity': '1 !important',
+                'height': 'auto !important',
+                'width': 'auto !important'
+            });
+            console.log('Applied force CSS to container'); // Debug log
             
         } else {
             console.log('ERROR: Container not found:', containerId); // Debug log

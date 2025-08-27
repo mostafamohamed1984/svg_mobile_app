@@ -125,7 +125,7 @@ def get_contractor_report_data(contractor, project_agreement, item, from_date, t
         if full_project.contractors_services:
             # Filter by contractor if specified
             if contractor:
-                contractor_services = [s for s in full_project.contractors_services if s.contractor == contractor]
+                contractor_services = [s for s in full_project.contractors_services if getattr(s, 'contractor', '') == contractor]
                 if contractor_services:
                     filtered_projects.append(project)
             else:
@@ -196,7 +196,7 @@ def get_engineer_report_data(engineer, project_agreement, item, from_date, to_da
         if full_project.outsource_services:
             # Filter by engineer if specified
             if engineer:
-                outsource_services = [s for s in full_project.outsource_services if s.service_provider == engineer]
+                outsource_services = [s for s in full_project.outsource_services if getattr(s, 'service_provider', '') == engineer]
                 if outsource_services:
                     filtered_projects.append(project)
             else:
@@ -532,7 +532,7 @@ def process_project_services(project, item_filter):
 
     # Group services by item
     for service in services:
-        if item_filter and hasattr(service, 'item') and service.item != item_filter:
+        if item_filter and getattr(service, 'item', '') != item_filter:
             continue
 
         # Safely get item name
@@ -559,7 +559,7 @@ def process_project_services(project, item_filter):
 
     # Add payments
     for payment in payments:
-        if item_filter and hasattr(payment, 'item') and payment.item != item_filter:
+        if item_filter and getattr(payment, 'item', '') != item_filter:
             continue
 
         # Safely get item name
@@ -607,29 +607,29 @@ def process_project_taxes(project):
     payments = project.payment_log or []
 
     for service in services:
-        if flt(service.tax_amount) > 0:
+        if flt(getattr(service, 'tax_amount', 0)) > 0:
             tax_details.append({
-                'date': service.invoice_date,
+                'date': getattr(service, 'invoice_date', ''),
                 'document_number': f"{project.name}-SVC",
-                'description': f"Tax for {service.item}",
-                'value': flt(service.tax_amount),
+                'description': f"Tax for {getattr(service, 'item', 'Unknown')}",
+                'value': flt(getattr(service, 'tax_amount', 0)),
                 'paid': 0,
-                'balance': flt(service.tax_amount),
-                'tax_rate': flt(service.tax_rate) or 5,
+                'balance': flt(getattr(service, 'tax_amount', 0)),
+                'tax_rate': 5,  # Fixed rate since tax_rate field doesn't exist
                 'transaction_type': 'service_tax'
             })
 
     # Add tax payments
     for payment in payments:
-        if flt(payment.tax_amount) > 0:
+        if flt(getattr(payment, 'payment_tax', 0)) > 0:  # Original uses payment_tax not tax_amount
             tax_details.append({
-                'date': payment.date,
+                'date': getattr(payment, 'date', ''),
                 'document_number': f"{project.name}-PAY",
-                'description': f"Tax Payment for {payment.item}",
+                'description': f"Tax Payment for {getattr(payment, 'item', 'Unknown')}",
                 'value': 0,
-                'paid': flt(payment.tax_amount),
-                'balance': -flt(payment.tax_amount),
-                'tax_rate': flt(payment.tax_rate) or 5,
+                'paid': flt(getattr(payment, 'payment_tax', 0)),
+                'balance': -flt(getattr(payment, 'payment_tax', 0)),
+                'tax_rate': 5,  # Fixed rate since tax_rate field doesn't exist
                 'transaction_type': 'tax_payment'
             })
 

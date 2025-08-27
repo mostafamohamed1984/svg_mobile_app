@@ -54,15 +54,40 @@ class AccountStatementReport {
         // Add custom CSS
         this.add_custom_css();
 
-        // Create main layout
+        // Create main layout with comprehensive HTML structure
         this.wrapper.html(`
-            <div class="account-statement-container">
-                <div class="filters-section">
+            <div class="account-statement-report">
+                <!-- Header Section -->
+                <div class="report-header" style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; border-radius: 10px; position: relative;">
+                    <div class="orbit-logo" style="position: absolute; top: 15px; left: 20px;">
+                        <img src="/files/logo orbit (1).png" alt="Orbit Logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
+                    </div>
+                    <h2 id="reportTitle">Account Statement Report</h2>
+                    <p style="margin: 0;">Dynamic reporting for Customers, Contractors, and Engineers</p>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="filter-section" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #dee2e6; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                    <h5 style="color: #495057; font-weight: 600; margin-bottom: 20px;">🔍 Report Filters</h5>
+
+                    <!-- Report Type Selection -->
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-4">
                             <div class="filter-group" style="margin-bottom: 20px;">
-                                <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">REPORT TYPE - نوع التقرير</label>
-                                <div id="report-type-field"></div>
+                                <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">REPORT TYPE</label>
+                                <select id="reportType" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 600;">
+                                    <option value="">Select Report Type</option>
+                                    <option value="customer">Customer (عميل)</option>
+                                    <option value="contractor">Contractor (مقاول)</option>
+                                    <option value="engineer">Outsource Engineer (مهندس)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div id="selectedReportTypeDisplay" style="display: none; margin-bottom: 20px;">
+                                <div class="alert alert-info" style="margin-bottom: 0; padding: 12px 16px;">
+                                    <strong>Selected Report Type:</strong> <span id="reportTypeText"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -71,86 +96,141 @@ class AccountStatementReport {
                     <div id="dynamicFilters" style="display: none;">
                         <div class="row">
                             <!-- Customer Filter Field -->
-                            <div class="col-md-6" id="customerFilterGroup" style="display: none;">
+                            <div class="col-md-4" id="customerFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">CUSTOMER - العميل</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">CUSTOMER</label>
                                     <div id="customer-field"></div>
                                 </div>
                             </div>
 
                             <!-- Contractor Filter Field -->
-                            <div class="col-md-6" id="contractorFilterGroup" style="display: none;">
+                            <div class="col-md-4" id="contractorFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">CONTRACTOR - المقاول</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">CONTRACTOR</label>
                                     <div id="contractor-field"></div>
                                 </div>
                             </div>
 
                             <!-- Engineer Filter Field -->
-                            <div class="col-md-6" id="engineerFilterGroup" style="display: none;">
+                            <div class="col-md-4" id="engineerFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">ENGINEER - المهندس</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">ENGINEER</label>
                                     <div id="engineer-field"></div>
                                 </div>
                             </div>
 
                             <!-- Project Agreement Field -->
-                            <div class="col-md-6" id="projectAgreementFilterGroup" style="display: none;">
+                            <div class="col-md-4" id="projectAgreementFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">PROJECT AGREEMENT - اتفاقية المشروع</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">PROJECT AGREEMENT</label>
                                     <div id="project-agreement-field"></div>
                                 </div>
                             </div>
 
                             <!-- Item/Service Filter Field -->
-                            <div class="col-md-6" id="itemFilterGroup" style="display: none;">
+                            <div class="col-md-4" id="itemFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">ITEM/SERVICE - الصنف/الخدمة</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">ITEM/SERVICE</label>
                                     <div id="item-field"></div>
                                 </div>
                             </div>
 
                             <!-- Date Range -->
-                            <div class="col-md-6" id="dateRangeGroup" style="display: none;">
+                            <div class="col-md-4" id="dateRangeGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">FROM DATE - من تاريخ</label>
-                                    <div id="from-date-field"></div>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">FROM DATE</label>
+                                    <input type="date" id="fromDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 500;">
                                 </div>
                             </div>
 
-                            <div class="col-md-6" id="toDateGroup" style="display: none;">
+                            <div class="col-md-4" id="toDateGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">TO DATE - إلى تاريخ</label>
-                                    <div id="to-date-field"></div>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">TO DATE</label>
+                                    <input type="date" id="toDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 500;">
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Action Buttons -->
-                        <div class="row" id="actionButtons" style="display: none;">
-                            <div class="col-md-12">
-                                <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; margin-right: 10px;">
-                                    Load Report Data
-                                </button>
-                                <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; margin-right: 10px;">
-                                    Clear Filters
-                                </button>
-                            </div>
+                    <!-- Action Buttons -->
+                    <div class="row" id="actionButtons" style="display: none;">
+                        <div class="col-md-12">
+                            <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; margin-right: 10px;">
+                                Load Report Data
+                            </button>
+                            <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); color: white; margin-right: 10px;">
+                                Clear Filters
+                            </button>
+                            <select id="printLanguage" class="form-control" style="display: none; width: 150px; margin-right: 10px; border: 2px solid #e9ecef; border-radius: 8px; padding: 8px 12px; font-size: 14px; background-color: #fff; float: left;">
+                                <option value="en">English</option>
+                                <option value="ar">العربية</option>
+                            </select>
+                            <button id="printReport" class="btn btn-info" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; display: none;">
+                                Print
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="statement-content">
-                    <div class="loading-message" style="text-align: center; padding: 60px 40px; display: none;">
-                        <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid rgba(0, 123, 255, 0.2); border-radius: 50%; border-top-color: #007bff; animation: spin 1s ease-in-out infinite; margin-bottom: 15px;"></div>
-                        <h4>Loading account statement data...</h4>
-                        <p>Please wait while we fetch the data.</p>
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" style="display: none; text-align: center; padding: 60px 40px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; margin: 20px 0;">
+                    <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid rgba(231, 76, 60, 0.2); border-radius: 50%; border-top-color: #e74c3c; animation: spin 1s ease-in-out infinite; margin-bottom: 15px;"></div>
+                    <p style="color: #495057; font-weight: 500; margin: 0;">Loading account statement data...</p>
+                </div>
+
+                <!-- Report Tabs -->
+                <div id="reportTabs" style="display: none; margin-bottom: 20px;">
+                    <!-- Report Information Header -->
+                    <div id="reportInfo" style="margin-bottom: 20px;"></div>
+
+                    <!-- Tab Navigation -->
+                    <div class="report-nav" style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+                        <!-- Customer Report Tabs -->
+                        <div id="customerTabs" style="display: none;">
+                            <button class="tab-button active" data-tab="servicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
+                            <button class="tab-button" data-tab="governmentFeesExpenses" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Government Fees & Expenses</button>
+                            <button class="tab-button" data-tab="trustFees" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Trust Fees</button>
+                        </div>
+
+                        <!-- Contractor Report Tabs -->
+                        <div id="contractorTabs" style="display: none;">
+                            <button class="tab-button active" data-tab="contractorServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
+                        </div>
+
+                        <!-- Engineer Report Tabs -->
+                        <div id="engineerTabs" style="display: none;">
+                            <button class="tab-button active" data-tab="engineerServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
+                        </div>
                     </div>
-                    <div class="no-data-message" style="text-align: center; padding: 50px; display: none;">
-                        <h4>No Data Found</h4>
-                        <p>Please select a report type and fill in the required filters to view the statement.</p>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content">
+                        <!-- Customer Report Content -->
+                        <div id="servicesPayments" class="tab-pane active" style="display: block;">
+                            <div id="servicesPaymentsContent"></div>
+                        </div>
+                        <div id="governmentFeesExpenses" class="tab-pane" style="display: none;">
+                            <div id="governmentFeesExpensesContent"></div>
+                        </div>
+                        <div id="trustFees" class="tab-pane" style="display: none;">
+                            <div id="trustFeesContent"></div>
+                        </div>
+
+                        <!-- Contractor Report Content -->
+                        <div id="contractorServicesPayments" class="tab-pane" style="display: none;">
+                            <div id="contractorServicesPaymentsContent"></div>
+                        </div>
+
+                        <!-- Engineer Report Content -->
+                        <div id="engineerServicesPayments" class="tab-pane" style="display: none;">
+                            <div id="engineerServicesPaymentsContent"></div>
+                        </div>
                     </div>
-                    <div class="statement-data" style="display: none;"></div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMessage" style="display: none; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 8px; margin: 20px 0;">
+                    <strong>Error:</strong> <span id="errorText"></span>
                 </div>
             </div>
         `);
@@ -172,6 +252,11 @@ class AccountStatementReport {
 
         // Print button (will be added after data is loaded)
         this.page.set_secondary_action(__('Print Statement'), () => {
+            this.print_statement();
+        });
+
+        // Add event handler for print button in the HTML
+        this.wrapper.on('click', '#printReport', () => {
             this.print_statement();
         });
     }
@@ -234,9 +319,13 @@ class AccountStatementReport {
         // Update report title
         this.update_report_title(report_type);
 
+        // Update report type display
+        this.update_report_type_display(report_type);
+
         if (!report_type) {
             this.wrapper.find('#dynamicFilters').hide();
             this.wrapper.find('#actionButtons').hide();
+            this.wrapper.find('#selectedReportTypeDisplay').hide();
             return;
         }
 
@@ -267,6 +356,9 @@ class AccountStatementReport {
         this.initialize_project_agreement_field();
         this.initialize_item_field();
         this.initialize_date_fields();
+
+        // Setup tab functionality
+        this.setup_tab_functionality();
     }
 
     cleanup_dynamic_controls() {
@@ -322,6 +414,25 @@ class AccountStatementReport {
         if (title_element.length) {
             title_element.text(titles[report_type] || 'Account Statement Report');
         }
+    }
+
+    update_report_type_display(report_type) {
+        const display_element = this.wrapper.find('#selectedReportTypeDisplay');
+        const text_element = this.wrapper.find('#reportTypeText');
+
+        if (!report_type) {
+            display_element.hide();
+            return;
+        }
+
+        const type_labels = {
+            customer: 'Customer (عميل)',
+            contractor: 'Contractor (مقاول)',
+            engineer: 'Engineer (مهندس)'
+        };
+
+        text_element.text(type_labels[report_type] || report_type);
+        display_element.show();
     }
 
     initialize_customer_field() {
@@ -412,6 +523,7 @@ class AccountStatementReport {
                     },
                     onchange: () => {
                         this.filters.project_agreement = this.controls.project_agreement.get_value();
+                        this.handle_project_agreement_change();
                     }
                 },
                 render_input: true
@@ -493,6 +605,12 @@ class AccountStatementReport {
 
         if (this.filters.reportType === 'customer' && this.filters.customer) {
             filters.customer = this.filters.customer;
+        } else if (this.filters.reportType === 'contractor' && this.filters.contractor) {
+            // For contractors, we might need to filter by contractor field if it exists
+            // For now, we'll show all project agreements
+        } else if (this.filters.reportType === 'engineer' && this.filters.engineer) {
+            // For engineers, we might need to filter by engineer field if it exists
+            // For now, we'll show all project agreements
         }
 
         return { filters: filters };
@@ -503,6 +621,78 @@ class AccountStatementReport {
             this.controls.project_agreement.set_value('');
             this.filters.project_agreement = '';
         }
+    }
+
+    handle_project_agreement_change() {
+        // Auto-populate customer from project agreement if selected
+        if (this.filters.project_agreement && this.filters.reportType === 'customer') {
+            this.load_project_agreement_details();
+        }
+    }
+
+    async load_project_agreement_details() {
+        try {
+            const project_agreement_data = await frappe.db.get_doc('Project Agreement', this.filters.project_agreement);
+            if (project_agreement_data && project_agreement_data.customer && this.controls.customer) {
+                this.controls.customer.set_value(project_agreement_data.customer);
+                this.filters.customer = project_agreement_data.customer;
+            }
+        } catch (error) {
+            console.error('Error loading project agreement details:', error);
+        }
+    }
+
+    setup_tab_functionality() {
+        // Handle tab button clicks
+        this.wrapper.on('click', '.tab-button', (e) => {
+            const tab_button = $(e.currentTarget);
+            const tab_name = tab_button.data('tab');
+
+            this.switch_to_tab(tab_name);
+        });
+    }
+
+    switch_to_tab(tab_name) {
+        // Remove active class from all tabs
+        this.wrapper.find('.tab-button').removeClass('active').css({
+            'background': '#e9ecef',
+            'color': '#495057'
+        });
+
+        // Add active class to clicked tab
+        this.wrapper.find(`[data-tab="${tab_name}"]`).addClass('active').css({
+            'background': '#e74c3c',
+            'color': 'white'
+        });
+
+        // Hide all tab panes
+        this.wrapper.find('.tab-pane').hide();
+
+        // Show the selected tab pane
+        this.wrapper.find(`#${tab_name}`).show();
+    }
+
+    show_report_tabs(report_type) {
+        // Hide all tab containers first
+        this.wrapper.find('#customerTabs, #contractorTabs, #engineerTabs').hide();
+
+        // Show appropriate tabs based on report type
+        if (report_type === 'customer') {
+            this.wrapper.find('#customerTabs').show();
+            this.wrapper.find('#servicesPayments').show();
+            this.switch_to_tab('servicesPayments');
+        } else if (report_type === 'contractor') {
+            this.wrapper.find('#contractorTabs').show();
+            this.wrapper.find('#contractorServicesPayments').show();
+            this.switch_to_tab('contractorServicesPayments');
+        } else if (report_type === 'engineer') {
+            this.wrapper.find('#engineerTabs').show();
+            this.wrapper.find('#engineerServicesPayments').show();
+            this.switch_to_tab('engineerServicesPayments');
+        }
+
+        // Show the report tabs container
+        this.wrapper.find('#reportTabs').show();
     }
 
     generate_report() {
@@ -530,15 +720,18 @@ class AccountStatementReport {
 
                 if (response.message && response.message.service_groups && response.message.service_groups.length > 0) {
                     this.render_statement(response.message);
+                    this.show_report_tabs(this.filters.reportType);
+                    this.show_print_controls();
                     this.wrapper.find('.statement-data').show();
                 } else {
                     this.wrapper.find('.no-data-message').show();
                 }
             },
             error: (error) => {
-                this.hide_loading();
-                this.wrapper.find('.no-data-message').show();
-                frappe.msgprint(__('Error loading report: {0}', [error.message]));
+                console.error('Report generation error:', error);
+                const error_message = __('Failed to load account statement data. Please check your filters and try again.');
+                const error_details = error.message || __('Unknown error occurred');
+                this.show_error(error_message, error_details);
             }
         });
     }
@@ -558,12 +751,71 @@ class AccountStatementReport {
     }
 
     render_statement(data) {
-        let html = this.build_statement_header(data);
-        html += this.build_statement_content(data);
-        html += this.build_statement_summary(data);
+        // Build report information header
+        const report_info_html = this.build_report_info(data);
+        this.wrapper.find('#reportInfo').html(report_info_html);
 
-        this.wrapper.find('.statement-data').html(html);
+        // Render content based on report type
+        if (this.filters.reportType === 'customer') {
+            this.render_customer_tabs(data);
+        } else if (this.filters.reportType === 'contractor') {
+            this.render_contractor_tabs(data);
+        } else if (this.filters.reportType === 'engineer') {
+            this.render_engineer_tabs(data);
+        }
+
         this.current_statement_data = data;
+    }
+
+    build_report_info(data) {
+        const entity_info = this.get_entity_info(data);
+        const date_range = data.date_range;
+
+        return `
+            <div class="alert alert-info" style="margin-bottom: 0;">
+                <h5 style="margin-bottom: 10px;"><strong>${__('Report Information')} - ${__('معلومات التقرير')}</strong></h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>${__('Entity')}:</strong> ${entity_info.name}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>${__('Report Type')}:</strong> ${this.get_report_type_label(data)}
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 5px;">
+                    <div class="col-md-6">
+                        <strong>${__('Date Range')}:</strong> ${date_range.from_date_formatted} - ${date_range.to_date_formatted}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>${__('Currency')}:</strong> ${data.currency || 'AED'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    render_customer_tabs(data) {
+        // Services & Payments Tab
+        const services_html = this.build_customer_services_content(data);
+        this.wrapper.find('#servicesPaymentsContent').html(services_html);
+
+        // Government Fees & Expenses Tab
+        const government_html = this.build_customer_government_fees_content(data);
+        this.wrapper.find('#governmentFeesExpensesContent').html(government_html);
+
+        // Trust Fees Tab
+        const trust_html = this.build_customer_trust_fees_content(data);
+        this.wrapper.find('#trustFeesContent').html(trust_html);
+    }
+
+    render_contractor_tabs(data) {
+        const contractor_html = this.build_contractor_services_content(data);
+        this.wrapper.find('#contractorServicesPaymentsContent').html(contractor_html);
+    }
+
+    render_engineer_tabs(data) {
+        const engineer_html = this.build_engineer_services_content(data);
+        this.wrapper.find('#engineerServicesPaymentsContent').html(engineer_html);
     }
 
     build_statement_header(data) {
@@ -581,12 +833,116 @@ class AccountStatementReport {
         `;
     }
 
-    build_statement_content(data) {
+    build_customer_services_content(data) {
         let html = '<div class="statement-content-section">';
 
-        data.service_groups.forEach(group => {
-            html += this.build_service_group_html(group);
-        });
+        // Filter service groups to show only customer services
+        const customer_services = data.service_groups.filter(group =>
+            group.service_type === 'customer_service' || !group.service_type
+        );
+
+        if (customer_services.length === 0) {
+            html += `<div class="alert alert-info" style="text-align: center; padding: 40px;">
+                <h5>${__('No Services & Payments Data')}</h5>
+                <p>${__('No customer services and payments data found for the selected criteria.')}</p>
+            </div>`;
+        } else {
+            customer_services.forEach(group => {
+                html += this.build_service_group_html(group);
+            });
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    build_customer_government_fees_content(data) {
+        let html = '<div class="statement-content-section">';
+
+        // Filter service groups to show only government fees
+        const government_fees = data.service_groups.filter(group =>
+            group.service_type === 'government_fees'
+        );
+
+        if (government_fees.length === 0) {
+            html += `<div class="alert alert-info" style="text-align: center; padding: 40px;">
+                <h5>${__('No Government Fees & Expenses Data')}</h5>
+                <p>${__('No government fees and expenses data found for the selected criteria.')}</p>
+            </div>`;
+        } else {
+            government_fees.forEach(group => {
+                html += this.build_service_group_html(group);
+            });
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    build_customer_trust_fees_content(data) {
+        let html = '<div class="statement-content-section">';
+
+        // Filter service groups to show only trust fees
+        const trust_fees = data.service_groups.filter(group =>
+            group.service_type === 'trust_fees'
+        );
+
+        if (trust_fees.length === 0) {
+            html += `<div class="alert alert-info" style="text-align: center; padding: 40px;">
+                <h5>${__('No Trust Fees Data')}</h5>
+                <p>${__('No trust fees data found for the selected criteria.')}</p>
+            </div>`;
+        } else {
+            trust_fees.forEach(group => {
+                html += this.build_service_group_html(group);
+            });
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    build_contractor_services_content(data) {
+        let html = '<div class="statement-content-section">';
+
+        // Filter service groups to show only contractor services
+        const contractor_services = data.service_groups.filter(group =>
+            group.service_type === 'contractor_service' || !group.service_type
+        );
+
+        if (contractor_services.length === 0) {
+            html += `<div class="alert alert-info" style="text-align: center; padding: 40px;">
+                <h5>${__('No Contractor Services & Payments Data')}</h5>
+                <p>${__('No contractor services and payments data found for the selected criteria.')}</p>
+            </div>`;
+        } else {
+            contractor_services.forEach(group => {
+                html += this.build_service_group_html(group);
+            });
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    build_engineer_services_content(data) {
+        let html = '<div class="statement-content-section">';
+
+        // Filter service groups to show only engineer services
+        const engineer_services = data.service_groups.filter(group =>
+            group.service_type === 'engineer_service' || !group.service_type
+        );
+
+        if (engineer_services.length === 0) {
+            html += `<div class="alert alert-info" style="text-align: center; padding: 40px;">
+                <h5>${__('No Engineer Services & Payments Data')}</h5>
+                <p>${__('No engineer services and payments data found for the selected criteria.')}</p>
+            </div>`;
+        } else {
+            engineer_services.forEach(group => {
+                html += this.build_service_group_html(group);
+            });
+        }
 
         html += '</div>';
         return html;
@@ -598,7 +954,7 @@ class AccountStatementReport {
 
         return `
             <div class="service-group" style="margin-bottom: 30px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden;">
-                <div class="service-header" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; padding: 15px; font-weight: 600;">
+                <div class="service-header" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; padding: 15px; font-weight: 600;">
                     <h4 style="margin: 0;">${service_title}</h4>
                 </div>
                 <div class="service-table-container" style="padding: 20px;">
@@ -717,7 +1073,7 @@ class AccountStatementReport {
         print_window.print();
     }
 
-    build_print_html(data) {
+    build_print_html(data, language = 'en') {
         const entity_info = this.get_entity_info(data);
         const report_type_label = this.get_report_type_label(data);
 
@@ -753,7 +1109,7 @@ class AccountStatementReport {
                     }
 
                     .statement-title {
-                        background: #007bff;
+                        background: #e74c3c;
                         color: white;
                         padding: 15px;
                         margin: 20px 0;
@@ -794,12 +1150,12 @@ class AccountStatementReport {
                     }
 
                     .service-table th {
-                        background: #007bff;
+                        background: #e74c3c;
                         color: white;
                         padding: 10px 6px;
                         text-align: center;
                         font-weight: bold;
-                        border: 1px solid #0056b3;
+                        border: 1px solid #c0392b;
                     }
 
                     .service-table td {
@@ -966,17 +1322,122 @@ class AccountStatementReport {
         this.wrapper.find('#actionButtons').hide();
         this.wrapper.find('.statement-data').hide();
         this.wrapper.find('.no-data-message').show();
+        this.hide_print_controls();
+        this.hide_report_tabs();
 
         frappe.show_alert(__('Filters cleared successfully'));
     }
 
     show_loading() {
-        this.wrapper.find('.statement-data, .no-data-message').hide();
-        this.wrapper.find('.loading-message').show();
+        // Hide content areas
+        this.wrapper.find('.statement-data, .no-data-message, #reportTabs').hide();
+
+        // Show loading spinner
+        this.wrapper.find('#loadingSpinner').show();
+
+        // Disable action buttons during loading
+        this.wrapper.find('#generateReport, #clearFilters').prop('disabled', true);
+
+        // Add loading class to wrapper for visual feedback
+        this.wrapper.addClass('loading-state');
     }
 
     hide_loading() {
-        this.wrapper.find('.loading-message').hide();
+        // Hide loading spinner
+        this.wrapper.find('#loadingSpinner').hide();
+
+        // Re-enable action buttons
+        this.wrapper.find('#generateReport, #clearFilters').prop('disabled', false);
+
+        // Remove loading class
+        this.wrapper.removeClass('loading-state');
+    }
+
+    show_error(error_message, error_details = '') {
+        // Hide loading and content areas
+        this.hide_loading();
+        this.wrapper.find('.statement-data, .no-data-message, #reportTabs').hide();
+
+        // Show error message
+        const error_html = `
+            <div class="alert alert-danger" style="margin-top: 20px;">
+                <h5><i class="fa fa-exclamation-triangle"></i> ${__('Error Loading Report')}</h5>
+                <p>${error_message}</p>
+                ${error_details ? `<small class="text-muted">${error_details}</small>` : ''}
+                <hr>
+                <button class="btn btn-sm btn-outline-danger" onclick="location.reload()">
+                    <i class="fa fa-refresh"></i> ${__('Reload Page')}
+                </button>
+            </div>
+        `;
+
+        this.wrapper.find('#errorMessage').html(error_html).show();
+    }
+
+    clear_error() {
+        this.wrapper.find('#errorMessage').hide().html('');
+    }
+
+    refresh() {
+        // Clear any existing errors
+        this.clear_error();
+
+        // Reset loading state
+        this.hide_loading();
+
+        // Hide print controls and tabs
+        this.hide_print_controls();
+        this.hide_report_tabs();
+
+        // Show initial state
+        this.wrapper.find('.no-data-message').show();
+    }
+
+    show_print_controls() {
+        // Show print language selector and print button
+        this.wrapper.find('#printLanguage, #printReport').show();
+    }
+
+    hide_print_controls() {
+        // Hide print language selector and print button
+        this.wrapper.find('#printLanguage, #printReport').hide();
+    }
+
+    hide_report_tabs() {
+        // Hide report tabs container
+        this.wrapper.find('#reportTabs').hide();
+    }
+
+    print_statement() {
+        if (!this.current_statement_data) {
+            frappe.msgprint(__('No data to print. Please generate a statement first.'));
+            return;
+        }
+
+        const language = this.wrapper.find('#printLanguage').val() || 'en';
+        const print_content = this.build_print_html(this.current_statement_data, language);
+        const print_window = window.open('', '_blank');
+
+        if (!print_window) {
+            frappe.msgprint(__('Please allow popups for this site to print the statement.'));
+            return;
+        }
+
+        print_window.document.write(print_content);
+        print_window.document.close();
+
+        // Set direction for Arabic
+        if (language === 'ar') {
+            print_window.document.documentElement.setAttribute('dir', 'rtl');
+            print_window.document.body.style.direction = 'rtl';
+        }
+
+        // Wait for content to load then print
+        print_window.onload = function() {
+            setTimeout(function() {
+                print_window.print();
+            }, 100);
+        };
     }
 
     format_currency(amount) {

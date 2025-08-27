@@ -33,10 +33,10 @@ class AccountStatementReport {
             customer: '',
             contractor: '',
             engineer: '',
-            project_agreement: '',
+            projectAgreement: '',
             item: '',
-            from_date: '',
-            to_date: ''
+            fromDate: '',
+            toDate: ''
         };
 
         this.controls = {};
@@ -54,35 +54,15 @@ class AccountStatementReport {
         // Add custom CSS
         this.add_custom_css();
 
-        // Create main layout using EXACT original HTML structure
+        // Create main layout
         this.wrapper.html(`
-            <div class="account-statement-report">
-                <!-- Header Section -->
-                <div class="report-header" style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; border-radius: 10px; position: relative;">
-                    <div class="orbit-logo" style="position: absolute; top: 15px; left: 20px;">
-                        <img src="/files/logo orbit (1).png" alt="Orbit Logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
-                    </div>
-                    <h2 id="reportTitle">Account Statement Report</h2>
-                    <p style="margin: 0;">Dynamic reporting for Customers, Contractors, and Engineers</p>
-                </div>
-
-                <!-- Filter Section -->
-                <div class="filter-section" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #dee2e6; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
-                    <h5 style="color: #495057; font-weight: 600; margin-bottom: 20px;">🔍 Report Filters</h5>
-                    
-                    <!-- Report Type Selection -->
+            <div class="account-statement-container">
+                <div class="filters-section">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-12">
                             <div class="filter-group" style="margin-bottom: 20px;">
-                                <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">REPORT TYPE</label>
+                                <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">REPORT TYPE - نوع التقرير</label>
                                 <div id="report-type-field"></div>
-                            </div>
-                        </div>
-                        <div class="col-md-8">
-                            <div id="selectedReportTypeDisplay" style="display: none; margin-bottom: 20px;">
-                                <div class="alert alert-info" style="margin-bottom: 0; padding: 12px 16px;">
-                                    <strong>Selected Report Type:</strong> <span id="reportTypeText"></span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -91,128 +71,86 @@ class AccountStatementReport {
                     <div id="dynamicFilters" style="display: none;">
                         <div class="row">
                             <!-- Customer Filter Field -->
-                            <div class="col-md-4" id="customerFilterGroup" style="display: none;">
+                            <div class="col-md-6" id="customerFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">CUSTOMER</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">CUSTOMER - العميل</label>
                                     <div id="customer-field"></div>
                                 </div>
                             </div>
 
                             <!-- Contractor Filter Field -->
-                            <div class="col-md-4" id="contractorFilterGroup" style="display: none;">
+                            <div class="col-md-6" id="contractorFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">CONTRACTOR</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">CONTRACTOR - المقاول</label>
                                     <div id="contractor-field"></div>
                                 </div>
                             </div>
 
                             <!-- Engineer Filter Field -->
-                            <div class="col-md-4" id="engineerFilterGroup" style="display: none;">
+                            <div class="col-md-6" id="engineerFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">ENGINEER</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">ENGINEER - المهندس</label>
                                     <div id="engineer-field"></div>
                                 </div>
                             </div>
 
                             <!-- Project Agreement Field -->
-                            <div class="col-md-4" id="projectAgreementFilterGroup" style="display: none;">
+                            <div class="col-md-6" id="projectAgreementFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">PROJECT AGREEMENT</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">PROJECT AGREEMENT - اتفاقية المشروع</label>
                                     <div id="project-agreement-field"></div>
                                 </div>
                             </div>
 
                             <!-- Item/Service Filter Field -->
-                            <div class="col-md-4" id="itemFilterGroup" style="display: none;">
+                            <div class="col-md-6" id="itemFilterGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">ITEM/SERVICE</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">ITEM/SERVICE - الصنف/الخدمة</label>
                                     <div id="item-field"></div>
                                 </div>
                             </div>
 
                             <!-- Date Range -->
-                            <div class="col-md-4" id="dateRangeGroup" style="display: none;">
+                            <div class="col-md-6" id="dateRangeGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">FROM DATE</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">FROM DATE - من تاريخ</label>
                                     <div id="from-date-field"></div>
                                 </div>
                             </div>
 
-                            <div class="col-md-4" id="toDateGroup" style="display: none;">
+                            <div class="col-md-6" id="toDateGroup" style="display: none;">
                                 <div class="filter-group" style="margin-bottom: 20px;">
-                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">TO DATE</label>
+                                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">TO DATE - إلى تاريخ</label>
                                     <div id="to-date-field"></div>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Action Buttons -->
                         <div class="row" id="actionButtons" style="display: none;">
                             <div class="col-md-12">
-                                <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; margin-right: 10px;">
+                                <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white; margin-right: 10px;">
                                     Load Report Data
                                 </button>
-                                <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); color: white; margin-right: 10px;">
+                                <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; margin-right: 10px;">
                                     Clear Filters
-                                </button>
-                                <select id="printLanguage" class="form-control" style="display: none; width: 150px; margin-right: 10px; border: 2px solid #e9ecef; border-radius: 8px; padding: 8px 12px; font-size: 14px; background-color: #fff; float: left;">
-                                    <option value="en">English</option>
-                                    <option value="ar">العربية</option>
-                                </select>
-                                <button id="printReport" class="btn btn-info" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; display: none;">
-                                    Print
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Loading Spinner -->
-                <div id="loadingSpinner" style="display: none; text-align: center; padding: 60px 40px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; margin: 20px 0;">
-                    <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid rgba(231, 76, 60, 0.2); border-radius: 50%; border-top-color: #e74c3c; animation: spin 1s ease-in-out infinite; margin-bottom: 15px;"></div>
-                    <p style="color: #495057; font-weight: 500; margin: 0;">Loading account statement data...</p>
-                </div>
-
-                <!-- Report Tabs -->
-                <div id="reportTabs" style="display: none; margin-bottom: 20px;">
-                    <!-- Report Information Header -->
-                    <div id="reportInfo" style="margin-bottom: 20px;"></div>
-
-                    <!-- Tab Navigation -->
-                    <div class="report-nav" style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
-                        <!-- Customer Report Tabs -->
-                        <div id="customerTabs" style="display: none;">
-                            <button class="tab-button active" data-tab="servicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
-                            <button class="tab-button" data-tab="governmentFeesExpenses" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Government Fees & Expenses</button>
-                            <button class="tab-button" data-tab="trustFees" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Trust Fees</button>
-                        </div>
-
-                        <!-- Contractor Report Tabs -->
-                        <div id="contractorTabs" style="display: none;">
-                            <button class="tab-button active" data-tab="contractorServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
-                        </div>
-
-                        <!-- Engineer Report Tabs -->
-                        <div id="engineerTabs" style="display: none;">
-                            <button class="tab-button active" data-tab="engineerServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
-                        </div>
+                <div class="statement-content">
+                    <div class="loading-message" style="text-align: center; padding: 60px 40px; display: none;">
+                        <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid rgba(0, 123, 255, 0.2); border-radius: 50%; border-top-color: #007bff; animation: spin 1s ease-in-out infinite; margin-bottom: 15px;"></div>
+                        <h4>Loading account statement data...</h4>
+                        <p>Please wait while we fetch the data.</p>
                     </div>
-
-                    <!-- Statement Content Area (like customer_statement page) -->
-                    <div class="loading-message" style="text-align: center; padding: 50px; display: none;">
-                        <h4>${__('Loading Statement...')}</h4>
-                        <p>${__('Please wait while we fetch the data.')}</p>
-                    </div>
-                    <div class="no-data-message" style="text-align: center; padding: 50px; display: block;">
-                        <h4>${__('No Data Found')}</h4>
-                        <p>${__('Please select report type and date range to view the statement.')}</p>
+                    <div class="no-data-message" style="text-align: center; padding: 50px; display: none;">
+                        <h4>No Data Found</h4>
+                        <p>Please select a report type and fill in the required filters to view the statement.</p>
                     </div>
                     <div class="statement-data" style="display: none;"></div>
-                </div>
-
-                <!-- Error Message -->
-                <div id="errorMessage" style="display: none; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 8px; margin: 20px 0;">
-                    <strong>Error:</strong> <span id="errorText"></span>
                 </div>
             </div>
         `);
@@ -222,14 +160,13 @@ class AccountStatementReport {
         // Initialize report type field
         this.initialize_report_type_field();
 
-        // Generate report button - use event delegation for initially hidden elements
-        this.wrapper.on('click', '#generateReport', () => {
-            console.log('Generate report button clicked'); // Debug log
+        // Generate report button
+        this.wrapper.find('#generateReport').on('click', () => {
             this.generate_report();
         });
 
-        // Clear filters button - use event delegation for initially hidden elements
-        this.wrapper.on('click', '#clearFilters', () => {
+        // Clear filters button
+        this.wrapper.find('#clearFilters').on('click', () => {
             this.clear_filters();
         });
 
@@ -569,29 +506,13 @@ class AccountStatementReport {
     }
 
     generate_report() {
-        console.log('generate_report() called'); // Debug log
-        console.log('Current filters:', this.filters); // Debug log
-        
         if (!this.validate_filters()) {
-            console.log('Filter validation failed'); // Debug log
             return;
         }
 
-        console.log('Filter validation passed, showing loading...'); // Debug log
         this.show_loading();
 
         // Fetch data based on report type
-        console.log('Making API call with args:', {
-            report_type: this.filters.reportType,
-            customer: this.filters.customer,
-            contractor: this.filters.contractor,
-            engineer: this.filters.engineer,
-            project_agreement: this.filters.project_agreement,
-            item: this.filters.item,
-            from_date: this.filters.from_date,
-            to_date: this.filters.to_date
-        }); // Debug log
-        
         frappe.call({
             method: 'svg_mobile_app.svg_mobile_app.page.account_statement_report.account_statement_report.get_account_statement_data',
             args: {
@@ -605,26 +526,16 @@ class AccountStatementReport {
                 to_date: this.filters.to_date
             },
             callback: (response) => {
-                console.log('API response received:', response); // Debug log
-                console.log('Response message:', response.message); // Debug log
                 this.hide_loading();
 
                 if (response.message && response.message.service_groups && response.message.service_groups.length > 0) {
-                    console.log('Found service groups, rendering statement'); // Debug log
                     this.render_statement(response.message);
-                    // Show the statement data like customer_statement page
-                    console.log('Showing statement data...'); // Debug log
                     this.wrapper.find('.statement-data').show();
-                    console.log('Statement data shown'); // Debug log
                 } else {
-                    console.log('No service groups found, showing no-data message'); // Debug log
-                    console.log('response.message:', response.message); // Debug log
-                    console.log('service_groups:', response.message?.service_groups); // Debug log
                     this.wrapper.find('.no-data-message').show();
                 }
             },
             error: (error) => {
-                console.log('API error occurred:', error); // Debug log
                 this.hide_loading();
                 this.wrapper.find('.no-data-message').show();
                 frappe.msgprint(__('Error loading report: {0}', [error.message]));
@@ -633,48 +544,25 @@ class AccountStatementReport {
     }
 
     validate_filters() {
-        console.log('Validating filters...'); // Debug log
-        console.log('reportType:', this.filters.reportType); // Debug log
-        console.log('from_date:', this.filters.from_date); // Debug log
-        console.log('to_date:', this.filters.to_date); // Debug log
-        
         if (!this.filters.reportType) {
-            console.log('Report type validation failed'); // Debug log
             frappe.msgprint(__('Please select a report type'));
             return false;
         }
 
         if (!this.filters.from_date || !this.filters.to_date) {
-            console.log('Date validation failed'); // Debug log
             frappe.msgprint(__('Please select both From Date and To Date'));
             return false;
         }
 
-        console.log('All validations passed'); // Debug log
         return true;
     }
 
     render_statement(data) {
-        console.log('render_statement called with data:', data); // Debug log
-        
-        // Use the same simple approach as customer_statement page
         let html = this.build_statement_header(data);
         html += this.build_statement_content(data);
         html += this.build_statement_summary(data);
 
-        console.log('Generated HTML length:', html.length); // Debug log
-        
-        // Use simple .statement-data container like customer_statement page
-        const container = this.wrapper.find('.statement-data');
-        console.log('Found .statement-data container:', container.length); // Debug log
-        
-        if (container.length > 0) {
-            container.html(html);
-            console.log('HTML inserted into .statement-data container'); // Debug log
-        } else {
-            console.log('ERROR: .statement-data container not found!'); // Debug log
-        }
-        
+        this.wrapper.find('.statement-data').html(html);
         this.current_statement_data = data;
     }
 
@@ -1062,10 +950,10 @@ class AccountStatementReport {
             customer: '',
             contractor: '',
             engineer: '',
-            project_agreement: '',
+            projectAgreement: '',
             item: '',
-            from_date: '',
-            to_date: ''
+            fromDate: '',
+            toDate: ''
         };
 
         // Clear report type control

@@ -1400,8 +1400,8 @@ class AccountStatementReport {
                 ${this.get_print_styles()}
             </head>
             <body>
-                <div class="print-header-image"></div>
-                <div class="print-footer-image"></div>
+                <div class="print-header-image"><img src="/files/Asset 8.png" onerror="this.style.display='none'"></div>
+                <div class="print-footer-image"><img src="/files/Asset 9.png" onerror="this.style.display='none'"></div>
                 
                 <div class="print-container">
                     ${this.generate_print_header(data, labels)}
@@ -1548,7 +1548,7 @@ class AccountStatementReport {
 
                 .print-header-image {
                     position: fixed;
-                    top: -110px; /* place inside top page margin */
+                    top: 0; /* render at top of page box; @page margin reserves space */
                     left: 0;
                     right: 0;
                     width: 100%;
@@ -1564,7 +1564,7 @@ class AccountStatementReport {
 
                 .print-footer-image {
                     position: fixed;
-                    bottom: -90px; /* place inside bottom page margin */
+                    bottom: 0; /* render at bottom of page box; @page margin reserves space */
                     left: 0;
                     right: 0;
                     width: 100%;
@@ -1576,6 +1576,14 @@ class AccountStatementReport {
                     z-index: 9999;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
+                }
+
+                .print-header-image img,
+                .print-footer-image img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    display: block;
                 }
 
                 .print-container {

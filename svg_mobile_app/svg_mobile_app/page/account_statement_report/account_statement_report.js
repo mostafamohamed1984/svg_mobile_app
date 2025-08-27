@@ -237,16 +237,16 @@ class AccountStatementReport {
     }
 
     setup_filters() {
-        // Initialize report type field
+        // Initialize report type field using the HTML select element
         this.initialize_report_type_field();
 
         // Generate report button
-        this.wrapper.find('#generateReport').on('click', () => {
+        this.wrapper.on('click', '#generateReport', () => {
             this.generate_report();
         });
 
         // Clear filters button
-        this.wrapper.find('#clearFilters').on('click', () => {
+        this.wrapper.on('click', '#clearFilters', () => {
             this.clear_filters();
         });
 
@@ -263,24 +263,26 @@ class AccountStatementReport {
 
     initialize_report_type_field() {
         try {
-            this.controls.report_type = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#report-type-field'),
-                df: {
-                    fieldtype: 'Select',
-                    fieldname: 'report_type',
-                    options: '\nCustomer (عميل)\nContractor (مقاول)\nEngineer (مهندس)',
-                    placeholder: __('Select Report Type'),
-                    onchange: () => {
-                        this.filters.reportType = this.controls.report_type.get_value();
-                        this.handle_report_type_change();
-                    }
-                },
-                render_input: true
+            // Use the HTML select element directly
+            this.wrapper.on('change', '#reportType', (e) => {
+                const value = $(e.target).val();
+                this.filters.reportType = this.map_report_type_value(value);
+                this.handle_report_type_change();
             });
-            this.controls.report_type.refresh();
         } catch (error) {
             console.error('Error initializing report type field:', error);
         }
+    }
+
+    map_report_type_value(display_value) {
+        // Map display values to internal values
+        const value_map = {
+            'customer': 'customer',
+            'contractor': 'contractor', 
+            'engineer': 'engineer'
+        };
+        
+        return value_map[display_value] || display_value;
     }
 
     setup_actions() {
@@ -298,17 +300,7 @@ class AccountStatementReport {
     }
 
     handle_report_type_change() {
-        const display_value = this.filters.reportType;
-        
-        // Map display values to internal values
-        const value_map = {
-            'Customer (عميل)': 'customer',
-            'Contractor (مقاول)': 'contractor', 
-            'Engineer (مهندس)': 'engineer'
-        };
-        
-        const report_type = value_map[display_value] || display_value;
-        this.filters.reportType = report_type; // Update with internal value
+        const report_type = this.filters.reportType;
 
         // Clean up existing controls first
         this.cleanup_dynamic_controls();
@@ -363,7 +355,7 @@ class AccountStatementReport {
 
     cleanup_dynamic_controls() {
         // List of dynamic controls that need cleanup
-        const dynamic_controls = ['customer', 'contractor', 'engineer', 'project_agreement', 'item', 'from_date', 'to_date'];
+        const dynamic_controls = ['customer', 'contractor', 'engineer', 'project_agreement', 'item'];
         
         dynamic_controls.forEach(control_name => {
             if (this.controls[control_name]) {
@@ -373,9 +365,7 @@ class AccountStatementReport {
                     'contractor': '#contractor-field', 
                     'engineer': '#engineer-field',
                     'project_agreement': '#project-agreement-field',
-                    'item': '#item-field',
-                    'from_date': '#from-date-field',
-                    'to_date': '#to-date-field'
+                    'item': '#item-field'
                 };
                 
                 const container = this.wrapper.find(container_map[control_name]);
@@ -439,8 +429,14 @@ class AccountStatementReport {
         if (this.controls.customer) return; // Prevent duplicate initialization
         
         try {
+            const $parent = this.wrapper.find('#customer-field');
+            if ($parent.length === 0) {
+                console.error('Customer field container not found');
+                return;
+            }
+
             this.controls.customer = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#customer-field'),
+                parent: $parent,
                 df: {
                     fieldtype: 'Link',
                     options: 'Customer',
@@ -463,8 +459,14 @@ class AccountStatementReport {
         if (this.controls.contractor) return; // Prevent duplicate initialization
         
         try {
+            const $parent = this.wrapper.find('#contractor-field');
+            if ($parent.length === 0) {
+                console.error('Contractor field container not found');
+                return;
+            }
+
             this.controls.contractor = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#contractor-field'),
+                parent: $parent,
                 df: {
                     fieldtype: 'Link',
                     options: 'Customer',  // Contractors stored as Customer doctype
@@ -487,8 +489,14 @@ class AccountStatementReport {
         if (this.controls.engineer) return; // Prevent duplicate initialization
         
         try {
+            const $parent = this.wrapper.find('#engineer-field');
+            if ($parent.length === 0) {
+                console.error('Engineer field container not found');
+                return;
+            }
+
             this.controls.engineer = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#engineer-field'),
+                parent: $parent,
                 df: {
                     fieldtype: 'Link',
                     options: 'Supplier',  // Engineers stored as Supplier doctype
@@ -511,8 +519,14 @@ class AccountStatementReport {
         if (this.controls.project_agreement) return; // Prevent duplicate initialization
         
         try {
+            const $parent = this.wrapper.find('#project-agreement-field');
+            if ($parent.length === 0) {
+                console.error('Project agreement field container not found');
+                return;
+            }
+
             this.controls.project_agreement = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#project-agreement-field'),
+                parent: $parent,
                 df: {
                     fieldtype: 'Link',
                     options: 'Project Agreement',
@@ -538,8 +552,14 @@ class AccountStatementReport {
         if (this.controls.item) return; // Prevent duplicate initialization
         
         try {
+            const $parent = this.wrapper.find('#item-field');
+            if ($parent.length === 0) {
+                console.error('Item field container not found');
+                return;
+            }
+
             this.controls.item = frappe.ui.form.make_control({
-                parent: this.wrapper.find('#item-field'),
+                parent: $parent,
                 df: {
                     fieldtype: 'Link',
                     options: 'Item',
@@ -558,42 +578,23 @@ class AccountStatementReport {
     }
 
     initialize_date_fields() {
-        if (this.controls.from_date && this.controls.to_date) return; // Prevent duplicate initialization
-        
         try {
-            if (!this.controls.from_date) {
-                this.controls.from_date = frappe.ui.form.make_control({
-                    parent: this.wrapper.find('#from-date-field'),
-                    df: {
-                        fieldtype: 'Date',
-                        fieldname: 'from_date',
-                        default: this.default_from_date,
-                        onchange: () => {
-                            this.filters.from_date = this.controls.from_date.get_value();
-                        }
-                    },
-                    render_input: true
-                });
-            }
+            // Use the HTML date input elements directly
+            this.wrapper.find('#fromDate').val(this.default_from_date);
+            this.wrapper.find('#toDate').val(this.default_to_date);
 
-            if (!this.controls.to_date) {
-                this.controls.to_date = frappe.ui.form.make_control({
-                    parent: this.wrapper.find('#to-date-field'),
-                    df: {
-                        fieldtype: 'Date',
-                        fieldname: 'to_date',
-                        default: this.default_to_date,
-                        onchange: () => {
-                            this.filters.to_date = this.controls.to_date.get_value();
-                        }
-                    },
-                    render_input: true
-                });
-            }
+            // Set initial filter values
+            this.filters.from_date = this.default_from_date;
+            this.filters.to_date = this.default_to_date;
 
-            // Set initial values if not already set
-            if (!this.filters.from_date) this.filters.from_date = this.default_from_date;
-            if (!this.filters.to_date) this.filters.to_date = this.default_to_date;
+            // Add event handlers
+            this.wrapper.on('change', '#fromDate', (e) => {
+                this.filters.from_date = $(e.target).val();
+            });
+
+            this.wrapper.on('change', '#toDate', (e) => {
+                this.filters.to_date = $(e.target).val();
+            });
 
         } catch (error) {
             console.error('Error initializing date fields:', error);
@@ -1313,9 +1314,7 @@ class AccountStatementReport {
         };
 
         // Clear report type control
-        if (this.controls.report_type) {
-            this.controls.report_type.set_value('');
-        }
+        this.wrapper.find('#reportType').val('');
 
         // Hide dynamic elements
         this.wrapper.find('#dynamicFilters').hide();

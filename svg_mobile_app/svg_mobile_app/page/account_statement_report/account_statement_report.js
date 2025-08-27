@@ -1247,9 +1247,11 @@ class AccountStatementReport {
                 <title>${__('Account Statement Report')} - ${entity_info.name}</title>
                 <style>
                     @page {
-                        size: A4;
-                        margin: 15mm;
-                        margin-bottom: 25mm;
+                        size: A4 landscape;
+                        margin-top: 40mm;
+                        margin-left: 10mm;
+                        margin-right: 10mm;
+                        margin-bottom: 15mm;
                     }
 
                     body { 
@@ -1307,11 +1309,19 @@ class AccountStatementReport {
                         margin-bottom: 40px;
                         page-break-inside: avoid;
                         break-inside: avoid;
+                        width: 100%;
+                        overflow: visible;
                     }
 
                     .service-group:not(:first-child) {
                         page-break-before: auto;
                         margin-top: 20px;
+                    }
+                    
+                    .service-table-container {
+                        width: 100%;
+                        overflow: visible;
+                        padding: 20px;
                     }
 
                     .service-title {
@@ -1393,21 +1403,41 @@ class AccountStatementReport {
                             padding: 0 !important;
                             -webkit-print-color-adjust: exact;
                             print-color-adjust: exact;
+                            overflow-x: visible !important;
                         }
                         
                         .print-container {
                             padding: 10px;
+                            padding-top: 80px;
+                            width: 100% !important;
+                            max-width: none !important;
+                            overflow-x: visible !important;
                         }
                         
                         .print-header {
                             margin: 0 !important;
                             page-break-after: avoid !important;
+                            width: 100% !important;
+                        }
+                        
+                        .service-group {
+                            width: 100% !important;
+                            overflow-x: visible !important;
+                            margin-bottom: 20px !important;
+                        }
+                        
+                        .service-table-container {
+                            width: 100% !important;
+                            overflow-x: visible !important;
                         }
                         
                         .service-table {
                             font-size: 10px;
                             page-break-inside: auto;
                             margin: 5px 0 !important;
+                            width: 100% !important;
+                            table-layout: auto !important;
+                            overflow-x: visible !important;
                         }
                         
                         /* Ensure first table starts on same page */
@@ -1420,6 +1450,16 @@ class AccountStatementReport {
                         .service-table tbody tr {
                             page-break-inside: avoid;
                             break-inside: avoid;
+                        }
+                        
+                        /* Fix any container overflow issues */
+                        * {
+                            box-sizing: border-box !important;
+                        }
+                        
+                        .service-header {
+                            width: 100% !important;
+                            overflow: visible !important;
                         }
                     }
                 </style>
@@ -1436,7 +1476,7 @@ class AccountStatementReport {
                     </div>
                 </div>
 
-                <div class="entity-details">
+                <div class="entity-details" style="margin-top: 60px;">
                     <h4 style="text-align: center; margin-bottom: 15px;">${report_type_label} - ${entity_info.name}</h4>
                     <table style="width: 100%; border: none;">
                         <tr>

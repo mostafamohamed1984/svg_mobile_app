@@ -1548,13 +1548,11 @@ class AccountStatementReport {
 
                 .print-header-image {
                     position: fixed;
-                    top: 0; /* render at top of page box; @page margin reserves space */
+                    top: -110px; /* place inside top page margin */
                     left: 0;
                     right: 0;
                     width: 100%;
                     height: 90px;
-                    background: url('/files/Asset 8.png') no-repeat center top;
-                    background-size: cover;
                     margin: 0;
                     padding: 0;
                     z-index: 9999;
@@ -1564,13 +1562,11 @@ class AccountStatementReport {
 
                 .print-footer-image {
                     position: fixed;
-                    bottom: 0; /* render at bottom of page box; @page margin reserves space */
+                    bottom: -90px; /* place inside bottom page margin */
                     left: 0;
                     right: 0;
                     width: 100%;
                     height: 70px;
-                    background: url('/files/Asset 9.png') no-repeat center bottom;
-                    background-size: cover;
                     margin: 0;
                     padding: 0;
                     z-index: 9999;
@@ -1584,6 +1580,7 @@ class AccountStatementReport {
                     height: 100%;
                     object-fit: cover;
                     display: block;
+                    pointer-events: none;
                 }
 
                 .print-container {

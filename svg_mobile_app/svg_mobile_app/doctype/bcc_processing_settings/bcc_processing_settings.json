@@ -13,10 +13,16 @@
   "gmail_forwarding_account",
   "processing_method",
   "preserve_original_headers",
+  "processing_server",
+  "processing_port",
+  "use_ssl",
+  "use_tls",
   "debug_mode",
   "section_break_5",
   "max_recipients_per_email",
   "forwarding_subject_prefix",
+  "enable_subject_timestamping",
+  "subject_timestamp_format",
   "custom_message_id_domain",
   "section_break_email_forwarding",
   "enable_role_based_forwarding",
@@ -80,6 +86,29 @@
    "label": "Preserve Original Headers"
   },
   {
+    "fieldname": "processing_server",
+    "fieldtype": "Data",
+    "label": "Processing SMTP Server",
+    "description": "Optional non-Gmail SMTP server for forwarding processed emails"
+  },
+  {
+    "fieldname": "processing_port",
+    "fieldtype": "Int",
+    "label": "Processing SMTP Port"
+  },
+  {
+    "default": "0",
+    "fieldname": "use_ssl",
+    "fieldtype": "Check",
+    "label": "Use SSL"
+  },
+  {
+    "default": "1",
+    "fieldname": "use_tls",
+    "fieldtype": "Check",
+    "label": "Use TLS"
+  },
+  {
    "default": "0",
    "fieldname": "debug_mode",
    "fieldtype": "Check",
@@ -100,6 +129,20 @@
    "fieldname": "forwarding_subject_prefix",
    "fieldtype": "Data",
    "label": "Forwarding Subject Prefix"
+  },
+  {
+    "default": "0",
+    "fieldname": "enable_subject_timestamping",
+    "fieldtype": "Check",
+    "label": "Enable Subject Timestamping",
+    "description": "When enabled, appends a timestamp to the subject of per-recipient Communication copies"
+  },
+  {
+    "default": "[%Y-%m-%d %H:%M:%S]",
+    "fieldname": "subject_timestamp_format",
+    "fieldtype": "Data",
+    "label": "Subject Timestamp Format",
+    "description": "Python strftime format used when timestamping subjects"
   },
   {
    "fieldname": "custom_message_id_domain",

@@ -2886,6 +2886,125 @@ def get_communications_with_tags(filters=None, tag_filter=None, search_term=None
         }
 
 @frappe.whitelist(allow_guest=False)
+def get_email_monitoring(filters=None, limit_start=0, limit_page_length=20, order_by='modified desc'):
+    """List Email Monitoring records with filters"""
+    try:
+        if isinstance(filters, str):
+            import json
+            filters = json.loads(filters)
+        filters = filters or {}
+
+        total = frappe.db.count('Email Monitoring', filters)
+        rows = frappe.get_list(
+            'Email Monitoring',
+            fields=['name', 'communication', 'email_type', 'status', 'priority', 'assigned_user', 'department', 'email_account', 'modified'],
+            filters=filters,
+            order_by=order_by,
+            limit_start=int(limit_start) if limit_start else 0,
+            limit_page_length=int(limit_page_length) if limit_page_length else 20
+        )
+        return {'data': rows, 'total_count': total}
+    except Exception:
+        frappe.log_error("Error in get_email_monitoring", "Email Monitoring API Error")
+        return {'data': [], 'total_count': 0}
+
+@frappe.whitelist(allow_guest=False)
+def link_communications(comm_name, related_comm_name, relation_type=None, notes=None):
+    """Create a relation between two Communication docs"""
+    try:
+        if not comm_name or not related_comm_name or comm_name == related_comm_name:
+            return {"status": "error", "message": "Invalid parameters"}
+        doc = frappe.get_doc({
+            'doctype': 'Communication Relation',
+            'communication': comm_name,
+            'related_communication': related_comm_name,
+            'relation_type': relation_type,
+            'notes': notes
+        })
+        doc.insert(ignore_permissions=True)
+        return {"status": "success", "name": doc.name}
+    except Exception as e:
+        frappe.log_error(f"link_communications error: {str(e)}", "Communication Relation")
+        return {"status": "error", "message": "Failed to link communications"}
+
+@frappe.whitelist(allow_guest=False)
+def get_related_communications(comm_name):
+    """Fetch related communications for a given Communication"""
+    try:
+        if not comm_name:
+            return []
+        relations = frappe.get_all(
+            'Communication Relation',
+            filters={'communication': comm_name},
+            fields=['related_communication', 'relation_type']
+        ) + frappe.get_all(
+            'Communication Relation',
+            filters={'related_communication': comm_name},
+            fields=[
+                {'fieldname': 'communication', 'fieldtype': 'Data', 'label': 'related_communication'},
+                'relation_type'
+            ]
+        )
+        related_names = list({r.get('related_communication') for r in relations if r.get('related_communication')})
+        if not related_names:
+            return []
+        rows = frappe.get_list(
+            'Communication',
+            fields=['name', 'subject', 'creation', 'email_account', 'sent_or_received', 'status'],
+            filters={'name': ['in', related_names]},
+            order_by='creation desc'
+        )
+        return rows
+    except Exception as e:
+        frappe.log_error(f"get_related_communications error: {str(e)}", "Communication Relation")
+        return []
+
+@frappe.whitelist(allow_guest=False)
+def get_monitoring_by_communication(communication):
+    """Fetch Email Monitoring record by Communication name"""
+    try:
+        name = frappe.db.get_value('Email Monitoring', {'communication': communication}, 'name')
+        if not name:
+            return None
+        doc = frappe.get_doc('Email Monitoring', name)
+        return {
+            'name': doc.name,
+            'communication': doc.communication,
+            'email_type': doc.email_type,
+            'status': doc.status,
+            'priority': doc.priority,
+            'assigned_user': doc.assigned_user,
+            'department': doc.department,
+            'email_account': doc.email_account,
+            'modified': str(doc.modified)
+        }
+    except Exception as e:
+        frappe.log_error(f"get_monitoring_by_communication error: {str(e)}", "Email Monitoring API Error")
+        return None
+
+@frappe.whitelist(allow_guest=False)
+def update_email_monitoring(name, status=None, assigned_user=None, priority=None):
+    """Update status/assignment/priority of Email Monitoring"""
+    try:
+        doc = frappe.get_doc('Email Monitoring', name)
+        changed = False
+        if status and status != doc.status:
+            doc.status = status
+            changed = True
+        if assigned_user is not None and assigned_user != doc.assigned_user:
+            doc.assigned_user = assigned_user
+            changed = True
+        if priority and priority != doc.priority:
+            doc.priority = priority
+            changed = True
+        if changed:
+            doc.save(ignore_permissions=True)
+        return {"status": "success", "changed": changed}
+    except Exception as e:
+        frappe.log_error(f"update_email_monitoring error: {str(e)}", "Email Monitoring API Error")
+        return {"status": "error", "message": "Update failed"}
+
+@frappe.whitelist(allow_guest=False)
 def add_work_email_access(user, email_account, access_type="Read Only", description=""):
     """
     Helper function to add work email access for a user

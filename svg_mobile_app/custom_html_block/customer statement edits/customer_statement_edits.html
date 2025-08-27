@@ -1,0 +1,177 @@
+<div class="account-statement-report">
+    <!-- Header Section -->
+    <div class="report-header" style="text-align: center; margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; border-radius: 10px; position: relative;">
+        <div class="orbit-logo" style="position: absolute; top: 15px; left: 20px;">
+            <img src="/files/logo orbit (1).png" alt="Orbit Logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
+        </div>
+        <h2 id="reportTitle">Account Statement Report</h2>
+        <p style="margin: 0;">Dynamic reporting for Customers, Contractors, and Engineers</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #dee2e6; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+        <h5 style="color: #495057; font-weight: 600; margin-bottom: 20px;">🔍 Report Filters</h5>
+        
+        <!-- Report Type Selection -->
+        <div class="row">
+            <div class="col-md-4">
+                <div class="filter-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em;">REPORT TYPE</label>
+                    <select id="reportType" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 600;">
+                        <option value="">Select Report Type</option>
+                        <option value="customer">Customer (عميل)</option>
+                        <option value="contractor">Contractor (مقاول)</option>
+                        <option value="engineer">Outsource Engineer (مهندس)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div id="selectedReportTypeDisplay" style="display: none; margin-bottom: 20px;">
+                    <div class="alert alert-info" style="margin-bottom: 0; padding: 12px 16px;">
+                        <strong>Selected Report Type:</strong> <span id="reportTypeText"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Filter Fields -->
+        <div id="dynamicFilters" style="display: none;">
+            <div class="row">
+                <!-- Customer Filter Field -->
+                <div class="col-md-4" id="customerFilterGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">CUSTOMER</label>
+                        <div id="customer-field"></div>
+                    </div>
+                </div>
+
+                <!-- Contractor Filter Field -->
+                <div class="col-md-4" id="contractorFilterGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">CONTRACTOR</label>
+                        <div id="contractor-field"></div>
+                    </div>
+                </div>
+
+                <!-- Engineer Filter Field -->
+                <div class="col-md-4" id="engineerFilterGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">ENGINEER</label>
+                        <div id="engineer-field"></div>
+                    </div>
+                </div>
+
+                <!-- Project Agreement Field -->
+                <div class="col-md-4" id="projectAgreementFilterGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">PROJECT AGREEMENT</label>
+                        <div id="project-agreement-field"></div>
+                    </div>
+                </div>
+
+                <!-- Item/Service Filter Field -->
+                <div class="col-md-4" id="itemFilterGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">ITEM/SERVICE</label>
+                        <div id="item-field"></div>
+                    </div>
+                </div>
+
+                <!-- Date Range -->
+                <div class="col-md-4" id="dateRangeGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">FROM DATE</label>
+                        <input type="date" id="fromDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 500;">
+                    </div>
+                </div>
+
+                <div class="col-md-4" id="toDateGroup" style="display: none;">
+                    <div class="filter-group" style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; color: #495057; margin-bottom: 8px; display: block; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.5px;">TO DATE</label>
+                        <input type="date" id="toDate" class="form-control" style="border: 2px solid #e9ecef; border-radius: 8px; padding: 12px 16px; font-size: 14px; background-color: #fff; font-weight: 500;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="row" id="actionButtons" style="display: none;">
+            <div class="col-md-12">
+                <button id="generateReport" class="btn btn-primary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; margin-right: 10px;">
+                    Load Report Data
+                </button>
+                <button id="clearFilters" class="btn btn-secondary" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); color: white; margin-right: 10px;">
+                    Clear Filters
+                </button>
+                <select id="printLanguage" class="form-control" style="display: none; width: 150px; margin-right: 10px; border: 2px solid #e9ecef; border-radius: 8px; padding: 8px 12px; font-size: 14px; background-color: #fff; float: left;">
+                    <option value="en">English</option>
+                    <option value="ar">العربية</option>
+                </select>
+                <button id="printReport" class="btn btn-info" style="padding: 12px 24px; border-radius: 8px; font-weight: 600; border: none; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white; display: none;">
+                    Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" style="display: none; text-align: center; padding: 60px 40px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; margin: 20px 0;">
+        <div style="display: inline-block; width: 50px; height: 50px; border: 4px solid rgba(231, 76, 60, 0.2); border-radius: 50%; border-top-color: #e74c3c; animation: spin 1s ease-in-out infinite; margin-bottom: 15px;"></div>
+        <p style="color: #495057; font-weight: 500; margin: 0;">Loading account statement data...</p>
+    </div>
+
+    <!-- Report Tabs -->
+    <div id="reportTabs" style="display: none; margin-bottom: 20px;">
+        <!-- Report Information Header -->
+        <div id="reportInfo" style="margin-bottom: 20px;"></div>
+
+        <!-- Tab Navigation -->
+        <div class="report-nav" style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+            <!-- Customer Report Tabs -->
+            <div id="customerTabs" style="display: none;">
+                <button class="tab-button active" data-tab="servicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
+                <button class="tab-button" data-tab="governmentFeesExpenses" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Government Fees & Expenses</button>
+                <button class="tab-button" data-tab="trustFees" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e9ecef; color: #495057; border-radius: 8px 8px 0 0; cursor: pointer;">Trust Fees</button>
+            </div>
+
+            <!-- Contractor Report Tabs -->
+            <div id="contractorTabs" style="display: none;">
+                <button class="tab-button active" data-tab="contractorServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
+            </div>
+
+            <!-- Engineer Report Tabs -->
+            <div id="engineerTabs" style="display: none;">
+                <button class="tab-button active" data-tab="engineerServicesPayments" style="padding: 12px 20px; margin-right: 5px; border: none; background: #e74c3c; color: white; border-radius: 8px 8px 0 0; cursor: pointer;">Services & Payments</button>
+            </div>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Customer Report Content -->
+            <div id="servicesPayments" class="tab-pane active" style="display: block;">
+                <div id="servicesPaymentsContent"></div>
+            </div>
+            <div id="governmentFeesExpenses" class="tab-pane" style="display: none;">
+                <div id="governmentFeesExpensesContent"></div>
+            </div>
+            <div id="trustFees" class="tab-pane" style="display: none;">
+                <div id="trustFeesContent"></div>
+            </div>
+
+            <!-- Contractor Report Content -->
+            <div id="contractorServicesPayments" class="tab-pane" style="display: none;">
+                <div id="contractorServicesPaymentsContent"></div>
+            </div>
+
+            <!-- Engineer Report Content -->
+            <div id="engineerServicesPayments" class="tab-pane" style="display: none;">
+                <div id="engineerServicesPaymentsContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="errorMessage" style="display: none; padding: 20px; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; border-radius: 8px; margin: 20px 0;">
+        <strong>Error:</strong> <span id="errorText"></span>
+    </div>
+</div>

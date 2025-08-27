@@ -10,17 +10,29 @@
   "project_agreement",
   "employee",
   "project_balance",
+  "trust_fees_balance",
   "column_break_wl5r",
   "customer",
   "customer_name",
   "customer_advance_account",
+  "trust_fees_account",
   "company",
   "section_break_6hvk",
   "advances",
+  "gov_fees_details_section",
   "expenses_items",
   "pending_items",
+  "section_break_gyxq",
+  "expense_trust_fees_via_",
+  "mode_of_payment",
+  "column_break_r3xi",
+  "payment_account",
+  "contractor",
+  "section_break_zyin",
+  "trust_fees_expenses",
   "section_break_mbz6",
   "total_expenses",
+  "total_claimed_trust_fees",
   "total_pending",
   "column_break_mi10",
   "total_advances",
@@ -43,7 +55,8 @@
    "fieldname": "customer",
    "fieldtype": "Link",
    "label": "Customer",
-   "options": "Customer"
+   "options": "Customer",
+   "read_only": 1
   },
   {
    "fieldname": "employee",
@@ -61,7 +74,8 @@
    "fieldname": "advances",
    "fieldtype": "Table",
    "label": "Advances",
-   "options": "Expense Claim Advance"
+   "options": "Expense Claim Advance",
+   "read_only": 1
   },
   {
    "fieldname": "expenses_items",
@@ -73,39 +87,51 @@
    "fieldname": "pending_items",
    "fieldtype": "Table",
    "label": "Pending Items",
-   "options": "Pending Items"
+   "options": "Pending Items",
+   "read_only": 1
   },
   {
    "fieldname": "total_expenses",
    "fieldtype": "Currency",
-   "label": "Total Expenses"
+   "label": "Total Expenses",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   },
   {
    "fieldname": "total_pending",
    "fieldtype": "Currency",
-   "label": "Total Pending"
+   "label": "Total Pending",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   },
   {
    "fieldname": "total_advances",
    "fieldtype": "Currency",
-   "label": "Total Advances"
+   "label": "Total Advances",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   },
   {
    "fieldname": "company",
    "fieldtype": "Link",
    "label": "Company",
-   "options": "Company"
+   "options": "Company",
+   "read_only": 1
   },
   {
    "fieldname": "total_unclaimed_amount",
    "fieldtype": "Currency",
-   "label": "Total Unclaimed Amount"
+   "label": "Total Unclaimed Amount",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   },
   {
    "fetch_from": "project_agreement.advance_balance",
    "fieldname": "project_balance",
    "fieldtype": "Currency",
-   "label": "Project Balance"
+   "label": "Project Balance",
+   "options": "Company:company:default_currency",
+   "read_only": 1
   },
   {
    "fieldname": "naming_series",
@@ -121,7 +147,8 @@
    "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
-   "label": "Customer Name"
+   "label": "Customer Name",
+   "read_only": 1
   },
   {
    "fieldname": "customer_advance_account",
@@ -140,13 +167,90 @@
   {
    "fieldname": "column_break_mi10",
    "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.expense_trust_fees_via_ !=''",
+   "fieldname": "trust_fees_expenses",
+   "fieldtype": "Table",
+   "label": "Trust Fees Expenses",
+   "options": "Trust Fees Expenses"
+  },
+  {
+   "fetch_from": "project_agreement.trust_fees_balance",
+   "fieldname": "trust_fees_balance",
+   "fieldtype": "Currency",
+   "label": "Trust Fees Balance",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "total_claimed_trust_fees",
+   "fieldtype": "Currency",
+   "label": "Total Claimed Trust fees",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "trust_fees_account",
+   "fieldtype": "Link",
+   "label": "Trust Fees Account",
+   "options": "Account"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "section_break_gyxq",
+   "fieldtype": "Section Break",
+   "label": "Trust Fees Details"
+  },
+  {
+   "fieldname": "expense_trust_fees_via_",
+   "fieldtype": "Select",
+   "label": "Expense Trust Fees Via ?",
+   "options": "\nEmployee Advance\nOther"
+  },
+  {
+   "depends_on": "eval:doc.expense_trust_fees_via_ =='Other'",
+   "fieldname": "mode_of_payment",
+   "fieldtype": "Link",
+   "label": "Mode of Payment",
+   "options": "Mode of Payment"
+  },
+  {
+   "fieldname": "column_break_r3xi",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.expense_trust_fees_via_ =='Other'",
+   "fieldname": "payment_account",
+   "fieldtype": "Link",
+   "label": "Payment Account",
+   "options": "Account",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.expense_trust_fees_via_ =='Other'",
+   "fieldname": "contractor",
+   "fieldtype": "Link",
+   "label": "Contractor",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "section_break_zyin",
+   "fieldtype": "Section Break",
+   "hide_border": 1
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "gov_fees_details_section",
+   "fieldtype": "Section Break",
+   "label": "Gov. Fees Details"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-03 12:46:20.385683",
+ "modified": "2025-08-26 17:42:23.757259",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Expenses",

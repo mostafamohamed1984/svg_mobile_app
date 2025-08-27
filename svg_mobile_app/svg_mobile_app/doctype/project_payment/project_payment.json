@@ -9,10 +9,14 @@
  "field_order": [
   "section_break_ntae",
   "naming_series",
+  "customer_type",
   "customer",
   "customer_name",
+  "tax_id",
+  "address",
   "party_account",
   "advance_account",
+  "trust_account",
   "company",
   "currency",
   "column_break_udiq",
@@ -29,6 +33,7 @@
   "claim_amount",
   "tax_amount",
   "total_government_fees",
+  "total_trust_fees",
   "column_break_pyea",
   "paid_amount",
   "outstanding_amount",
@@ -36,12 +41,15 @@
   "section_break_lkln",
   "service_payment_details",
   "government_fees",
+  "trust_fees_payment",
   "signatures_section",
   "receiver",
   "column_break_q3a8",
   "accountant",
   "column_break_okon",
   "manager",
+  "section_break_zuwc",
+  "being",
   "section_break_sgju",
   "created_by",
   "amended_from"
@@ -159,15 +167,17 @@
   },
   {
    "fieldname": "claim_amount",
-   "fieldtype": "Data",
+   "fieldtype": "Currency",
    "in_standard_filter": 1,
    "label": "Claim Amount",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
    "fieldname": "tax_amount",
    "fieldtype": "Currency",
    "label": "Tax Amount",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
@@ -178,12 +188,14 @@
    "fieldname": "paid_amount",
    "fieldtype": "Currency",
    "label": "Paid Amount",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
    "fieldname": "outstanding_amount",
    "fieldtype": "Currency",
    "label": "Outstanding Amount",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
@@ -270,20 +282,21 @@
    "fieldname": "total_government_fees",
    "fieldtype": "Currency",
    "label": "Total Government Fees",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
    "fieldname": "total_services",
    "fieldtype": "Currency",
    "label": "Total services",
+   "options": "Company:company:default_currency",
    "read_only": 1
   },
   {
    "fieldname": "advance_account",
    "fieldtype": "Link",
    "label": "Advance Account",
-   "options": "Account",
-   "read_only": 1
+   "options": "Account"
   },
   {
    "fieldname": "company",
@@ -292,17 +305,65 @@
    "options": "Company"
   },
   {
+   "default": "AED",
    "fieldname": "currency",
    "fieldtype": "Link",
    "label": "Currency",
    "options": "Currency"
+  },
+  {
+   "fieldname": "trust_fees_payment",
+   "fieldtype": "Table",
+   "label": "Trust Fees Payment",
+   "options": "Trust Fees Payment"
+  },
+  {
+   "fieldname": "customer_type",
+   "fieldtype": "Select",
+   "label": "Customer Type",
+   "options": "\nCustomer\nContractor"
+  },
+  {
+   "default": "230103 - Customer Libaility - OR",
+   "fieldname": "trust_account",
+   "fieldtype": "Link",
+   "label": "Trust Account",
+   "options": "Account"
+  },
+  {
+   "fieldname": "total_trust_fees",
+   "fieldtype": "Currency",
+   "label": "Total Trust Fees",
+   "options": "Company:company:default_currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_zuwc",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "being",
+   "fieldtype": "Small Text",
+   "label": "Being"
+  },
+  {
+   "fetch_from": "customer.tax_id",
+   "fieldname": "tax_id",
+   "fieldtype": "Data",
+   "label": "Tax ID"
+  },
+  {
+   "fetch_from": "customer.primary_address",
+   "fieldname": "address",
+   "fieldtype": "Data",
+   "label": "Address"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2025-08-01 00:12:49.869877",
+ "modified": "2025-08-27 00:41:44.068309",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Project Payment",

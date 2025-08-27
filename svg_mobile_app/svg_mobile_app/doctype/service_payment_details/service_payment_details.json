@@ -37,28 +37,33 @@
   {
    "fieldname": "total",
    "fieldtype": "Currency",
-   "label": "Total"
+   "label": "Total",
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "total_taxes",
    "fieldtype": "Currency",
-   "label": "Total Taxes"
+   "label": "Total Taxes",
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "outstanding",
    "fieldtype": "Currency",
-   "label": "Outstanding"
+   "label": "Outstanding",
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "paid_amount",
    "fieldtype": "Currency",
-   "label": "Paid Amount"
+   "label": "Paid Amount",
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "payment_amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Payment Amount"
+   "label": "Payment Amount",
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "tax_ratio",
@@ -70,7 +75,8 @@
    "fieldname": "payment_tax",
    "fieldtype": "Currency",
    "in_list_view": 1,
-   "label": "Payment Tax"
+   "label": "Payment Tax",
+   "options": "Company:company:default_currency"
   },
   {
    "fieldname": "unearned_account",
@@ -102,7 +108,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-07-31 03:16:08.396289",
+ "modified": "2025-08-20 13:51:02.198103",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "Service Payment Details",

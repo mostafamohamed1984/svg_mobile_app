@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "allow_auto_repeat": 1,
  "allow_rename": 1,
  "autoname": "format:{subject}-{###}",
  "creation": "2025-01-07 23:42:39.442506",
@@ -222,7 +223,7 @@
  ],
  "is_calendar_and_gantt": 1,
  "links": [],
- "modified": "2025-08-03 12:40:39.643243",
+ "modified": "2025-08-07 14:18:25.264140",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Meeting",

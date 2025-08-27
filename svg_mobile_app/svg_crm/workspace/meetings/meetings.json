@@ -26,8 +26,27 @@
   {
    "hidden": 0,
    "is_query_report": 0,
+   "label": "Automation",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Recurring Meeting Schedule",
+   "link_count": 0,
+   "link_to": "Recurring Meeting Schedule",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
    "label": "Masters",
-   "link_count": 3,
+   "link_count": 4,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -64,25 +83,16 @@
   },
   {
    "hidden": 0,
-   "is_query_report": 0,
-   "label": "Automation",
-   "link_count": 1,
-   "link_type": "DocType",
-   "onboard": 0,
-   "type": "Card Break"
-  },
-  {
-   "hidden": 0,
-   "is_query_report": 0,
-   "label": "Recurring Meeting Schedule",
+   "is_query_report": 1,
+   "label": "Meeting Report",
    "link_count": 0,
-   "link_to": "Recurring Meeting Schedule",
-   "link_type": "DocType",
+   "link_to": "Meeting Report",
+   "link_type": "Report",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-06-01 12:00:00.000000",
+ "modified": "2025-08-06 17:52:10.100572",
  "modified_by": "Administrator",
  "module": "SVG CRM",
  "name": "Meetings",

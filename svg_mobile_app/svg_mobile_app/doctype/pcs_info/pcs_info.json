@@ -18,10 +18,12 @@
   "mother_board",
   "ram",
   "gpu",
+  "bios",
   "column_break_o11c",
   "hard_desk",
   "case",
   "psu",
+  "monitor",
   "auto_desk_info_section",
   "auto_desk_email",
   "password",
@@ -61,7 +63,7 @@
    "fieldname": "use_for",
    "fieldtype": "Select",
    "label": "Use For",
-   "options": "\nGraphic\nRender\nAdmin\nMEP"
+   "options": "\nGraphics\nRender\nAdmin\nMEP"
   },
   {
    "fieldname": "specs_section",
@@ -126,12 +128,22 @@
    "fieldname": "ex_date",
    "fieldtype": "Date",
    "label": "EX. Date"
+  },
+  {
+   "fieldname": "bios",
+   "fieldtype": "Data",
+   "label": "Bios"
+  },
+  {
+   "fieldname": "monitor",
+   "fieldtype": "Data",
+   "label": "Monitor"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-30 14:33:45.283793",
+ "modified": "2025-08-06 12:40:14.657041",
  "modified_by": "Administrator",
  "module": "Svg Mobile App",
  "name": "PCs info",

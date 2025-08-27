@@ -444,7 +444,10 @@ class AccountStatementReport {
                     placeholder: __('Select Customer'),
                     onchange: () => {
                         this.filters.customer = this.controls.customer.get_value();
-                        this.update_project_agreement_filter();
+                        // Update project agreement filter but don't clear it immediately
+                        setTimeout(() => {
+                            this.update_project_agreement_filter();
+                        }, 100);
                     }
                 },
                 render_input: true
@@ -536,7 +539,9 @@ class AccountStatementReport {
                         return this.get_project_agreement_query();
                     },
                     onchange: () => {
-                        this.filters.project_agreement = this.controls.project_agreement.get_value();
+                        const new_value = this.controls.project_agreement.get_value();
+                        console.log('Project Agreement changed to:', new_value);
+                        this.filters.project_agreement = new_value;
                         this.handle_project_agreement_change();
                     }
                 },
@@ -619,6 +624,37 @@ class AccountStatementReport {
 
     update_project_agreement_filter() {
         if (this.controls.project_agreement) {
+            console.log('Updating project agreement filter, current value:', this.filters.project_agreement);
+            console.log('Current customer:', this.filters.customer);
+            
+            // Refresh the project agreement field to update available options
+            // but don't clear the current value unless it's no longer valid
+            this.controls.project_agreement.refresh();
+            
+            // Only clear if the current value is not compatible with the new customer
+            this.validate_current_project_agreement();
+        }
+    }
+
+    async validate_current_project_agreement() {
+        if (!this.filters.project_agreement || !this.filters.customer) {
+            return;
+        }
+
+        try {
+            const project_data = await frappe.db.get_doc('Project Agreement', this.filters.project_agreement);
+            
+            // If the selected project agreement doesn't belong to the current customer, clear it
+            if (project_data && project_data.customer !== this.filters.customer) {
+                this.controls.project_agreement.set_value('');
+                this.filters.project_agreement = '';
+                frappe.show_alert({
+                    message: __('Project Agreement cleared as it does not belong to the selected customer'),
+                    indicator: 'orange'
+                });
+            }
+        } catch (error) {
+            // If project agreement doesn't exist or error, clear it
             this.controls.project_agreement.set_value('');
             this.filters.project_agreement = '';
         }

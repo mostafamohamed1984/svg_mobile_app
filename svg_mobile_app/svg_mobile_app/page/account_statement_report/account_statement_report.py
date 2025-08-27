@@ -254,23 +254,35 @@ def process_customer_data(project_agreements, item_filter, from_date, to_date):
         # Process services and payments
         services_payments = process_project_services(full_project, item_filter)
 
-        # Create service groups
+        # Create service groups - include project info when multiple projects
         for item_key, item_data in services_payments.items():
-            if item_key not in service_groups:
-                service_groups[item_key] = {
-                    'service_name': item_data['item'],
-                    'service_name_ar': item_data['item'],
+            # Create unique key for project-item combination when needed
+            if len(project_agreements) > 1:
+                # Multiple projects: group by project + item
+                group_key = f"{project.name}_{item_key}"
+                service_name = f"{item_data['item']} - {project.project_name}"
+            else:
+                # Single project: group by item only
+                group_key = item_key
+                service_name = item_data['item']
+            
+            if group_key not in service_groups:
+                service_groups[group_key] = {
+                    'service_name': service_name,
+                    'service_name_ar': service_name,
+                    'project_name': project.project_name,
+                    'project_agreement': project.name,
                     'transactions': [],
                     'total_value': 0,
                     'total_paid': 0,
                     'total_balance': 0
                 }
 
-            # Add transactions
-            service_groups[item_key]['transactions'].extend(item_data['transactions'])
-            service_groups[item_key]['total_value'] += item_data.get('total_debit', 0)  # Use total_debit as total_value
-            service_groups[item_key]['total_paid'] += item_data.get('total_credit', 0)  # Use total_credit as total_paid
-            service_groups[item_key]['total_balance'] += item_data.get('final_balance', 0)
+            # Add transactions with proper balance calculation
+            service_groups[group_key]['transactions'].extend(item_data['transactions'])
+            service_groups[group_key]['total_value'] += item_data.get('total_debit', 0)
+            service_groups[group_key]['total_paid'] += item_data.get('total_credit', 0)
+            service_groups[group_key]['total_balance'] = item_data.get('final_balance', 0)  # Use final balance, not sum
 
         # Process tax details
         tax_details = process_project_taxes(full_project)

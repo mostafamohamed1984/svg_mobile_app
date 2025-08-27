@@ -1220,350 +1220,6 @@ class AccountStatementReport {
         return __('Unknown');
     }
 
-    print_statement() {
-        if (!this.current_statement_data) {
-            frappe.msgprint(__('No data to print. Please generate a statement first.'));
-            return;
-        }
-
-        // Create print window
-        const print_content = this.build_print_html(this.current_statement_data);
-        const print_window = window.open('', '_blank');
-        print_window.document.write(print_content);
-        print_window.document.close();
-        print_window.print();
-    }
-
-    build_print_html(data, language = 'en') {
-        const entity_info = this.get_entity_info(data);
-        const report_type_label = this.get_report_type_label(data);
-
-        return `
-            <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>${__('Account Statement Report')} - ${entity_info.name}</title>
-                <style>
-                    @page {
-                        size: A4 landscape;
-                        margin-top: 40mm;
-                        margin-left: 10mm;
-                        margin-right: 10mm;
-                        margin-bottom: 15mm;
-                    }
-
-                    body { 
-                        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; 
-                        margin: 0;
-                        padding: 0;
-                        background: #f4f4f4;
-                        color: #333;
-                        direction: rtl;
-                        text-align: right;
-                        line-height: 1.4;
-                    }
-                    
-                    .print-container {
-                        max-width: 100%;
-                        margin: 0 auto;
-                        background-color: #fff;
-                        padding: 20px;
-                    }
-
-                    .print-header {
-                        width: 100%;
-                        text-align: center;
-                        margin-bottom: 20px;
-                        border-bottom: 3px solid #007bff;
-                        padding-bottom: 20px;
-                    }
-
-                    .company-info h1 {
-                        color: #007bff;
-                        margin: 10px 0;
-                        font-size: 24px;
-                        font-weight: bold;
-                    }
-
-                    .statement-title {
-                        background: #e74c3c;
-                        color: white;
-                        padding: 15px;
-                        margin: 20px 0;
-                        border-radius: 8px;
-                        font-size: 20px;
-                        font-weight: bold;
-                    }
-
-                    .entity-details {
-                        background: #f8f9fa;
-                        padding: 20px;
-                        border-radius: 8px;
-                        margin-bottom: 30px;
-                        border: 1px solid #dee2e6;
-                    }
-
-                    .service-group {
-                        margin-bottom: 40px;
-                        page-break-inside: avoid;
-                        break-inside: avoid;
-                        width: 100%;
-                        overflow: visible;
-                    }
-
-                    .service-group:not(:first-child) {
-                        page-break-before: auto;
-                        margin-top: 20px;
-                    }
-                    
-                    .service-table-container {
-                        width: 100%;
-                        overflow: visible;
-                        padding: 20px;
-                    }
-
-                    .service-title {
-                        background: #ffc107;
-                        color: #000;
-                        padding: 12px;
-                        text-align: center;
-                        font-weight: bold;
-                        font-size: 16px;
-                        border-radius: 5px 5px 0 0;
-                        margin: 0;
-                    }
-
-                    .service-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin: 0;
-                        font-size: 12px;
-                        page-break-inside: auto;
-                    }
-
-                    .service-table thead {
-                        display: table-header-group;
-                    }
-
-                    .service-table tbody {
-                        display: table-row-group;
-                    }
-
-                    .service-table tr {
-                        page-break-inside: avoid;
-                        break-inside: avoid;
-                    }
-
-                    .service-table th {
-                        background: #e74c3c;
-                        color: white;
-                        padding: 10px 6px;
-                        text-align: center;
-                        font-weight: bold;
-                        border: 1px solid #c0392b;
-                    }
-
-                    .service-table td {
-                        padding: 8px 6px;
-                        text-align: center;
-                        border: 1px solid #dee2e6;
-                        vertical-align: middle;
-                    }
-
-                    .statement-summary {
-                        background: #f8f9fa;
-                        padding: 20px;
-                        border-radius: 8px;
-                        border: 2px solid #28a745;
-                        margin-top: 30px;
-                        page-break-inside: avoid;
-                    }
-
-                    .statement-summary h3 {
-                        color: #28a745;
-                        text-align: center;
-                        margin-bottom: 20px;
-                        font-weight: bold;
-                    }
-
-                    .print-footer {
-                        margin-top: 50px;
-                        text-align: center;
-                        font-size: 12px;
-                        color: #6c757d;
-                        border-top: 1px solid #dee2e6;
-                        padding-top: 20px;
-                    }
-
-                    @media print {
-                        body {
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
-                            overflow-x: visible !important;
-                        }
-                        
-                        .print-container {
-                            padding: 10px;
-                            padding-top: 80px;
-                            width: 100% !important;
-                            max-width: none !important;
-                            overflow-x: visible !important;
-                        }
-                        
-                        .print-header {
-                            margin: 0 !important;
-                            page-break-after: avoid !important;
-                            width: 100% !important;
-                        }
-                        
-                        .service-group {
-                            width: 100% !important;
-                            overflow-x: visible !important;
-                            margin-bottom: 20px !important;
-                        }
-                        
-                        .service-table-container {
-                            width: 100% !important;
-                            overflow-x: visible !important;
-                        }
-                        
-                        .service-table {
-                            font-size: 10px;
-                            page-break-inside: auto;
-                            margin: 5px 0 !important;
-                            width: 100% !important;
-                            table-layout: auto !important;
-                            overflow-x: visible !important;
-                        }
-                        
-                        /* Ensure first table starts on same page */
-                        .service-table:first-of-type {
-                            page-break-before: avoid !important;
-                            break-before: avoid !important;
-                        }
-                        
-                        /* Keep table rows together when possible */
-                        .service-table tbody tr {
-                            page-break-inside: avoid;
-                            break-inside: avoid;
-                        }
-                        
-                        /* Fix any container overflow issues */
-                        * {
-                            box-sizing: border-box !important;
-                        }
-                        
-                        .service-header {
-                            width: 100% !important;
-                            overflow: visible !important;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="print-container">
-                    <div class="print-header">
-                    <div class="company-info">
-                        <h1>${data.company.company_name_ar || data.company.company_name}</h1>
-                        <h1>${data.company.company_name}</h1>
-                    </div>
-                    <div class="statement-title">
-                        ${__('Account Statement Report')} - ${__('تقرير كشف الحساب')}
-                    </div>
-                </div>
-
-                <div class="entity-details" style="margin-top: 60px;">
-                    <h4 style="text-align: center; margin-bottom: 15px;">${report_type_label} - ${entity_info.name}</h4>
-                    <table style="width: 100%; border: none;">
-                        <tr>
-                            <td><strong>${__('Name')}:</strong></td>
-                            <td>${entity_info.name}</td>
-                            <td><strong>${__('Date Range')}:</strong></td>
-                            <td>${data.date_range.from_date_formatted} - ${data.date_range.to_date_formatted}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>${__('Print Date')}:</strong></td>
-                            <td>${frappe.datetime.now_datetime().split(' ')[0]}</td>
-                            <td><strong>${__('Report Type')}:</strong></td>
-                            <td>${report_type_label}</td>
-                        </tr>
-                    </table>
-                </div>
-
-                ${data.service_groups.map(group => {
-                    const service_title = group.is_tax_section ? `${group.service_name} - ${__('VAT')} ${group.tax_rate}%` : group.service_name;
-
-                    return `
-                    <div class="service-group">
-                        <h3 class="service-title">${service_title}</h3>
-                        <table class="service-table">
-                            <thead>
-                                <tr>
-                                    <th>${__('Date')}</th>
-                                    <th>${__('Type')}</th>
-                                    <th>${__('Debit')}</th>
-                                    <th>${__('Credit')}</th>
-                                    <th>${__('Balance')}</th>
-                                    <th>${__('Description')}</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${group.transactions.map(transaction => `
-                                    <tr>
-                                        <td>${frappe.datetime.str_to_user(transaction.date)}</td>
-                                        <td>${transaction.type}</td>
-                                        <td style="text-align: right;">${this.format_currency_for_print(transaction.debit || 0)}</td>
-                                        <td style="text-align: right;">${this.format_currency_for_print(transaction.credit || 0)}</td>
-                                        <td style="text-align: right;">${this.format_currency_for_print(transaction.balance || 0)}</td>
-                                        <td>${transaction.description || ''}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                            <tfoot style="background: #f8f9fa; font-weight: bold;">
-                                <tr>
-                                    <td colspan="2" style="text-align: center;">${__('Total')}</td>
-                                    <td style="text-align: right;">${this.format_currency_for_print(group.total_value || 0)}</td>
-                                    <td style="text-align: right;">${this.format_currency_for_print(group.total_paid || 0)}</td>
-                                    <td style="text-align: right;">${this.format_currency_for_print(group.total_balance || 0)}</td>
-                                    <td></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    `;
-                }).join('')}
-
-                <div class="statement-summary">
-                    <h3>${__('Summary')}</h3>
-                    <table style="width: 100%; border-collapse: collapse; background: white;">
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>${__('Total Projects')}</strong></td>
-                            <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">${data.summary.total_projects || 0}</td>
-                            <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>${__('Total Services')}</strong></td>
-                            <td style="padding: 12px; border: 1px solid #dee2e6; text-align: center;">${data.summary.total_services || 0}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>${__('Grand Total Value')}</strong></td>
-                            <td style="padding: 12px; border: 1px solid #dee2e6; text-align: right;">${this.format_currency_for_print(data.summary.grand_total_value || 0)}</td>
-                            <td style="padding: 12px; border: 1px solid #dee2e6;"><strong>${__('Grand Total Balance')}</strong></td>
-                            <td style="padding: 12px; border: 1px solid #dee2e6; text-align: right;">${this.format_currency_for_print(data.summary.grand_total_balance || 0)}</td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="print-footer">
-                    <p>${__('Generated by')} ${data.company.company_name_ar || data.company.company_name} ${__('System')} - ${frappe.datetime.now_datetime()}</p>
-                </div>
-                </div> <!-- Close print-container -->
-            </body>
-            </html>
-        `;
-    }
-
     clear_filters() {
         // Clean up dynamic controls
         this.cleanup_dynamic_controls();
@@ -1872,8 +1528,8 @@ class AccountStatementReport {
                 }
 
                 @page {
-                    margin: 0;
                     size: A4;
+                    margin: 110px 15mm 90px 15mm;
                 }
 
                 html, body {
@@ -1892,10 +1548,10 @@ class AccountStatementReport {
 
                 .print-header-image {
                     position: fixed;
-                    top: 0;
+                    top: -110px; /* place inside top page margin */
                     left: 0;
                     right: 0;
-                    width: 100vw;
+                    width: 100%;
                     height: 90px;
                     background: url('/files/Asset 8.png') no-repeat center top;
                     background-size: cover;
@@ -1908,10 +1564,10 @@ class AccountStatementReport {
 
                 .print-footer-image {
                     position: fixed;
-                    bottom: 0;
+                    bottom: -90px; /* place inside bottom page margin */
                     left: 0;
                     right: 0;
-                    width: 100vw;
+                    width: 100%;
                     height: 70px;
                     background: url('/files/Asset 9.png') no-repeat center bottom;
                     background-size: cover;
@@ -1924,7 +1580,7 @@ class AccountStatementReport {
 
                 .print-container {
                     margin: 0;
-                    padding: 110px 15mm 90px 15mm;
+                    padding: 0 15mm; /* page margins reserve header/footer space */
                     background: white;
                     z-index: 1;
                     position: relative;

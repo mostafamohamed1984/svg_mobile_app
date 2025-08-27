@@ -198,29 +198,16 @@ class AccountStatementReport {
                         </div>
                     </div>
 
-                    <!-- Tab Content -->
-                    <div class="tab-content">
-                        <!-- Customer Report Content -->
-                        <div id="servicesPayments" class="tab-pane active" style="display: block;">
-                            <div id="servicesPaymentsContent"></div>
-                        </div>
-                        <div id="governmentFeesExpenses" class="tab-pane" style="display: none;">
-                            <div id="governmentFeesExpensesContent"></div>
-                        </div>
-                        <div id="trustFees" class="tab-pane" style="display: none;">
-                            <div id="trustFeesContent"></div>
-                        </div>
-
-                        <!-- Contractor Report Content -->
-                        <div id="contractorServicesPayments" class="tab-pane" style="display: none;">
-                            <div id="contractorServicesPaymentsContent"></div>
-                        </div>
-
-                        <!-- Engineer Report Content -->
-                        <div id="engineerServicesPayments" class="tab-pane" style="display: none;">
-                            <div id="engineerServicesPaymentsContent"></div>
-                        </div>
+                    <!-- Statement Content Area (like customer_statement page) -->
+                    <div class="loading-message" style="text-align: center; padding: 50px; display: none;">
+                        <h4>${__('Loading Statement...')}</h4>
+                        <p>${__('Please wait while we fetch the data.')}</p>
                     </div>
+                    <div class="no-data-message" style="text-align: center; padding: 50px; display: block;">
+                        <h4>${__('No Data Found')}</h4>
+                        <p>${__('Please select report type and date range to view the statement.')}</p>
+                    </div>
+                    <div class="statement-data" style="display: none;"></div>
                 </div>
 
                 <!-- Error Message -->
@@ -625,10 +612,10 @@ class AccountStatementReport {
                 if (response.message && response.message.service_groups && response.message.service_groups.length > 0) {
                     console.log('Found service groups, rendering statement'); // Debug log
                     this.render_statement(response.message);
-                    // Show the tab content area
-                    console.log('Ensuring tab content is visible after rendering...'); // Debug log
-                    this.wrapper.find('.tab-content').show();
-                    console.log('Tab content show() called'); // Debug log
+                    // Show the statement data like customer_statement page
+                    console.log('Showing statement data...'); // Debug log
+                    this.wrapper.find('.statement-data').show();
+                    console.log('Statement data shown'); // Debug log
                 } else {
                     console.log('No service groups found, showing no-data message'); // Debug log
                     console.log('response.message:', response.message); // Debug log
@@ -670,116 +657,22 @@ class AccountStatementReport {
     render_statement(data) {
         console.log('render_statement called with data:', data); // Debug log
         
-        // Determine the correct container based on report type
-        let containerId;
-        switch(this.filters.reportType) {
-            case 'customer':
-                containerId = '#servicesPaymentsContent';
-                break;
-            case 'contractor':
-                containerId = '#contractorServicesPaymentsContent';
-                break;
-            case 'engineer':
-                containerId = '#engineerServicesPaymentsContent';
-                break;
-            default:
-                containerId = '#servicesPaymentsContent';
-        }
-        
-        console.log('Using container:', containerId); // Debug log
-        
+        // Use the same simple approach as customer_statement page
         let html = this.build_statement_header(data);
         html += this.build_statement_content(data);
         html += this.build_statement_summary(data);
 
         console.log('Generated HTML length:', html.length); // Debug log
         
-        const container = this.wrapper.find(containerId);
-        console.log('Found container:', container.length); // Debug log
+        // Use simple .statement-data container like customer_statement page
+        const container = this.wrapper.find('.statement-data');
+        console.log('Found .statement-data container:', container.length); // Debug log
         
         if (container.length > 0) {
             container.html(html);
-            console.log('HTML inserted into container'); // Debug log
-            
-            // Show the appropriate tab content
-            console.log('Hiding all tab panes...'); // Debug log
-            this.wrapper.find('.tab-pane').hide();
-            
-            const tabPane = this.wrapper.find(containerId).closest('.tab-pane');
-            console.log('Found tab pane for container:', tabPane.length); // Debug log
-            console.log('Tab pane ID:', tabPane.attr('id')); // Debug log
-            
-            tabPane.show();
-            console.log('Tab pane should now be visible'); // Debug log
-            
-            // Also ensure the tab content area is visible
-            this.wrapper.find('.tab-content').show();
-            console.log('Tab content area shown'); // Debug log
-            
-            // Debug CSS properties and dimensions
-            const tabContentArea = this.wrapper.find('.tab-content');
-            console.log('Tab content display:', tabContentArea.css('display')); // Debug log
-            console.log('Tab content visibility:', tabContentArea.css('visibility')); // Debug log
-            console.log('Tab content height:', tabContentArea.height()); // Debug log
-            console.log('Tab content width:', tabContentArea.width()); // Debug log
-            console.log('Tab pane display:', tabPane.css('display')); // Debug log
-            console.log('Tab pane visibility:', tabPane.css('visibility')); // Debug log
-            console.log('Tab pane height:', tabPane.height()); // Debug log
-            console.log('Tab pane width:', tabPane.width()); // Debug log
-            console.log('Container height:', container.height()); // Debug log
-            console.log('Container width:', container.width()); // Debug log
-            
-            // Check for overflow hidden or other CSS issues
-            console.log('Tab content overflow:', tabContentArea.css('overflow')); // Debug log
-            console.log('Tab pane overflow:', tabPane.css('overflow')); // Debug log
-            console.log('Container overflow:', container.css('overflow')); // Debug log
-            
-            // Test if content is actually there by checking innerHTML length
-            console.log('Container innerHTML length:', container[0].innerHTML.length); // Debug log
-            console.log('Container first 200 chars:', container[0].innerHTML.substring(0, 200)); // Debug log
-            
-            // Force proper dimensions and layout
-            tabContentArea.css({
-                'display': 'block',
-                'visibility': 'visible',
-                'opacity': '1',
-                'height': 'auto',
-                'width': '100%',
-                'min-height': '200px',
-                'position': 'relative'
-            });
-            
-            tabPane.css({
-                'display': 'block',
-                'visibility': 'visible',
-                'opacity': '1',
-                'height': 'auto',
-                'width': '100%',
-                'min-height': '200px',
-                'position': 'relative'
-            });
-            
-            container.css({
-                'display': 'block',
-                'visibility': 'visible',
-                'opacity': '1',
-                'height': 'auto',
-                'width': '100%',
-                'min-height': '200px',
-                'position': 'relative',
-                'overflow': 'visible'
-            });
-            
-            console.log('Applied force CSS with proper dimensions'); // Debug log
-            
-            // Check dimensions after CSS fix
-            console.log('AFTER CSS FIX:');
-            console.log('Tab content height:', tabContentArea.height());
-            console.log('Tab pane height:', tabPane.height());
-            console.log('Container height:', container.height());
-            
+            console.log('HTML inserted into .statement-data container'); // Debug log
         } else {
-            console.log('ERROR: Container not found:', containerId); // Debug log
+            console.log('ERROR: .statement-data container not found!'); // Debug log
         }
         
         this.current_statement_data = data;
@@ -1183,14 +1076,14 @@ class AccountStatementReport {
         // Hide dynamic elements
         this.wrapper.find('#dynamicFilters').hide();
         this.wrapper.find('#actionButtons').hide();
-        this.wrapper.find('.tab-content').hide();
+        this.wrapper.find('.statement-data').hide();
         this.wrapper.find('.no-data-message').show();
 
         frappe.show_alert(__('Filters cleared successfully'));
     }
 
     show_loading() {
-        this.wrapper.find('.tab-content, .no-data-message').hide();
+        this.wrapper.find('.statement-data, .no-data-message').hide();
         this.wrapper.find('.loading-message').show();
     }
 

@@ -73,12 +73,6 @@ frappe.query_reports["Trial Balance Arabic"] = {
             "label": __("Group as Tree"),
             "fieldtype": "Check",
             "default": 1
-        },
-        {
-            "fieldname": "show_group_accounts",
-            "label": __("Show Group Accounts"),
-            "fieldtype": "Check",
-            "default": 0
         }
     ]
 };

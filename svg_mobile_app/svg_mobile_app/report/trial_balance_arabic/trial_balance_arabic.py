@@ -24,10 +24,16 @@ def get_columns():
     """Define report columns in Arabic"""
     return [
         {
+            "fieldname": "account_code",
+            "label": _("رقم الحساب"),  # Account Code
+            "fieldtype": "Data",
+            "width": 150
+        },
+        {
             "fieldname": "account",
             "label": _("Account"),
             "fieldtype": "Data",
-            "width": 200
+            "width": 300
         },
         {
             "fieldname": "parent_account",
@@ -41,12 +47,6 @@ def get_columns():
             "label": _("اسم الحساب"),  # Account Name
             "fieldtype": "Data",
             "width": 300
-        },
-        {
-            "fieldname": "account_code",
-            "label": _("الحساب"),  # Account Code
-            "fieldtype": "Data",
-            "width": 120
         },
         {
             "fieldname": "debit",

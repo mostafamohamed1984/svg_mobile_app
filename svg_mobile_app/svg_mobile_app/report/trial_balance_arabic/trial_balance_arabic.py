@@ -171,31 +171,38 @@ def process_trial_balance_data(raw_data, filters):
     if root_types:
         raw_data = [r for r in raw_data if (r.get('root_type') in root_types)]
 
-    if _is_truthy(filters.get("group_as_tree")):
+    group_as_tree = filters.get("group_as_tree")
+    if group_as_tree is None:
+        group_as_tree = True
+    if _is_truthy(group_as_tree):
         return _process_tree_data(raw_data)
     else:
         return _process_categorized_data(raw_data)
 
 def _process_tree_data(raw_data):
+    """Build a hierarchical tree and sort siblings by account_code (natural order)."""
     processed_data = []
 
-    # Maintain a stack of right bounds to compute indent for nested set
-    right_bounds_stack = []
+    # Build node map
+    by_name = {row.get('account'): dict(row) for row in raw_data}
+    children_map = {}
+    roots = []
 
-    for account in raw_data:
-        # compute indent from nested set using lft/rgt
-        lft = account.get('lft') or 0
-        rgt = account.get('rgt') or 0
-        while right_bounds_stack and lft > right_bounds_stack[-1]:
-            right_bounds_stack.pop()
-        indent = len(right_bounds_stack)
-        right_bounds_stack.append(rgt)
+    for name, node in by_name.items():
+        parent = node.get('parent_account')
+        if parent and parent in by_name:
+            children_map.setdefault(parent, []).append(node)
+        else:
+            roots.append(node)
 
-        root_type = account.get('root_type', 'Other')
+    def sort_nodes(nodes):
+        return sorted(nodes, key=_account_tree_sort_key)
 
-        total_debit = flt(account.get('total_debit', 0))
-        total_credit = flt(account.get('total_credit', 0))
-        balance = flt(account.get('balance', 0))
+    def walk(node, depth):
+        root_type = node.get('root_type', 'Other')
+        total_debit = flt(node.get('total_debit', 0))
+        total_credit = flt(node.get('total_credit', 0))
+        balance = flt(node.get('balance', 0))
 
         if root_type in ['Asset', 'Expense']:
             display_debit = balance if balance > 0 else 0
@@ -205,20 +212,25 @@ def _process_tree_data(raw_data):
             display_credit = balance if balance > 0 else 0
 
         processed_data.append({
-            'account': account.get('account'),
-            'parent_account': account.get('parent_account'),
-            'account_code': account.get('account_code', ''),
-            'account_name': get_arabic_account_name(account),
+            'account': node.get('account'),
+            'parent_account': node.get('parent_account'),
+            'account_code': node.get('account_code', ''),
+            'account_name': get_arabic_account_name(node),
             'debit': display_debit,
             'credit': display_credit,
             'balance': balance,
-            'account_type': account.get('account_type', ''),
+            'account_type': node.get('account_type', ''),
             'root_type': root_type,
-            'is_group': account.get('is_group', 0),
-            'indent': indent
+            'is_group': node.get('is_group', 0),
+            'indent': depth
         })
 
-    # Add grand total row at the end
+        for child in sort_nodes(children_map.get(node.get('account'), [])):
+            walk(child, depth + 1)
+
+    for root in sort_nodes(roots):
+        walk(root, 0)
+
     summary = _compute_summary(processed_data)
     processed_data.append({
         'account_code': '',
@@ -298,7 +310,7 @@ def _process_categorized_data(raw_data):
 
     # Sort accounts within each category by natural account code order
     for group in account_groups.values():
-        group['accounts'].sort(key=lambda x: _natural_sort_key(x.get('account_code') or ''))
+        group['accounts'].sort(key=_account_tree_sort_key)
 
     grand_total_debit = 0
     grand_total_credit = 0
@@ -436,15 +448,25 @@ def _natural_sort_key(code):
     """Return a natural sort key for account codes like '1-02-003' or '1001'."""
     s = cstr(code)
     if not s:
-        return [float('inf')]
+        return ((), "")
     parts = re.split(r"(\d+)", s)
-    key = []
+    nums = []
+    tail = []
     for part in parts:
         if part.isdigit():
-            key.append(int(part))
+            nums.append(int(part))
         else:
-            key.append(part.lower())
-    return key
+            tail.append(part.lower())
+    # Return a tuple with numeric parts first then string tail joined
+    return (tuple(nums), "".join(tail))
+
+def _account_tree_sort_key(row):
+    """Sort by root_type group order, then by natural account_code, then by account name."""
+    root_order = {"Asset": 0, "Liability": 1, "Equity": 2, "Income": 3, "Expense": 4}
+    root_idx = root_order.get(cstr(row.get('root_type')), 99)
+    code_key = _natural_sort_key(row.get('account_code') or '')
+    name_key = cstr(row.get('account_name') or '')
+    return (root_idx, code_key, name_key)
 
 def _is_truthy(value):
     return cstr(value).lower() in {"1", "true", "yes", "on"}

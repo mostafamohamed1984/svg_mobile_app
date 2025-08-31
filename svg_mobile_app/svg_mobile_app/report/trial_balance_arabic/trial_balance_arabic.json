@@ -27,11 +27,16 @@
    "reqd": 0
   },
   {
-   "fieldname": "root_type",
-   "fieldtype": "Select",
-   "label": "Root Type",
-   "options": "\nAsset\nLiability\nEquity\nIncome\nExpense",
+   "fieldname": "root_types",
+   "fieldtype": "MultiSelectList",
+   "label": "Root Types",
    "reqd": 0
+  },
+  {
+   "fieldname": "group_as_tree",
+   "fieldtype": "Check",
+   "label": "Group as Tree",
+   "default": 1
   },
   {
    "fieldname": "account_type",

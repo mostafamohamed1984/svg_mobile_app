@@ -6,6 +6,38 @@ frappe.query_reports["Trial Balance Arabic"] = {
     name_field: "account",
     parent_field: "parent_account",
     initial_depth: 1,
+    formatter: function(value, row, column, data, default_formatter) {
+        let formatted = default_formatter(value, row, column, data);
+        if (!data) {
+            return formatted;
+        }
+
+        const is_category_header = !!data._is_category_header;
+        const is_category_total = !!data._is_category_total;
+        const is_grand_total = !!data._is_grand_total;
+        const is_top_group = !!(data.is_group && data.indent === 0);
+        const is_group = !!(data.is_group && !is_top_group);
+
+        // Styles
+        const strong_bg = "background-color:#eef6ff; font-weight:700;"; // top/root headers
+        const group_bg  = "background-color:#f8fafc; font-weight:600;"; // group accounts
+        const total_bg  = "background-color:#fffbea; font-weight:700; border-top:1px solid #e2e8f0;";
+
+        if (is_grand_total) {
+            return `<span style="${total_bg}">${formatted}</span>`;
+        }
+        if (is_category_total) {
+            return `<span style="${group_bg} border-top:1px solid #e2e8f0;">${formatted}</span>`;
+        }
+        if (is_category_header || is_top_group) {
+            return `<span style="${strong_bg}">${formatted}</span>`;
+        }
+        if (is_group) {
+            return `<span style="${group_bg}">${formatted}</span>`;
+        }
+
+        return formatted;
+    },
     "filters": [
         {
             "fieldname": "company",

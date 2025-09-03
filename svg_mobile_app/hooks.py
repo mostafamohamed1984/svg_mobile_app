@@ -294,7 +294,13 @@ ignore_links_on_delete = ["Project Claim", "Project Contractors", "Sales Invoice
 # --------
 fixtures = [
     {"dt": "Role", "filters": [["role_name", "=", "Site Engineer"]]},
-    {"dt": "Custom Field", "filters": [["dt", "=", "Communication"], ["fieldname", "=", "custom_role_forwarded"]]}
+    {"dt": "Custom Field", "filters": [["dt", "=", "Communication"], ["fieldname", "=", "custom_role_forwarded"]]},
+    # Export all Client Scripts linked to this app's module
+    {"dt": "Client Script", "filters": [["module", "=", "Svg Mobile App"]]},
+    # Export all legacy Custom Scripts if any are tagged to this module
+    {"dt": "Custom Script", "filters": [["module", "=", "Svg Mobile App"]]},
+    # Export all Server Scripts linked to this app's module
+    {"dt": "Server Script", "filters": [["module", "=", "Svg Mobile App"]]}
 ]
 
 # Automatically update python controller files with type annotations for this app.

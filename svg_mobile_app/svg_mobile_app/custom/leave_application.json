@@ -139,7 +139,7 @@
    "_liked_by": null,
    "_user_tags": null,
    "creation": "2025-01-30 10:00:00.000000",
-   "default_value": null,
+   "default_value": "Requested",
    "doc_type": "Leave Application",
    "docstatus": 0,
    "doctype_or_field": "DocField",
